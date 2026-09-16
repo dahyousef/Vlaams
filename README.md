@@ -1,5 +1,10 @@
 # Vlaams
 
+**→ https://dahyousef.github.io/Vlaams/**
+
+À ouvrir dans Edge pour la reconnaissance vocale, ou à installer sur le
+téléphone depuis cette adresse.
+
 Un cours de flamand pour quelqu'un qui vit en Flandre depuis des années, entend
 du néerlandais tous les jours et n'arrive toujours pas à le parler.
 
