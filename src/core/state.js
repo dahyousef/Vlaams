@@ -47,9 +47,12 @@ NL.state = (function () {
       req.onerror = () => resolve(loadLS());
       req.onsuccess = e => {
         db = e.target.result; useIDB = true;
-        Promise.all([all('srs'), all('custom'), get('meta', 'meta')]).then(([s, c, m]) => {
+        Promise.all([all('srs'), all('custom'), get('meta', 'meta'), all('log')]).then(([s, c, m, l]) => {
           s.forEach(r => mem.srs.set(r.id, r));
           c.forEach(r => mem.custom.set(r.id, r));
+          /* Le journal était enregistré mais jamais relu : le graphique de la
+             semaine ne montrait que la séance en cours. */
+          mem.log = (l || []).slice(-4000);
           if (m && m.v) meta = Object.assign(defaults(), m.v);
           resolve();
         }).catch(() => resolve(loadLS()));
@@ -94,40 +97,61 @@ NL.state = (function () {
     })));
   }
 
+  /* ---- abonnés aux écritures ----
+     La synchro écoute ici. Une écriture « silencieuse » vient du serveur : elle
+     est appliquée localement sans être renvoyée, sinon chaque tirage deviendrait
+     un envoi et deux appareils se renverraient la balle à l'infini. */
+  const listeners = [];
+  const onWrite = fn => listeners.push(fn);
+  const emit = (type, value) => listeners.forEach(fn => { try { fn(type, value); } catch (e) {} });
+
   /* ---- SRS records ---- */
   const rec = id => mem.srs.get(id) || null;
-  function setRec(r) { mem.srs.set(r.id, r); put('srs', r); saveLS(); }
+  function setRec(r, silent) {
+    if (!silent) r.updatedAt = Date.now();
+    mem.srs.set(r.id, r); put('srs', r); saveLS();
+    if (!silent) emit('rec', r);
+  }
   const allRecs = () => [...mem.srs.values()];
   const seenCount = () => mem.srs.size;
 
   /* ---- meta ---- */
   const m = () => meta;
-  function setMeta(patch) {
+  function setMeta(patch, silent) {
     Object.assign(meta, patch);
+    if (!silent) meta.updatedAt = Date.now();
     put('meta', { k: 'meta', v: meta }); saveLS();
+    if (!silent) emit('meta', meta);
   }
 
   /* ---- review log, for the stats strip ---- */
-  function logReview(entry) {
+  function logReview(entry, silent) {
     mem.log.push(entry);
     if (mem.log.length > 4000) mem.log.shift();
     if (useIDB) { try { db.transaction('log', 'readwrite').objectStore('log').put(entry); } catch (e) {} }
+    if (!silent) emit('log', entry);
   }
   const logs = () => mem.log;
 
   /* ---- user's own words ---- */
   function addCustom(w) {
     const r = Object.assign({ id: 'x-' + Date.now().toString(36), kind: 'word', unit: 'eigen', level: 'eigen' }, w);
+    return putCustom(r);
+  }
+  function putCustom(r, silent) {
+    if (!silent) r.updatedAt = Date.now();
     mem.custom.set(r.id, r); put('custom', r); saveLS();
+    if (!silent) emit('custom', r);
     return r;
   }
-  function delCustom(id) {
+  function delCustom(id, silent) {
     mem.custom.delete(id); mem.srs.delete(id);
     if (useIDB) {
       try { db.transaction('custom', 'readwrite').objectStore('custom').delete(id); } catch (e) {}
       try { db.transaction('srs', 'readwrite').objectStore('srs').delete(id); } catch (e) {}
     }
     saveLS();
+    if (!silent) emit('custom-del', id);
   }
   const customs = () => [...mem.custom.values()];
 
@@ -170,5 +194,5 @@ NL.state = (function () {
     setMeta(patch);
   }
 
-  return { open, migrate, rec, setRec, allRecs, seenCount, meta: m, setMeta, logReview, logs, addCustom, delCustom, customs, clearAll, touchDay, creditDay, exportAll, importAll, get storage() { return useIDB ? 'IndexedDB' : 'localStorage'; } };
+  return { open, migrate, onWrite, rec, setRec, allRecs, seenCount, meta: m, setMeta, logReview, logs, addCustom, putCustom, delCustom, customs, clearAll, touchDay, creditDay, exportAll, importAll, get storage() { return useIDB ? 'IndexedDB' : 'localStorage'; } };
 })();

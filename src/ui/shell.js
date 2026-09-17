@@ -23,7 +23,7 @@ NL.ui = (function () {
     meer: '<circle cx="6" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="18" cy="12" r="1.4"/>'
   };
   const UNDER_MEER = ['woorden', 'spiek', 'register', 'klanken', 'doctor', 'dehet'];
-  const FULLSCREEN = { sessie: 1, scenario: 1, placement: 1, doctor: 1 };
+  const FULLSCREEN = { sessie: 1, scenario: 1, placement: 1, doctor: 1, compte: 1 };
 
   function go(to, a) {
     if (route === 'sessie' && to !== 'sessie' && NL.screens.sessie.active()) { sheet = 'quit-session'; return render(); }
@@ -50,8 +50,17 @@ NL.ui = (function () {
       '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">' +
       '<path d="M5 18.5c3.5-1.5 4.5-5 4.5-8.5S8 4.5 8 4.5"/><path d="M19 18.5c-3.5-1.5-4.5-5-4.5-8.5S16 4.5 16 4.5"/><path d="M4.5 11.5h15"/></svg></span>' +
       '<span class="brand-txt"><b>Vlaams</b><i>' + esc(NL.content.fill(t.brandSub)) + '</i></span></div>' +
-      '<button class="iconbtn" data-sheet="instellingen" aria-label="' + t.setTitle + '">' + I.gear + '</button>' +
+      '<button class="iconbtn gear" data-sheet="instellingen" aria-label="' + t.setTitle + '">' + I.gear + syncDot() + '</button>' +
       '</div></header>';
+  }
+
+  /* Un point discret sur l'engrenage quand la progression n'est pas à l'abri. */
+  function syncDot() {
+    if (!NL.sync.enabled) return '';
+    const st = NL.sync.status();
+    if (!st.user) return '<i class="sdot warn"></i>';
+    if (st.state === 'error') return '<i class="sdot bad"></i>';
+    return '';
   }
 
   function nav() {
@@ -117,6 +126,8 @@ NL.ui = (function () {
           '<input class="textin" data-mine="' + k + '" value="' + esc(m[k] || '') + '" placeholder="' + esc(ph) + '" spellcheck="false"></label>').join('') +
         '</div>' +
 
+        (NL.sync.enabled ? accountBlock() : '') +
+
         '<div class="set-block"><h4>' + t.setVoice + '</h4>' +
         '<p class="set-note ' + (v.quality === 'be' ? 'good' : 'warn') + '">' + esc(v.note) +
         (v.name ? ' <span class="muted">(' + esc(v.name) + ')</span>' : '') + '</p>' +
@@ -141,6 +152,24 @@ NL.ui = (function () {
     }
     if (sheet && sheet.custom) return sheet.custom;
     return '';
+  }
+
+  function accountBlock() {
+    const st = NL.sync.status();
+    if (!st.user) {
+      return '<div class="set-block"><h4>' + t.accEyebrow + '</h4>' +
+        '<p class="set-note warn">' + t.syncLocalOnly + '</p>' +
+        '<button class="btn btn-blue wide" data-go="compte">' + t.accSignInCta + '</button></div>';
+    }
+    const line = st.state === 'syncing' ? t.syncBusy
+      : st.state === 'offline' ? t.syncOffline(st.pending)
+      : st.state === 'error' ? t.syncError('')
+      : st.pending ? t.syncPending(st.pending)
+      : t.syncOk(st.lastSync ? t.syncAgo(Date.now() - st.lastSync) : t.syncNever);
+    return '<div class="set-block"><h4>' + t.accEyebrow + '</h4>' +
+      '<p class="set-note muted">' + esc(st.user.email || '') + '</p>' +
+      '<p class="set-note ' + (st.state === 'error' ? 'warn' : 'good') + '">' + esc(line) + '</p>' +
+      '<button class="btn btn-blue wide" data-go="compte">' + t.accManage + '</button></div>';
   }
 
   const micLine = kind => kind === 'browser' ? t.micNoBrowser
@@ -214,7 +243,11 @@ NL.ui = (function () {
   function restore(raw) {
     let data = null;
     try { data = JSON.parse(raw); } catch (e) { /* reported below */ }
-    if (NL.state.importAll(data)) { NL.content.refresh(); sheet = null; render(); toast(t.imported); }
+    if (NL.state.importAll(data)) {
+      NL.content.refresh(); sheet = null;
+      if (NL.sync.user) { NL.sync.queueAll(); NL.sync.flush(); }
+      render(); toast(t.imported);
+    }
     else toast(t.importFailed);
   }
 
@@ -316,8 +349,12 @@ NL.ui = (function () {
     });
   }
 
+  /* Appelé par la synchro quand une connexion aboutit — au retour du lien
+     magique par exemple. */
+  function onAuth() { if (route === 'compte') go('vandaag'); else render(); }
+
   return {
-    bind, render, go, toast, openSheet, closeSheet, I, card,
+    bind, render, go, toast, openSheet, closeSheet, I, card, onAuth,
     get route() { return route; },
     boot() { const h = fromHash(); if (h) { route = h.r; arg = h.a; } render(); }
   };

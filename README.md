@@ -1,9 +1,7 @@
 # Vlaams
 
-**→ https://dahyousef.github.io/Vlaams/**
-
-À ouvrir dans Edge pour la reconnaissance vocale, ou à installer sur le
-téléphone depuis cette adresse.
+Hébergé sur Vercel, progression enregistrée par compte (Supabase). À ouvrir dans
+Edge pour la reconnaissance vocale, ou à installer sur le téléphone.
 
 Un cours de flamand pour quelqu'un qui vit en Flandre depuis des années, entend
 du néerlandais tous les jours et n'arrive toujours pas à le parler.
@@ -76,8 +74,9 @@ docteur audio a un bouton **Revérifier** — pas besoin de redémarrer.
 
 ## Sauvegarde — à faire avant de changer d'adresse
 
-Passer du lien claude.ai à une URL à toi, c'est changer d'origine : autre base de
-données, vide. **Réglages → Exporter ma progression** avant de bouger.
+Passer d'une adresse à une autre, c'est changer d'origine : autre base locale,
+vide. **Réglages → Exporter ma progression** avant de bouger, puis importe sur la
+nouvelle adresse. Si tu es connecté, l'import part aussi dans ton compte.
 
 Trois routes, parce que la page tourne à trois endroits : la capacité de
 téléchargement de l'hôte dans l'artefact, un téléchargement classique en local ou
@@ -155,37 +154,78 @@ existent déjà en français, ce qu'un anglophone n'a pas.
 
 Et les nombres suivent : `zeventig` = **septante**, `negentig` = **nonante**.
 
-## Mettre en ligne
+## Compte et synchronisation
 
-Le dépôt se publie tout seul sur GitHub Pages. Le workflow
-`.github/workflows/pages.yml` reconstruit `index.html` depuis les sources et
-**refuse de déployer si un test échoue**, dans les quatre combinaisons
-voix/navigateur.
+Connexion sans mot de passe : un lien par mail, ou le **code à six chiffres** du
+même mail — indispensable quand le lien s'ouvre dans un autre navigateur que
+celui où tu étudies.
+
+L'appareil reste la source immédiate. Chaque réponse s'écrit d'abord en local
+(IndexedDB), puis dans une boîte d'envoi qui part vers la base dès qu'il y a du
+réseau. Hors ligne, rien ne change ; au retour, tout rattrape.
+
+- **Conflits** : par fiche, la révision la plus récente gagne — côté serveur
+  aussi, par un déclencheur qui ignore une écriture plus ancienne.
+- **Réglages** : fusion champ par champ. L'XP se prend au maximum, la série suit
+  le jour le plus récent, les listes s'unissent.
+- **Première connexion** : la progression déjà présente sur l'appareil est
+  adoptée par le compte.
+- **Autre compte sur le même appareil** : l'appareil est effacé d'abord. La
+  déconnexion envoie ce qui reste, puis efface.
+- **Sans configuration** (pas de variables Supabase au build), la synchro est
+  inerte : l'app fonctionne en local, comme l'artefact et les tests.
+
+## Mettre en ligne — Supabase + Vercel
+
+**1. Supabase** — crée un projet sur supabase.com, puis :
+
+- **SQL Editor** : colle et exécute [supabase/schema.sql](supabase/schema.sql).
+  Tables, RLS (chacun ne voit que ses lignes) et déclencheur « le plus récent
+  gagne ». Le script peut être relancé sans danger.
+- **Authentication → URL Configuration** : *Site URL* = l'adresse Vercel,
+  et ajoute-la aussi dans *Redirect URLs*.
+- **Authentication → Email Templates → Magic Link** : ajoute le code au mail,
+  par exemple `<p>Ou tape ce code : <b>{{ .Token }}</b></p>`.
+- **Project Settings → API** : copie *Project URL* et la clé *anon / publishable*.
+  Cette clé est publique par conception ; c'est la RLS qui protège les données.
+
+**2. Vercel** — *Add New → Project*, importe ce dépôt GitHub, puis dans
+*Environment Variables* :
+
+| Nom | Valeur |
+| --- | --- |
+| `SUPABASE_URL` | l'URL du projet |
+| `SUPABASE_ANON_KEY` | la clé anon |
+
+Rien d'autre à régler : [vercel.json](vercel.json) donne la commande de build
+(`sh build.sh`) et le dossier publié (`dist/`). Chaque push sur `main`
+redéploie. Après avoir changé une variable, relance un déploiement.
+
+**3. Adresse finale** — reviens dans Supabase mettre l'adresse définitive dans
+*Site URL* et *Redirect URLs* si elle a changé (domaine perso, par exemple).
+
+Le workflow [.github/workflows/test.yml](.github/workflows/test.yml) teste chaque
+push dans les quatre combinaisons voix/navigateur, plus un build avec la synchro
+activée. Un run rouge veut dire : ne fais pas confiance à ce déploiement.
+
+Build local avec la synchro :
 
 ```sh
-git remote add origin https://github.com/<toi>/Vlaams.git
-git push -u origin main
+SUPABASE_URL=https://xxxx.supabase.co SUPABASE_ANON_KEY=... sh build.sh
 ```
-
-Puis, une seule fois : **Settings → Pages → Source : GitHub Actions**.
-L'adresse devient `https://dahyousef.github.io/Vlaams/`.
-
-Pourquoi c'est utile : ouverte dans Edge, cette adresse donne la reconnaissance
-vocale et les voix flamandes neuronales que l'artefact claude.ai dans Opera ne
-peut pas fournir. Et elle s'installe sur le téléphone.
-
-**Avant de changer d'adresse, exporte ta progression** : une autre origine, c'est
-une autre base de données, vide.
 
 ## Fichiers
 
 ```
-src/core/     util  fr (toute l'interface)  state (IndexedDB)  srs  speech  audio
+src/core/     util  fr (toute l'interface)  state (IndexedDB)  srs  speech  audio  sync (Supabase)
 src/content/  lexicon.a1  lexicon.a1b  grammar  reference  scenarios  index
 src/ex/       les types d'exercices, derrière une seule interface
-src/ui/       shell  session  home  scenario  listen  library  placement  doctor
+src/ui/       shell  session  home  scenario  listen  library  placement  doctor  account
 styles.css    le système de design
-build.sh      concatène le tout en index.html + artifact.html
+build.sh      concatène le tout en index.html + artifact.html, et prépare dist/
+vendor/       supabase-js (UMD, version dans SUPABASE_VERSION), seulement dans index.html
+supabase/     schéma de la base, RLS et déclencheurs
+vercel.json   build et en-têtes pour Vercel
 test/         tests sans navigateur
 ```
 
@@ -210,6 +250,7 @@ un tableau renomme ses éléments et efface leur historique**. Ajoute à la fin.
 node test/smoke.js    "$(pwd)"              # contenu, échelle, exercices, notation, balayage français
 node test/sim.js      "$(pwd)"              # chaque écran, une séance, un scénario, une série d'écoute
 node test/firstrun.js "$(pwd)"              # base vide : premier écran, première séance, sauvegarde
+node test/sync.js     "$(pwd)"              # deux appareils, faux Supabase : adoption, conflits, panne, comptes
 node test/journey.js  "$(pwd)" nl-BE OPR    # parcours complet d'un utilisateur
 node test/pace.js     "$(pwd)" 400          # 400 jours : charge, variété, exigence
 ```

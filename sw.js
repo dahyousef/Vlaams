@@ -1,6 +1,6 @@
 /* Offline shell. One version bump invalidates everything, which is the right
    trade-off for a single-file app: there is nothing to partially update. */
-const CACHE = 'vlaams-v1';
+const CACHE = 'vlaams-v2';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icons/icon.svg'];
 
 self.addEventListener('install', e => {

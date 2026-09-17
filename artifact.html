@@ -570,6 +570,26 @@ h1,h2,h3,h4,h5{font-family:var(--display);font-weight:700;letter-spacing:-.02em;
 .model-answer i{font-style:normal;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;
   text-transform:uppercase;color:var(--ink-3);display:block;margin-bottom:3px}
 .place-note{margin-top:18px;font-size:12.5px;color:var(--ink-3);text-align:center}
+
+/* --- compte --- */
+.stage.acc{max-width:440px;padding-top:40px;display:flex;flex-direction:column;gap:12px}
+.acc-mark{width:56px;height:56px;border-radius:16px;background:var(--groen);display:grid;place-items:center;margin-bottom:6px}
+.stage.acc h1{font-family:var(--display);font-size:26px;margin:0}
+.stage.acc p{margin:0;color:var(--ink-2);font-size:15px;line-height:1.5}
+.acc-field{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--ink-3);margin-top:6px}
+.acc-code{font-family:var(--mono);font-size:24px;letter-spacing:.3em;text-align:center}
+.acc-actions{display:flex;flex-direction:column;gap:9px;margin-top:8px}
+.stage.acc .acc-err{color:var(--fout);font-size:14px}
+.stage.acc .acc-note{font-size:13px;color:var(--ink-3)}
+.stage.acc .acc-mail{font-family:var(--mono);color:var(--ink)}
+.stage.acc .acc-status{font-size:14px;padding:10px 12px;border-radius:var(--r);background:var(--sunk)}
+.stage.acc .acc-status.idle{background:var(--goed-soft);color:var(--goed-deep)}
+.stage.acc .acc-status.error{background:var(--fout-soft);color:var(--fout-deep)}
+.stage.acc .acc-status.offline{background:var(--amber-soft);color:var(--amber-deep)}
+.iconbtn.gear{position:relative}
+.sdot{position:absolute;top:5px;right:5px;width:8px;height:8px;border-radius:50%;border:2px solid var(--card)}
+.sdot.warn{background:var(--amber)}
+.sdot.bad{background:var(--fout)}
 </style>
 <div id="app"></div>
 <script>
@@ -942,6 +962,40 @@ NL.t = {
     'Coche « Voix » (Speech) dans les fonctionnalités facultatives',
     'Installe, puis reviens ici et clique sur Revérifier'
   ],
+  /* --- compte et synchro --- */
+  accEyebrow: 'Compte',
+  accTitle: 'Connecte-toi',
+  accBody: 'Ta progression est enregistrée dans ton compte et te suit sur le téléphone, le portable et le PC. Pas de mot de passe : on t’envoie un lien par mail.',
+  accEmail: 'Ton adresse mail',
+  accSend: 'Recevoir le lien',
+  accSending: 'Envoi…',
+  accSkip: 'Continuer sans compte',
+  accSkipNote: 'Sans compte, la progression reste sur cet appareil uniquement. Tu pourras te connecter plus tard depuis les réglages : rien ne sera perdu.',
+  accCheckMail: 'Regarde tes mails',
+  accSentTo: e => 'Un lien a été envoyé à <b>' + e + '</b>. Clique dessus, ou tape ici le code reçu — utile si le lien s’ouvre dans un autre navigateur.',
+  accCode: 'Code reçu par mail',
+  accVerify: 'Valider le code',
+  accResend: 'Renvoyer le mail',
+  accChange: 'Changer d’adresse',
+  accBadEmail: 'Cette adresse ne semble pas valide.',
+  accBadCode: 'Le code fait six chiffres.',
+  accFailed: m => 'Ça n’a pas marché : ' + m,
+  accSignedIn: 'Tu es connecté',
+  accBack: 'Retour à l’app',
+  accSignOut: 'Se déconnecter',
+  accSignOutNote: 'La déconnexion envoie ce qui reste puis efface cet appareil. Ta progression reste dans ton compte.',
+  accSignInCta: 'Se connecter pour synchroniser',
+  accManage: 'Gérer le compte',
+  syncNow: 'Synchroniser maintenant',
+  syncNever: 'jamais',
+  syncJustNow: 'à l’instant',
+  syncAgo: ms => { const m = Math.max(1, Math.round(ms / 60000)); return 'il y a ' + (m < 60 ? m + ' min' : m < 1440 ? Math.round(m / 60) + ' h' : Math.round(m / 1440) + ' j'); },
+  syncBusy: 'Synchronisation…',
+  syncOk: w => 'Synchronisé ' + w + '.',
+  syncPending: n => n + ' changement' + (n > 1 ? 's' : '') + ' en attente d’envoi.',
+  syncOffline: n => 'Hors ligne' + (n ? ' — ' + n + ' changement' + (n > 1 ? 's' : '') + ' partiront au retour du réseau.' : '.'),
+  syncError: m => 'Échec de la synchro, nouvel essai bientôt. ' + m,
+  syncLocalOnly: 'Progression enregistrée sur cet appareil uniquement.',
   docFixNote: 'Ça installe une voix système que tous les navigateurs voient, Opera compris. Pas besoin de redémarrer.'
 };
 </script>
@@ -995,9 +1049,12 @@ NL.state = (function () {
       req.onerror = () => resolve(loadLS());
       req.onsuccess = e => {
         db = e.target.result; useIDB = true;
-        Promise.all([all('srs'), all('custom'), get('meta', 'meta')]).then(([s, c, m]) => {
+        Promise.all([all('srs'), all('custom'), get('meta', 'meta'), all('log')]).then(([s, c, m, l]) => {
           s.forEach(r => mem.srs.set(r.id, r));
           c.forEach(r => mem.custom.set(r.id, r));
+          /* Le journal était enregistré mais jamais relu : le graphique de la
+             semaine ne montrait que la séance en cours. */
+          mem.log = (l || []).slice(-4000);
           if (m && m.v) meta = Object.assign(defaults(), m.v);
           resolve();
         }).catch(() => resolve(loadLS()));
@@ -1042,40 +1099,61 @@ NL.state = (function () {
     })));
   }
 
+  /* ---- abonnés aux écritures ----
+     La synchro écoute ici. Une écriture « silencieuse » vient du serveur : elle
+     est appliquée localement sans être renvoyée, sinon chaque tirage deviendrait
+     un envoi et deux appareils se renverraient la balle à l'infini. */
+  const listeners = [];
+  const onWrite = fn => listeners.push(fn);
+  const emit = (type, value) => listeners.forEach(fn => { try { fn(type, value); } catch (e) {} });
+
   /* ---- SRS records ---- */
   const rec = id => mem.srs.get(id) || null;
-  function setRec(r) { mem.srs.set(r.id, r); put('srs', r); saveLS(); }
+  function setRec(r, silent) {
+    if (!silent) r.updatedAt = Date.now();
+    mem.srs.set(r.id, r); put('srs', r); saveLS();
+    if (!silent) emit('rec', r);
+  }
   const allRecs = () => [...mem.srs.values()];
   const seenCount = () => mem.srs.size;
 
   /* ---- meta ---- */
   const m = () => meta;
-  function setMeta(patch) {
+  function setMeta(patch, silent) {
     Object.assign(meta, patch);
+    if (!silent) meta.updatedAt = Date.now();
     put('meta', { k: 'meta', v: meta }); saveLS();
+    if (!silent) emit('meta', meta);
   }
 
   /* ---- review log, for the stats strip ---- */
-  function logReview(entry) {
+  function logReview(entry, silent) {
     mem.log.push(entry);
     if (mem.log.length > 4000) mem.log.shift();
     if (useIDB) { try { db.transaction('log', 'readwrite').objectStore('log').put(entry); } catch (e) {} }
+    if (!silent) emit('log', entry);
   }
   const logs = () => mem.log;
 
   /* ---- user's own words ---- */
   function addCustom(w) {
     const r = Object.assign({ id: 'x-' + Date.now().toString(36), kind: 'word', unit: 'eigen', level: 'eigen' }, w);
+    return putCustom(r);
+  }
+  function putCustom(r, silent) {
+    if (!silent) r.updatedAt = Date.now();
     mem.custom.set(r.id, r); put('custom', r); saveLS();
+    if (!silent) emit('custom', r);
     return r;
   }
-  function delCustom(id) {
+  function delCustom(id, silent) {
     mem.custom.delete(id); mem.srs.delete(id);
     if (useIDB) {
       try { db.transaction('custom', 'readwrite').objectStore('custom').delete(id); } catch (e) {}
       try { db.transaction('srs', 'readwrite').objectStore('srs').delete(id); } catch (e) {}
     }
     saveLS();
+    if (!silent) emit('custom-del', id);
   }
   const customs = () => [...mem.custom.values()];
 
@@ -1118,7 +1196,7 @@ NL.state = (function () {
     setMeta(patch);
   }
 
-  return { open, migrate, rec, setRec, allRecs, seenCount, meta: m, setMeta, logReview, logs, addCustom, delCustom, customs, clearAll, touchDay, creditDay, exportAll, importAll, get storage() { return useIDB ? 'IndexedDB' : 'localStorage'; } };
+  return { open, migrate, onWrite, rec, setRec, allRecs, seenCount, meta: m, setMeta, logReview, logs, addCustom, putCustom, delCustom, customs, clearAll, touchDay, creditDay, exportAll, importAll, get storage() { return useIDB ? 'IndexedDB' : 'localStorage'; } };
 })();
 </script>
 <script>
@@ -1598,6 +1676,332 @@ NL.audio = (function () {
     win:  () => tone([[523, 0], [659, 0.08], [784, 0.16], [1047, 0.24]]),
     tick: () => tone([[440, 0, 0.05]]),
     mic:  () => tone([[880, 0, 0.07], [1175, 0.06, 0.07]])
+  };
+})();
+</script>
+<script>
+/* Synchronisation avec Supabase.
+
+   L'appareil reste la source de vérité immédiate : chaque écriture part d'abord
+   dans IndexedDB, comme avant, puis dans une boîte d'envoi persistée. La boîte
+   se vide vers la base dès qu'il y a du réseau. Dans le train, rien ne change ;
+   au retour, tout rattrape.
+
+   Conflits : par élément, la révision la plus récente gagne. Pour les réglages,
+   une fusion champ par champ — l'XP d'un appareil ne doit pas effacer celle de
+   l'autre.
+
+   Sans configuration (pas d'URL Supabase au build), tout ce module est inerte et
+   l'app fonctionne en local exactement comme avant. */
+NL.sync = (function () {
+  'use strict';
+  const cfg = window.NL_CONFIG || {};
+  const lib = window.supabase;
+  const enabled = !!(cfg.supabaseUrl && cfg.supabaseAnonKey && lib && lib.createClient);
+
+  const QKEY = 'vlaams/outbox';
+  const OWNER = 'vlaams/owner';
+  const PAGE = 1000;
+  const LOG_DAYS = 45;
+
+  let client = null, user = null;
+  let state = enabled ? 'idle' : 'off';     // off | idle | syncing | error | offline
+  let lastSync = null, lastError = null, timer = null, flushing = null;
+  const subs = [];
+
+  /* ---------------- boîte d'envoi ---------------- */
+  const empty = () => ({ recs: {}, customs: {}, meta: false, logs: [] });
+  let box = load();
+  function load() {
+    try { return Object.assign(empty(), JSON.parse(localStorage.getItem(QKEY) || '{}')); }
+    catch (e) { return empty(); }
+  }
+  function persist() { try { localStorage.setItem(QKEY, JSON.stringify(box)); } catch (e) {} }
+  const pending = () => Object.keys(box.recs).length + Object.keys(box.customs).length +
+    (box.meta ? 1 : 0) + box.logs.length;
+
+  const owner = () => { try { return localStorage.getItem(OWNER); } catch (e) { return null; } };
+  const setOwner = id => { try { id ? localStorage.setItem(OWNER, id) : localStorage.removeItem(OWNER); } catch (e) {} };
+
+  function notify() { subs.forEach(fn => { try { fn(status()); } catch (e) {} }); }
+  const onChange = fn => subs.push(fn);
+
+  /* Chaque écriture locale atterrit ici. On ne garde que la dernière version
+     d'un élément : dix révisions hors ligne ne font qu'une ligne à envoyer. */
+  NL.state.onWrite((type, v) => {
+    if (!enabled) return;
+    if (type === 'rec') box.recs[v.id] = 1;
+    else if (type === 'meta') box.meta = true;
+    else if (type === 'custom') box.customs[v.id] = 1;
+    else if (type === 'custom-del') box.customs[v] = 'deleted';
+    else if (type === 'log') { box.logs.push(v); if (box.logs.length > 5000) box.logs.shift(); }
+    persist();
+    schedule();
+  });
+
+  function queueAll() {
+    NL.state.allRecs().forEach(r => { box.recs[r.id] = 1; });
+    NL.state.customs().forEach(c => { box.customs[c.id] = 1; });
+    NL.state.logs().forEach(l => box.logs.push(l));
+    box.meta = true;
+    persist();
+  }
+
+  function schedule(ms) {
+    if (!user) return;
+    clearTimeout(timer);
+    timer = setTimeout(() => flush(), ms == null ? 2500 : ms);
+  }
+
+  /* ---------------- connexion ---------------- */
+  async function init() {
+    if (!enabled) return null;
+    client = lib.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey, {
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'pkce' }
+    });
+    client.auth.onAuthStateChange((event, session) => {
+      const next = session && session.user;
+      if (event === 'SIGNED_IN' && next && (!user || user.id !== next.id)) {
+        user = next;
+        adopt().then(() => { notify(); if (NL.ui && NL.ui.onAuth) NL.ui.onAuth(); });
+      }
+      if (event === 'SIGNED_OUT') { user = null; notify(); }
+    });
+    try {
+      const { data } = await client.auth.getSession();
+      user = data && data.session ? data.session.user : null;
+    } catch (e) { user = null; }
+    if (user) adopt().then(notify, notify);   // l'interface s'affiche sans attendre le réseau
+    window.addEventListener('online', () => { state = 'idle'; notify(); flush(); });
+    window.addEventListener('offline', () => { state = 'offline'; notify(); });
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') flush();
+      else if (user) pull().then(() => flush());   // retour sur l'onglet : rattraper les autres appareils
+    });
+    setInterval(() => flush(), 60000);
+    return user;
+  }
+
+  /* Rattache les données de cet appareil au compte connecté.
+     - appareil vierge ou déjà à ce compte : on tire puis on pousse ;
+     - progression anonyme : elle est adoptée par le compte ;
+     - un AUTRE compte avait utilisé cet appareil : ses données sont effacées
+       d'abord, pour ne jamais mélanger deux personnes. */
+  /* Le retour du lien magique déclenche à la fois l’événement de connexion et
+     getSession : un seul rattachement par compte. */
+  let adopting = null, adoptedFor = null;
+  function adopt() {
+    if (adoptedFor === user.id && adopting) return adopting;
+    adoptedFor = user.id;
+    adopting = doAdopt().catch(e => { adoptedFor = null; throw e; });
+    return adopting;
+  }
+  async function doAdopt() {
+    const prev = owner();
+    if (prev && prev !== user.id) {
+      await NL.state.clearAll();
+      box = empty(); persist();
+    } else if (!prev && NL.state.seenCount() + NL.state.customs().length > 0) {
+      queueAll();
+    }
+    setOwner(user.id);
+    await pull();
+    await flush();
+  }
+
+  async function signIn(email) {
+    if (!enabled) return { error: 'off' };
+    const { error } = await client.auth.signInWithOtp({
+      email, options: { emailRedirectTo: location.origin + location.pathname, shouldCreateUser: true }
+    });
+    return { error: error ? error.message : null };
+  }
+
+  /* Le code à six chiffres : indispensable quand le lien s'ouvre dans un autre
+     navigateur que celui où tu l'as demandé — cas courant avec Outlook. */
+  async function verifyCode(email, token) {
+    if (!enabled) return { error: 'off' };
+    const { data, error } = await client.auth.verifyOtp({ email, token: String(token).trim(), type: 'email' });
+    if (error) return { error: error.message };
+    if (data && data.user && (!user || user.id !== data.user.id)) { user = data.user; await adopt(); notify(); }
+    return { error: null };
+  }
+
+  /* Déconnexion : on envoie ce qui reste, puis on efface l'appareil pour que la
+     personne suivante ne voie rien. */
+  async function signOut() {
+    if (!enabled || !user) return;
+    try { await flush(); } catch (e) {}
+    await client.auth.signOut();
+    await NL.state.clearAll();
+    box = empty(); persist(); setOwner(null);
+    user = null; adopting = null; adoptedFor = null; notify();
+  }
+
+  /* ---------------- tirer ---------------- */
+  async function selectAll(table, filter) {
+    const rows = [];
+    for (let from = 0; ; from += PAGE) {
+      let q = client.from(table).select('*');
+      if (filter) q = filter(q);
+      const { data, error } = await q.range(from, from + PAGE - 1);
+      if (error) throw error;
+      rows.push.apply(rows, data || []);
+      if (!data || data.length < PAGE) return rows;
+    }
+  }
+
+  async function pull() {
+    if (!user) return;
+    state = 'syncing'; notify();
+    try {
+      const recs = await selectAll('srs_records');
+      recs.forEach(row => {
+        const local = NL.state.rec(row.item_id);
+        if (box.recs[row.item_id] && local && (local.updatedAt || 0) >= row.updated_at) return;
+        if (!local || (local.updatedAt || 0) < row.updated_at) {
+          NL.state.setRec(Object.assign({}, row.data, { id: row.item_id, updatedAt: row.updated_at }), true);
+        }
+      });
+
+      const words = await selectAll('custom_words');
+      words.forEach(row => {
+        const local = NL.state.customs().find(c => c.id === row.id);
+        if ((local && (local.updatedAt || 0) >= row.updated_at) || box.customs[row.id]) return;
+        if (row.deleted) { if (local) NL.state.delCustom(row.id, true); }
+        else NL.state.putCustom(Object.assign({}, row.data, { id: row.id, updatedAt: row.updated_at }), true);
+      });
+
+      const metaRows = await selectAll('user_meta');
+      if (metaRows[0]) {
+        const merged = mergeMeta(NL.state.meta(), metaRows[0].data);
+        NL.state.setMeta(merged, true);
+        if (JSON.stringify(merged) !== JSON.stringify(metaRows[0].data)) { box.meta = true; persist(); }
+      } else {
+        box.meta = true; persist();
+      }
+
+      const since = Date.now() - LOG_DAYS * 86400000;
+      const have = new Set(NL.state.logs().map(l => l.t + '|' + l.id));
+      const logs = await selectAll('review_log', q => q.gte('t', since));
+      logs.sort((a, b) => a.t - b.t).forEach(row => {
+        if (!have.has(row.t + '|' + row.item_id)) NL.state.logReview(row.data, true);
+      });
+
+      NL.content.refresh();
+      done();
+    } catch (e) { fail(e); }
+  }
+
+  /* ---------------- pousser ---------------- */
+  function flush() {
+    if (!user || !enabled) return Promise.resolve();
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) { state = 'offline'; notify(); return Promise.resolve(); }
+    if (flushing) return flushing;
+    flushing = doFlush().finally(() => { flushing = null; });
+    return flushing;
+  }
+
+  async function doFlush() {
+    if (!pending()) { done(); return; }
+    state = 'syncing'; notify();
+    /* On prend un instantané et on vide la boîte : ce qui s'écrit PENDANT
+       l'envoi repart dans une boîte neuve au lieu d'être effacé par erreur. */
+    const snap = box; box = empty(); persist();
+    try {
+      const uid = user.id;
+      const recRows = Object.keys(snap.recs).map(id => NL.state.rec(id)).filter(Boolean).map(r => ({
+        user_id: uid, item_id: r.id, data: r, updated_at: r.updatedAt || Date.now()
+      }));
+      for (let i = 0; i < recRows.length; i += 500) {
+        const { error } = await client.from('srs_records').upsert(recRows.slice(i, i + 500), { onConflict: 'user_id,item_id' });
+        if (error) throw error;
+      }
+
+      const now = Date.now();
+      const wordRows = Object.keys(snap.customs).map(id => {
+        if (snap.customs[id] === 'deleted') return { user_id: uid, id, data: {}, deleted: true, updated_at: now };
+        const c = NL.state.customs().find(x => x.id === id);
+        return c ? { user_id: uid, id, data: c, deleted: false, updated_at: c.updatedAt || now } : null;
+      }).filter(Boolean);
+      if (wordRows.length) {
+        const { error } = await client.from('custom_words').upsert(wordRows, { onConflict: 'user_id,id' });
+        if (error) throw error;
+      }
+
+      if (snap.meta) {
+        /* Les réglages se fusionnent avec la copie du serveur AVANT l'envoi :
+           l'XP gagnée ailleurs pendant que cet appareil était hors ligne reste. */
+        const { data: remote, error: readErr } = await client.from('user_meta').select('*').range(0, 0);
+        if (readErr) throw readErr;
+        if (remote && remote[0]) NL.state.setMeta(mergeMeta(NL.state.meta(), remote[0].data), true);
+        const m = NL.state.meta();
+        const { error } = await client.from('user_meta').upsert(
+          { user_id: uid, data: m, updated_at: m.updatedAt || now }, { onConflict: 'user_id' });
+        if (error) throw error;
+      }
+
+      const logRows = snap.logs.filter(l => l && l.id && l.t).map(l => ({ user_id: uid, t: l.t, item_id: l.id, data: l }));
+      for (let i = 0; i < logRows.length; i += 500) {
+        const { error } = await client.from('review_log').upsert(logRows.slice(i, i + 500),
+          { onConflict: 'user_id,t,item_id', ignoreDuplicates: true });
+        if (error) throw error;
+      }
+      done();
+    } catch (e) {
+      /* Échec : on remet l'instantané dans la boîte, fusionné avec ce qui est
+         arrivé entre-temps. Rien n'est perdu ; on réessaie plus tard. */
+      Object.assign(snap.recs, box.recs);
+      Object.assign(snap.customs, box.customs);
+      snap.meta = snap.meta || box.meta;
+      snap.logs = snap.logs.concat(box.logs);
+      box = snap; persist();
+      fail(e);
+      schedule(30000);
+    }
+  }
+
+  function done() { state = 'idle'; lastSync = Date.now(); lastError = null; notify(); }
+  function fail(e) {
+    state = (typeof navigator !== 'undefined' && navigator.onLine === false) ? 'offline' : 'error';
+    lastError = (e && e.message) || String(e);
+    notify();
+  }
+
+  /* ---------------- fusion des réglages ---------------- */
+  /* Le cumul se prend au maximum, les listes s'unissent, la série suit le jour
+     le plus récent, et le reste — thème, rythme, prénom — revient à la version
+     modifiée en dernier. */
+  function mergeMeta(a, b) {
+    a = a || {}; b = b || {};
+    const newer = (a.updatedAt || 0) >= (b.updatedAt || 0) ? a : b;
+    const out = Object.assign({}, newer === a ? b : a, newer);
+    out.xp = Math.max(a.xp || 0, b.xp || 0);
+    out.best = Math.max(a.best || 0, b.best || 0, a.streak || 0, b.streak || 0);
+    const la = a.lastDay || '', lb = b.lastDay || '';
+    if (la !== lb) { const w = la > lb ? a : b; out.lastDay = w.lastDay; out.streak = w.streak; }
+    else out.streak = Math.max(a.streak || 0, b.streak || 0);
+    ['doneDay', 'exDay'].forEach(k => {
+      const cnt = k === 'doneDay' ? 'doneToday' : 'exToday';
+      const da = a[k] || '', db = b[k] || '';
+      if (da === db) out[cnt] = Math.max(a[cnt] || 0, b[cnt] || 0);
+      else { const w = da > db ? a : b; out[k] = w[k]; out[cnt] = w[cnt]; }
+    });
+    ['scenariosDone', 'listenDone'].forEach(k => {
+      out[k] = Array.from(new Set([].concat(a[k] || [], b[k] || [])));
+    });
+    out.placed = !!(a.placed || b.placed);
+    out.updatedAt = Math.max(a.updatedAt || 0, b.updatedAt || 0);
+    return out;
+  }
+
+  function status() {
+    return { enabled, state, user: user ? { id: user.id, email: user.email } : null, pending: pending(), lastSync, lastError };
+  }
+
+  return {
+    enabled, init, signIn, verifyCode, signOut, pull, flush, queueAll, status, onChange, mergeMeta,
+    get user() { return user; }
   };
 })();
 </script>
@@ -3582,7 +3986,7 @@ NL.ui = (function () {
     meer: '<circle cx="6" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="18" cy="12" r="1.4"/>'
   };
   const UNDER_MEER = ['woorden', 'spiek', 'register', 'klanken', 'doctor', 'dehet'];
-  const FULLSCREEN = { sessie: 1, scenario: 1, placement: 1, doctor: 1 };
+  const FULLSCREEN = { sessie: 1, scenario: 1, placement: 1, doctor: 1, compte: 1 };
 
   function go(to, a) {
     if (route === 'sessie' && to !== 'sessie' && NL.screens.sessie.active()) { sheet = 'quit-session'; return render(); }
@@ -3609,8 +4013,17 @@ NL.ui = (function () {
       '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">' +
       '<path d="M5 18.5c3.5-1.5 4.5-5 4.5-8.5S8 4.5 8 4.5"/><path d="M19 18.5c-3.5-1.5-4.5-5-4.5-8.5S16 4.5 16 4.5"/><path d="M4.5 11.5h15"/></svg></span>' +
       '<span class="brand-txt"><b>Vlaams</b><i>' + esc(NL.content.fill(t.brandSub)) + '</i></span></div>' +
-      '<button class="iconbtn" data-sheet="instellingen" aria-label="' + t.setTitle + '">' + I.gear + '</button>' +
+      '<button class="iconbtn gear" data-sheet="instellingen" aria-label="' + t.setTitle + '">' + I.gear + syncDot() + '</button>' +
       '</div></header>';
+  }
+
+  /* Un point discret sur l'engrenage quand la progression n'est pas à l'abri. */
+  function syncDot() {
+    if (!NL.sync.enabled) return '';
+    const st = NL.sync.status();
+    if (!st.user) return '<i class="sdot warn"></i>';
+    if (st.state === 'error') return '<i class="sdot bad"></i>';
+    return '';
   }
 
   function nav() {
@@ -3676,6 +4089,8 @@ NL.ui = (function () {
           '<input class="textin" data-mine="' + k + '" value="' + esc(m[k] || '') + '" placeholder="' + esc(ph) + '" spellcheck="false"></label>').join('') +
         '</div>' +
 
+        (NL.sync.enabled ? accountBlock() : '') +
+
         '<div class="set-block"><h4>' + t.setVoice + '</h4>' +
         '<p class="set-note ' + (v.quality === 'be' ? 'good' : 'warn') + '">' + esc(v.note) +
         (v.name ? ' <span class="muted">(' + esc(v.name) + ')</span>' : '') + '</p>' +
@@ -3700,6 +4115,24 @@ NL.ui = (function () {
     }
     if (sheet && sheet.custom) return sheet.custom;
     return '';
+  }
+
+  function accountBlock() {
+    const st = NL.sync.status();
+    if (!st.user) {
+      return '<div class="set-block"><h4>' + t.accEyebrow + '</h4>' +
+        '<p class="set-note warn">' + t.syncLocalOnly + '</p>' +
+        '<button class="btn btn-blue wide" data-go="compte">' + t.accSignInCta + '</button></div>';
+    }
+    const line = st.state === 'syncing' ? t.syncBusy
+      : st.state === 'offline' ? t.syncOffline(st.pending)
+      : st.state === 'error' ? t.syncError('')
+      : st.pending ? t.syncPending(st.pending)
+      : t.syncOk(st.lastSync ? t.syncAgo(Date.now() - st.lastSync) : t.syncNever);
+    return '<div class="set-block"><h4>' + t.accEyebrow + '</h4>' +
+      '<p class="set-note muted">' + esc(st.user.email || '') + '</p>' +
+      '<p class="set-note ' + (st.state === 'error' ? 'warn' : 'good') + '">' + esc(line) + '</p>' +
+      '<button class="btn btn-blue wide" data-go="compte">' + t.accManage + '</button></div>';
   }
 
   const micLine = kind => kind === 'browser' ? t.micNoBrowser
@@ -3773,7 +4206,11 @@ NL.ui = (function () {
   function restore(raw) {
     let data = null;
     try { data = JSON.parse(raw); } catch (e) { /* reported below */ }
-    if (NL.state.importAll(data)) { NL.content.refresh(); sheet = null; render(); toast(t.imported); }
+    if (NL.state.importAll(data)) {
+      NL.content.refresh(); sheet = null;
+      if (NL.sync.user) { NL.sync.queueAll(); NL.sync.flush(); }
+      render(); toast(t.imported);
+    }
     else toast(t.importFailed);
   }
 
@@ -3875,8 +4312,12 @@ NL.ui = (function () {
     });
   }
 
+  /* Appelé par la synchro quand une connexion aboutit — au retour du lien
+     magique par exemple. */
+  function onAuth() { if (route === 'compte') go('vandaag'); else render(); }
+
   return {
-    bind, render, go, toast, openSheet, closeSheet, I, card,
+    bind, render, go, toast, openSheet, closeSheet, I, card, onAuth,
     get route() { return route; },
     boot() { const h = fromHash(); if (h) { route = h.r; arg = h.a; } render(); }
   };
@@ -5358,6 +5799,126 @@ NL.screens.doctor = (function () {
 })();
 </script>
 <script>
+/* Compte : connexion par lien magique (ou code), et état de la synchro. */
+NL.screens.compte = (function () {
+  'use strict';
+  const esc = NL.util.esc, t = NL.t;
+  const SKIP = 'vlaams/noaccount';
+  let step = 'email', email = '', msg = '', busy = false;
+
+  const skipped = () => { try { return localStorage.getItem(SKIP) === '1'; } catch (e) { return false; } };
+  const setSkipped = v => { try { v ? localStorage.setItem(SKIP, '1') : localStorage.removeItem(SKIP); } catch (e) {} };
+
+  function when(ts) {
+    if (!ts) return t.syncNever;
+    const s = Math.round((Date.now() - ts) / 1000);
+    return s < 60 ? t.syncJustNow : t.syncAgo(Date.now() - ts);
+  }
+
+  function statusLine(st) {
+    if (st.state === 'syncing') return t.syncBusy;
+    if (st.state === 'offline') return t.syncOffline(st.pending);
+    if (st.state === 'error') return t.syncError(st.lastError || '');
+    return st.pending ? t.syncPending(st.pending) : t.syncOk(when(st.lastSync));
+  }
+
+  function render() {
+    const st = NL.sync.status();
+    let body;
+
+    if (st.user) {
+      body = '<span class="eyebrow">' + t.accEyebrow + '</span>' +
+        '<h1>' + t.accSignedIn + '</h1>' +
+        '<p class="acc-mail">' + esc(st.user.email || '') + '</p>' +
+        '<p class="acc-status ' + st.state + '">' + esc(statusLine(st)) + '</p>' +
+        '<div class="acc-actions">' +
+        '<button class="btn btn-blue wide" data-act="sync"' + (busy ? ' disabled' : '') + '>' + t.syncNow + '</button>' +
+        '<button class="btn btn-ghost wide" data-act="home">' + t.accBack + '</button>' +
+        '<button class="btn btn-ghost wide danger" data-act="signout">' + t.accSignOut + '</button>' +
+        '</div><p class="acc-note">' + t.accSignOutNote + '</p>';
+    } else if (step === 'sent') {
+      body = '<span class="eyebrow">' + t.accEyebrow + '</span>' +
+        '<h1>' + t.accCheckMail + '</h1>' +
+        '<p>' + t.accSentTo(esc(email)) + '</p>' +
+        '<label class="acc-field"><span>' + t.accCode + '</span>' +
+        '<input class="textin acc-code" id="acc-code" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="123456"></label>' +
+        (msg ? '<p class="acc-err">' + esc(msg) + '</p>' : '') +
+        '<div class="acc-actions">' +
+        '<button class="btn btn-primary wide" data-act="verify"' + (busy ? ' disabled' : '') + '>' + t.accVerify + '</button>' +
+        '<button class="btn btn-ghost wide" data-act="resend"' + (busy ? ' disabled' : '') + '>' + t.accResend + '</button>' +
+        '<button class="btn btn-ghost wide" data-act="change">' + t.accChange + '</button>' +
+        '</div>';
+    } else {
+      body = '<span class="eyebrow">' + t.accEyebrow + '</span>' +
+        '<h1>' + t.accTitle + '</h1>' +
+        '<p>' + t.accBody + '</p>' +
+        '<label class="acc-field"><span>' + t.accEmail + '</span>' +
+        '<input class="textin" id="acc-email" type="email" autocomplete="email" value="' + esc(email) + '" placeholder="prenom@exemple.be"></label>' +
+        (msg ? '<p class="acc-err">' + esc(msg) + '</p>' : '') +
+        '<div class="acc-actions">' +
+        '<button class="btn btn-primary wide" data-act="send"' + (busy ? ' disabled' : '') + '>' + (busy ? t.accSending : t.accSend) + '</button>' +
+        '<button class="btn btn-ghost wide" data-act="skip">' + t.accSkip + '</button>' +
+        '</div><p class="acc-note">' + t.accSkipNote + '</p>';
+    }
+
+    return '<div class="lesson"><div class="lesson-body"><div class="stage acc">' +
+      '<div class="acc-mark"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M5 18.5c3.5-1.5 4.5-5 4.5-8.5S8 4.5 8 4.5"/><path d="M19 18.5c-3.5-1.5-4.5-5-4.5-8.5S16 4.5 16 4.5"/><path d="M4.5 11.5h15"/></svg></div>' +
+      body + '</div></div></div>';
+  }
+
+  const val = id => ((document.getElementById(id) || {}).value || '').trim();
+  const looksLikeEmail = s => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+
+  async function send() {
+    email = val('acc-email') || email;
+    if (!looksLikeEmail(email)) { msg = t.accBadEmail; NL.ui.render(); return; }
+    busy = true; msg = ''; NL.ui.render();
+    const r = await NL.sync.signIn(email);
+    busy = false;
+    if (r.error) msg = t.accFailed(r.error); else step = 'sent';
+    NL.ui.render();
+  }
+
+  async function verify() {
+    const code = val('acc-code');
+    if (!/^\d{6,10}$/.test(code)) { msg = t.accBadCode; NL.ui.render(); return; }
+    busy = true; msg = ''; NL.ui.render();
+    const r = await NL.sync.verifyCode(email, code);
+    busy = false;
+    if (r.error) { msg = t.accFailed(r.error); NL.ui.render(); return; }
+    step = 'email'; setSkipped(false);
+    NL.ui.go('vandaag');
+  }
+
+  return {
+    render,
+    skipped,
+    click(el, d) {
+      if (d.act === 'send' || d.act === 'resend') return send();
+      if (d.act === 'verify') return verify();
+      if (d.act === 'change') { step = 'email'; msg = ''; NL.ui.render(); return; }
+      if (d.act === 'skip') { setSkipped(true); NL.ui.go('vandaag'); return; }
+      if (d.act === 'home') { NL.ui.go('vandaag'); return; }
+      if (d.act === 'sync') {
+        busy = true; NL.ui.render();
+        NL.sync.pull().then(() => NL.sync.flush()).then(() => { busy = false; NL.ui.render(); });
+        return;
+      }
+      if (d.act === 'signout') {
+        NL.sync.signOut().then(() => { step = 'email'; email = ''; setSkipped(false); NL.ui.go('compte'); });
+      }
+    },
+    key(e) {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      if (NL.sync.user) return;
+      if (step === 'sent') verify(); else send();
+    }
+  };
+})();
+</script>
+<script>
 /* Boot. Storage first, because every screen reads from it synchronously. */
 (function () {
   'use strict';
@@ -5370,6 +5931,18 @@ NL.screens.doctor = (function () {
       NL.ui.bind(root);
       NL.ui.boot();
       if (wiped) NL.ui.toast(NL.t.migrated);
+      /* Compte : l'app s'affiche d'abord avec les données locales, la synchro
+         suit en arrière-plan. Sans compte ni refus explicite, on propose la
+         connexion une fois. */
+      NL.sync.init().then(user => {
+        if (NL.sync.enabled && !user && !NL.screens.compte.skipped()) NL.ui.go('compte');
+      });
+      NL.sync.onChange(() => {
+        const r = NL.ui.route;
+        if (r === 'sessie' || r === 'scenario' || r === 'placement') return;
+        if (r === 'compte' && !NL.sync.user) return;   // ne pas effacer l'adresse en cours de saisie
+        NL.ui.render();
+      });
       /* Voice lists arrive late in some browsers; repaint once they do. */
       if ('speechSynthesis' in window) {
         setTimeout(() => { NL.speech.rescanVoices(); NL.ui.render(); }, 700);

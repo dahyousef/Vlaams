@@ -1,0 +1,49 @@
+# Every push is tested. Deployment is Vercel's job: it builds from the same
+# commit through vercel.json, so a red run here means don't trust that deploy.
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build
+        run: sh build.sh
+
+      - name: Test
+        run: |
+          set -e
+          node test/smoke.js    "$PWD"
+          node test/sim.js      "$PWD"
+          node test/firstrun.js "$PWD"
+          node test/sync.js     "$PWD"
+          for c in "nl-BE OPR" "nl-NL OPR" "none OPR" "nl-BE EDG"; do
+            set -- $c
+            echo "--- journey $1 $2 ---"
+            node test/journey.js "$PWD" "$1" "$2"
+          done
+          node test/pace.js "$PWD" 200
+
+      - name: Build with sync switched on
+        env:
+          SUPABASE_URL: https://example.supabase.co
+          SUPABASE_ANON_KEY: test-key
+        run: |
+          sh build.sh
+          grep -q 'supabaseUrl:"https://example.supabase.co"' dist/index.html
+          grep -q 'createClient' dist/index.html
+          ! grep -q 'createClient' artifact.html
