@@ -16,9 +16,21 @@ NL.state = (function () {
     placed: false, dailyGoal: 20, doneToday: 0, doneDay: null,
     mic: true, autoplay: true, showFlemish: true, unlocked: 1,
     scenariosDone: [], listenDone: [], firstRun: true,
-    learnerName: '', town: '', company: ''
+    learnerName: '', town: '', company: '',
+    pace: 'normal', exDay: null, exToday: 0, dataVersion: 2
   });
   let meta = defaults();
+
+  /* Une seule fois : la progression fabriquée par l'ancien test de placement
+     — des unités entières créditées sur une réponse chanceuse — est effacée.
+     XP, série, réglages et mots personnels survivent. */
+  function migrate() {
+    if ((meta.dataVersion || 1) >= 2) return false;
+    mem.srs.clear();
+    if (useIDB) { try { db.transaction('srs', 'readwrite').objectStore('srs').clear(); } catch (e) {} }
+    setMeta({ dataVersion: 2, placed: false, exDay: null, exToday: 0 });
+    return true;
+  }
 
   function open() {
     return new Promise(resolve => {
@@ -158,5 +170,5 @@ NL.state = (function () {
     setMeta(patch);
   }
 
-  return { open, rec, setRec, allRecs, seenCount, meta: m, setMeta, logReview, logs, addCustom, delCustom, customs, clearAll, touchDay, creditDay, exportAll, importAll, get storage() { return useIDB ? 'IndexedDB' : 'localStorage'; } };
+  return { open, migrate, rec, setRec, allRecs, seenCount, meta: m, setMeta, logReview, logs, addCustom, delCustom, customs, clearAll, touchDay, creditDay, exportAll, importAll, get storage() { return useIDB ? 'IndexedDB' : 'localStorage'; } };
 })();

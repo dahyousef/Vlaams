@@ -90,6 +90,8 @@ NL.state.open().then(() => {
           if (i >= 0) { used.add(i); S.click({ dataset: {} }, { pick: String(i) }); }
         });
       }
+      if (c.ex === 'corrige') tap('sessie', { opt: String(task.faulty) });
+      if (c.ex === 'open') S.input({ classList: { contains: n => n === 'textin' }, value: task.task.model });
       if (c.ex === 'type' || (c.ex === 'dictation' && !task.bank)) {
         S.input({ classList: { contains: n => n === 'textin' }, value: ex.answer(task) });
       }

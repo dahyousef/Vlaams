@@ -86,26 +86,30 @@
         '<h1>' + t.pathTitle + '</h1>' +
         '<p>' + t.pathBody + '</p>' +
         '<div class="prog-line">' + bar(cp.pct) + '<b>' + cp.pct + '%</b></div>' +
-        '<p class="muted small">' + t.pathSolid(cp.strong, cp.total) + '</p>' +
+        '<p class="muted small">' + t.masteredOf(cp.mastered, cp.total) + '</p>' +
         '</section>';
 
       NL.content.units.forEach(u => {
         const open = NL.content.unitOpen(u.id);
+        const isNow = cp.current && cp.current.id === u.id;
         const p = NL.content.unitProgress(u.id);
         const g = (u.grammar || []).map(id => (NL.content.patterns || []).find(x => x.id === id)).filter(Boolean);
-        html += '<section class="unit-card' + (open ? '' : ' locked') + '">' +
+        html += '<section class="unit-card' + (open ? '' : ' locked') + (isNow ? ' now' : '') + '">' +
+          (isNow ? '<span class="now-tag">' + t.currentUnit + '</span>' : '') +
           '<div class="uc-head">' +
           '<span class="uc-icon">' + u.icon + '</span>' +
           '<div class="uc-title"><span class="eyebrow">Unité ' + u.n + ' · ' + u.level + ' · ' + trackName(u.track) + '</span>' +
           '<h2>' + esc(u.name) + '<i class="uc-nl">' + esc(u.nlName || '') + '</i></h2></div>' +
-          '<span class="uc-pct">' + p.pct + '%</span>' +
+          '<span class="uc-pct" title="' + t.unitLevel(p.level) + '">' + p.pct + '%</span>' +
           '</div>' +
           '<p class="uc-blurb">' + esc(u.blurb) + '</p>' +
-          '<div class="prog-line">' + bar(p.pct) + '<span class="muted small">' + t.unitSeen(p.seen, p.total) + '</span></div>' +
+          '<div class="prog-line">' + bar(p.pct) + '<span class="muted small">' + t.metOf(p.met, p.total) + '</span></div>' +
+          (open && !NL.content.unitComplete(u.id)
+            ? '<p class="uc-gate">' + t.unitGate(p.gate, 80) + '</p>' : '') +
           (g.length ? '<div class="uc-gram">' + g.map(x =>
             '<button class="gram-chip" data-act="gram" data-id="' + x.id + '">' + esc(x.title) + '</button>').join('') + '</div>' : '') +
           (open
-            ? '<button class="btn btn-blue" data-unit="' + u.id + '">' + (p.seen ? t.unitPractise : t.unitStart) + '</button>'
+            ? '<button class="btn btn-blue" data-unit="' + u.id + '">' + (p.met ? t.unitPractise : t.unitStart) + '</button>'
             : '<p class="uc-lock">' + t.unitLocked(u.n - 1) + '</p>') +
           '</section>';
       });

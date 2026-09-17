@@ -96,13 +96,17 @@ NL.ui = (function () {
           '<button class="seg-btn' + (m.theme === k ? ' on' : '') + '" data-theme="' + k + '">' + label + '</button>').join('') +
         '</div></div>' +
 
+        '<div class="set-block"><h4>' + t.setPace + '</h4><div class="seg">' +
+        ['calme', 'normal', 'intensif'].map(k =>
+          '<button class="seg-btn' + ((m.pace || 'normal') === k ? ' on' : '') + '" data-pace="' + k + '">' +
+          t['pace' + k.charAt(0).toUpperCase() + k.slice(1)] + '</button>').join('') + '</div>' +
+        '<p class="set-note muted">' + t.paceNote(NL.srs.pace()) + '</p>' +
+        '<p class="set-note muted">' + t.paceWhy + '</p></div>' +
+
         '<div class="set-block"><h4>' + t.setPractice + '</h4>' +
         toggle('showFlemish', t.setFlemish, m.showFlemish !== false) +
         toggle('autoplay', t.setAutoplay, m.autoplay !== false) +
-        toggle('sfx', t.setSfx, m.sfx !== false) +
-        '<label class="goal">' + t.setGoal + '<select data-goal="1">' +
-        [10, 15, 20, 30, 40].map(n => '<option value="' + n + '"' + (m.dailyGoal === n ? ' selected' : '') + '>' + n + '</option>').join('') +
-        '</select></label></div>' +
+        toggle('sfx', t.setSfx, m.sfx !== false) + '</div>' +
 
         '<div class="set-block"><h4>' + t.setMine + '</h4>' +
         '<p class="set-note muted">' + t.setMineNote + '</p>' +
@@ -233,7 +237,7 @@ NL.ui = (function () {
 
     root.addEventListener('click', e => {
       const hit = e.target.closest('[data-say],[data-go],[data-sheet],[data-close],[data-backdrop],[data-theme],' +
-        '[data-toggle],[data-reset],[data-reset-yes],[data-quit-yes],[data-export],[data-import],[data-act]');
+        '[data-toggle],[data-reset],[data-reset-yes],[data-quit-yes],[data-export],[data-import],[data-pace],[data-act]');
       const S = NL.screens[route];
 
       if (hit) {
@@ -244,6 +248,7 @@ NL.ui = (function () {
         if (d.go) { go(d.go); return; }
         if (d.sheet) { openSheet(d.sheet); return; }
         if (d.theme) { NL.state.setMeta({ theme: d.theme }); render(); return; }
+        if (d.pace) { NL.state.setMeta({ pace: d.pace }); render(); return; }
         if (d.toggle) { const m = NL.state.meta(); NL.state.setMeta({ [d.toggle]: m[d.toggle] === false }); render(); return; }
         if (d.export !== undefined) { doExport(); return; }
         if (d.import !== undefined) { doImport(); return; }

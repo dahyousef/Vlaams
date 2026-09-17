@@ -52,10 +52,18 @@ NL.content = NL.content || {};
         const g = (NL.content.patterns || []).find(x => x.id === gid);
         if (!g) return;
         claimed.add(gid);
-        flat.push(Object.assign({}, g, { unit: u.id, level: u.level, track: u.track, kind: 'pattern' }));
+        flat.push(Object.assign({}, g, { unit: u.id, level: u.level, track: u.track, kind: 'pattern',
+          open: (NL.content.openTasks || {})[g.id] || null }));
       });
     });
     NL.state.customs().forEach(c => flat.push(Object.assign({}, c, { kind: c.kind || 'word', unit: 'eigen', level: 'eigen', track: 'eigen' })));
+    /* Palier par défaut, et détection des mots transparents : « de tram »,
+       « de garage », « direct » sont offerts à un francophone. */
+    flat.forEach(it => {
+      it.tier = it.tier || 'produce';
+      it.cognate = it.kind === 'word' &&
+        NL.util.ratio(NL.util.bare(it.nl), NL.util.bareFr(it.fr)) > 0.62;
+    });
     index = new Map(flat.map(it => [it.id, it]));
   }
 
@@ -65,40 +73,61 @@ NL.content = NL.content || {};
   const unit = id => NL.content.units.find(u => u.id === id) || null;
   const itemsOf = uid => allItems().filter(it => it.unit === uid);
 
-  /* A unit opens once most of the one before it has been met at least once. */
+  /* Deux seuils, tenant compte du palier de chaque élément : un mot du palier
+     « reconnaître » plafonne à l'échelon 2 et ne peut pas atteindre l'échelon 5. */
+  const READY = it => NL.srs.stageOf(it) >= Math.min(3, NL.srs.maxRung(it));
+  const MASTERED = it => NL.srs.stageOf(it) >= Math.min(NL.srs.GRADUATED, NL.srs.maxRung(it));
+  const GATE = 0.8;
+
+  const unitComplete = uid => {
+    const items = itemsOf(uid);
+    return !items.length || items.filter(READY).length / items.length >= GATE;
+  };
+
+  /* La frontière : on remonte depuis la première unité tant qu'elle est faite ;
+     la première inachevée est la dernière ouverte. L'intervalle ouvert est donc
+     contigu PAR CONSTRUCTION — « unité 10 fermée, 11 ouverte » devient
+     impossible à produire, et pas seulement corrigé. */
+  function frontier() {
+    const us = NL.content.units;
+    let i = 0;
+    while (i < us.length - 1 && unitComplete(us[i].id)) i++;
+    return i;
+  }
+
   function unitOpen(uid) {
     if (uid === 'eigen') return true;
     const i = NL.content.units.findIndex(u => u.id === uid);
-    if (i <= 0) return i === 0;
-    const prev = NL.content.units[i - 1];
-    const items = itemsOf(prev.id);
-    if (!items.length) return true;
-    const met = items.filter(it => NL.srs.stageOf(it) >= 1).length;
-    return met / items.length >= 0.8;
+    return i >= 0 && i <= frontier();
   }
 
+  /* Le pourcentage ne compte QUE la maîtrise : ce que tu as dit à voix haute et
+     réussi. Il affiche 0% pendant des jours. C'est la vérité — 33% alors que
+     rien n'est appris est pire. */
   function unitProgress(uid) {
     const items = itemsOf(uid);
-    if (!items.length) return { pct: 0, seen: 0, strong: 0, total: 0 };
-    let seen = 0, strong = 0, sum = 0;
-    items.forEach(it => {
-      const s = NL.srs.stageOf(it);
-      if (s >= 0) seen++;
-      if (s >= NL.srs.GRADUATED) strong++;
-      sum += Math.max(0, s);
-    });
-    return { pct: Math.round(sum / (items.length * NL.srs.MAX_STAGE) * 100), seen, strong, total: items.length };
+    if (!items.length) return { pct: 0, met: 0, ready: 0, mastered: 0, total: 0, gate: 0, level: 0 };
+    const met = items.filter(it => NL.srs.stageOf(it) >= 0).length;
+    const ready = items.filter(READY).length;
+    const mastered = items.filter(MASTERED).length;
+    const pct = Math.round(mastered / items.length * 100);
+    return {
+      pct, met, ready, mastered, total: items.length,
+      gate: Math.round(ready / items.length * 100),
+      level: Math.min(5, Math.floor(pct / 20))
+    };
   }
 
   function courseProgress() {
     const items = allItems().filter(it => it.unit !== 'eigen');
-    let sum = 0, strong = 0;
-    items.forEach(it => {
-      const s = Math.max(0, NL.srs.stageOf(it));
-      sum += s;
-      if (s >= NL.srs.GRADUATED) strong++;
-    });
-    return { pct: Math.round(sum / (items.length * NL.srs.MAX_STAGE) * 100), strong, total: items.length };
+    const mastered = items.filter(MASTERED).length;
+    const ready = items.filter(READY).length;
+    return {
+      pct: Math.round(mastered / items.length * 100),
+      mastered, ready, total: items.length,
+      unitsDone: NL.content.units.filter(u => unitComplete(u.id)).length,
+      current: NL.content.units[frontier()] || null
+    };
   }
 
   const scenario = id => (NL.content.scenarios || []).find(s => s.id === id) || null;
@@ -119,5 +148,5 @@ NL.content = NL.content || {};
     return out;
   }
 
-  Object.assign(NL.content, { allItems, refresh, byId, unit, itemsOf, unitOpen, unitProgress, courseProgress, scenario, listenClips, fill, DEFAULTS });
+  Object.assign(NL.content, { allItems, refresh, byId, unit, itemsOf, unitOpen, unitComplete, frontier, unitProgress, courseProgress, scenario, listenClips, fill, DEFAULTS });
 })();

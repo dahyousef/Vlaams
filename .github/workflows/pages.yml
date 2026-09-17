@@ -41,6 +41,7 @@ jobs:
             echo "--- journey $1 $2 ---"
             node test/journey.js "$PWD" "$1" "$2"
           done
+          node test/pace.js "$PWD" 200
 
       - name: Stage the site
         run: |

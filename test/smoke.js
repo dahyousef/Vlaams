@@ -30,7 +30,7 @@ ctx.globalThis = ctx;
 vm.createContext(ctx);
 
 const FILES = `src/core/util.js src/core/fr.js src/core/state.js src/core/srs.js src/core/speech.js src/core/audio.js
-src/content/lexicon.a1.js src/content/lexicon.a1b.js src/content/grammar.js src/content/reference.js
+src/content/lexicon.a1.js src/content/lexicon.a1b.js src/content/grammar.js src/content/open.js src/content/reference.js
 src/content/scenarios.js src/content/index.js src/ex/index.js`.split(/\s+/).filter(Boolean);
 
 for (const f of FILES) {
@@ -136,15 +136,54 @@ NL.state.open().then(() => {
   ok(pl.includes('speak'), 'phrase ladder never reaches speak');
 
   /* Failing must drop a stage and become due inside the session. */
-  NL.srs.seed(w, 3);
+  NL.srs.seed(w, 4);
   NL.srs.grade(w, false);
   const r = NL.state.rec(w.id);
-  ok(r.stage === 2, 'fail did not drop a stage (got ' + r.stage + ')');
-  ok(r.due - Date.now() < 5 * 60000, 'failed item not due within the session');
+  ok(r.stage === 2, 'a lapse must drop two rungs (got ' + r.stage + ')');
+  /* PIÈGE 2 : une rechute rentre dans l'échelle. Repartir de deux minutes puis
+     multiplier fait osciller l'élément sous son plafond sans fin. */
+  ok(r.interval === NL.srs.STEP[2], 'lapse must re-enter the step ladder, not restart at 2 min');
   NL.srs.grade(w, true);
   ok(NL.state.rec(w.id).stage === 3, 'pass did not advance');
-  console.log('  fail/pass       stage drops then advances, requeued in ' +
-    Math.round((r.due - Date.now()) / 60000) + ' min');
+  console.log('  rechute         -2 échelons, intervalle ' + Math.round(r.interval / 60000) + ' min, puis remonte');
+
+  /* PIÈGE 1 : au sommet de son palier, l'intervalle doit continuer de croître,
+     sinon l'élément revient tous les jours à vie. */
+  const cap = items.find(i => i.kind === 'word' && i.id !== w.id);
+  cap.tier = 'recognise';
+  NL.srs.seed(cap, 2);
+  let last = 0, grew = 0;
+  for (let k = 0; k < 12; k++) {
+    NL.srs.grade(cap, true);
+    const rr = NL.state.rec(cap.id);
+    if (rr.interval > last) grew++;
+    last = rr.interval;
+  }
+  ok(grew >= 5 && last >= 200 * 86400000,
+    'an item at its tier ceiling never grew its interval — it would return daily forever');
+  ok(NL.state.rec(cap.id).retired, 'a consolidated item never left the daily deck');
+  console.log('  plafond         intervalle ×' + grew + ', sorti du paquet à ' +
+    Math.round(last / 86400000) + ' jours');
+  delete cap.tier;
+
+  /* Le mot transparent saute les présentations. */
+  const cog = items.find(i => i.cognate);
+  if (cog) {
+    NL.state.setRec({ id: cog.id, kind: 'word', stage: 0, due: 0, interval: 0, ease: 2.5, reps: 0, lapses: 0, last: 0, said: false, retired: false, lastEx: null });
+    NL.srs.grade(cog, true);
+    ok(NL.srs.stageOf(cog) >= 3, 'un mot transparent devrait sauter les premiers échelons');
+    console.log('  transparent     « ' + cog.nl + ' » démarre à l’échelon ' + NL.srs.stageOf(cog));
+  }
+
+  /* La frontière est contiguë : impossible d'ouvrir une unité par-dessus un trou. */
+  NL.content.units.forEach(u => NL.content.itemsOf(u.id).forEach(it => NL.srs.seed(it, 5)));
+  const gapUnit = NL.content.units[3];
+  NL.content.itemsOf(gapUnit.id).forEach(it => NL.srs.seed(it, 0));
+  const opened = NL.content.units.map(u => NL.content.unitOpen(u.id));
+  const firstShut = opened.indexOf(false);
+  ok(firstShut < 0 || opened.slice(firstShut).every(o => !o),
+    'the open range is not contiguous — a unit is open beyond a locked one');
+  console.log('  frontière       ' + (firstShut < 0 ? 'tout ouvert' : firstShut + ' unités ouvertes, puis fermé') + ' — contigu');
 
   console.log('\nEXERCISES');
   const blank = () => ({ sel: null, picked: [], input: '', matchSel: null, matchGone: [], matchBad: null, speech: { phase: 'idle', tries: 0, selfRated: null } });

@@ -314,6 +314,108 @@ NL.ex = (function () {
           : NL.t.micFail;
   }
 
+  /* ---------------- les types exigeants ---------------- */
+
+  /* Trois mots partagent un article, un non. Transforme de/het en raisonnement
+     au lieu d'un pile ou face. */
+  R.intrus = {
+    id: 'intrus', kicker: NL.t.exIntrus,
+    build(item) {
+      const pool = NL.content.allItems().filter(x => x.kind === 'word' && x.art && x.id !== item.id);
+      const same = U.sample(pool.filter(x => x.art === item.art), 2);
+      const other = U.sample(pool.filter(x => x.art !== item.art), 1)[0];
+      const opts = U.shuffle(
+        [item].concat(same).map(x => ({ label: U.bare(x.nl), ok: false }))
+          .concat([{ label: U.bare(other.nl), ok: true, art: other.art }]));
+      return { type: 'intrus', item, opts, art: item.art };
+    },
+    view(t, L, phase) {
+      return '<p class="sentence prompt">Trois de ces mots prennent <b>' + t.art + '</b>. Lequel non&nbsp;?</p>' +
+        optList(t.opts, L, phase);
+    },
+    ready: (t, L) => !!L.sel,
+    judge: (t, L) => ({ ok: !!(L.sel && (t.opts[L.sel.i] || {}).ok) }),
+    answer: t => (t.opts.find(o => o.ok) || {}).label || ''
+  };
+
+  /* Une faute est plantée dans la phrase : trouve-la. Le transfert vers la
+     relecture de tes propres mails est direct. */
+  R.corrige = {
+    id: 'corrige', kicker: NL.t.exCorrige,
+    build(item) {
+      const toks = U.tiles(item.nl);
+      const i = 1 + ((Math.random() * Math.max(1, toks.length - 2)) | 0);
+      const bad = toks.slice();
+      const j = Math.min(i + 1, bad.length - 1);
+      const tmp = bad[i]; bad[i] = bad[j]; bad[j] = tmp;
+      return { type: 'corrige', item, bad, faulty: i, other: j, target: item.nl };
+    },
+    view(t, L, phase) {
+      return '<div class="gloss-line">' + esc(t.item.fr) + '</div>' +
+        '<div class="corrige">' + t.bad.map((w, i) => {
+          let cls = '';
+          if (phase !== 'ask') { if (i === t.faulty || i === t.other) cls = ' bad'; }
+          else if (L.sel && L.sel.i === i) cls = ' sel';
+          return '<button class="ctok' + cls + '" data-opt="' + i + '"' + (phase === 'ask' ? '' : ' disabled') + '>' + esc(w) + '</button>';
+        }).join('') + '</div>' +
+        (phase !== 'ask' ? '<p class="corrige-fix">' + esc(t.target) + '</p>' : '');
+    },
+    ready: (t, L) => !!L.sel,
+    judge: (t, L) => ({ ok: !!L.sel && (L.sel.i === t.faulty || L.sel.i === t.other) }),
+    answer: t => t.target
+  };
+
+  /* La phrase standard est donnée : comment la dit-on ici ? Unique à cette app,
+     et la donnée existe déjà sur chaque élément. */
+  R.vlaams = {
+    id: 'vlaams', kicker: NL.t.exVlaams,
+    build(item) {
+      const pool = NL.content.allItems().filter(x =>
+        x.be && x.id !== item.id && U.norm(x.be) !== U.norm(x.nl));
+      const opts = U.shuffle([{ label: item.be, ok: true }]
+        .concat(U.sample(pool, 2).map(x => ({ label: x.be, ok: false }))));
+      return { type: 'vlaams', item, opts };
+    },
+    view(t, L, phase) {
+      return '<div class="sentence prompt">' + esc(t.item.nl) + '</div>' +
+        '<div class="gloss-line">' + esc(t.item.fr) + '</div>' + optList(t.opts, L, phase);
+    },
+    ready: (t, L) => !!L.sel,
+    judge: (t, L) => ({ ok: !!(L.sel && (t.opts[L.sel.i] || {}).ok) }),
+    answer: t => t.item.be
+  };
+
+  /* Réponse libre, notée sur ce qu'elle CONTIENT et non sur sa formulation.
+     Hors ligne, sans IA. C'est le passage de la reproduction à la composition. */
+  function rubric(task, text) {
+    const s = String(text || ''), w = U.words(s), met = [];
+    (task.need || []).forEach(n => {
+      if (n.rx && n.rx.test(s)) { met.push(n.what); return; }
+      if (n.any && n.any.some(a => U.norm(s).indexOf(U.norm(a)) >= 0)) { met.push(n.what); return; }
+      if (n.min && w.length >= n.min) { met.push(n.what); return; }
+    });
+    return met;
+  }
+  R.open = {
+    id: 'open', kicker: NL.t.exOpen,
+    build: item => ({ type: 'open', item, task: item.open }),
+    view(t, L, phase) {
+      const met = phase === 'ask' ? null : rubric(t.task, L.input);
+      return '<p class="sentence prompt">' + esc(t.task.ask) + '</p>' +
+        '<textarea class="textin open-box" rows="3" spellcheck="false" ' +
+        'placeholder="' + esc(NL.t.openPlaceholder) + '"' + (phase === 'ask' ? '' : ' disabled') + '>' +
+        esc(L.input) + '</textarea>' +
+        '<div class="need-list">' + (t.task.need || []).map(n => {
+          const on = met ? met.indexOf(n.what) >= 0 : null;
+          return '<span class="need' + (on === null ? '' : on ? ' ok' : ' no') + '">' + esc(n.what) + '</span>';
+        }).join('') + '</div>' +
+        (phase !== 'ask' ? '<p class="model-answer"><i>' + NL.t.openModel + '</i> ' + esc(t.task.model) + '</p>' : '');
+    },
+    ready: (t, L) => U.words(L.input).length >= 3,
+    judge: (t, L) => ({ ok: rubric(t.task, L.input).length === (t.task.need || []).length }),
+    answer: t => t.task.model
+  };
+
   R.match = {
     id: 'match', kicker: NL.t.exMatch,
     build(items) {
@@ -330,7 +432,7 @@ NL.ex = (function () {
         const sel = L.matchSel && L.matchSel.id === id, bad = L.matchBad === id;
         return '<button class="pair' + (gone ? ' gone' : '') + (sel ? ' sel' : '') + (bad ? ' shake' : '') + '"' +
           ' data-match="' + id + '" data-k="' + c.k + '" data-side="' + c.s + '"' + (gone ? ' disabled' : '') + '>' +
-          '<span class="pair-n">' + (c.s === 'l' ? 'NL' : 'EN') + '</span>' + esc(c.t) + '</button>';
+          '<span class="pair-n">' + (c.s === 'l' ? 'NL' : 'FR') + '</span>' + esc(c.t) + '</button>';
       };
       let rows = '';
       for (let i = 0; i < t.pairs.length; i++) rows += cell(t.left[i]) + cell(t.right[i]);

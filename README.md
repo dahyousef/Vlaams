@@ -93,21 +93,57 @@ hébergé, et **copier/coller** qui marche partout.
 | **Écouter** | Du flamand à vitesse réelle sans texte, plus du shadowing. |
 | **Plus** | Tes mots, les antisèches, standard/flamand, le français caché, les sons, les familles de de/het, le docteur audio, le test de niveau. |
 
+## Le budget quotidien
+
+Un plafond dur : **120 exercices par jour, environ 25 minutes** au rythme Normal.
+Du nouveau n'est libéré que si la journée a de la place une fois les révisions
+faites. Ce qui déborde attend, et ne s'affiche jamais comme un arriéré.
+
+C'est le seul mécanisme qui empêche la dette de révisions : sans lui, une
+simulation sur 400 jours passe à deux heures par jour au sixième mois.
+
+| Rythme | Par jour | Plafond |
+| --- | --- | --- |
+| Tranquille | 15 min | 70 exercices |
+| **Normal** | **25 min** | **120** |
+| Intensif | 45 min | 200 |
+
+Chaque élément porte aussi un **palier** : tout le vocabulaire ne monte pas
+jusqu'à l'oral. On comprend 4 000 mots, on en produit 1 500.
+
 ## L'échelle de production
 
 Le type d'exercice n'est pas tiré au hasard : il dépend de ce que tu sais déjà.
 
-| Barreau | Mot | Phrase | Règle |
-| --- | --- | --- | --- |
-| 0 | pick | pick | order |
-| 1 | article (de/het) | bank | order |
-| 2 | dictée | cloze | cloze |
-| 3 | écrire | dictée | écrire |
-| 4 | **parler** | écrire | **parler** |
-| 5 | **parler** | **parler** | **parler** |
-| 6 | mature — alterne écrit et oral |
+Chaque barreau propose un **ensemble** de types, jamais un seul, et un
+gouverneur évite ce que l'élément a eu la dernière fois. Une passe d'étalement
+réordonne ensuite la file pour qu'aucun type ne colle à lui-même.
 
-Une faute fait redescendre d'un barreau et l'élément revient dans la même séance.
+| Barreau | Nom | Mot | Phrase |
+| --- | --- | --- | --- |
+| 0 | découverte | pick | pick |
+| 1 | reconnaissance | article · l'intrus | assemblage · standaard/Vlaams |
+| 2 | à l'oreille | dictée · écrire | trou · corrige l'erreur |
+| 3 | à l'écrit | écrire · trou | dictée · corrige |
+| 4 | à voix haute | écrire · dictée | écrire · trou |
+| 5 | maîtrisé | **parler** | **parler** |
+| 6 | ancré | alterné | alterné, dont réponse libre |
+
+L'échelon 5 est **parler** et rien d'autre : c'est ce qui garantit que rien n'est
+acquis sans être sorti de ta bouche.
+
+Deux règles trouvées en simulation, et testées :
+
+- une rechute redescend de **deux** barreaux et **rentre dans l'échelle** — elle
+  ne repart pas de deux minutes pour remonter en multipliant, sinon l'élément
+  oscille sous son plafond sans jamais en sortir ;
+- elle ne redescend **jamais sous le barreau 1** : on ne te REPRÉSENTE pas un mot
+  que tu connais depuis des mois ;
+- au sommet de son palier, l'intervalle **continue de croître** puis l'élément
+  sort du paquet quotidien. Figé, il reviendrait tous les jours à vie.
+
+Les mots transparents — *de tram, de garage, direct* — démarrent au barreau 3 :
+un francophone n'a pas besoin de douze passages pour les apprendre.
 
 ## Ce que le français t'apporte
 
@@ -174,7 +210,8 @@ un tableau renomme ses éléments et efface leur historique**. Ajoute à la fin.
 node test/smoke.js    "$(pwd)"              # contenu, échelle, exercices, notation, balayage français
 node test/sim.js      "$(pwd)"              # chaque écran, une séance, un scénario, une série d'écoute
 node test/firstrun.js "$(pwd)"              # base vide : premier écran, première séance, sauvegarde
-node test/journey.js  "$(pwd)" nl-BE OPR    # parcours complet d'un utilisateur (~960 vérifications)
+node test/journey.js  "$(pwd)" nl-BE OPR    # parcours complet d'un utilisateur
+node test/pace.js     "$(pwd)" 400          # 400 jours : charge, variété, exigence
 ```
 
 `journey.js` prend une voix (`nl-BE`, `nl-NL`, `none`) et un navigateur (`OPR`,
@@ -191,13 +228,19 @@ survit dans le build.
 
 ## État
 
-**Livré** : interface et contenu entièrement en français de Belgique (12 unités,
-439 éléments, 9 règles, 6 scénarios, 8 antisèches), unité de travail réécrite
-pour un développeur Java, docteur audio, enregistre-et-compare, sauvegarde
-export/import, libellés bilingues, écrans *français caché* / *faux amis* /
-*familles de de/het*, mise en page plus calme.
+**Livré** : interface et contenu en français de Belgique (12 unités, 439
+éléments, 6 scénarios, 8 antisèches, 9 règles) ; docteur audio et
+enregistre-et-compare pour Opera ; sauvegarde export/import ; personnalisation
+prénom/commune/employeur.
 
-**À venir**, dans l'ordre : moteur de rythme adaptatif, simulateur de
-conversation à trous, onze nouveaux types d'exercices, entraîneur de
-conjugaison, détection des points faibles, jalons concrets, puis les neuf unités
-A2/B1 et le reste de la filière Java.
+**Moteur, refait après simulation** : budget quotidien borné, paliers par
+élément, les deux correctifs d'intervalle, gouverneur de variété et étalement,
+déverrouillage par frontière contiguë, pourcentage de maîtrise seule, test de
+placement en échelle (4 questions, 3 bonnes, arrêt à la première échouée),
+quatre nouveaux types d'exercice — l'intrus, corrige l'erreur, standaard of
+Vlaams, réponse libre notée sur rubrique.
+
+**À venir** : le contenu est encore le plafond. 439 éléments s'épuisent vers le
+jour 40. La suite, dans l'ordre : noyau de 1 200 mots par fréquence avec les
+situations intégrées, 400 expressions figées, écrans *Lezen* et *Missions*,
+textes gradués et écoute longue, puis A2 → B2.

@@ -20,11 +20,11 @@ NL.screens.sessie = (function () {
     if (source && source !== 'vandaag') {
       const items = NL.content.itemsOf(source);
       pool = items.filter(it => NL.srs.stageOf(it) >= 0 && NL.state.rec(it.id).due <= Date.now());
-      fresh = items.filter(it => NL.srs.stageOf(it) < 0).slice(0, NL.srs.NEW_PER_SESSION);
+      fresh = items.filter(it => NL.srs.stageOf(it) < 0).slice(0, NL.srs.pace().fresh);
     } else {
-      pool = due;
-      const room = Math.max(0, (m.dailyGoal || 20) - (m.doneToday || 0));
-      fresh = NL.srs.freshItems(Math.min(room, NL.srs.NEW_PER_SESSION));
+      const left = NL.srs.budgetLeft();
+      pool = due.slice(0, left);
+      fresh = NL.srs.freshItems(Math.min(Math.max(0, left - pool.length), NL.srs.pace().fresh));
     }
 
     const queue = [];
@@ -37,12 +37,31 @@ NL.screens.sessie = (function () {
        them — a whole week could pass without one. Give them a guaranteed seat. */
     const pats = pool.filter(it => it.kind === 'pattern').slice(0, 2);
     const others = pool.filter(it => pats.indexOf(it) < 0).slice(0, MAX_TASKS - pats.length);
+    /* Le gouverneur : on retient les deux derniers types servis pour qu'aucun
+       ne se répète coup sur coup. */
     const rest = U.shuffle(pats.concat(others, fresh));
+    const recent = [];
     rest.forEach(it => {
-      const name = NL.srs.exerciseFor(it);
+      const name = NL.srs.exerciseFor(it, new Set(recent));
       const ex = EX.get(name);
-      try { queue.push({ ex: name, task: ex.build(it), items: [it] }); } catch (e) { /* skip a malformed item */ }
+      try {
+        queue.push({ ex: name, task: ex.build(it), items: [it] });
+        recent.push(name);
+        if (recent.length > 2) recent.shift();
+      } catch (e) { /* un élément mal formé est simplement sauté */ }
     });
+
+    /* Étalement : on garde l'échauffement en tête, puis on réordonne la suite
+       pour qu'aucun type ne se retrouve collé à lui-même. */
+    const head = queue.length && queue[0].ex === 'match' ? [queue.shift()] : [];
+    const spread = [];
+    while (queue.length) {
+      const last = spread.length ? spread[spread.length - 1].ex : (head.length ? head[0].ex : null);
+      let i = queue.findIndex(x => x.ex !== last);
+      if (i < 0) i = 0;
+      spread.push(queue.splice(i, 1)[0]);
+    }
+    queue.push.apply(queue, head.concat(spread));
 
     if (queue.length === 0) { L = null; return false; }
 
@@ -74,7 +93,8 @@ NL.screens.sessie = (function () {
     L.phase = v.ok ? 'ok' : 'no';
     L.lastSpoken = !!v.spoken;
 
-    c.items.forEach(it => NL.srs.grade(it, v.ok, { spoken: v.spoken }));
+    c.items.forEach(it => NL.srs.grade(it, v.ok, { spoken: v.spoken, ex: c.ex }));
+    NL.srs.spend(1);
 
     if (v.ok) {
       L.right++;
@@ -101,7 +121,8 @@ NL.screens.sessie = (function () {
 
   function skip() {
     const c = cur(); if (!c) return;
-    c.items.forEach(it => NL.srs.grade(it, false));
+    c.items.forEach(it => NL.srs.grade(it, false, { ex: c.ex }));
+    NL.srs.spend(1);
     L.wrong++;
     L.phase = 'no';
     if (L.queue.length < MAX_TASKS + 6) L.queue.push({ ex: c.ex, task: c.task, items: c.items, retry: true });
@@ -138,16 +159,19 @@ NL.screens.sessie = (function () {
       '<div class="kicker"><span class="sub">' +
       esc(unit ? unit.name : 'Mes mots') +
       (c.retry ? ' · ' + NL.t.again2 : '') +
-      '</span>' + esc(ex.kicker) + stagePips(stage) + '</div>' +
+      '</span>' + esc(ex.kicker) + stagePips(stage, it) + '</div>' +
       ex.view(c.task, L, L.phase) +
       '</div></div>' +
       foot(c, ex) +
       '</div>';
   }
 
-  function stagePips(stage) {
-    let s = '<span class="pips" title="Étape ' + Math.max(0, stage) + ' sur ' + NL.srs.MAX_STAGE + '">';
-    for (let i = 0; i < NL.srs.MAX_STAGE; i++) s += '<i class="' + (i <= stage ? 'on' : '') + '"></i>';
+  function stagePips(stage, item) {
+    const top = NL.srs.maxRung(item);
+    const r = Math.max(0, stage);
+    let s = '<span class="pips">';
+    for (let i = 0; i < top; i++) s += '<i class="' + (i <= stage ? 'on' : '') + '"></i>';
+    s += '<b>' + NL.t.rungs[Math.min(r, NL.t.rungs.length - 1)] + '</b>';
     return s + '</span>';
   }
 

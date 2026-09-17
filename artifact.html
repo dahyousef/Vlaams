@@ -542,6 +542,34 @@ h1,h2,h3,h4,h5{font-family:var(--display);font-weight:700;letter-spacing:-.02em;
 /* --- personnalisation --- */
 .mine{display:flex;flex-direction:column;gap:5px;margin-bottom:9px;font-size:13px;color:var(--ink-3)}
 .mine .textin{font-size:15px;padding:10px 12px}
+
+/* --- phase 2 : échelons nommés, unité courante, nouveaux exercices --- */
+.pips{align-items:center;gap:4px}
+.pips b{font-family:var(--mono);font-size:9.5px;font-weight:600;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ink-3);margin-left:5px}
+.unit-card.now{border-color:var(--amber);border-width:1.5px;position:relative}
+.now-tag{position:absolute;top:-9px;left:16px;background:var(--amber);color:#231202;
+  font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  padding:3px 9px;border-radius:6px}
+.uc-gate{margin:-4px 0 12px;font-size:12.5px;color:var(--amber-deep)}
+.corrige{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:8px}
+.ctok{background:var(--card);border:1.5px solid var(--line);border-radius:10px;padding:9px 13px;
+  font-size:17px;font-weight:500;box-shadow:0 2px 0 var(--line)}
+.ctok:active{transform:translateY(2px);box-shadow:0 0 0 var(--line)}
+.ctok.sel{background:var(--groen-soft);border-color:var(--groen);color:var(--groen)}
+.ctok.bad{background:var(--fout-soft);border-color:var(--fout);color:var(--fout-deep)}
+.corrige-fix{margin:10px 0 0;font-size:17px;font-weight:600;color:var(--goed-deep)}
+.open-box{min-height:88px;resize:vertical;font-size:17px;line-height:1.5}
+.need-list{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+.need{font-family:var(--mono);font-size:11.5px;background:var(--sunk);color:var(--ink-3);
+  border-radius:99px;padding:4px 11px}
+.need.ok{background:var(--goed-soft);color:var(--goed-deep)}
+.need.no{background:var(--fout-soft);color:var(--fout-deep)}
+.model-answer{margin:14px 0 0;font-size:15px;color:var(--ink-2);background:var(--sunk);
+  padding:11px 14px;border-radius:var(--r)}
+.model-answer i{font-style:normal;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ink-3);display:block;margin-bottom:3px}
+.place-note{margin-top:18px;font-size:12.5px;color:var(--ink-3);text-align:center}
 </style>
 <div id="app"></div>
 <script>
@@ -723,6 +751,13 @@ NL.t = {
   exType: 'Écris-le en néerlandais',
   exSpeak: 'Dis-le à voix haute',
   exMatch: 'Associe les paires',
+  exIntrus: 'Lequel n’a pas le même article ?',
+  exCorrige: 'Une faute s’est glissée. Où ?',
+  exVlaams: 'Comment le dit-on ici ?',
+  exOpen: 'À toi d’écrire',
+  openPlaceholder: 'Écris ta réponse en néerlandais…',
+  openModel: 'Un exemple :',
+  rungs: ['découverte', 'reconnaissance', 'à l’oreille', 'à l’écrit', 'à voix haute', 'maîtrisé', 'ancré'],
   tapWords: 'Touche les mots ci-dessous',
   specialLetters: 'Lettres spéciales',
   typeHere: 'Tape en néerlandais',
@@ -833,6 +868,9 @@ NL.t = {
   placeSeeded: n => 'Reconnaître un mot n’est pas savoir le dire, donc rien n’a été marqué comme acquis : ' + n + ' éléments ont simplement été placés plus haut dans l’échelle, en sautant les présentations dont tu n’as clairement pas besoin. Ils doivent encore atteindre l’étape orale.',
   placeNone: 'Rien n’a été avancé, donc tu pars propre. C’est le point de départ honnête.',
   placeRecognised: 'Reconnus', placeAdvanced: 'Avancés',
+  placeUnits: 'Unités', placeAsked: 'Questions',
+  placeRule: (a, b) => a + ' bonnes réponses sur ' + b + ' pour créditer l’unité et passer à la suivante.',
+  placeStops: n => 'Le test s’arrête à « ' + n + ' » : c’est de là que tu pars.',
   placeFirst: 'Commence ta première session',
   placeLater: 'Plus tard',
 
@@ -849,6 +887,17 @@ NL.t = {
   setName: 'Ton prénom',
   setTown: 'Ta commune',
   setCompany: 'Ton employeur',
+  setPace: 'Rythme',
+  paceCalme: 'Tranquille', paceNormal: 'Normal', paceIntensif: 'Intensif',
+  paceNote: p => p.mins + ' min par jour · ' + p.cap + ' exercices maximum',
+  paceWhy: 'Le plafond quotidien est ce qui empêche les révisions de s’accumuler jusqu’à deux heures par jour au sixième mois. Ce qui déborde attend son tour.',
+  budgetDone: 'Le quota du jour est atteint. C’est voulu : demain sera plus léger.',
+  migrated: 'Progression remise à zéro — l’ancien test de niveau créditait des unités entières sans preuve.',
+  unitGate: (a, b) => 'L’unité suivante s’ouvre à ' + b + '% travaillés — tu es à ' + a + '%.',
+  unitLevel: n => 'Niveau ' + n + ' / 5',
+  masteredOf: (a, b) => a + ' maîtrisés sur ' + b,
+  metOf: (a, b) => a + ' rencontrés sur ' + b,
+  currentUnit: 'À faire maintenant',
   setVoice: 'Voix et micro',
   setDoctor: 'Tester le son et le micro',
   setStorage: 'Stockage :',
@@ -915,9 +964,21 @@ NL.state = (function () {
     placed: false, dailyGoal: 20, doneToday: 0, doneDay: null,
     mic: true, autoplay: true, showFlemish: true, unlocked: 1,
     scenariosDone: [], listenDone: [], firstRun: true,
-    learnerName: '', town: '', company: ''
+    learnerName: '', town: '', company: '',
+    pace: 'normal', exDay: null, exToday: 0, dataVersion: 2
   });
   let meta = defaults();
+
+  /* Une seule fois : la progression fabriquée par l'ancien test de placement
+     — des unités entières créditées sur une réponse chanceuse — est effacée.
+     XP, série, réglages et mots personnels survivent. */
+  function migrate() {
+    if ((meta.dataVersion || 1) >= 2) return false;
+    mem.srs.clear();
+    if (useIDB) { try { db.transaction('srs', 'readwrite').objectStore('srs').clear(); } catch (e) {} }
+    setMeta({ dataVersion: 2, placed: false, exDay: null, exToday: 0 });
+    return true;
+  }
 
   function open() {
     return new Promise(resolve => {
@@ -1057,83 +1118,165 @@ NL.state = (function () {
     setMeta(patch);
   }
 
-  return { open, rec, setRec, allRecs, seenCount, meta: m, setMeta, logReview, logs, addCustom, delCustom, customs, clearAll, touchDay, creditDay, exportAll, importAll, get storage() { return useIDB ? 'IndexedDB' : 'localStorage'; } };
+  return { open, migrate, rec, setRec, allRecs, seenCount, meta: m, setMeta, logReview, logs, addCustom, delCustom, customs, clearAll, touchDay, creditDay, exportAll, importAll, get storage() { return useIDB ? 'IndexedDB' : 'localStorage'; } };
 })();
 </script>
 <script>
-/* The scheduler. This, not a lesson tree, decides what you see.
-   Stage = position on the production ladder; due/interval/ease = when it returns. */
+/* Le planificateur. C'est lui, et pas un arbre de leçons, qui décide.
+   rung   = position sur l'échelle de production
+   due    = quand l'élément revient
+   budget = ce qui empêche la dette de révisions d'exploser */
 NL.srs = (function () {
   'use strict';
-  const { clamp, MIN, HOUR, DAY } = NL.util;
+  const { clamp, MIN, DAY } = NL.util;
 
-  const MAX_TASKS = 18;            // most exercises in one sitting
-  const NEW_PER_SESSION = 8;       // meeting more than this at once does not stick
-  const MAX_STAGE = 6;              // 6 = mature: alternates typing and speaking forever
-  const GRADUATED = 5;              // reached only by passing a spoken exercise
+  const MAX_TASKS = 22;
+  const MAX_STAGE = 6;
+  const GRADUATED = 5;              // atteint uniquement en disant l'élément à voix haute
+  const RETIRE_AT = 200 * DAY;
+  const MAX_INTERVAL = 365 * DAY;   // au-delà, l'élément est acquis, pas oublié      // au-delà, l'élément sort du paquet quotidien
 
-  /* Three ladders. The exercise is chosen by the item's kind and stage, so an item
-     physically cannot leave the ladder without having been said out loud. */
-  const LADDER = {
-    word:    ['pick',  'article', 'dictation', 'type', 'speak', 'speak', 'mixed'],
-    phrase:  ['pick',  'bank',    'cloze',     'dictation', 'type', 'speak', 'mixed'],
-    pattern: ['order', 'order',   'cloze',     'type', 'speak', 'speak', 'mixed']
+  /* Tous les mots ne méritent pas la même montée. Le vocabulaire compris est
+     toujours plus large que le vocabulaire produit : on comprend 4 000 mots, on
+     en produit 1 500. Le palier dit jusqu'où un élément doit grimper. */
+  const TIER_MAX = { produce: 6, write: 4, recognise: 2 };
+  const maxRung = item => TIER_MAX[(item && item.tier) || 'produce'];
+
+  /* Un rythme, et le prix honnête qui va avec. */
+  const PACE = {
+    calme:     { cap: 70,  fresh: 15, mins: 15 },
+    normal:    { cap: 120, fresh: 25, mins: 25 },
+    intensif:  { cap: 200, fresh: 40, mins: 45 }
+  };
+  const pace = () => PACE[NL.state.meta().pace || 'normal'] || PACE.normal;
+
+  /* Chaque échelon propose un ENSEMBLE de types, pas un seul. Avec quatorze
+     passages par élément, la variété n'est pas un ornement : c'est la seule
+     chose qui rend 26 000 exercices supportables. */
+  const RUNGS = {
+    word: [
+      ['pick'],
+      ['article', 'recall', 'intrus'],
+      ['dictation', 'type'],
+      ['type', 'cloze'],
+      ['type', 'cloze', 'dictation'],
+      ['speak'],
+      ['speak', 'type', 'dictation', 'cloze']
+    ],
+    phrase: [
+      ['pick'],
+      ['bank', 'vlaams'],
+      ['cloze', 'corrige'],
+      ['dictation', 'corrige'],
+      ['type', 'cloze', 'corrige'],
+      ['speak'],
+      ['speak', 'type', 'open', 'corrige', 'dictation']
+    ],
+    chunk: [
+      ['pick'],
+      ['bank', 'vlaams'],
+      ['cloze'],
+      ['type', 'dictation'],
+      ['type', 'dictation', 'cloze'],
+      ['speak'],
+      ['speak', 'type', 'cloze']
+    ],
+    pattern: [
+      ['order'],
+      ['order', 'corrige'],
+      ['cloze', 'corrige'],
+      ['type', 'order'],
+      ['speak', 'open'],
+      ['speak'],
+      ['open', 'speak']
+    ]
   };
 
-  /* Steps below a day keep an item inside the same sitting; above it, SM-2 takes over. */
-  const STEP = [2 * MIN, 12 * MIN, 1 * DAY, 3 * DAY, 7 * DAY, 16 * DAY];
+  /* Sous la journée, l'élément reste dans la même séance ; au-dessus, SM-2 prend le relais. */
+  const STEP = [2 * MIN, 12 * MIN, 1 * DAY, 3 * DAY, 8 * DAY, 21 * DAY];
 
   const blank = (id, kind) => ({
     id, kind: kind || 'word', stage: 0, due: 0, interval: 0,
-    ease: 2.5, reps: 0, lapses: 0, last: 0, said: false
+    ease: 2.5, reps: 0, lapses: 0, last: 0, said: false, retired: false, lastEx: null
   });
+  const recOf = item => NL.state.rec(item.id) || blank(item.id, item.kind);
 
-  function recOf(item) {
-    return NL.state.rec(item.id) || blank(item.id, item.kind);
-  }
-
-  /* Which exercise this item is owed right now. */
-  function exerciseFor(item) {
+  /* ---------------- choix de l'exercice ---------------- */
+  /* `avoid` = les types déjà servis dans cette séance. Le gouverneur évite ce que
+     l'élément a eu la dernière fois, puis ce qui vient de passer. */
+  function exerciseFor(item, avoid) {
     const r = recOf(item);
-    const ladder = LADDER[item.kind] || LADDER.word;
-    let name = ladder[clamp(r.stage, 0, ladder.length - 1)];
+    const set = (RUNGS[item.kind] || RUNGS.word)[clamp(r.stage, 0, 6)] || ['pick'];
+    let usable = set.filter(n => supports(item, n));
+    if (!usable.length) usable = [fallback(item)];
 
-    if (name === 'mixed') name = Math.random() < 0.5 ? 'speak' : 'type';
-    /* Fall back gracefully when an item cannot support its rung. */
-    if (name === 'article' && !item.art) name = item.kind === 'word' ? 'recall' : 'cloze';
-    if (name === 'speak' && !NL.speech.canListen()) name = 'speak';   // becomes self-rated inside the exercise
-    if ((name === 'bank' || name === 'cloze' || name === 'order') && NL.util.tiles(item.nl).length < 3) name = 'type';
-    return name;
+    let pick = usable.filter(n => n !== r.lastEx);
+    if (!pick.length) pick = usable;
+    if (avoid && avoid.size) {
+      const fresher = pick.filter(n => !avoid.has(n));
+      if (fresher.length) pick = fresher;
+    }
+    return pick[(Math.random() * pick.length) | 0];
   }
 
+  /* Un type n'est proposé que si l'élément peut réellement le porter. */
+  function supports(item, name) {
+    const words = NL.util.tiles(item.nl || '').length;
+    switch (name) {
+      case 'article': return !!item.art;
+      case 'vlaams': return !!item.be && NL.util.norm(item.be) !== NL.util.norm(item.nl);
+      case 'bank': case 'cloze': case 'order': case 'corrige': return words >= 3;
+      case 'open': return !!item.open;
+      case 'intrus': return item.kind === 'word' && !!item.art;
+      default: return true;
+    }
+  }
+  const fallback = item => (NL.util.tiles(item.nl || '').length >= 3 ? 'type' : 'pick');
+
+  /* ---------------- notation ---------------- */
   function grade(item, ok, opts) {
     const r = recOf(item);
     const now = Date.now();
+    const top = maxRung(item);
     r.kind = item.kind || r.kind;
-    r.reps++;
-    r.last = now;
+    r.reps++; r.last = now;
+    if (opts && opts.ex) r.lastEx = opts.ex;
 
     if (ok) {
       if (opts && opts.spoken) r.said = true;
-      r.stage = clamp(r.stage + 1, 0, MAX_STAGE);
+      /* Les transparents (de tram, de garage, direct) ne méritent pas douze
+         passages : la première réussite en saute deux. */
+      const jump = (r.reps === 1 && item.cognate) ? 3 : 1;
+      r.stage = clamp(r.stage + jump, 0, top);
       r.ease = clamp(r.ease + 0.05, 1.3, 2.9);
-      r.interval = r.stage < STEP.length ? STEP[r.stage] : Math.round((r.interval || DAY) * r.ease);
+      /* PIÈGE 1 — au sommet de son palier, l'intervalle doit continuer de croître.
+         Figé sur STEP[rung], l'élément revient tous les jours, à vie. */
+      r.interval = r.stage >= top
+        ? Math.min(MAX_INTERVAL, Math.round((r.interval || STEP[Math.min(top, STEP.length - 1)]) * r.ease))
+        : STEP[r.stage];
+      if (r.stage >= top && r.interval > RETIRE_AT) r.retired = true;
     } else {
       r.lapses++;
-      r.stage = clamp(r.stage - 1, 0, MAX_STAGE);
+      /* PIÈGE 2 — une rechute rentre dans l'échelle, elle ne repart pas de deux
+         minutes pour remonter en multipliant : sinon l'élément oscille sous son
+         plafond sans jamais en sortir. */
+      /* Jamais en dessous de l'échelon 1 : on ne te REPRÉSENTE pas un mot que tu
+         connais depuis des mois, on te le redemande autrement. */
+      r.stage = clamp(r.stage - 2, r.reps > 1 ? 1 : 0, top);
       r.ease = clamp(r.ease - 0.2, 1.3, 2.9);
-      r.interval = 2 * MIN;                     // back inside this session
+      r.interval = STEP[Math.min(r.stage, STEP.length - 1)];
+      r.retired = false;
     }
     r.due = now + r.interval;
     NL.state.setRec(r);
-    NL.state.logReview({ id: item.id, t: now, ok: !!ok, stage: r.stage, kind: r.kind });
+    NL.state.logReview({ id: item.id, t: now, ok: !!ok, stage: r.stage, kind: r.kind, ex: (opts && opts.ex) || null });
     return r;
   }
 
-  /* Seeds an item straight onto a rung — used by the placement check. */
+  /* Place un élément directement sur un échelon — test de placement, mots transparents. */
   function seed(item, stage) {
     const r = blank(item.id, item.kind);
-    r.stage = clamp(stage, 0, MAX_STAGE);
+    r.stage = clamp(stage, 0, maxRung(item));
     r.reps = 1;
     r.interval = STEP[Math.min(r.stage, STEP.length - 1)];
     r.due = Date.now() + r.interval;
@@ -1143,30 +1286,49 @@ NL.srs = (function () {
 
   const isSeen = item => !!NL.state.rec(item.id);
   const stageOf = item => { const r = NL.state.rec(item.id); return r ? r.stage : -1; };
+  const atTop = item => { const r = NL.state.rec(item.id); return !!r && r.stage >= maxRung(item); };
 
   function dueItems(now) {
     now = now || Date.now();
-    const list = NL.content.allItems()
-      .filter(it => { const r = NL.state.rec(it.id); return r && r.due <= now; });
-    /* Shuffle, then a stable sort by due date: genuinely overdue items still come
-       first, but a backlog that all fell due at the same moment is drawn from
-       evenly instead of returning the same slice every single session. */
-    return NL.util.shuffle(list)
-      .sort((a, b) => NL.state.rec(a.id).due - NL.state.rec(b.id).due);
+    const list = NL.content.allItems().filter(it => {
+      const r = NL.state.rec(it.id);
+      return r && !r.retired && r.due <= now;
+    });
+    /* Mélange puis tri stable par échéance : les vrais retards passent devant,
+       mais un arriéré tombé au même instant est puisé uniformément au lieu de
+       rendre la même tranche à chaque séance. */
+    return NL.util.shuffle(list).sort((a, b) => NL.state.rec(a.id).due - NL.state.rec(b.id).due);
   }
 
   function counts() {
     const now = Date.now();
-    let due = 0, learning = 0, mature = 0, said = 0;
+    let due = 0, learning = 0, mature = 0, said = 0, retired = 0;
     NL.state.allRecs().forEach(r => {
+      if (r.retired) { retired++; mature++; return; }
       if (r.due <= now) due++;
-      if (r.stage >= GRADUATED) { mature++; } else { learning++; }
+      if (r.stage >= GRADUATED) mature++; else learning++;
       if (r.said) said++;
     });
-    return { due, learning, mature, said, seen: NL.state.seenCount() };
+    return { due, learning, mature, said, retired, seen: NL.state.seenCount() };
   }
 
-  /* Next items never met, in curriculum order, from units that are open. */
+  /* ---------------- budget quotidien ---------------- */
+  /* Le seul mécanisme qui empêche la dette de révisions de transformer le mois six
+     en deux heures par jour. Ce qui déborde attend, et ne s'affiche jamais comme
+     un arriéré culpabilisant. */
+  function budgetLeft() {
+    const m = NL.state.meta();
+    const today = NL.util.dayKey();
+    const done = m.exDay === today ? (m.exToday || 0) : 0;
+    return Math.max(0, pace().cap - done);
+  }
+  function spend(n) {
+    const m = NL.state.meta();
+    const today = NL.util.dayKey();
+    NL.state.setMeta({ exDay: today, exToday: (m.exDay === today ? (m.exToday || 0) : 0) + (n || 1) });
+  }
+
+  /* Du nouveau seulement si la journée a de la place une fois les révisions faites. */
   function freshItems(n) {
     const out = [];
     for (const it of NL.content.allItems()) {
@@ -1178,19 +1340,20 @@ NL.srs = (function () {
     return out;
   }
 
-  /* What the next session will actually contain. Both the home screen and the
-     runner read this, so the promise and the delivery agree. */
   function plan() {
-    const m = NL.state.meta();
-    const due = dueItems().length;
-    const room = Math.max(0, (m.dailyGoal || 20) - (m.doneToday || 0));
-    const fresh = freshItems(Math.min(room, NEW_PER_SESSION)).length;
-    const warmup = fresh >= 4 ? 1 : 0;   // new items get met as a matching round first
-    const total = Math.min(due + fresh + warmup, MAX_TASKS + 1);
-    return { due, fresh, total, mins: Math.max(2, Math.round(total * 0.6)) };
+    const left = budgetLeft();
+    const due = Math.min(dueItems().length, left);
+    const room = Math.max(0, left - due);
+    const fresh = freshItems(Math.min(room, pace().fresh)).length;
+    const total = Math.min(due + fresh, MAX_TASKS);
+    return { due, fresh, total, left, mins: Math.max(1, Math.round(total * 0.22)) };
   }
 
-  return { LADDER, MAX_STAGE, MAX_TASKS, NEW_PER_SESSION, GRADUATED, exerciseFor, grade, seed, isSeen, stageOf, dueItems, counts, freshItems, recOf, plan, STEP };
+  return {
+    RUNGS, STEP, PACE, MAX_STAGE, MAX_TASKS, GRADUATED, TIER_MAX, RETIRE_AT,
+    maxRung, pace, exerciseFor, supports, grade, seed, isSeen, stageOf, atTop,
+    dueItems, counts, freshItems, plan, recOf, budgetLeft, spend
+  };
 })();
 </script>
 <script>
@@ -2128,6 +2291,106 @@ NL.content.patterns = (function () {
 })();
 </script>
 <script>
+/* Réponses libres, attachées aux règles de grammaire.
+   Une consigne dit ce que la réponse doit CONTENIR, jamais comment la formuler :
+   il y a donc beaucoup de bonnes réponses. La correction est une liste de cases
+   cochées, puis un exemple. Tout est hors ligne, sans IA. */
+NL.content = NL.content || {};
+NL.content.openTasks = {
+
+  'g-v2': {
+    ask: 'Commence ta phrase par « Morgen » ou « Vandaag », puis dis où tu vas.',
+    need: [
+      { what: 'commence par un mot de temps', rx: /^\s*(morgen|vandaag|straks|daarna|gisteren)\b/i },
+      { what: 'un verbe en deuxième position', rx: /^\s*\S+\s+(ga|gaan|werk|kom|vertrek|rijd|blijf|moet|wil)\w*\b/i },
+      { what: 'au moins 5 mots', min: 5 }
+    ],
+    model: 'Morgen ga ik met de trein naar Brussel.'
+  },
+
+  'g-present': {
+    ask: 'Dis ce que tu fais dans la vie et où.',
+    need: [
+      { what: 'ik + verbe', rx: /\bik\s+\w+/i },
+      { what: 'un lieu ou un employeur', any: ['bij', 'in', 'voor'] },
+      { what: 'au moins 5 mots', min: 5 }
+    ],
+    model: 'Ik werk als ontwikkelaar bij een IT-bedrijf.'
+  },
+
+  'g-gegij': {
+    ask: 'Pose une question à un collègue. Utilise « ge » ou « je ».',
+    need: [
+      { what: 'une forme de deuxième personne', any: ['ge ', 'gij', 'je ', 'kunde', 'hebde', 'zijde'] },
+      { what: 'une question', rx: /\?\s*$/ },
+      { what: 'au moins 4 mots', min: 4 }
+    ],
+    model: 'Kunt ge mij daarmee even helpen?'
+  },
+
+  'g-getallen': {
+    ask: 'Dis ton âge, puis le prix d’un café.',
+    need: [
+      { what: 'un nombre écrit en toutes lettres', rx: /\b\w*(twintig|dertig|veertig|vijftig|zestig|zeventig|tachtig|negentig|euro)\w*\b/i },
+      { what: 'jaar ou euro', any: ['jaar', 'euro'] },
+      { what: 'au moins 5 mots', min: 5 }
+    ],
+    model: 'Ik ben eenenveertig jaar en een koffie kost drie euro.'
+  },
+
+  'g-halfuur': {
+    ask: 'Dis à quelle heure commence ta réunion et à quelle heure elle finit.',
+    need: [
+      { what: 'une heure', rx: /\b(half|kwart|uur)\b/i },
+      { what: 'om …', any: ['om '] },
+      { what: 'au moins 6 mots', min: 6 }
+    ],
+    model: 'De vergadering begint om half tien en stopt om elf uur.'
+  },
+
+  'g-dehet': {
+    ask: 'Décris ta maison ou ton bureau avec deux adjectifs.',
+    need: [
+      { what: 'un article', rx: /\b(de|het|een)\b/i },
+      { what: 'un adjectif', any: ['groot', 'grote', 'klein', 'kleine', 'mooi', 'mooie', 'oud', 'oude', 'nieuw', 'nieuwe', 'rustig', 'rustige', 'druk', 'drukke'] },
+      { what: 'au moins 6 mots', min: 6 }
+    ],
+    model: 'Wij hebben een klein huis met een grote tuin.'
+  },
+
+  'g-bezit': {
+    ask: 'Parle de deux personnes de ta famille avec « mijn », « ons » ou « onze ».',
+    need: [
+      { what: 'un possessif', any: ['mijn', 'ons ', 'onze', 'zijn ', 'haar '] },
+      { what: 'deux personnes', rx: /\b(vrouw|man|zoon|dochter|kind|kinderen|broer|zus|ouders|mama|papa)\b[\s\S]*\b(vrouw|man|zoon|dochter|kind|kinderen|broer|zus|ouders|mama|papa)\b/i },
+      { what: 'au moins 7 mots', min: 7 }
+    ],
+    model: 'Mijn vrouw werkt in Brussel en onze dochter gaat hier naar school.'
+  },
+
+  'g-scheidbaar': {
+    ask: 'Raconte ton matin : à quelle heure tu te lèves et ce que tu emportes.',
+    need: [
+      { what: 'un verbe séparable', rx: /\b(sta|neem|kom|spreek|bel)\b[\s\S]*\b(op|mee|thuis|af)\b/i },
+      { what: 'une heure', rx: /\b(half|kwart|uur)\b/i },
+      { what: 'au moins 8 mots', min: 8 }
+    ],
+    model: 'Ik sta om zes uur op en ik neem mijn laptop mee.'
+  },
+
+  'g-perfect-intro': {
+    ask: 'Raconte ce que tu as fait hier soir.',
+    need: [
+      { what: 'un auxiliaire', rx: /\b(heb|hebt|heeft|hebben|ben|is|zijn)\b/i },
+      { what: 'un participe passé', rx: /\bge\w{2,}\b|\b(gezien|gedaan|geweest|gehad|gegeten)\b/i },
+      { what: 'un mot de temps', any: ['gisteren', 'gisteravond', 'daarna', 'eerst', 'vanmorgen'] },
+      { what: 'au moins 8 mots', min: 8 }
+    ],
+    model: 'Gisteravond heb ik met de kinderen gegeten en daarna tv gekeken.'
+  }
+};
+</script>
+<script>
 /* Références : la prononciation, le tableau standard/flamand, le français caché
    dans le flamand, les familles de het, et les fiches qu'on ouvre dans le couloir
    trente secondes avant d'en avoir besoin. */
@@ -2745,10 +3008,18 @@ NL.content = NL.content || {};
         const g = (NL.content.patterns || []).find(x => x.id === gid);
         if (!g) return;
         claimed.add(gid);
-        flat.push(Object.assign({}, g, { unit: u.id, level: u.level, track: u.track, kind: 'pattern' }));
+        flat.push(Object.assign({}, g, { unit: u.id, level: u.level, track: u.track, kind: 'pattern',
+          open: (NL.content.openTasks || {})[g.id] || null }));
       });
     });
     NL.state.customs().forEach(c => flat.push(Object.assign({}, c, { kind: c.kind || 'word', unit: 'eigen', level: 'eigen', track: 'eigen' })));
+    /* Palier par défaut, et détection des mots transparents : « de tram »,
+       « de garage », « direct » sont offerts à un francophone. */
+    flat.forEach(it => {
+      it.tier = it.tier || 'produce';
+      it.cognate = it.kind === 'word' &&
+        NL.util.ratio(NL.util.bare(it.nl), NL.util.bareFr(it.fr)) > 0.62;
+    });
     index = new Map(flat.map(it => [it.id, it]));
   }
 
@@ -2758,40 +3029,61 @@ NL.content = NL.content || {};
   const unit = id => NL.content.units.find(u => u.id === id) || null;
   const itemsOf = uid => allItems().filter(it => it.unit === uid);
 
-  /* A unit opens once most of the one before it has been met at least once. */
+  /* Deux seuils, tenant compte du palier de chaque élément : un mot du palier
+     « reconnaître » plafonne à l'échelon 2 et ne peut pas atteindre l'échelon 5. */
+  const READY = it => NL.srs.stageOf(it) >= Math.min(3, NL.srs.maxRung(it));
+  const MASTERED = it => NL.srs.stageOf(it) >= Math.min(NL.srs.GRADUATED, NL.srs.maxRung(it));
+  const GATE = 0.8;
+
+  const unitComplete = uid => {
+    const items = itemsOf(uid);
+    return !items.length || items.filter(READY).length / items.length >= GATE;
+  };
+
+  /* La frontière : on remonte depuis la première unité tant qu'elle est faite ;
+     la première inachevée est la dernière ouverte. L'intervalle ouvert est donc
+     contigu PAR CONSTRUCTION — « unité 10 fermée, 11 ouverte » devient
+     impossible à produire, et pas seulement corrigé. */
+  function frontier() {
+    const us = NL.content.units;
+    let i = 0;
+    while (i < us.length - 1 && unitComplete(us[i].id)) i++;
+    return i;
+  }
+
   function unitOpen(uid) {
     if (uid === 'eigen') return true;
     const i = NL.content.units.findIndex(u => u.id === uid);
-    if (i <= 0) return i === 0;
-    const prev = NL.content.units[i - 1];
-    const items = itemsOf(prev.id);
-    if (!items.length) return true;
-    const met = items.filter(it => NL.srs.stageOf(it) >= 1).length;
-    return met / items.length >= 0.8;
+    return i >= 0 && i <= frontier();
   }
 
+  /* Le pourcentage ne compte QUE la maîtrise : ce que tu as dit à voix haute et
+     réussi. Il affiche 0% pendant des jours. C'est la vérité — 33% alors que
+     rien n'est appris est pire. */
   function unitProgress(uid) {
     const items = itemsOf(uid);
-    if (!items.length) return { pct: 0, seen: 0, strong: 0, total: 0 };
-    let seen = 0, strong = 0, sum = 0;
-    items.forEach(it => {
-      const s = NL.srs.stageOf(it);
-      if (s >= 0) seen++;
-      if (s >= NL.srs.GRADUATED) strong++;
-      sum += Math.max(0, s);
-    });
-    return { pct: Math.round(sum / (items.length * NL.srs.MAX_STAGE) * 100), seen, strong, total: items.length };
+    if (!items.length) return { pct: 0, met: 0, ready: 0, mastered: 0, total: 0, gate: 0, level: 0 };
+    const met = items.filter(it => NL.srs.stageOf(it) >= 0).length;
+    const ready = items.filter(READY).length;
+    const mastered = items.filter(MASTERED).length;
+    const pct = Math.round(mastered / items.length * 100);
+    return {
+      pct, met, ready, mastered, total: items.length,
+      gate: Math.round(ready / items.length * 100),
+      level: Math.min(5, Math.floor(pct / 20))
+    };
   }
 
   function courseProgress() {
     const items = allItems().filter(it => it.unit !== 'eigen');
-    let sum = 0, strong = 0;
-    items.forEach(it => {
-      const s = Math.max(0, NL.srs.stageOf(it));
-      sum += s;
-      if (s >= NL.srs.GRADUATED) strong++;
-    });
-    return { pct: Math.round(sum / (items.length * NL.srs.MAX_STAGE) * 100), strong, total: items.length };
+    const mastered = items.filter(MASTERED).length;
+    const ready = items.filter(READY).length;
+    return {
+      pct: Math.round(mastered / items.length * 100),
+      mastered, ready, total: items.length,
+      unitsDone: NL.content.units.filter(u => unitComplete(u.id)).length,
+      current: NL.content.units[frontier()] || null
+    };
   }
 
   const scenario = id => (NL.content.scenarios || []).find(s => s.id === id) || null;
@@ -2812,7 +3104,7 @@ NL.content = NL.content || {};
     return out;
   }
 
-  Object.assign(NL.content, { allItems, refresh, byId, unit, itemsOf, unitOpen, unitProgress, courseProgress, scenario, listenClips, fill, DEFAULTS });
+  Object.assign(NL.content, { allItems, refresh, byId, unit, itemsOf, unitOpen, unitComplete, frontier, unitProgress, courseProgress, scenario, listenClips, fill, DEFAULTS });
 })();
 </script>
 <script>
@@ -3132,6 +3424,108 @@ NL.ex = (function () {
           : NL.t.micFail;
   }
 
+  /* ---------------- les types exigeants ---------------- */
+
+  /* Trois mots partagent un article, un non. Transforme de/het en raisonnement
+     au lieu d'un pile ou face. */
+  R.intrus = {
+    id: 'intrus', kicker: NL.t.exIntrus,
+    build(item) {
+      const pool = NL.content.allItems().filter(x => x.kind === 'word' && x.art && x.id !== item.id);
+      const same = U.sample(pool.filter(x => x.art === item.art), 2);
+      const other = U.sample(pool.filter(x => x.art !== item.art), 1)[0];
+      const opts = U.shuffle(
+        [item].concat(same).map(x => ({ label: U.bare(x.nl), ok: false }))
+          .concat([{ label: U.bare(other.nl), ok: true, art: other.art }]));
+      return { type: 'intrus', item, opts, art: item.art };
+    },
+    view(t, L, phase) {
+      return '<p class="sentence prompt">Trois de ces mots prennent <b>' + t.art + '</b>. Lequel non&nbsp;?</p>' +
+        optList(t.opts, L, phase);
+    },
+    ready: (t, L) => !!L.sel,
+    judge: (t, L) => ({ ok: !!(L.sel && (t.opts[L.sel.i] || {}).ok) }),
+    answer: t => (t.opts.find(o => o.ok) || {}).label || ''
+  };
+
+  /* Une faute est plantée dans la phrase : trouve-la. Le transfert vers la
+     relecture de tes propres mails est direct. */
+  R.corrige = {
+    id: 'corrige', kicker: NL.t.exCorrige,
+    build(item) {
+      const toks = U.tiles(item.nl);
+      const i = 1 + ((Math.random() * Math.max(1, toks.length - 2)) | 0);
+      const bad = toks.slice();
+      const j = Math.min(i + 1, bad.length - 1);
+      const tmp = bad[i]; bad[i] = bad[j]; bad[j] = tmp;
+      return { type: 'corrige', item, bad, faulty: i, other: j, target: item.nl };
+    },
+    view(t, L, phase) {
+      return '<div class="gloss-line">' + esc(t.item.fr) + '</div>' +
+        '<div class="corrige">' + t.bad.map((w, i) => {
+          let cls = '';
+          if (phase !== 'ask') { if (i === t.faulty || i === t.other) cls = ' bad'; }
+          else if (L.sel && L.sel.i === i) cls = ' sel';
+          return '<button class="ctok' + cls + '" data-opt="' + i + '"' + (phase === 'ask' ? '' : ' disabled') + '>' + esc(w) + '</button>';
+        }).join('') + '</div>' +
+        (phase !== 'ask' ? '<p class="corrige-fix">' + esc(t.target) + '</p>' : '');
+    },
+    ready: (t, L) => !!L.sel,
+    judge: (t, L) => ({ ok: !!L.sel && (L.sel.i === t.faulty || L.sel.i === t.other) }),
+    answer: t => t.target
+  };
+
+  /* La phrase standard est donnée : comment la dit-on ici ? Unique à cette app,
+     et la donnée existe déjà sur chaque élément. */
+  R.vlaams = {
+    id: 'vlaams', kicker: NL.t.exVlaams,
+    build(item) {
+      const pool = NL.content.allItems().filter(x =>
+        x.be && x.id !== item.id && U.norm(x.be) !== U.norm(x.nl));
+      const opts = U.shuffle([{ label: item.be, ok: true }]
+        .concat(U.sample(pool, 2).map(x => ({ label: x.be, ok: false }))));
+      return { type: 'vlaams', item, opts };
+    },
+    view(t, L, phase) {
+      return '<div class="sentence prompt">' + esc(t.item.nl) + '</div>' +
+        '<div class="gloss-line">' + esc(t.item.fr) + '</div>' + optList(t.opts, L, phase);
+    },
+    ready: (t, L) => !!L.sel,
+    judge: (t, L) => ({ ok: !!(L.sel && (t.opts[L.sel.i] || {}).ok) }),
+    answer: t => t.item.be
+  };
+
+  /* Réponse libre, notée sur ce qu'elle CONTIENT et non sur sa formulation.
+     Hors ligne, sans IA. C'est le passage de la reproduction à la composition. */
+  function rubric(task, text) {
+    const s = String(text || ''), w = U.words(s), met = [];
+    (task.need || []).forEach(n => {
+      if (n.rx && n.rx.test(s)) { met.push(n.what); return; }
+      if (n.any && n.any.some(a => U.norm(s).indexOf(U.norm(a)) >= 0)) { met.push(n.what); return; }
+      if (n.min && w.length >= n.min) { met.push(n.what); return; }
+    });
+    return met;
+  }
+  R.open = {
+    id: 'open', kicker: NL.t.exOpen,
+    build: item => ({ type: 'open', item, task: item.open }),
+    view(t, L, phase) {
+      const met = phase === 'ask' ? null : rubric(t.task, L.input);
+      return '<p class="sentence prompt">' + esc(t.task.ask) + '</p>' +
+        '<textarea class="textin open-box" rows="3" spellcheck="false" ' +
+        'placeholder="' + esc(NL.t.openPlaceholder) + '"' + (phase === 'ask' ? '' : ' disabled') + '>' +
+        esc(L.input) + '</textarea>' +
+        '<div class="need-list">' + (t.task.need || []).map(n => {
+          const on = met ? met.indexOf(n.what) >= 0 : null;
+          return '<span class="need' + (on === null ? '' : on ? ' ok' : ' no') + '">' + esc(n.what) + '</span>';
+        }).join('') + '</div>' +
+        (phase !== 'ask' ? '<p class="model-answer"><i>' + NL.t.openModel + '</i> ' + esc(t.task.model) + '</p>' : '');
+    },
+    ready: (t, L) => U.words(L.input).length >= 3,
+    judge: (t, L) => ({ ok: rubric(t.task, L.input).length === (t.task.need || []).length }),
+    answer: t => t.task.model
+  };
+
   R.match = {
     id: 'match', kicker: NL.t.exMatch,
     build(items) {
@@ -3148,7 +3542,7 @@ NL.ex = (function () {
         const sel = L.matchSel && L.matchSel.id === id, bad = L.matchBad === id;
         return '<button class="pair' + (gone ? ' gone' : '') + (sel ? ' sel' : '') + (bad ? ' shake' : '') + '"' +
           ' data-match="' + id + '" data-k="' + c.k + '" data-side="' + c.s + '"' + (gone ? ' disabled' : '') + '>' +
-          '<span class="pair-n">' + (c.s === 'l' ? 'NL' : 'EN') + '</span>' + esc(c.t) + '</button>';
+          '<span class="pair-n">' + (c.s === 'l' ? 'NL' : 'FR') + '</span>' + esc(c.t) + '</button>';
       };
       let rows = '';
       for (let i = 0; i < t.pairs.length; i++) rows += cell(t.left[i]) + cell(t.right[i]);
@@ -3261,13 +3655,17 @@ NL.ui = (function () {
           '<button class="seg-btn' + (m.theme === k ? ' on' : '') + '" data-theme="' + k + '">' + label + '</button>').join('') +
         '</div></div>' +
 
+        '<div class="set-block"><h4>' + t.setPace + '</h4><div class="seg">' +
+        ['calme', 'normal', 'intensif'].map(k =>
+          '<button class="seg-btn' + ((m.pace || 'normal') === k ? ' on' : '') + '" data-pace="' + k + '">' +
+          t['pace' + k.charAt(0).toUpperCase() + k.slice(1)] + '</button>').join('') + '</div>' +
+        '<p class="set-note muted">' + t.paceNote(NL.srs.pace()) + '</p>' +
+        '<p class="set-note muted">' + t.paceWhy + '</p></div>' +
+
         '<div class="set-block"><h4>' + t.setPractice + '</h4>' +
         toggle('showFlemish', t.setFlemish, m.showFlemish !== false) +
         toggle('autoplay', t.setAutoplay, m.autoplay !== false) +
-        toggle('sfx', t.setSfx, m.sfx !== false) +
-        '<label class="goal">' + t.setGoal + '<select data-goal="1">' +
-        [10, 15, 20, 30, 40].map(n => '<option value="' + n + '"' + (m.dailyGoal === n ? ' selected' : '') + '>' + n + '</option>').join('') +
-        '</select></label></div>' +
+        toggle('sfx', t.setSfx, m.sfx !== false) + '</div>' +
 
         '<div class="set-block"><h4>' + t.setMine + '</h4>' +
         '<p class="set-note muted">' + t.setMineNote + '</p>' +
@@ -3398,7 +3796,7 @@ NL.ui = (function () {
 
     root.addEventListener('click', e => {
       const hit = e.target.closest('[data-say],[data-go],[data-sheet],[data-close],[data-backdrop],[data-theme],' +
-        '[data-toggle],[data-reset],[data-reset-yes],[data-quit-yes],[data-export],[data-import],[data-act]');
+        '[data-toggle],[data-reset],[data-reset-yes],[data-quit-yes],[data-export],[data-import],[data-pace],[data-act]');
       const S = NL.screens[route];
 
       if (hit) {
@@ -3409,6 +3807,7 @@ NL.ui = (function () {
         if (d.go) { go(d.go); return; }
         if (d.sheet) { openSheet(d.sheet); return; }
         if (d.theme) { NL.state.setMeta({ theme: d.theme }); render(); return; }
+        if (d.pace) { NL.state.setMeta({ pace: d.pace }); render(); return; }
         if (d.toggle) { const m = NL.state.meta(); NL.state.setMeta({ [d.toggle]: m[d.toggle] === false }); render(); return; }
         if (d.export !== undefined) { doExport(); return; }
         if (d.import !== undefined) { doImport(); return; }
@@ -3507,11 +3906,11 @@ NL.screens.sessie = (function () {
     if (source && source !== 'vandaag') {
       const items = NL.content.itemsOf(source);
       pool = items.filter(it => NL.srs.stageOf(it) >= 0 && NL.state.rec(it.id).due <= Date.now());
-      fresh = items.filter(it => NL.srs.stageOf(it) < 0).slice(0, NL.srs.NEW_PER_SESSION);
+      fresh = items.filter(it => NL.srs.stageOf(it) < 0).slice(0, NL.srs.pace().fresh);
     } else {
-      pool = due;
-      const room = Math.max(0, (m.dailyGoal || 20) - (m.doneToday || 0));
-      fresh = NL.srs.freshItems(Math.min(room, NL.srs.NEW_PER_SESSION));
+      const left = NL.srs.budgetLeft();
+      pool = due.slice(0, left);
+      fresh = NL.srs.freshItems(Math.min(Math.max(0, left - pool.length), NL.srs.pace().fresh));
     }
 
     const queue = [];
@@ -3524,12 +3923,31 @@ NL.screens.sessie = (function () {
        them — a whole week could pass without one. Give them a guaranteed seat. */
     const pats = pool.filter(it => it.kind === 'pattern').slice(0, 2);
     const others = pool.filter(it => pats.indexOf(it) < 0).slice(0, MAX_TASKS - pats.length);
+    /* Le gouverneur : on retient les deux derniers types servis pour qu'aucun
+       ne se répète coup sur coup. */
     const rest = U.shuffle(pats.concat(others, fresh));
+    const recent = [];
     rest.forEach(it => {
-      const name = NL.srs.exerciseFor(it);
+      const name = NL.srs.exerciseFor(it, new Set(recent));
       const ex = EX.get(name);
-      try { queue.push({ ex: name, task: ex.build(it), items: [it] }); } catch (e) { /* skip a malformed item */ }
+      try {
+        queue.push({ ex: name, task: ex.build(it), items: [it] });
+        recent.push(name);
+        if (recent.length > 2) recent.shift();
+      } catch (e) { /* un élément mal formé est simplement sauté */ }
     });
+
+    /* Étalement : on garde l'échauffement en tête, puis on réordonne la suite
+       pour qu'aucun type ne se retrouve collé à lui-même. */
+    const head = queue.length && queue[0].ex === 'match' ? [queue.shift()] : [];
+    const spread = [];
+    while (queue.length) {
+      const last = spread.length ? spread[spread.length - 1].ex : (head.length ? head[0].ex : null);
+      let i = queue.findIndex(x => x.ex !== last);
+      if (i < 0) i = 0;
+      spread.push(queue.splice(i, 1)[0]);
+    }
+    queue.push.apply(queue, head.concat(spread));
 
     if (queue.length === 0) { L = null; return false; }
 
@@ -3561,7 +3979,8 @@ NL.screens.sessie = (function () {
     L.phase = v.ok ? 'ok' : 'no';
     L.lastSpoken = !!v.spoken;
 
-    c.items.forEach(it => NL.srs.grade(it, v.ok, { spoken: v.spoken }));
+    c.items.forEach(it => NL.srs.grade(it, v.ok, { spoken: v.spoken, ex: c.ex }));
+    NL.srs.spend(1);
 
     if (v.ok) {
       L.right++;
@@ -3588,7 +4007,8 @@ NL.screens.sessie = (function () {
 
   function skip() {
     const c = cur(); if (!c) return;
-    c.items.forEach(it => NL.srs.grade(it, false));
+    c.items.forEach(it => NL.srs.grade(it, false, { ex: c.ex }));
+    NL.srs.spend(1);
     L.wrong++;
     L.phase = 'no';
     if (L.queue.length < MAX_TASKS + 6) L.queue.push({ ex: c.ex, task: c.task, items: c.items, retry: true });
@@ -3625,16 +4045,19 @@ NL.screens.sessie = (function () {
       '<div class="kicker"><span class="sub">' +
       esc(unit ? unit.name : 'Mes mots') +
       (c.retry ? ' · ' + NL.t.again2 : '') +
-      '</span>' + esc(ex.kicker) + stagePips(stage) + '</div>' +
+      '</span>' + esc(ex.kicker) + stagePips(stage, it) + '</div>' +
       ex.view(c.task, L, L.phase) +
       '</div></div>' +
       foot(c, ex) +
       '</div>';
   }
 
-  function stagePips(stage) {
-    let s = '<span class="pips" title="Étape ' + Math.max(0, stage) + ' sur ' + NL.srs.MAX_STAGE + '">';
-    for (let i = 0; i < NL.srs.MAX_STAGE; i++) s += '<i class="' + (i <= stage ? 'on' : '') + '"></i>';
+  function stagePips(stage, item) {
+    const top = NL.srs.maxRung(item);
+    const r = Math.max(0, stage);
+    let s = '<span class="pips">';
+    for (let i = 0; i < top; i++) s += '<i class="' + (i <= stage ? 'on' : '') + '"></i>';
+    s += '<b>' + NL.t.rungs[Math.min(r, NL.t.rungs.length - 1)] + '</b>';
     return s + '</span>';
   }
 
@@ -3944,26 +4367,30 @@ NL.screens.sessie = (function () {
         '<h1>' + t.pathTitle + '</h1>' +
         '<p>' + t.pathBody + '</p>' +
         '<div class="prog-line">' + bar(cp.pct) + '<b>' + cp.pct + '%</b></div>' +
-        '<p class="muted small">' + t.pathSolid(cp.strong, cp.total) + '</p>' +
+        '<p class="muted small">' + t.masteredOf(cp.mastered, cp.total) + '</p>' +
         '</section>';
 
       NL.content.units.forEach(u => {
         const open = NL.content.unitOpen(u.id);
+        const isNow = cp.current && cp.current.id === u.id;
         const p = NL.content.unitProgress(u.id);
         const g = (u.grammar || []).map(id => (NL.content.patterns || []).find(x => x.id === id)).filter(Boolean);
-        html += '<section class="unit-card' + (open ? '' : ' locked') + '">' +
+        html += '<section class="unit-card' + (open ? '' : ' locked') + (isNow ? ' now' : '') + '">' +
+          (isNow ? '<span class="now-tag">' + t.currentUnit + '</span>' : '') +
           '<div class="uc-head">' +
           '<span class="uc-icon">' + u.icon + '</span>' +
           '<div class="uc-title"><span class="eyebrow">Unité ' + u.n + ' · ' + u.level + ' · ' + trackName(u.track) + '</span>' +
           '<h2>' + esc(u.name) + '<i class="uc-nl">' + esc(u.nlName || '') + '</i></h2></div>' +
-          '<span class="uc-pct">' + p.pct + '%</span>' +
+          '<span class="uc-pct" title="' + t.unitLevel(p.level) + '">' + p.pct + '%</span>' +
           '</div>' +
           '<p class="uc-blurb">' + esc(u.blurb) + '</p>' +
-          '<div class="prog-line">' + bar(p.pct) + '<span class="muted small">' + t.unitSeen(p.seen, p.total) + '</span></div>' +
+          '<div class="prog-line">' + bar(p.pct) + '<span class="muted small">' + t.metOf(p.met, p.total) + '</span></div>' +
+          (open && !NL.content.unitComplete(u.id)
+            ? '<p class="uc-gate">' + t.unitGate(p.gate, 80) + '</p>' : '') +
           (g.length ? '<div class="uc-gram">' + g.map(x =>
             '<button class="gram-chip" data-act="gram" data-id="' + x.id + '">' + esc(x.title) + '</button>').join('') + '</div>' : '') +
           (open
-            ? '<button class="btn btn-blue" data-unit="' + u.id + '">' + (p.seen ? t.unitPractise : t.unitStart) + '</button>'
+            ? '<button class="btn btn-blue" data-unit="' + u.id + '">' + (p.met ? t.unitPractise : t.unitStart) + '</button>'
             : '<p class="uc-lock">' + t.unitLocked(u.n - 1) + '</p>') +
           '</section>';
       });
@@ -4663,93 +5090,90 @@ NL.screens.luisteren = (function () {
 })();
 </script>
 <script>
-/* The placement check. Five years of ambient Dutch means real passive vocabulary;
-   this finds it and seeds the scheduler, so week one is not spent on "de man". */
+/* Le test de placement, en échelle et non en éventail.
+   L'ancienne version étalait 20 questions sur 12 unités : une seule bonne réponse
+   sur quatre choix — 25% au hasard — créditait une unité entière. D'où douze
+   unités à 33% avec « 0 élément bien ancré ».
+   Ici on monte unité par unité : 4 questions, 3 bonnes pour créditer, arrêt à la
+   première échouée. Le hasard passe une unité 5% du temps au lieu de 75%, et
+   trois d'affilée une fois sur huit mille. */
 NL.screens.placement = (function () {
   'use strict';
-  const U = NL.util, esc = U.esc;
+  const U = NL.util, esc = U.esc, t = NL.t;
+  const PER_UNIT = 4, TO_PASS = 3, SEED_RUNG = 3;
   let T = null;
-  const N = 20;
 
   function begin() {
-    const all = NL.content.allItems().filter(it => it.kind !== 'pattern' && it.unit !== 'eigen');
-    /* Sample across the whole course, weighted to later units so the ceiling is found. */
-    const byUnit = {};
-    all.forEach(it => (byUnit[it.unit] = byUnit[it.unit] || []).push(it));
-    const units = NL.content.units.map(u => u.id).filter(id => byUnit[id]);
-    const per = Math.max(1, Math.round(N / units.length));
-    let q = [];
-    units.forEach(id => { q = q.concat(U.sample(byUnit[id], per)); });
-    q = U.shuffle(q).slice(0, N);
+    T = { ui: 0, q: [], at: 0, hits: 0, credited: [], seeded: 0, phase: 'ask', sel: null, done: false, asked: 0 };
+    loadUnit();
+  }
 
-    T = { q, at: 0, sel: null, phase: 'ask', hits: {}, seenUnits: {}, right: 0, done: false };
+  function loadUnit() {
+    const u = NL.content.units[T.ui];
+    if (!u) return finish();
+    const pool = NL.content.itemsOf(u.id).filter(i => i.kind !== 'pattern');
+    if (pool.length < PER_UNIT) return finish();
+    T.q = U.sample(pool, PER_UNIT);
+    T.at = 0; T.hits = 0; T.phase = 'ask'; T.sel = null;
     buildOpts();
   }
 
   function buildOpts() {
     const it = T.q[T.at];
-    const pool = NL.content.allItems().filter(x => x.id !== it.id && x.kind === it.kind && x.unit !== 'eigen');
+    const pool = NL.content.allItems().filter(x =>
+      x.id !== it.id && x.kind === it.kind && x.unit !== 'eigen');
     T.opts = U.shuffle([{ label: U.bareFr(it.fr), ok: true }]
       .concat(U.sample(pool, 3).map(x => ({ label: U.bareFr(x.fr), ok: false }))));
     T.sel = null;
   }
 
   function answer(i) {
-    const it = T.q[T.at];
-    const ok = T.opts[i].ok;
-    T.sel = i; T.phase = 'shown';
-    T.seenUnits[it.unit] = (T.seenUnits[it.unit] || 0) + 1;
-    if (ok) { T.right++; T.hits[it.unit] = (T.hits[it.unit] || 0) + 1; NL.audio.ok(); } else NL.audio.no();
+    T.sel = i; T.phase = 'shown'; T.asked++;
+    if ((T.opts[i] || {}).ok) { T.hits++; NL.audio.ok(); } else NL.audio.no();
     NL.ui.render();
   }
 
   function next() {
-    T.at++; T.phase = 'ask'; T.sel = null;
-    if (T.at >= T.q.length) return apply();
-    buildOpts();
-    NL.ui.render();
+    T.at++;
+    if (T.at < T.q.length) { T.phase = 'ask'; buildOpts(); NL.ui.render(); return; }
+    /* Bilan de l'unité : créditée, ou fin du test. */
+    if (T.hits >= TO_PASS) {
+      const u = NL.content.units[T.ui];
+      NL.content.itemsOf(u.id).forEach(it => {
+        if (it.kind === 'pattern' || NL.state.rec(it.id)) return;
+        NL.srs.seed(it, Math.min(SEED_RUNG, NL.srs.maxRung(it)));
+        T.seeded++;
+      });
+      T.credited.push(u);
+      T.ui++;
+      loadUnit();
+      NL.ui.render();
+      return;
+    }
+    finish();
   }
 
-  /* A unit you mostly recognised gets seeded at stage 2 — you know it receptively,
-     which is real, but not the same as being able to say it. Everything still has
-     to climb to the spoken rung. */
-  function apply() {
-    let seeded = 0, unitsSeeded = 0;
-    Object.keys(T.seenUnits).forEach(uid => {
-      const acc = (T.hits[uid] || 0) / T.seenUnits[uid];
-      if (acc >= 0.7) {
-        unitsSeeded++;
-        NL.content.itemsOf(uid).forEach(it => {
-          if (it.kind === 'pattern') return;
-          if (NL.state.rec(it.id)) return;
-          NL.srs.seed(it, 2); seeded++;
-        });
-      } else if (acc >= 0.4) {
-        NL.content.itemsOf(uid).forEach(it => {
-          if (it.kind === 'pattern' || NL.state.rec(it.id)) return;
-          if (Math.random() < 0.5) { NL.srs.seed(it, 1); seeded++; }
-        });
-      }
-    });
-    T.seeded = seeded; T.unitsSeeded = unitsSeeded; T.done = true;
+  function finish() {
+    T.done = true;
     NL.state.setMeta({ placed: true });
     NL.audio.win();
     NL.ui.render();
   }
 
   function render() {
-    if (!T) { begin(); }
+    if (!T) begin();
     if (T.done) return summary();
     const it = T.q[T.at];
+    const u = NL.content.units[T.ui];
     const pct = Math.round(T.at / T.q.length * 100);
 
     return '<div class="lesson">' +
       '<div class="lesson-head">' +
-      '<button class="iconbtn" data-act="exit" aria-label="' + NL.t.quitYes + '">' + NL.ui.I.x + '</button>' +
-      '<div class="rail"><div class="rail-fill" style="width:' + Math.max(pct, 3) + '%"></div></div>' +
-      '<span class="pill">' + (T.at + 1) + '/' + T.q.length + '</span></div>' +
+      '<button class="iconbtn" data-act="exit" aria-label="' + t.quitYes + '">' + NL.ui.I.x + '</button>' +
+      '<div class="rail"><div class="rail-fill" style="width:' + Math.max(pct, 4) + '%"></div></div>' +
+      '<span class="pill">' + (T.at + 1) + '/' + PER_UNIT + '</span></div>' +
       '<div class="lesson-body"><div class="stage">' +
-      '<div class="kicker"><span class="sub">' + NL.t.placeEyebrow + '</span>' + NL.t.placeQ + '</div>' +
+      '<div class="kicker"><span class="sub">' + esc(u.name) + ' · ' + t.placeEyebrow + '</span>' + t.placeQ + '</div>' +
       NL.ex.speakerRow(U.bare(it.nl), { show: true, be: it.be }) +
       '<div class="opts">' + T.opts.map((o, i) => {
         let cls = '';
@@ -4757,30 +5181,31 @@ NL.screens.placement = (function () {
         return '<button class="opt' + cls + '" data-opt="' + i + '"' + (T.phase === 'shown' ? ' disabled' : '') + '>' +
           '<span class="opt-key">' + (i + 1) + '</span><span>' + esc(o.label) + '</span></button>';
       }).join('') + '</div>' +
+      '<p class="place-note">' + t.placeRule(TO_PASS, PER_UNIT) + '</p>' +
       '</div></div>' +
       '<div class="foot"><div class="foot-in">' +
       (T.phase === 'shown'
-        ? '<button class="btn btn-primary push" data-act="next">' + NL.t.next + '</button>'
-        : '<button class="btn btn-ghost" data-act="dunno">' + NL.t.dunno + '</button>') +
+        ? '<button class="btn btn-primary push" data-act="next">' + t.next + '</button>'
+        : '<button class="btn btn-ghost" data-act="dunno">' + t.dunno + '</button>') +
       '</div></div></div>';
   }
 
   function summary() {
-    const pct = Math.round(T.right / T.q.length * 100);
-    const verdict = pct >= 75 ? NL.t.placeHigh
-      : pct >= 45 ? NL.t.placeMid
-        : NL.t.placeLow;
+    const n = T.credited.length;
+    const last = T.credited[n - 1];
     return '<div class="lesson"><div class="lesson-body"><div class="stage done-stage">' +
-      '<div class="done-mark">\u{1F4CF}</div><h2>' + verdict + '</h2>' +
-      '<p class="done-sub">' + (T.seeded
-        ? NL.t.placeSeeded(T.seeded)
-        : NL.t.placeNone) + '</p>' +
+      '<div class="done-mark">\u{1F4CF}</div>' +
+      '<h2>' + (n === 0 ? t.placeLow : n >= 4 ? t.placeHigh : t.placeMid) + '</h2>' +
+      '<p class="done-sub">' + (n === 0
+        ? t.placeNone
+        : t.placeSeeded(T.seeded) + ' ' + t.placeStops(esc(last.name))) + '</p>' +
       '<div class="tally">' +
-      '<div class="tally-box blue"><div class="t-n">' + pct + '%</div><div class="t-l">' + NL.t.placeRecognised + '</div></div>' +
-      '<div class="tally-box gold"><div class="t-n">' + (T.seeded || 0) + '</div><div class="t-l">' + NL.t.placeAdvanced + '</div></div>' +
+      '<div class="tally-box blue"><div class="t-n">' + n + '</div><div class="t-l">' + t.placeUnits + '</div></div>' +
+      '<div class="tally-box gold"><div class="t-n">' + T.seeded + '</div><div class="t-l">' + t.placeAdvanced + '</div></div>' +
+      '<div class="tally-box green"><div class="t-n">' + T.asked + '</div><div class="t-l">' + t.placeAsked + '</div></div>' +
       '</div>' +
-      '<button class="btn btn-primary wide" data-act="go">' + NL.t.placeFirst + '</button>' +
-      '<button class="btn btn-ghost wide" data-go="vandaag">' + NL.t.placeLater + '</button>' +
+      '<button class="btn btn-primary wide" data-act="go">' + t.placeFirst + '</button>' +
+      '<button class="btn btn-ghost wide" data-go="vandaag">' + t.placeLater + '</button>' +
       '</div></div></div>';
   }
 
@@ -4790,13 +5215,15 @@ NL.screens.placement = (function () {
       if (d.act === 'exit') { T = null; NL.ui.go('vandaag'); return; }
       if (d.act === 'go') { T = null; NL.screens.sessie.begin('vandaag'); NL.ui.go('sessie'); return; }
       if (d.act === 'next') { next(); return; }
-      if (d.act === 'dunno') { T.phase = 'shown'; T.seenUnits[T.q[T.at].unit] = (T.seenUnits[T.q[T.at].unit] || 0) + 1; NL.audio.no(); NL.ui.render(); return; }
+      if (d.act === 'dunno') { T.phase = 'shown'; T.sel = -1; T.asked++; NL.audio.no(); NL.ui.render(); return; }
       if (d.opt !== undefined && T.phase === 'ask') answer(+d.opt);
     },
     key(e) {
       if (!T || T.done) return;
       if (e.key === 'Enter') { e.preventDefault(); const b = document.querySelector('[data-act="next"]'); if (b) b.click(); return; }
-      if (/^[1-4]$/.test(e.key) && T.phase === 'ask') { const b = document.querySelector('[data-opt="' + (+e.key - 1) + '"]'); if (b) b.click(); }
+      if (/^[1-4]$/.test(e.key) && T.phase === 'ask') {
+        const b = document.querySelector('[data-opt="' + (+e.key - 1) + '"]'); if (b) b.click();
+      }
     },
     reset() { T = null; }
   };
@@ -4928,10 +5355,12 @@ NL.screens.doctor = (function () {
   function start() {
     const root = document.getElementById('app');
     NL.state.open().then(() => {
+      const wiped = NL.state.migrate();
       NL.content.refresh();
       NL.state.touchDay();
       NL.ui.bind(root);
       NL.ui.boot();
+      if (wiped) NL.ui.toast(NL.t.migrated);
       /* Voice lists arrive late in some browsers; repaint once they do. */
       if ('speechSynthesis' in window) {
         setTimeout(() => { NL.speech.rescanVoices(); NL.ui.render(); }, 700);
