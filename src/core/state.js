@@ -17,7 +17,7 @@ NL.state = (function () {
     mic: true, autoplay: true, showFlemish: true, unlocked: 1,
     scenariosDone: [], listenDone: [], firstRun: true,
     learnerName: '', town: '', company: '',
-    pace: 'normal', exDay: null, exToday: 0, dataVersion: 2
+    pace: 'normal', exDay: null, exToday: 0, dataVersion: 2, lastEx: null
   });
   let meta = defaults();
 

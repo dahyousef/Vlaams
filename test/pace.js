@@ -11,6 +11,23 @@ let fails = 0, checks = 0;
 const ok = (c, m) => { checks++; if (!c) { console.log('   ✗ ' + m); fails++; } };
 const P = (l, v) => console.log('  ' + String(l).padEnd(38) + v);
 
+
+/* Générateur déterministe : un test qui échoue au hasard vaut moins que pas de
+   test du tout. La graine rend chaque exécution reproductible, en local comme
+   en CI, et un échec devient donc un vrai signal. */
+function rng(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const RAND = rng(Number(process.env.SEED || 20260917));
+const SafeMath = Object.create(Math);
+SafeMath.random = RAND;
+
 const store = {};
 const mk = () => ({
   tagName: 'DIV', innerHTML: '', value: '', dataset: {}, files: [],
@@ -28,7 +45,7 @@ class FakeDate extends Date {
 const ctx = {
   console, setTimeout: f => { try { f(); } catch (e) {} return 0; },
   clearTimeout() {}, setInterval() {}, clearInterval() {}, requestAnimationFrame: f => f(),
-  Math, Date: FakeDate, JSON, Map, Set, RegExp, Array, Object, String, Number, Promise, Error, Boolean,
+  Math: SafeMath, Date: FakeDate, JSON, Map, Set, RegExp, Array, Object, String, Number, Promise, Error, Boolean,
   URL: { createObjectURL: () => 'b', revokeObjectURL() {} },
   Blob: function () {}, Audio: function () { return { play: () => Promise.resolve() }; },
   localStorage: {
@@ -63,7 +80,7 @@ NL.state.open().then(() => {
   const total = NL.content.allItems().length;
 
   const perDay = [], mix = {}, seenOnDay = {};
-  let backToBack = 0, prevEx = null, exhausted = null, maxBacklog = 0, tasks = 0;
+  let backToBack = 0, prevEx = null, exhausted = null, maxBacklog = 0, tasks = 0, lateRecog = 0;
 
   for (let day = 1; day <= DAYS; day++) {
     NOW = Date.parse('2026-01-05T08:00:00Z') + (day - 1) * 86400000;
@@ -79,13 +96,15 @@ NL.state.open().then(() => {
         tasks++; dayTasks++;
         daySecs += SECS[c.ex] || 15;
         mix[c.ex] = (mix[c.ex] || 0) + 1;
+        const wasAt = NL.srs.stageOf(c.items[0]);
+        if (wasAt >= 1 && (c.ex === 'pick' || c.ex === 'recall' || c.ex === 'match')) lateRecog++;
         if (c.ex === prevEx && c.ex !== 'match') backToBack++;
         prevEx = c.ex;
         c.items.forEach(it => {
           seenOnDay[it.id] = seenOnDay[it.id] || new Set();
           seenOnDay[it.id].add(day);
         });
-        const right = Math.random() < 0.85;
+        const right = RAND() < 0.85;
         c.items.forEach(it => NL.srs.grade(it, right, { spoken: c.ex === 'speak' && right, ex: c.ex }));
         NL.srs.spend(1);
         const before = S.peek();
@@ -143,8 +162,11 @@ NL.state.open().then(() => {
     "l etalement n apporte rien : " + Math.round(actual * 100) + "% contre " +
     Math.round(floor * 100) + '% au hasard');
   P('répétitions dos à dos', Math.round(actual * 100) + '%  (hasard : ' + Math.round(floor * 100) + '%)');
-  ok(recog < 20, 'trop de pure reconnaissance : ' + recog + '%');
-  P('pure reconnaissance', recog + '%');
+  /* Hors première rencontre, qui est forcément de la reconnaissance. */
+  const late = Math.round(lateRecog / tasks * 100);
+  ok(late < 12, 'trop de reconnaissance après la première rencontre : ' + late + '%');
+  P('reconnaissance (1re rencontre exclue)', late + '%');
+  P('dont premières rencontres', (recog - late) + '%');
   P('production (parler, écrire, ouvert)', (pc('speak') + pc('type') + pc('open')) + '%');
   P('arriéré maximum', maxBacklog);
 

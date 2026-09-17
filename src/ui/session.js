@@ -51,17 +51,26 @@ NL.screens.sessie = (function () {
       } catch (e) { /* un élément mal formé est simplement sauté */ }
     });
 
-    /* Étalement : on garde l'échauffement en tête, puis on réordonne la suite
-       pour qu'aucun type ne se retrouve collé à lui-même. */
+    /* Étalement optimal. Choisir « le premier qui diffère » ne suffit pas : quand
+       un type domine la file, il faut le répartir activement. On puise donc à
+       tour de rôle dans le plus gros paquet restant, ce qui est l'ordonnancement
+       qui minimise réellement les voisins identiques. La mémoire traverse aussi
+       les séances : sans elle, chaque nouvelle séance repart aveugle. */
     const head = queue.length && queue[0].ex === 'match' ? [queue.shift()] : [];
+    const bucket = {};
+    queue.forEach(x => { (bucket[x.ex] = bucket[x.ex] || []).push(x); });
+    queue.length = 0;                      // la file est vidée : on la reconstruit étalée
     const spread = [];
-    while (queue.length) {
-      const last = spread.length ? spread[spread.length - 1].ex : (head.length ? head[0].ex : null);
-      let i = queue.findIndex(x => x.ex !== last);
-      if (i < 0) i = 0;
-      spread.push(queue.splice(i, 1)[0]);
+    let last = head.length ? head[0].ex : NL.state.meta().lastEx || null;
+    const left = () => Object.keys(bucket).filter(k => bucket[k].length);
+    while (left().length) {
+      const keys = left().sort((a, b) => bucket[b].length - bucket[a].length);
+      const k = keys.find(x => x !== last) || keys[0];
+      spread.push(bucket[k].shift());
+      last = k;
     }
     queue.push.apply(queue, head.concat(spread));
+    if (queue.length) NL.state.setMeta({ lastEx: queue[queue.length - 1].ex });
 
     if (queue.length === 0) { L = null; return false; }
 

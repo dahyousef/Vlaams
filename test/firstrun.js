@@ -3,6 +3,23 @@
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const ROOT = process.argv[2];
 
+
+/* Générateur déterministe : un test qui échoue au hasard vaut moins que pas de
+   test du tout. La graine rend chaque exécution reproductible, en local comme
+   en CI, et un échec devient donc un vrai signal. */
+function rng(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const RAND = rng(Number(process.env.SEED || 20260917));
+const SafeMath = Object.create(Math);
+SafeMath.random = RAND;
+
 const store = {};
 const mkEl = () => ({
   innerHTML: '', value: '', disabled: false, scrollTop: 0, tagName: 'DIV', dataset: {},
@@ -16,7 +33,7 @@ const app = mkEl();
 const ctx = {
   console, setTimeout: f => { try { f(); } catch (e) {} }, clearTimeout, setInterval, clearInterval,
   requestAnimationFrame: f => f(),
-  Math, Date, JSON, Map, Set, RegExp, Array, Object, String, Number, Promise, Error, Boolean, Blob: function () {},
+  Math: SafeMath, Date, JSON, Map, Set, RegExp, Array, Object, String, Number, Promise, Error, Boolean, Blob: function () {},
   localStorage: { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } },
   navigator: { onLine: true, userAgent: 'Mozilla/5.0 (Windows NT 10.0) Chrome/120 OPR/106' },
   location: { hash: '', protocol: 'https:', origin: 'https://claude.ai' },

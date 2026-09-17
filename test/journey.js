@@ -11,6 +11,23 @@ const ok = (c, m) => { checks++; if (!c) { console.log('   ✗ ' + m); fails++; 
 const head = s => console.log('\n' + s);
 
 /* ---------- a browser, roughly ---------- */
+
+/* Générateur déterministe : un test qui échoue au hasard vaut moins que pas de
+   test du tout. La graine rend chaque exécution reproductible, en local comme
+   en CI, et un échec devient donc un vrai signal. */
+function rng(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const RAND = rng(Number(process.env.SEED || 20260917));
+const SafeMath = Object.create(Math);
+SafeMath.random = RAND;
+
 const store = {};
 const listeners = {};
 function mkEl(tag) {
@@ -39,7 +56,7 @@ const ctx = {
   console,
   setTimeout: (f) => { try { f(); } catch (e) { console.log('   ✗ timer threw: ' + e.message); fails++; } return 0; },
   clearTimeout() {}, setInterval() {}, clearInterval() {}, requestAnimationFrame: f => f(),
-  Math, Date, JSON, Map, Set, RegExp, Array, Object, String, Number, Promise, Error, Boolean,
+  Math: SafeMath, Date, JSON, Map, Set, RegExp, Array, Object, String, Number, Promise, Error, Boolean,
   URL: { createObjectURL: () => 'blob:x', revokeObjectURL() {} },
   Blob: function (parts) { this.size = (parts && parts[0] || '').length; },
   Audio: function () { return { play: () => Promise.resolve(), onended: null }; },
