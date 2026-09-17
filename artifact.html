@@ -3346,7 +3346,7 @@ NL.ex = (function () {
           '<p class="word-diff">' + sp.parts.map(p =>
             '<span class="' + (p.ok ? (p.close ? 'w-close' : 'w-ok') : 'w-no') + '">' + esc(p.word) + '</span>').join(' ') + '</p>' +
           (sp.heard ? '<p class="heard">' + NL.t.micHeard + ' &ldquo;' + esc(sp.heard) + '&rdquo;</p>' : '') +
-          (!sp.ok && sp.tries < 3 ? '<div class="mic-actions"><button class="btn btn-blue" data-mic="start">Opnieuw (' + (3 - sp.tries) + ')</button></div>' : '') +
+          (!sp.ok && sp.tries < 3 ? '<div class="mic-actions"><button class="btn btn-blue" data-mic="start">' + NL.t.micRetry(3 - sp.tries) + '</button></div>' : '') +
           '</div>';
       } else {
         panel = '<div class="mic-panel"><button class="mic big" data-mic="start" aria-label="' + NL.t.speak + '">' + ICON.mic(34) + '</button>' +
@@ -4683,7 +4683,7 @@ NL.screens.sessie = (function () {
     const blocked = NL.speech.listenBlocked();
     if (blocked) return NL.ex.recordPanel(sp, target, blocked);
     if (sp.phase === 'listening') {
-      return '<div class="mic-panel live"><button class="mic big listening" data-mic="stop" aria-label="Stop">' + ICON.mic(32) + '</button>' +
+      return '<div class="mic-panel live"><button class="mic big listening" data-mic="stop" aria-label="' + NL.t.stop + '">' + ICON.mic(32) + '</button>' +
         '<p class="mic-why">' + NL.t.micListening + '</p>' + (sp.partial ? '<p class="heard">' + esc(sp.partial) + '</p>' : '') + '</div>';
     }
     if (sp.phase === 'done') {
@@ -4695,10 +4695,10 @@ NL.screens.sessie = (function () {
         (sp.heard ? '<p class="heard">' + NL.t.micHeard + ' &ldquo;' + esc(sp.heard) + '&rdquo;</p>' : '') +
         '<div class="mic-actions">' +
         (!sp.ok && sp.tries < 3 ? '<button class="btn btn-blue" data-mic="start">' + NL.t.replay + '</button>' : '') +
-        '<button class="btn ' + (sp.ok ? 'btn-good' : 'btn-ghost') + '" data-act="accept">' + (sp.ok ? NL.t.next : 'Toch verder') + '</button>' +
+        '<button class="btn ' + (sp.ok ? 'btn-good' : 'btn-ghost') + '" data-act="accept">' + (sp.ok ? NL.t.next : NL.t.micAnyway) + '</button>' +
         '</div></div>';
     }
-    return '<div class="mic-panel"><button class="mic big" data-mic="start" aria-label="Spreek">' + ICON.mic(32) + '</button>' +
+    return '<div class="mic-panel"><button class="mic big" data-mic="start" aria-label="' + NL.t.speak + '">' + ICON.mic(32) + '</button>' +
       '<p class="mic-why">' + (sp.error ? esc(errText(sp.error)) : NL.t.micTap) + '</p></div>';
   }
   const errText = k => k === 'denied' ? NL.t.micDenied
@@ -4795,7 +4795,7 @@ NL.screens.luisteren = (function () {
 
     return '<div class="lesson">' +
       '<div class="lesson-head">' +
-      '<button class="iconbtn" data-act="exit" aria-label="Terug">' + NL.ui.I.back + '</button>' +
+      '<button class="iconbtn" data-act="exit" aria-label="' + NL.t.back + '">' + NL.ui.I.back + '</button>' +
       '<div class="rail"><div class="rail-fill" style="width:' + Math.max(pct, 3) + '%"></div></div>' +
       '<span class="pill">' + (S.at + 1) + '/' + S.clips.length + '</span></div>' +
       '<div class="lesson-body"><div class="stage">' +
@@ -4941,15 +4941,15 @@ NL.screens.luisteren = (function () {
         html += '<section class="card add-form">' +
           '<label>' + NL.t.wordsNl + '<input class="textin" id="add-nl" placeholder="de vergaderzaal"></label>' +
           '<label>' + NL.t.wordsFr + '<input class="textin" id="add-en" placeholder="la salle de réunion"></label>' +
-          '<label>' + NL.t.wordsBe + ' <span class="muted">(optioneel)</span><input class="textin" id="add-be" placeholder=""></label>' +
+          '<label>' + NL.t.wordsBe + ' <span class="muted">' + NL.t.wordsOptional + '</span><input class="textin" id="add-be" placeholder=""></label>' +
           '<div class="row"><button class="btn btn-good" data-act="addsave">' + NL.t.save + '</button>' +
           '<button class="btn btn-ghost" data-act="addcancel">' + NL.t.cancel + '</button></div></section>';
       }
 
       html += '<div class="filters">' +
         '<input class="search" id="wsearch" type="search" placeholder="' + NL.t.wordsSearch + '" value="' + esc(query) + '">' +
-        [['alles', NL.t.wordsAll], ['zwak', NL.t.wordsWeak], ['sterk', NL.t.wordsStrong], ['eigen', NL.t.wordsMine]].map(f =>
-          '<button class="fchip' + (filter === f && !query ? ' on' : '') + '" data-act="filter" data-f="' + f + '">' + f + '</button>').join('') +
+        [['alles', NL.t.wordsAll], ['zwak', NL.t.wordsWeak], ['sterk', NL.t.wordsStrong], ['eigen', NL.t.wordsMine]].map(([id, label]) =>
+          '<button class="fchip' + (filter === id && !query ? ' on' : '') + '" data-act="filter" data-f="' + id + '">' + label + '</button>').join('') +
         '</div>';
 
       if (!list.length) {
@@ -5001,7 +5001,7 @@ NL.screens.luisteren = (function () {
         const s = sheets.find(x => x.id === id);
         if (s) {
           return '<div class="wrap">' +
-            '<button class="backlink" data-go="spiek">' + NL.ui.I.back + '' + NL.t.sheetsAll + '</button>' +
+            '<button class="backlink" data-go="spiek">' + NL.ui.I.back + ' ' + NL.t.sheetsAll + '</button>' +
             '<section class="card lead slim"><span class="eyebrow">' + NL.t.sheetsEyebrow + '</span>' +
             '<h1>' + s.icon + ' ' + esc(s.title) + '</h1><p>' + esc(s.blurb) + '</p></section>' +
             s.groups.map(g => '<div class="sheet-group"><h4>' + esc(g.h) + '</h4>' +

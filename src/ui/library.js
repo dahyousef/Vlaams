@@ -36,15 +36,15 @@
         html += '<section class="card add-form">' +
           '<label>' + NL.t.wordsNl + '<input class="textin" id="add-nl" placeholder="de vergaderzaal"></label>' +
           '<label>' + NL.t.wordsFr + '<input class="textin" id="add-en" placeholder="la salle de réunion"></label>' +
-          '<label>' + NL.t.wordsBe + ' <span class="muted">(optioneel)</span><input class="textin" id="add-be" placeholder=""></label>' +
+          '<label>' + NL.t.wordsBe + ' <span class="muted">' + NL.t.wordsOptional + '</span><input class="textin" id="add-be" placeholder=""></label>' +
           '<div class="row"><button class="btn btn-good" data-act="addsave">' + NL.t.save + '</button>' +
           '<button class="btn btn-ghost" data-act="addcancel">' + NL.t.cancel + '</button></div></section>';
       }
 
       html += '<div class="filters">' +
         '<input class="search" id="wsearch" type="search" placeholder="' + NL.t.wordsSearch + '" value="' + esc(query) + '">' +
-        [['alles', NL.t.wordsAll], ['zwak', NL.t.wordsWeak], ['sterk', NL.t.wordsStrong], ['eigen', NL.t.wordsMine]].map(f =>
-          '<button class="fchip' + (filter === f && !query ? ' on' : '') + '" data-act="filter" data-f="' + f + '">' + f + '</button>').join('') +
+        [['alles', NL.t.wordsAll], ['zwak', NL.t.wordsWeak], ['sterk', NL.t.wordsStrong], ['eigen', NL.t.wordsMine]].map(([id, label]) =>
+          '<button class="fchip' + (filter === id && !query ? ' on' : '') + '" data-act="filter" data-f="' + id + '">' + label + '</button>').join('') +
         '</div>';
 
       if (!list.length) {
@@ -96,7 +96,7 @@
         const s = sheets.find(x => x.id === id);
         if (s) {
           return '<div class="wrap">' +
-            '<button class="backlink" data-go="spiek">' + NL.ui.I.back + '' + NL.t.sheetsAll + '</button>' +
+            '<button class="backlink" data-go="spiek">' + NL.ui.I.back + ' ' + NL.t.sheetsAll + '</button>' +
             '<section class="card lead slim"><span class="eyebrow">' + NL.t.sheetsEyebrow + '</span>' +
             '<h1>' + s.icon + ' ' + esc(s.title) + '</h1><p>' + esc(s.blurb) + '</p></section>' +
             s.groups.map(g => '<div class="sheet-group"><h4>' + esc(g.h) + '</h4>' +

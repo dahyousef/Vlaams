@@ -86,7 +86,7 @@ NL.screens.luisteren = (function () {
 
     return '<div class="lesson">' +
       '<div class="lesson-head">' +
-      '<button class="iconbtn" data-act="exit" aria-label="Terug">' + NL.ui.I.back + '</button>' +
+      '<button class="iconbtn" data-act="exit" aria-label="' + NL.t.back + '">' + NL.ui.I.back + '</button>' +
       '<div class="rail"><div class="rail-fill" style="width:' + Math.max(pct, 3) + '%"></div></div>' +
       '<span class="pill">' + (S.at + 1) + '/' + S.clips.length + '</span></div>' +
       '<div class="lesson-body"><div class="stage">' +

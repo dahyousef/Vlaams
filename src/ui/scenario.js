@@ -218,7 +218,7 @@
     const blocked = NL.speech.listenBlocked();
     if (blocked) return NL.ex.recordPanel(sp, target, blocked);
     if (sp.phase === 'listening') {
-      return '<div class="mic-panel live"><button class="mic big listening" data-mic="stop" aria-label="Stop">' + ICON.mic(32) + '</button>' +
+      return '<div class="mic-panel live"><button class="mic big listening" data-mic="stop" aria-label="' + NL.t.stop + '">' + ICON.mic(32) + '</button>' +
         '<p class="mic-why">' + NL.t.micListening + '</p>' + (sp.partial ? '<p class="heard">' + esc(sp.partial) + '</p>' : '') + '</div>';
     }
     if (sp.phase === 'done') {
@@ -230,10 +230,10 @@
         (sp.heard ? '<p class="heard">' + NL.t.micHeard + ' &ldquo;' + esc(sp.heard) + '&rdquo;</p>' : '') +
         '<div class="mic-actions">' +
         (!sp.ok && sp.tries < 3 ? '<button class="btn btn-blue" data-mic="start">' + NL.t.replay + '</button>' : '') +
-        '<button class="btn ' + (sp.ok ? 'btn-good' : 'btn-ghost') + '" data-act="accept">' + (sp.ok ? NL.t.next : 'Toch verder') + '</button>' +
+        '<button class="btn ' + (sp.ok ? 'btn-good' : 'btn-ghost') + '" data-act="accept">' + (sp.ok ? NL.t.next : NL.t.micAnyway) + '</button>' +
         '</div></div>';
     }
-    return '<div class="mic-panel"><button class="mic big" data-mic="start" aria-label="Spreek">' + ICON.mic(32) + '</button>' +
+    return '<div class="mic-panel"><button class="mic big" data-mic="start" aria-label="' + NL.t.speak + '">' + ICON.mic(32) + '</button>' +
       '<p class="mic-why">' + (sp.error ? esc(errText(sp.error)) : NL.t.micTap) + '</p></div>';
   }
   const errText = k => k === 'denied' ? NL.t.micDenied
