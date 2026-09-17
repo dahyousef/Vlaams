@@ -45,5 +45,5 @@ jobs:
         run: |
           sh build.sh
           grep -q 'supabaseUrl:"https://example.supabase.co"' dist/index.html
-          grep -q 'createClient' dist/index.html
-          ! grep -q 'createClient' artifact.html
+          grep -q 'FunctionsRelayError' dist/index.html
+          ! grep -q 'FunctionsRelayError' artifact.html
