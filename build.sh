@@ -40,7 +40,7 @@ src/ui/account.js
 src/app.js"
 
 # Keep only characters a URL or a key can contain, so nothing can break out of the quotes.
-clean() { printf %s "$1" | tr -cd "A-Za-z0-9._:/=+-"; }
+clean() { printf %s "$1" | tr -cd "A-Za-z0-9._:/=+_-"; }
 SB_URL=$(clean "${SUPABASE_URL:-}")
 SB_KEY=$(clean "${SUPABASE_ANON_KEY:-}")
 
