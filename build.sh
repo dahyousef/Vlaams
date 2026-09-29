@@ -23,6 +23,7 @@ src/core/sync.js
 src/content/lexicon.a1.js
 src/content/lexicon.a1b.js
 src/content/grammar.js
+src/content/examples.js
 src/content/open.js
 src/content/reference.js
 src/content/scenarios.js

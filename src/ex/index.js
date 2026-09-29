@@ -160,9 +160,12 @@ NL.ex = (function () {
 
   R.bank = {
     id: 'bank', kicker: NL.t.exBank,
-    build: item => ({ type: 'bank', item, target: item.nl, bank: bankFor(item.nl, item) }),
+    build(item) {
+      const d = (item.drills && item.drills.length) ? U.one(item.drills) : { nl: item.nl, fr: item.fr };
+      return { type: 'bank', item, drill: d, target: d.nl, bank: bankFor(d.nl, item) };
+    },
     view(t, L, phase) {
-      return '<div class="sentence prompt">' + esc(t.item.fr) + '</div>' + tileArea(t, L, phase);
+      return '<div class="sentence prompt">' + esc(t.drill.fr) + '</div>' + tileArea(t, L, phase);
     },
     ready: (t, L) => L.picked.length > 0,
     judge: (t, L) => ({ ok: U.norm(said(t, L)) === U.norm(t.target) }),
@@ -188,7 +191,11 @@ NL.ex = (function () {
     id: 'cloze', kicker: NL.t.exCloze,
     build(item) {
       const d = item.drills ? U.one(item.drills) : { nl: item.nl, fr: item.fr };
-      const gap = gapWord(d.nl, d.gap);
+      /* Pour un mot, le trou tombe sur le mot enseigné, pas sur le plus long de
+         la phrase : sinon on drille « gemeentehuis » en cachant « morgen ». */
+      const forced = d.gap ||
+        (item.kind === 'word' && U.tiles(U.bare(item.nl)).length === 1 ? U.bare(item.nl) : null);
+      const gap = gapWord(d.nl, forced);
       const opts = U.shuffle([{ label: gap, ok: true }].concat(
         U.sample(U.uniq(NL.content.itemsOf(item.unit)
           .flatMap(x => U.tiles(x.nl || ''))

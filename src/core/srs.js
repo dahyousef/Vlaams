@@ -97,7 +97,10 @@ NL.srs = (function () {
 
   /* Un type n'est proposé que si l'élément peut réellement le porter. */
   function supports(item, name) {
-    const words = NL.util.tiles(item.nl || '').length;
+    /* Un mot muni d'une phrase d'exemple peut porter les exercices de phrase :
+       c'est la phrase qu'on remet en ordre, pas le mot tout seul. */
+    const carrier = (item.drills && item.drills.length) ? item.drills[0].nl : (item.nl || '');
+    const words = NL.util.tiles(carrier).length;
     switch (name) {
       case 'article': return !!item.art;
       case 'vlaams': return !!item.be && NL.util.norm(item.be) !== NL.util.norm(item.nl);
