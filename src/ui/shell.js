@@ -166,9 +166,16 @@ NL.ui = (function () {
       : st.state === 'error' ? t.syncError('')
       : st.pending ? t.syncPending(st.pending)
       : t.syncOk(st.lastSync ? t.syncAgo(Date.now() - st.lastSync) : t.syncNever);
+    /* La sauvegarde quotidienne tourne ailleurs (dépôt privé). Si elle s'arrête,
+       rien ne le dirait : d'où cette ligne, qui vieillit toute seule. */
+    const lb = NL.state.meta().lastBackup;
+    const old = lb && Date.now() - lb > 3 * U.DAY;
+    const backup = '<p class="set-note ' + (!lb || old ? 'warn' : 'good') + '">' +
+      (!lb ? t.backupNone : old ? t.backupStale(t.syncAgo(Date.now() - lb)) : t.backupLast(t.syncAgo(Date.now() - lb))) + '</p>';
     return '<div class="set-block"><h4>' + t.accEyebrow + '</h4>' +
       '<p class="set-note muted">' + esc(st.user.email || '') + '</p>' +
       '<p class="set-note ' + (st.state === 'error' ? 'warn' : 'good') + '">' + esc(line) + '</p>' +
+      backup +
       '<button class="btn btn-blue wide" data-go="compte">' + t.accManage + '</button></div>';
   }
 

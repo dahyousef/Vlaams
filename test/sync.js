@@ -251,6 +251,11 @@ const items = NL => NL.content.allItems();
   ok(m1.scenariosDone.length === 2, 'done lists should union');
   ok(m1.doneToday === 7, 'same-day counter should take the max');
   ok(m1.placed === true, 'placement should never be undone');
+  /* Le robot de sauvegarde écrit lastBackup sans toucher à updated_at : la
+     fusion doit le garder même quand l'autre côté est « plus récent ». */
+  const m3 = M({ xp: 5, updatedAt: 50 }, { xp: 4, lastBackup: 4242, updatedAt: 10 });
+  ok(m3.lastBackup === 4242, 'merge dropped the backup stamp written by the robot');
+
   const m2 = M({ doneDay: '2026-09-18', doneToday: 2, updatedAt: 1 }, { doneDay: '2026-09-17', doneToday: 50, updatedAt: 9 });
   ok(m2.doneDay === '2026-09-18' && m2.doneToday === 2, 'a later day should reset the counter');
 

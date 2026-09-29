@@ -305,6 +305,9 @@ NL.t = {
   syncPending: n => n + ' changement' + (n > 1 ? 's' : '') + ' en attente d’envoi.',
   syncOffline: n => 'Hors ligne' + (n ? ' — ' + n + ' changement' + (n > 1 ? 's' : '') + ' partiront au retour du réseau.' : '.'),
   syncError: m => 'Échec de la synchro, nouvel essai bientôt. ' + m,
+  backupLast: a => 'Sauvegarde automatique ' + a + '.',
+  backupStale: a => 'Dernière sauvegarde ' + a + ' — le robot quotidien ne tourne plus.',
+  backupNone: 'Pas encore de sauvegarde automatique — elle arrive dans la nuit.',
   syncLocalOnly: 'Progression enregistrée sur cet appareil uniquement.',
   docFixNote: 'Ça installe une voix système que tous les navigateurs voient, Opera compris. Pas besoin de redémarrer.'
 };
