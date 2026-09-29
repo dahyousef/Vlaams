@@ -798,6 +798,7 @@ NL.t = {
   micNetwork: 'La reconnaissance a besoin d’une connexion. Dis-le à voix haute et évalue-toi.',
   micFail: 'Ça n’a pas marché. Réessaie.',
   micNoBrowser: 'Ce navigateur ne reconnaît pas la parole — Opera n’a pas ce service. Enregistre-toi et compare, ou évalue-toi.',
+  micNoBrowserIOS: 'Sur iPhone, seul Safari reconnaît la parole : Chrome et Edge y sont Safari déguisé, sans ce service. Ouvre l’app dans Safari pour être noté, ou enregistre-toi et compare.',
   micOffline: 'Hors ligne : la reconnaissance ne peut pas te noter. Dis-le quand même à voix haute et évalue-toi honnêtement.',
   recRecord: 'M’enregistrer',
   recStop: 'Arrêter',
@@ -1517,8 +1518,23 @@ NL.speech = (function () {
      fail silently or report a network error, which would otherwise be reported to
      the user as "check your connection". Treat it as having none. */
   const OPERA = /OPR\/|Opera/i.test(UA);
+
+  /* Même mensonge sur iPhone : Apple n'active la reconnaissance que dans Safari
+     lui-même. Chrome, Edge et Firefox y sont Safari déguisé — ils exposent
+     webkitSpeechRecognition et répondent « service-not-allowed ». Sans ça, l'app
+     promettrait un micro qui ne répond jamais. */
+  const IOS = /iPad|iPhone|iPod/.test(UA) ||
+    (/Macintosh/.test(UA) && typeof navigator !== 'undefined' && navigator.maxTouchPoints > 1);
+  const IOS_SHELL = IOS && /CriOS|EdgiOS|FxiOS|OPiOS|OPT\//.test(UA);
+  const NO_SERVICE = OPERA || IOS_SHELL;
+  /* Pourquoi il n'y a pas de service : l'interface n'explique pas iOS comme Opera. */
+  const noService = () => OPERA ? 'opera' : IOS_SHELL ? 'ios' : null;
+
   function browserName() {
     if (OPERA) return 'Opera';
+    if (/CriOS/.test(UA)) return 'Chrome (iPhone)';
+    if (/EdgiOS/.test(UA)) return 'Edge (iPhone)';
+    if (/FxiOS/.test(UA)) return 'Firefox (iPhone)';
     if (/Edg\//.test(UA)) return 'Edge';
     if (/Firefox\//.test(UA)) return 'Firefox';
     if (/Chrome\//.test(UA)) return 'Chrome';
@@ -1526,8 +1542,8 @@ NL.speech = (function () {
     return 'ton navigateur';
   }
 
-  const canListen = () => !!SR && !OPERA && navigator.onLine !== false;
-  const listenBlocked = () => (!SR || OPERA) ? 'browser' : navigator.onLine === false ? 'offline' : null;
+  const canListen = () => !!SR && !NO_SERVICE && navigator.onLine !== false;
+  const listenBlocked = () => (!SR || NO_SERVICE) ? 'browser' : navigator.onLine === false ? 'offline' : null;
 
   let active = null;
   function listen(opts) {
@@ -1657,7 +1673,7 @@ NL.speech = (function () {
 
   return {
     canSpeak, say, stop, voiceInfo, rescanVoices: scan, voices: () => voices,
-    canListen, listenBlocked, listen, abort, score, ratio,
+    canListen, listenBlocked, noService, listen, abort, score, ratio,
     canRecord, hasRecording, record, stopRecord, playRecording, playBoth, clearRecording, tier, browserName
   };
 })();
@@ -4115,7 +4131,7 @@ NL.ui = (function () {
         '<button class="btn btn-blue wide" data-go="doctor">' + t.setDoctor + '</button></div>' +
 
         '<div class="set-block"><h4>' + t.setExport + '</h4>' +
-        '<p class="set-note muted">' + t.setStorage + ' ' + NL.state.storage + '. Une sauvegarde te suit d’un navigateur à l’autre — indispensable avant de passer du lien claude.ai à une adresse à toi.</p>' +
+        '<p class="set-note muted">' + t.setStorage + ' ' + NL.state.storage + '. Une sauvegarde te suit d’un navigateur à l’autre, et reste utile même connecté : c’est la seule copie que tu tiens en main.</p>' +
         '<div class="row"><button class="btn" data-export="1">' + t.setExport + '</button>' +
         '<button class="btn" data-import="1">' + t.setImport + '</button></div>' +
         '<div class="row"><button class="btn btn-ghost" data-act="copy-show">Copier le texte</button>' +
@@ -4152,7 +4168,7 @@ NL.ui = (function () {
       '<button class="btn btn-blue wide" data-go="compte">' + t.accManage + '</button></div>';
   }
 
-  const micLine = kind => kind === 'browser' ? t.micNoBrowser
+  const micLine = kind => kind === 'browser' ? (NL.speech.noService() === 'ios' ? t.micNoBrowserIOS : t.micNoBrowser)
     : kind === 'offline' ? t.micOffline
       : 'Reconnaissance vocale active (nl-BE).';
 
@@ -5709,7 +5725,7 @@ NL.screens.doctor = (function () {
   const TIERS = {
     full: { label: 'Complet', note: 'Voix flamande et reconnaissance vocale : tout fonctionne, y compris la notation automatique de ce que tu dis.' },
     scored: { label: 'Noté, accent du nord', note: 'La reconnaissance fonctionne, mais la voix est néerlandaise du nord. Installe la voix flamande ci-dessous et tu passes au niveau complet.' },
-    compare: { label: 'Enregistre et compare', note: 'Pas de reconnaissance ici — c’est le cas d’Opera, qui n’a pas ce service. Tu peux quand même t’enregistrer et te comparer au modèle, ce qui est une vraie méthode de travail.' },
+    compare: { label: 'Enregistre et compare', note: 'Pas de reconnaissance vocale ici. Tu peux quand même t’enregistrer et te comparer au modèle, ce qui est une vraie méthode de travail.' },
     self: { label: 'Auto-évaluation', note: 'Ni reconnaissance ni enregistrement disponibles. Les exercices oraux te demandent de dire la phrase puis de te juger honnêtement. Ça marche, mais une page hébergée hors d’un cadre te donnerait mieux.' }
   };
 
@@ -5736,13 +5752,14 @@ NL.screens.doctor = (function () {
       '<section class="doc-tier ' + tier.id + '">' +
       '<span class="eyebrow">' + t.docTierTitle + '</span>' +
       '<h2>' + info.label + '</h2><p>' + info.note + '</p>' +
-      (tier.framed ? '<p class="doc-framed">Cette page tourne dans un cadre intégré (le lien claude.ai). Certains navigateurs refusent le micro dans ce cas, quelle que soit ton autorisation. Le fichier hébergé à toi n’a pas cette limite.</p>' : '') +
+      (tier.framed ? '<p class="doc-framed">Cette page tourne dans un cadre intégré. Certains navigateurs refusent le micro dans ce cas, quelle que soit ton autorisation : ouvre l’app dans son propre onglet.</p>' : '') +
       '</section>' +
 
       '<section class="doc-block">' +
       '<h4>' + t.docBrowser + '</h4>' +
       '<p class="doc-line"><b>' + esc(NL.speech.browserName()) + '</b>' +
-      (NL.speech.browserName() === 'Opera' ? ' — pas de service de reconnaissance vocale. Ce n’est pas réparable côté code.' : '') + '</p>' +
+      (NL.speech.noService() === 'opera' ? ' — pas de service de reconnaissance vocale. Ce n’est pas réparable côté code.'
+        : NL.speech.noService() === 'ios' ? ' — sur iPhone, seul Safari a ce service. Ouvre l’app dans Safari pour être noté.' : '') + '</p>' +
       '</section>' +
 
       '<section class="doc-block">' +

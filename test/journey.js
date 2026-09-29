@@ -68,9 +68,13 @@ const ctx = {
   },
   navigator: {
     onLine: true,
-    userAgent: BROWSER === 'OPR'
-      ? 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120 Safari/537.36 OPR/106.0'
-      : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120 Safari/537.36 Edg/120.0',
+    userAgent: {
+      OPR: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120 Safari/537.36 OPR/106.0',
+      EDG: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120 Safari/537.36 Edg/120.0',
+      /* iPhone : Chrome est Safari par-dessous et n'a pas de reconnaissance. */
+      IOS: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 CriOS/120 Mobile/15E148 Safari/604.1',
+      SAF: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1'
+    }[BROWSER],
     mediaDevices: { getUserMedia: () => Promise.reject(Object.assign(new Error('no'), { name: 'NotAllowedError' })) },
     clipboard: { writeText: () => Promise.resolve() }
   },
@@ -91,6 +95,7 @@ const ctx = {
     execCommand: () => true
   }
 };
+/* iOS expose l'API même là où elle ne marche pas : le stub aussi. */
 if (BROWSER !== 'OPR') {
   ctx.webkitSpeechRecognition = function () {
     this.start = () => {
@@ -136,7 +141,7 @@ function view(screen, arg) {
   NL.content.refresh();
   /* app.js has already bound the shell on load — binding again would double every click. */
 
-  console.log('USER JOURNEY — voice ' + VOICE + ', browser ' + (BROWSER === 'OPR' ? 'Opera' : 'Edge'));
+  console.log('USER JOURNEY — voice ' + VOICE + ', browser ' + NL.speech.browserName());
 
   /* ---------------------------------------------------------- 1. voice */
   head('1. Voice and microphone');
@@ -155,7 +160,9 @@ function view(screen, arg) {
   NL.speech.say('Goeiedag');
   ok(spoken.length > 0, 'nothing was spoken');
   ok(spoken[0].lang === (VOICE === 'nl-BE' ? 'nl-BE' : 'nl-NL'), 'wrong utterance language: ' + spoken[0].lang);
-  ok(NL.speech.listenBlocked() === (BROWSER === 'OPR' ? 'browser' : null), 'wrong recogniser verdict');
+  const noRecogniser = BROWSER === 'OPR' || BROWSER === 'IOS';
+  ok(NL.speech.listenBlocked() === (noRecogniser ? 'browser' : null), 'wrong recogniser verdict');
+  ok(NL.speech.noService() === (BROWSER === 'OPR' ? 'opera' : BROWSER === 'IOS' ? 'ios' : null), 'wrong reason for the missing recogniser');
 
   /* home must not nag about the voice once a Flemish one exists */
   const home0 = view('vandaag');

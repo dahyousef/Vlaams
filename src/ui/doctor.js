@@ -10,7 +10,7 @@ NL.screens.doctor = (function () {
   const TIERS = {
     full: { label: 'Complet', note: 'Voix flamande et reconnaissance vocale : tout fonctionne, y compris la notation automatique de ce que tu dis.' },
     scored: { label: 'Noté, accent du nord', note: 'La reconnaissance fonctionne, mais la voix est néerlandaise du nord. Installe la voix flamande ci-dessous et tu passes au niveau complet.' },
-    compare: { label: 'Enregistre et compare', note: 'Pas de reconnaissance ici — c’est le cas d’Opera, qui n’a pas ce service. Tu peux quand même t’enregistrer et te comparer au modèle, ce qui est une vraie méthode de travail.' },
+    compare: { label: 'Enregistre et compare', note: 'Pas de reconnaissance vocale ici. Tu peux quand même t’enregistrer et te comparer au modèle, ce qui est une vraie méthode de travail.' },
     self: { label: 'Auto-évaluation', note: 'Ni reconnaissance ni enregistrement disponibles. Les exercices oraux te demandent de dire la phrase puis de te juger honnêtement. Ça marche, mais une page hébergée hors d’un cadre te donnerait mieux.' }
   };
 
@@ -37,13 +37,14 @@ NL.screens.doctor = (function () {
       '<section class="doc-tier ' + tier.id + '">' +
       '<span class="eyebrow">' + t.docTierTitle + '</span>' +
       '<h2>' + info.label + '</h2><p>' + info.note + '</p>' +
-      (tier.framed ? '<p class="doc-framed">Cette page tourne dans un cadre intégré (le lien claude.ai). Certains navigateurs refusent le micro dans ce cas, quelle que soit ton autorisation. Le fichier hébergé à toi n’a pas cette limite.</p>' : '') +
+      (tier.framed ? '<p class="doc-framed">Cette page tourne dans un cadre intégré. Certains navigateurs refusent le micro dans ce cas, quelle que soit ton autorisation : ouvre l’app dans son propre onglet.</p>' : '') +
       '</section>' +
 
       '<section class="doc-block">' +
       '<h4>' + t.docBrowser + '</h4>' +
       '<p class="doc-line"><b>' + esc(NL.speech.browserName()) + '</b>' +
-      (NL.speech.browserName() === 'Opera' ? ' — pas de service de reconnaissance vocale. Ce n’est pas réparable côté code.' : '') + '</p>' +
+      (NL.speech.noService() === 'opera' ? ' — pas de service de reconnaissance vocale. Ce n’est pas réparable côté code.'
+        : NL.speech.noService() === 'ios' ? ' — sur iPhone, seul Safari a ce service. Ouvre l’app dans Safari pour être noté.' : '') + '</p>' +
       '</section>' +
 
       '<section class="doc-block">' +

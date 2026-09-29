@@ -80,8 +80,23 @@ NL.speech = (function () {
      fail silently or report a network error, which would otherwise be reported to
      the user as "check your connection". Treat it as having none. */
   const OPERA = /OPR\/|Opera/i.test(UA);
+
+  /* Même mensonge sur iPhone : Apple n'active la reconnaissance que dans Safari
+     lui-même. Chrome, Edge et Firefox y sont Safari déguisé — ils exposent
+     webkitSpeechRecognition et répondent « service-not-allowed ». Sans ça, l'app
+     promettrait un micro qui ne répond jamais. */
+  const IOS = /iPad|iPhone|iPod/.test(UA) ||
+    (/Macintosh/.test(UA) && typeof navigator !== 'undefined' && navigator.maxTouchPoints > 1);
+  const IOS_SHELL = IOS && /CriOS|EdgiOS|FxiOS|OPiOS|OPT\//.test(UA);
+  const NO_SERVICE = OPERA || IOS_SHELL;
+  /* Pourquoi il n'y a pas de service : l'interface n'explique pas iOS comme Opera. */
+  const noService = () => OPERA ? 'opera' : IOS_SHELL ? 'ios' : null;
+
   function browserName() {
     if (OPERA) return 'Opera';
+    if (/CriOS/.test(UA)) return 'Chrome (iPhone)';
+    if (/EdgiOS/.test(UA)) return 'Edge (iPhone)';
+    if (/FxiOS/.test(UA)) return 'Firefox (iPhone)';
     if (/Edg\//.test(UA)) return 'Edge';
     if (/Firefox\//.test(UA)) return 'Firefox';
     if (/Chrome\//.test(UA)) return 'Chrome';
@@ -89,8 +104,8 @@ NL.speech = (function () {
     return 'ton navigateur';
   }
 
-  const canListen = () => !!SR && !OPERA && navigator.onLine !== false;
-  const listenBlocked = () => (!SR || OPERA) ? 'browser' : navigator.onLine === false ? 'offline' : null;
+  const canListen = () => !!SR && !NO_SERVICE && navigator.onLine !== false;
+  const listenBlocked = () => (!SR || NO_SERVICE) ? 'browser' : navigator.onLine === false ? 'offline' : null;
 
   let active = null;
   function listen(opts) {
@@ -220,7 +235,7 @@ NL.speech = (function () {
 
   return {
     canSpeak, say, stop, voiceInfo, rescanVoices: scan, voices: () => voices,
-    canListen, listenBlocked, listen, abort, score, ratio,
+    canListen, listenBlocked, noService, listen, abort, score, ratio,
     canRecord, hasRecording, record, stopRecord, playRecording, playBoth, clearRecording, tier, browserName
   };
 })();

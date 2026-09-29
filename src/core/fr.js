@@ -107,6 +107,7 @@ NL.t = {
   micNetwork: 'La reconnaissance a besoin d’une connexion. Dis-le à voix haute et évalue-toi.',
   micFail: 'Ça n’a pas marché. Réessaie.',
   micNoBrowser: 'Ce navigateur ne reconnaît pas la parole — Opera n’a pas ce service. Enregistre-toi et compare, ou évalue-toi.',
+  micNoBrowserIOS: 'Sur iPhone, seul Safari reconnaît la parole : Chrome et Edge y sont Safari déguisé, sans ce service. Ouvre l’app dans Safari pour être noté, ou enregistre-toi et compare.',
   micOffline: 'Hors ligne : la reconnaissance ne peut pas te noter. Dis-le quand même à voix haute et évalue-toi honnêtement.',
   recRecord: 'M’enregistrer',
   recStop: 'Arrêter',

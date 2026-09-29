@@ -259,7 +259,7 @@ node test/pace.js     "$(pwd)" 400          # 400 jours : charge, variété, exi
 `EDG`), parce que c'est là que vivent les vrais problèmes. Lance les quatre :
 
 ```sh
-for c in "nl-BE OPR" "nl-NL OPR" "none OPR" "nl-BE EDG"; do
+for c in "nl-BE OPR" "nl-NL OPR" "none OPR" "nl-BE EDG" "nl-BE IOS" "nl-BE SAF"; do
   set -- $c; node test/journey.js "$(pwd)" "$1" "$2" | tail -1
 done
 ```

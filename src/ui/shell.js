@@ -135,7 +135,7 @@ NL.ui = (function () {
         '<button class="btn btn-blue wide" data-go="doctor">' + t.setDoctor + '</button></div>' +
 
         '<div class="set-block"><h4>' + t.setExport + '</h4>' +
-        '<p class="set-note muted">' + t.setStorage + ' ' + NL.state.storage + '. Une sauvegarde te suit d’un navigateur à l’autre — indispensable avant de passer du lien claude.ai à une adresse à toi.</p>' +
+        '<p class="set-note muted">' + t.setStorage + ' ' + NL.state.storage + '. Une sauvegarde te suit d’un navigateur à l’autre, et reste utile même connecté : c’est la seule copie que tu tiens en main.</p>' +
         '<div class="row"><button class="btn" data-export="1">' + t.setExport + '</button>' +
         '<button class="btn" data-import="1">' + t.setImport + '</button></div>' +
         '<div class="row"><button class="btn btn-ghost" data-act="copy-show">Copier le texte</button>' +
@@ -172,7 +172,7 @@ NL.ui = (function () {
       '<button class="btn btn-blue wide" data-go="compte">' + t.accManage + '</button></div>';
   }
 
-  const micLine = kind => kind === 'browser' ? t.micNoBrowser
+  const micLine = kind => kind === 'browser' ? (NL.speech.noService() === 'ios' ? t.micNoBrowserIOS : t.micNoBrowser)
     : kind === 'offline' ? t.micOffline
       : 'Reconnaissance vocale active (nl-BE).';
 
