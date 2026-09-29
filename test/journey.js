@@ -48,8 +48,9 @@ const app = mkEl('div');
 
 const voices = VOICE === 'none' ? [{ name: 'Microsoft Hazel', lang: 'en-GB' }]
   : VOICE === 'nl-NL' ? [{ name: 'Microsoft Frank', lang: 'nl-NL' }, { name: 'Microsoft Hazel', lang: 'en-GB' }]
-    : [{ name: 'Microsoft Bart - Dutch (Belgium)', lang: 'nl-BE' },
-       { name: 'Microsoft Frank', lang: 'nl-NL' }, { name: 'Microsoft Hazel', lang: 'en-GB' }];
+    : [{ name: 'Microsoft Bart - Dutch (Belgium)', lang: 'nl-BE', localService: true },
+       { name: 'Microsoft Dena Online (Natural) - Dutch (Belgium)', lang: 'nl-BE', localService: false },
+       { name: 'Microsoft Frank', lang: 'nl-NL', localService: true }, { name: 'Microsoft Hazel', lang: 'en-GB' }];
 
 const spoken = [];
 const ctx = {
@@ -144,6 +145,12 @@ function view(screen, arg) {
   if (VOICE === 'nl-BE') {
     ok(v.quality === 'be', 'a Flemish voice is installed but the app did not select it');
     ok(v.name && /Belgium/.test(v.name), 'wrong voice chosen: ' + v.name);
+    /* Windows a les deux générations : la neuronale doit gagner, et la locale
+       reprendre la main hors ligne, sinon l’exercice devient muet. */
+    ok(/Natural/.test(v.name), 'neural Flemish voice not preferred: ' + v.name);
+    ctx.navigator.onLine = false;
+    ok(/Bart/.test(NL.speech.voiceInfo().name), 'offline should fall back to a local voice: ' + NL.speech.voiceInfo().name);
+    ctx.navigator.onLine = true;
   }
   NL.speech.say('Goeiedag');
   ok(spoken.length > 0, 'nothing was spoken');

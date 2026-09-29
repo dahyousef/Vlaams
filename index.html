@@ -1461,16 +1461,32 @@ NL.speech = (function () {
     'voor', 'bij', 'naar', 'dat', 'dit', 'is', 'om', 'zo', 'ook', 'wel', 'eens', 'hè', 'al']);
 
   /* ---------------- out: text to speech ---------------- */
-  let voices = [], chosen = null, quality = 'none';
+  let voices = [], pool = [], chosen = null, localPick = null, quality = 'none';
+
+  /* Windows ships two generations of Dutch voices side by side: the old local
+     ones (Bart) and the neural ones rendered server-side (Dena, Arnaud, marked
+     "Natural" or "Online"). The neural ones are worth having, but they go silent
+     without a connection — so the best local voice is kept as the understudy. */
+  const natural = v => /natural|neural|online/i.test(v.name || '');
+  const rank = (a, b) => (natural(b) - natural(a)) || ((b.localService ? 0 : 1) - (a.localService ? 0 : 1));
 
   function scan() {
     if (!('speechSynthesis' in window)) return;
     voices = speechSynthesis.getVoices() || [];
     const be = voices.filter(v => /^nl[-_]BE/i.test(v.lang));
     const nl = voices.filter(v => /^nl/i.test(v.lang));
-    if (be.length) { chosen = be[0]; quality = 'be'; }
-    else if (nl.length) { chosen = nl[0]; quality = 'nl'; }
-    else { chosen = null; quality = voices.length ? 'none' : 'unknown'; }
+    pool = (be.length ? be : nl).slice().sort(rank);
+    quality = be.length ? 'be' : nl.length ? 'nl' : (voices.length ? 'none' : 'unknown');
+    chosen = pool[0] || null;
+    localPick = pool.filter(v => v.localService)[0] || null;
+  }
+
+  /* Hors ligne, une voix neuronale ne rend rien du tout : on bascule sur la voix
+     locale plutôt que de laisser l'exercice muet. */
+  function voiceNow() {
+    const off = typeof navigator !== 'undefined' && navigator.onLine === false;
+    if (off && chosen && !chosen.localService && localPick) return localPick;
+    return chosen;
   }
   if ('speechSynthesis' in window) {
     scan();
@@ -1480,8 +1496,8 @@ NL.speech = (function () {
   const canSpeak = () => 'speechSynthesis' in window;
   const voiceInfo = () => ({
     quality,                                  // 'be' | 'nl' | 'none' | 'unknown'
-    name: chosen ? chosen.name : null,
-    lang: chosen ? chosen.lang : null,
+    name: voiceNow() ? voiceNow().name : null,
+    lang: voiceNow() ? voiceNow().lang : null,
     note: quality === 'be' ? 'Voix flamande trouvée.'
       : quality === 'nl' ? 'Seule une voix des Pays-Bas est installée : l’audio a donc l’accent du nord, avec un g raclé là où la Flandre utilise un g doux.'
         : 'Aucune voix néerlandaise trouvée. L’audio retombe sur la voix par défaut du navigateur et ne sonnera pas néerlandais.'
@@ -1494,8 +1510,9 @@ NL.speech = (function () {
     try {
       speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(String(text));
+      const v = voiceNow();
       u.lang = quality === 'be' ? 'nl-BE' : 'nl-NL';
-      if (chosen) u.voice = chosen;
+      if (v) u.voice = v;
       u.rate = opts.rate || 1;
       u.pitch = 1;
       if (opts.onend) u.onend = opts.onend;
