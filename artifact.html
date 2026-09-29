@@ -3597,10 +3597,40 @@ NL.ex = (function () {
 
   const said = (task, L) => L.picked.map(i => task.bank[i]).join(' ');
 
-  /* Distractors always come from the same unit, so a wrong option is plausible. */
+  /* Les mauvaises réponses décident de la difficulté d'un QCM. Tirées au hasard
+     dans l'unité, elles s'éliminent sans connaître le mot : la bonne est la plus
+     longue, ou la seule avec le bon article, ou la seule du bon champ lexical.
+     On les choisit donc PROCHES de la bonne réponse — même genre, longueur
+     comparable, graphie voisine — pour qu'il faille vraiment savoir. */
   function others(item, n, field) {
-    const pool = NL.content.itemsOf(item.unit).filter(x => x.id !== item.id && x.kind === item.kind);
-    return U.sample(pool, n).map(x => field === 'fr' ? U.bareFr(x.fr) : U.bare(x.nl));
+    const label = x => field === 'fr' ? U.bareFr(x.fr) : U.bare(x.nl);
+    const target = label(item), tn = U.norm(target), len = target.length;
+
+    let pool = NL.content.itemsOf(item.unit).filter(x => x.id !== item.id && x.kind === item.kind);
+    /* Unité trop maigre : on élargit aux éléments déjà rencontrés ailleurs,
+       jamais à ceux qui n'ont pas encore été introduits. */
+    if (pool.length < n + 3) {
+      pool = pool.concat(NL.content.allItems().filter(x =>
+        x.kind === item.kind && x.unit !== item.unit && x.id !== item.id && NL.srs.isSeen(x)));
+    }
+    pool = pool.filter(x => U.norm(label(x)) !== tn);
+
+    const score = x => {
+      const s = label(x);
+      let sc = 0;
+      if (item.art && x.art && x.art === item.art) sc += 3;        // pas de tri par de/het
+      const gap = Math.abs(s.length - len) / Math.max(len, 1);
+      sc += gap < 0.2 ? 3 : gap < 0.45 ? 2 : gap < 0.7 ? 1 : 0;    // pas de tri par longueur
+      const d = U.lev(U.norm(s), tn);
+      if (d <= Math.max(2, Math.round(len * 0.4))) sc += 2;        // voisin à l'œil et à l'oreille
+      return sc;
+    };
+
+    /* On garde le peloton de tête puis on tire dedans : proche sans être
+       toujours le même trio pour un mot donné. */
+    const ranked = U.shuffle(pool).sort((a, b) => score(b) - score(a));
+    const short = ranked.slice(0, Math.max(n, Math.min(ranked.length, n * 3)));
+    return U.uniq(U.sample(short, n).map(label)).slice(0, n);
   }
   function bankFor(sentence, item, extra) {
     const right = U.tiles(sentence);

@@ -3,11 +3,25 @@
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const ROOT = process.argv[2];
 
+/* Même graine que les autres suites : une mesure statistique qui échoue une fois
+   sur dix ne dit rien. SEED=... pour rejouer une autre distribution. */
+function rng(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const SafeMath = Object.create(Math);
+SafeMath.random = rng(Number(process.env.SEED || 20260917));
+
 const store = {};
 const ctx = {
   console,
   setTimeout, clearTimeout, setInterval, clearInterval,
-  Math, Date, JSON, Map, Set, RegExp, Array, Object, String, Number, Promise, Error,
+  Math: SafeMath, Date, JSON, Map, Set, RegExp, Array, Object, String, Number, Promise, Error,
   localStorage: {
     getItem: k => (k in store ? store[k] : null),
     setItem: (k, v) => { store[k] = String(v); },
@@ -184,6 +198,35 @@ NL.state.open().then(() => {
   ok(firstShut < 0 || opened.slice(firstShut).every(o => !o),
     'the open range is not contiguous — a unit is open beyond a locked one');
   console.log('  frontière       ' + (firstShut < 0 ? 'tout ouvert' : firstShut + ' unités ouvertes, puis fermé') + ' — contigu');
+
+  console.log('\nQUALITÉ DES LEURRES');
+  /* Un QCM ne vaut que par ses mauvaises réponses. Deux tricheries se mesurent
+     sans juger le sens : la bonne réponse qui est toujours la plus longue, et
+     le seul mot du bon genre. */
+  {
+    const UU = NL.util, all = NL.content.allItems();
+    const artOf = {};
+    all.forEach(x => { if (x.kind === 'word' && x.art) artOf[UU.bare(x.nl)] = x.art; });
+    const words = all.filter(i => i.kind === 'word' && i.art);
+    let n = 0, longest = 0, sameArt = 0, dup = 0;
+    words.forEach(it => {
+      const t = NL.ex.get('pick').build(it);
+      const right = UU.bare(it.nl);
+      const wrong = t.opts.filter(o => !o.ok).map(o => o.label);
+      if (wrong.length < 2) return;
+      n++;
+      if (wrong.every(l => l.length < right.length)) longest++;
+      if (wrong.some(l => artOf[l] === it.art)) sameArt++;
+      if (wrong.some(l => UU.norm(l) === UU.norm(right)) || wrong[0] === wrong[1]) dup++;
+    });
+    const pct = x => (x / n * 100).toFixed(1) + '%';
+    console.log('  ' + n + ' mots à article : bonne réponse la plus longue ' + pct(longest) +
+      ', un leurre du même genre ' + pct(sameArt));
+    ok(n > 50, 'not enough article words to measure: ' + n);
+    ok(dup === 0, 'an option was repeated or equalled the answer, ' + dup + ' times');
+    ok(sameArt / n >= 0.8, 'distractors give the gender away too often: only ' + pct(sameArt) + ' share it');
+    ok(longest / n <= 0.25, 'the answer is the longest option too often: ' + pct(longest));
+  }
 
   console.log('\nEXERCISES');
   const blank = () => ({ sel: null, picked: [], input: '', matchSel: null, matchGone: [], matchBad: null, speech: { phase: 'idle', tries: 0, selfRated: null } });
