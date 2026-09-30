@@ -234,7 +234,8 @@
         '</div></div>';
     }
     return '<div class="mic-panel"><button class="mic big" data-mic="start" aria-label="' + NL.t.speak + '">' + ICON.mic(32) + '</button>' +
-      '<p class="mic-why">' + (sp.error ? esc(errText(sp.error)) : NL.t.micTap) + '</p></div>';
+      '<p class="mic-why">' + (sp.error ? esc(errText(sp.error)) : NL.t.micTap) + '</p>' +
+      (sp.error ? NL.ex.selfRate(sp) : '') + '</div>';
   }
   const errText = k => k === 'denied' ? NL.t.micDenied
     : k === 'silence' ? NL.t.micSilence

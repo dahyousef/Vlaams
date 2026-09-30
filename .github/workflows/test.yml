@@ -31,7 +31,7 @@ jobs:
           node test/sim.js      "$PWD"
           node test/firstrun.js "$PWD"
           node test/sync.js     "$PWD"
-          for c in "nl-BE OPR" "nl-NL OPR" "none OPR" "nl-BE EDG" "nl-BE IOS" "nl-BE SAF"; do
+          for c in "nl-BE OPR" "nl-NL OPR" "none OPR" "nl-BE EDG" "nl-NL EDG" "none EDG" "nl-BE IOS" "nl-BE SAF"; do
             set -- $c
             echo "--- journey $1 $2 ---"
             node test/journey.js "$PWD" "$1" "$2"

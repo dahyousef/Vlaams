@@ -10,6 +10,8 @@ NL.screens.doctor = (function () {
   const TIERS = {
     full: { label: 'Complet', note: 'Voix flamande et reconnaissance vocale : tout fonctionne, y compris la notation automatique de ce que tu dis.' },
     scored: { label: 'Noté, accent du nord', note: 'La reconnaissance fonctionne, mais la voix est néerlandaise du nord. Installe la voix flamande ci-dessous et tu passes au niveau complet.' },
+    novoice: { label: 'Noté, sans voix néerlandaise', note: 'La reconnaissance est disponible, mais aucune voix néerlandaise n’est installée : les modèles audio ne sonneront pas néerlandais. Installe la voix flamande ci-dessous.' },
+    refused: { label: 'Micro refusé', note: 'Le navigateur a refusé l’accès au micro. Autorise-le avec l’icône de cadenas dans la barre d’adresse, puis teste le micro ci-dessous. En attendant, les exercices oraux te demandent de t’évaluer toi-même.' },
     compare: { label: 'Enregistre et compare', note: 'Pas de reconnaissance vocale ici. Tu peux quand même t’enregistrer et te comparer au modèle, ce qui est une vraie méthode de travail.' },
     self: { label: 'Auto-évaluation', note: 'Ni reconnaissance ni enregistrement disponibles. Les exercices oraux te demandent de dire la phrase puis de te juger honnêtement. Ça marche, mais une page hébergée hors d’un cadre te donnerait mieux.' }
   };

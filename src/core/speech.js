@@ -107,6 +107,12 @@ NL.speech = (function () {
   const canListen = () => !!SR && !NO_SERVICE && navigator.onLine !== false;
   const listenBlocked = () => (!SR || NO_SERVICE) ? 'browser' : navigator.onLine === false ? 'offline' : null;
 
+  /* Un refus du micro se retient : sans ça, le docteur audio annonce « la
+     reconnaissance fonctionne » juste après que le navigateur l'a refusée. Une
+     écoute ou un enregistrement réussi l'efface. */
+  let refused = false;
+  const micRefused = () => refused;
+
   let active = null;
   function listen(opts) {
     opts = opts || {};
@@ -136,9 +142,14 @@ NL.speech = (function () {
         : e.error === 'no-speech' ? 'silence'
           : e.error === 'network' ? 'network' : e.error || 'error';
       active = null;
+      if (kind === 'denied') refused = true;
       opts.onerror && opts.onerror(kind);
     };
-    r.onend = () => { active = null; opts.onend && opts.onend(finalText.trim(), alts); };
+    r.onend = () => {
+      active = null;
+      if (finalText.trim()) refused = false;
+      opts.onend && opts.onend(finalText.trim(), alts);
+    };
 
     try { r.start(); active = r; } catch (e) { opts.onerror && opts.onerror('error'); return null; }
     return r;
@@ -157,6 +168,7 @@ NL.speech = (function () {
     opts = opts || {};
     if (!canRecord()) { opts.onerror && opts.onerror('browser'); return; }
     navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+      refused = false;
       chunks = [];
       let mr;
       try { mr = new MediaRecorder(stream); }
@@ -177,6 +189,7 @@ NL.speech = (function () {
     }).catch(err => {
       /* In an embedded frame the permission may never even be offered. */
       const name = err && err.name;
+      if (name === 'NotAllowedError') refused = true;
       opts.onerror && opts.onerror(
         name === 'NotAllowedError' ? (window.self !== window.top ? 'framed' : 'denied')
           : name === 'NotFoundError' ? 'nomic' : 'blocked');
@@ -227,15 +240,19 @@ NL.speech = (function () {
   /* Which tier this browser puts you in — the audio doctor reports this. */
   function tier() {
     const framed = window.self !== window.top;
+    if (refused) return { id: 'refused', framed };
+    /* « Noté, accent du nord » suppose une voix des Pays-Bas. Sans aucune voix
+       néerlandaise, c'est un autre niveau, et il faut le dire. */
     if (canListen() && quality === 'be') return { id: 'full', framed };
-    if (canListen()) return { id: 'scored', framed };
+    if (canListen() && quality === 'nl') return { id: 'scored', framed };
+    if (canListen()) return { id: 'novoice', framed };
     if (canRecord()) return { id: 'compare', framed };
     return { id: 'self', framed };
   }
 
   return {
     canSpeak, say, stop, voiceInfo, rescanVoices: scan, voices: () => voices,
-    canListen, listenBlocked, noService, listen, abort, score, ratio,
+    canListen, listenBlocked, noService, listen, abort, score, ratio, micRefused,
     canRecord, hasRecording, record, stopRecord, playRecording, playBoth, clearRecording, tier, browserName
   };
 })();

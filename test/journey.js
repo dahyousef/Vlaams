@@ -99,6 +99,13 @@ const ctx = {
 if (BROWSER !== 'OPR') {
   ctx.webkitSpeechRecognition = function () {
     this.start = () => {
+      /* Le navigateur refuse le micro : erreur puis fin, comme Chrome et Edge. */
+      if (ctx.__denyNext) {
+        ctx.__denyNext = false;
+        if (this.onerror) this.onerror({ error: 'not-allowed' });
+        if (this.onend) this.onend();
+        return;
+      }
       const said = ctx.__saidNext || '';
       if (this.onresult) this.onresult({ resultIndex: 0, results: [Object.assign([{ transcript: said }], { isFinal: true, length: 1 })] });
       if (this.onend) this.onend();
@@ -163,6 +170,9 @@ function view(screen, arg) {
   const noRecogniser = BROWSER === 'OPR' || BROWSER === 'IOS';
   ok(NL.speech.listenBlocked() === (noRecogniser ? 'browser' : null), 'wrong recogniser verdict');
   ok(NL.speech.noService() === (BROWSER === 'OPR' ? 'opera' : BROWSER === 'IOS' ? 'ios' : null), 'wrong reason for the missing recogniser');
+  /* « Noté, accent du nord » ne se dit que s'il y a une voix du nord. */
+  const wantTier = noRecogniser ? 'compare' : VOICE === 'nl-BE' ? 'full' : VOICE === 'nl-NL' ? 'scored' : 'novoice';
+  ok(NL.speech.tier().id === wantTier, 'wrong audio tier: ' + NL.speech.tier().id + ', expected ' + wantTier);
 
   /* home must not nag about the voice once a Flemish one exists */
   const home0 = view('vandaag');
@@ -353,6 +363,9 @@ function view(screen, arg) {
   await new Promise(r => setImmediate(r));
   const d1 = view('doctor');
   ok(d1.indexOf('cadre') >= 0 || d1.indexOf('Autorisation') >= 0, 'doctor did not explain the blocked microphone');
+  /* Après un refus, le niveau affiché ne peut plus prétendre que tout marche. */
+  ok(NL.speech.tier().id === 'refused', 'tier still claims a working microphone after a refusal: ' + NL.speech.tier().id);
+  ok(d1.indexOf('Micro refusé') >= 0, 'doctor headline ignores the refused microphone');
   console.log('   browser=' + NL.speech.browserName() + ', tier=' + NL.speech.tier().id + ', mic refusal explained');
 
   /* ---------------------------------------------------------- 11. keyboard */
@@ -391,6 +404,33 @@ function view(screen, arg) {
   console.log('   promised ' + plan.total + ', session holds ' + delivered);
   ok(Math.abs(plan.total - delivered) <= 1, 'home promises ' + plan.total + ' but the session holds ' + delivered);
   S.abandon();
+
+  /* ---------------------------------------------------------- 14. mic refused mid-scenario */
+  head('14. Microphone refused in the middle of a scenario');
+  if (noRecogniser) {
+    console.log('   skipped: no recogniser here, speaking already goes through record-and-compare');
+  } else {
+    const scn = NL.content.scenarios[0];
+    NL.ui.go('scenario', scn.id);
+    let g = 0, html = '';
+    while (g++ < 20) {
+      html = NL.screens.scenario.render(scn.id);
+      if (html.indexOf('data-mic="start"') >= 0) break;
+      if (html.indexOf('data-step="next"') >= 0) { tap('scenario', { step: 'next' }); continue; }
+      if (html.indexOf('data-choice=') >= 0) { tap('scenario', { choice: '0' }); continue; }
+    }
+    ok(html.indexOf('data-mic="start"') >= 0, 'never reached a speaking turn');
+    ok(html.indexOf('data-self=') < 0, 'self-rating offered before the microphone was tried');
+    ctx.__denyNext = true;
+    tap('scenario', { mic: 'start' });
+    const refused = NL.screens.scenario.render(scn.id);
+    ok(refused.indexOf('Micro bloqué') >= 0, 'the refusal was not explained');
+    ok(refused.indexOf('data-self="1"') >= 0, 'the refusal promises self-rating but offers no button — a dead end');
+    tap('scenario', { self: '1' });
+    const moved = NL.screens.scenario.render(scn.id);
+    ok(moved.indexOf('Micro bloqué') < 0, 'rating yourself did not move the scenario on');
+    console.log('   refusal explained, self-rating offered, scenario continues');
+  }
 
   console.log('\n' + checks + ' checks, ' + (fails === 0 ? 'NO PROBLEMS' : fails + ' PROBLEM(S)'));
   process.exit(fails ? 1 : 0);

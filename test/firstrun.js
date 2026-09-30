@@ -98,7 +98,7 @@ NL.state.open().then(() => {
   NL.ui.go('sessie');
 
   const S = NL.screens.sessie;
-  let turns = 0, kickers = {};
+  let turns = 0, kickers = {}, twins = 0;
   while (app.innerHTML.indexOf('done-stage') < 0 && turns++ < 60) {
     const html = app.innerHTML;
     const k = (html.match(/class="kicker"><span class="sub">[^<]*<\/span>([^<]*)/) || [])[1] || '(match)';
@@ -106,10 +106,24 @@ NL.state.open().then(() => {
 
     /* Answer correctly: pick the option marked ok, place every tile, type the target. */
     if (html.includes('data-match=')) {
-      for (let k2 = 0; k2 < 5; k2++) {
+      /* Deux mots qui partagent une traduction se croisent : le mot A sur la
+         carte « bonjour » de B, et inversement. À l'écran rien ne les distingue,
+         donc c'est ce qu'un vrai utilisateur fait une fois sur deux. */
+      const pairs = S.peek().task.pairs, done = new Set();
+      for (let a = 0; a < pairs.length; a++) for (let b = a + 1; b < pairs.length; b++) {
+        if (done.has(a) || done.has(b) || U.norm(pairs[a].fr) !== U.norm(pairs[b].fr)) continue;
+        S.click({ dataset: {} }, { match: 'l' + a, k: String(a), side: 'l' });
+        S.click({ dataset: {} }, { match: 'r' + b, k: String(b), side: 'r' });
+        S.click({ dataset: {} }, { match: 'l' + b, k: String(b), side: 'l' });
+        S.click({ dataset: {} }, { match: 'r' + a, k: String(a), side: 'r' });
+        done.add(a); done.add(b); twins++;
+      }
+      for (let k2 = 0; k2 < pairs.length; k2++) {
+        if (done.has(k2)) continue;
         S.click({ dataset: {} }, { match: 'l' + k2, k: String(k2), side: 'l' });
         S.click({ dataset: {} }, { match: 'r' + k2, k: String(k2), side: 'r' });
       }
+      ok(!app.innerHTML.includes('data-match=') || S.peek().ex !== 'match', 'the matching board did not clear after every pair was matched');
       continue;
     }
     /* Answer it properly, using the live task. */
@@ -137,7 +151,7 @@ NL.state.open().then(() => {
     S.click({ dataset: {} }, { check: '1' });
     S.click({ dataset: {} }, { next: '1' });
   }
-  console.log('  turns           ' + turns);
+  console.log('  turns           ' + turns + (twins ? ', ' + twins + ' twin translation(s) matched crosswise' : ''));
   Object.keys(kickers).forEach(k => console.log('    ' + (k || '(match)').padEnd(32) + kickers[k]));
   ok(app.innerHTML.indexOf('done-stage') >= 0, 'session never reached the summary');
 

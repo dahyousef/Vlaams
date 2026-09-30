@@ -508,7 +508,7 @@ h1,h2,h3,h4,h5{font-family:var(--display);font-weight:700;letter-spacing:-.02em;
 .doc-tier.full{border-color:var(--goed);background:var(--goed-soft)}
 .doc-tier.scored{border-color:var(--goud);background:var(--goud-soft)}
 .doc-tier.compare{border-color:var(--groen);background:var(--groen-soft)}
-.doc-tier.self{border-color:var(--amber);background:var(--amber-soft)}
+.doc-tier.self,.doc-tier.novoice,.doc-tier.refused{border-color:var(--amber);background:var(--amber-soft)}
 .doc-tier h2{font-size:20px;margin:4px 0 6px}
 .doc-tier p{margin:0;font-size:14px;color:var(--ink-2);max-width:52ch}
 .doc-framed{margin-top:10px !important;font-size:13px !important;padding-top:10px;border-top:1px dashed var(--line-2)}

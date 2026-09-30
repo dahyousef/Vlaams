@@ -228,6 +228,37 @@ NL.state.open().then(() => {
     ok(longest / n <= 0.25, 'the answer is the longest option too often: ' + pct(longest));
   }
 
+  /* Un leurre qui est une AUTRE bonne réponse : « bonjour » avec « hallo » ET
+     « goeiedag » à l'écran, l'un des deux est compté faux. */
+  {
+    const UU = NL.util, all = NL.content.allItems().filter(i => i.kind === 'word' || i.kind === 'phrase');
+    const senses = s => String(s || '').split(/\s*\/\s*/).map(UU.norm).filter(Boolean);
+    const overlap = (a, b) => senses(a).some(x => senses(b).indexOf(x) >= 0);
+    const byNl = {};
+    all.forEach(x => { (byNl[UU.norm(UU.bare(x.nl))] = byNl[UU.norm(UU.bare(x.nl))] || []).push(x); });
+    let built = 0, second = 0, example = '';
+    /* Les mots qui ont un jumeau de sens sont rares : on les tire bien plus
+       souvent, sinon le hasard ne les met presque jamais face à face. */
+    const hasTwin = it => all.some(x => x !== it && x.kind === it.kind && overlap(UU.bareFr(x.fr), UU.bareFr(it.fr)));
+    all.forEach(it => {
+      const reps = hasTwin(it) ? 60 : 3;
+      for (let k = 0; k < reps; k++) {
+        const p = NL.ex.get('pick').build(it), r = NL.ex.get('recall').build(it);
+        built += 2;
+        p.opts.filter(o => !o.ok).forEach(o => {
+          if ((byNl[UU.norm(o.label)] || []).some(x => overlap(UU.bareFr(x.fr), UU.bareFr(it.fr)))) {
+            second++; example = example || UU.bareFr(it.fr) + ' → ' + o.label;
+          }
+        });
+        r.opts.filter(o => !o.ok).forEach(o => {
+          if (overlap(o.label, UU.bareFr(it.fr))) { second++; example = example || it.nl + ' → ' + o.label; }
+        });
+      }
+    });
+    console.log('  ' + built + ' QCM construits, deuxième bonne réponse parmi les leurres : ' + second);
+    ok(second === 0, 'a distractor was another correct answer, ' + second + ' times (e.g. ' + example + ')');
+  }
+
   console.log('\nEXERCISES');
   const blank = () => ({ sel: null, picked: [], input: '', matchSel: null, matchGone: [], matchBad: null, speech: { phase: 'idle', tries: 0, selfRated: null } });
   const U = NL.util;
@@ -274,10 +305,44 @@ NL.state.open().then(() => {
   /* match takes an array */
   const mItems = items.filter(i => i.kind === 'word').slice(0, 5);
   const mt = NL.ex.registry.match.build(mItems);
-  const mL = blank(); mL.matchGone = [0, 1, 2, 3, 4];
+  const mL = blank(); mL.matchGone = ['l0', 'r0', 'l1', 'r1', 'l2', 'r2', 'l3', 'r3', 'l4'];
+  ok(!NL.ex.registry.match.ready(mt, mL), 'match completed with a card still on the board');
+  mL.matchGone.push('r4');
   ok(NL.ex.registry.match.ready(mt, mL), 'match never completes');
   ok(NL.ex.registry.match.view(mt, mL).length > 50, 'match rendered nothing');
   console.log('  match (5 pairs)     ok');
+
+  /* Deux mots, une même traduction : à l'écran les deux cartes « bonjour » sont
+     identiques, donc l'une ou l'autre doit être acceptée. */
+  {
+    const hallo = items.find(i => U.bare(i.nl) === 'hallo'), goeiedag = items.find(i => U.bare(i.nl) === 'goeiedag');
+    const dag = items.find(i => U.bare(i.nl) === 'dag');
+    ok(hallo && goeiedag && U.norm(U.bareFr(hallo.fr)) === U.norm(U.bareFr(goeiedag.fr)),
+      'the fixture for twin translations is gone (hallo/goeiedag no longer share one)');
+    if (hallo && goeiedag && dag) {
+      const tw = NL.ex.registry.match.build([hallo, goeiedag, dag]);
+      ok(NL.ex.registry.match.fits(tw, 0, 1) && NL.ex.registry.match.fits(tw, 1, 0),
+        'two cards with the same text are not interchangeable');
+      ok(!NL.ex.registry.match.fits(tw, 0, 2), 'match accepted a genuinely wrong pair');
+      console.log('  match (twin « ' + U.bareFr(hallo.fr) + ' »)   either card accepted');
+    }
+  }
+
+  /* Micro refusé : le message promet l'auto-évaluation, les boutons doivent suivre. */
+  {
+    /* Ce faux navigateur n'a pas de reconnaissance : on fait comme s'il en avait
+       une, pour passer par le chemin où le refus arrive. */
+    const realBlocked = NL.speech.listenBlocked;
+    NL.speech.listenBlocked = () => null;
+    const sp = NL.ex.get('speak'), st = sp.build(p), sL = blank();
+    ok(sp.view(st, sL, 'ask').indexOf('data-self=') < 0, 'self-rating offered before the microphone was even tried');
+    sL.speech.error = 'denied';
+    ok(sp.view(st, sL, 'ask').indexOf('data-self="1"') >= 0, 'a refused microphone leaves no way to rate yourself');
+    sL.speech.selfRated = true;
+    ok(sp.ready(st, sL) && sp.judge(st, sL).ok, 'rating yourself after a refusal does not count');
+    NL.speech.listenBlocked = realBlocked;
+    console.log('  speak (mic refused) self-rating offered');
+  }
 
   console.log('\nSPEECH SCORING');
   const t = 'Ik ben Nederlands aan het leren';
