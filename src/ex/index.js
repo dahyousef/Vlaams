@@ -196,10 +196,21 @@ NL.ex = (function () {
       const forced = d.gap ||
         (item.kind === 'word' && U.tiles(U.bare(item.nl)).length === 1 ? U.bare(item.nl) : null);
       const gap = gapWord(d.nl, forced);
+      /* Les leurres du texte à trous sortaient des mots de l'unité, articles et
+         pronoms compris : « Het » face à « gemeentehuis » ne trompe personne et
+         se raye sans lire la phrase. On ne garde que des mots pleins, et de
+         longueur comparable au mot caché. */
+      const FILLERS = ['het', 'de', 'een', 'ik', 'je', 'ge', 'gij', 'wij', 'hij', 'zij', 'ze', 'we',
+        'is', 'ben', 'zijn', 'heb', 'hebt', 'heeft', 'en', 'in', 'op', 'aan', 'te', 'van', 'met',
+        'voor', 'bij', 'naar', 'dat', 'dit', 'die', 'deze', 'niet', 'geen', 'om', 'zo', 'ook',
+        'wel', 'uw', 'mijn', 'er', 'u', 'al'];
+      const pool = U.uniq(NL.content.itemsOf(item.unit)
+        .flatMap(x => U.tiles(x.nl || '').concat((x.drills || []).flatMap(d => U.tiles(d.nl))))
+        .filter(w => w.length > 2 && U.norm(w) !== U.norm(gap) && FILLERS.indexOf(U.norm(w)) < 0));
+      const near = pool.slice().sort((a, b) =>
+        Math.abs(a.length - gap.length) - Math.abs(b.length - gap.length));
       const opts = U.shuffle([{ label: gap, ok: true }].concat(
-        U.sample(U.uniq(NL.content.itemsOf(item.unit)
-          .flatMap(x => U.tiles(x.nl || ''))
-          .filter(w => w.length > 2 && U.norm(w) !== U.norm(gap))), 2).map(l => ({ label: l, ok: false }))));
+        U.sample(near.slice(0, Math.max(6, Math.min(near.length, 12))), 2).map(l => ({ label: l, ok: false }))));
       return { type: 'cloze', item, drill: d, gap, opts, shown: d.nl.replace(new RegExp('(^|\\s)' + gap.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?=\\s|$|[.,!?])'), '$1     ') };
     },
     view(t, L, phase) {
