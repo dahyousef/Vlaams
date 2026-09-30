@@ -98,7 +98,7 @@ NL.ui = (function () {
     }
     if (sheet === 'instellingen') {
       const v = NL.speech.voiceInfo();
-      const mic = NL.speech.listenBlocked();
+      const mic = NL.speech.listenBlocked() || (NL.speech.micRefused() ? 'refused' : null);
       return card(t.setTitle,
         '<div class="set-block"><h4>' + t.setTheme + '</h4><div class="seg">' +
         [['system', t.setSystem], ['light', t.setLight], ['dark', t.setDark]].map(([k, label]) =>
@@ -181,7 +181,9 @@ NL.ui = (function () {
 
   const micLine = kind => kind === 'browser' ? (NL.speech.noService() === 'ios' ? t.micNoBrowserIOS : t.micNoBrowser)
     : kind === 'offline' ? t.micOffline
-      : 'Reconnaissance vocale active (nl-BE).';
+      /* Même règle que le docteur audio : après un refus, ne pas dire « active ». */
+      : kind === 'refused' ? 'Micro refusé par le navigateur : autorise-le avec le cadenas de la barre d’adresse.'
+        : 'Reconnaissance vocale active (nl-BE).';
 
   const toggle = (k, label, on) =>
     '<label class="tog"><span>' + label + '</span>' +
@@ -276,8 +278,12 @@ NL.ui = (function () {
     root = el;
 
     root.addEventListener('click', e => {
-      const hit = e.target.closest('[data-say],[data-go],[data-sheet],[data-close],[data-backdrop],[data-theme],' +
+      let hit = e.target.closest('[data-say],[data-go],[data-sheet],[data-close],[data-backdrop],[data-theme],' +
         '[data-toggle],[data-reset],[data-reset-yes],[data-quit-yes],[data-export],[data-import],[data-pace],[data-act]');
+      /* Avec le thème Sombre ou Clair, <html> porte data-theme : closest()
+         remontait jusqu'à lui, chaque clic devenait « choisir le thème », et plus
+         aucune réponse ne passait. On ne garde que ce qui est dans l'app. */
+      if (hit && !root.contains(hit)) hit = null;
       const S = NL.screens[route];
 
       if (hit) {

@@ -199,6 +199,45 @@ NL.state.open().then(() => {
     'the open range is not contiguous — a unit is open beyond a locked one');
   console.log('  frontière       ' + (firstShut < 0 ? 'tout ouvert' : firstShut + ' unités ouvertes, puis fermé') + ' — contigu');
 
+  /* Une unité ouverte ne se referme pas : quelques rechutes dans l'unité 1
+     refermaient les onze suivantes, pourtant déjà rencontrées. */
+  {
+    NL.state.setMeta({ reached: 0 });
+    NL.content.units.forEach(u => NL.content.itemsOf(u.id).forEach(it => NL.srs.seed(it, 5)));
+    ok(NL.content.units.every(u => NL.content.unitOpen(u.id)), 'a fully worked course is not fully open');
+    NL.content.itemsOf(NL.content.units[0].id).forEach(it => NL.srs.seed(it, 1));
+    const stillOpen = NL.content.units.filter(u => NL.content.unitOpen(u.id)).length;
+    ok(stillOpen === NL.content.units.length, 'lapses in unit 1 closed ' + (NL.content.units.length - stillOpen) + ' unit(s) that were already open');
+    /* Rattrapage : sans mémoire enregistrée, une unité rencontrée à 80 % compte comme ouverte. */
+    NL.state.setMeta({ reached: 0 });
+    ok(NL.content.unitOpen(NL.content.units[NL.content.units.length - 1].id), 'an older profile with every unit met stays locked');
+    console.log('  frontière       une unité ouverte le reste, même après des rechutes');
+  }
+
+  console.log('\nARTICLES');
+  /* bare() et bareFr() retirent l'article d'un MOT pour l'afficher nu. Ils
+     tronquaient aussi les phrases (« Het regent weer. » → « regent weer. ») et
+     coupaient des mots en deux (« leur » → « ur », « un » → rien). */
+  {
+    const UU = NL.util;
+    [['de fiets', 'fiets'], ['het huis', 'huis'], ['een', 'een'], ['Het regent weer.', 'Het regent weer.'],
+     ['Een goed weekend nog!', 'Een goed weekend nog!'], ['De vergaderzaal', 'vergaderzaal']].forEach(([a, b]) =>
+      ok(UU.bare(a) === b, 'bare("' + a + '") gave "' + UU.bare(a) + '", wanted "' + b + '"'));
+    [['le jambon', 'jambon'], ['l’eau', 'eau'], ['une tasse', 'tasse'], ['un', 'un'], ['leur', 'leur'], ['durer', 'durer'],
+     ['Une bière, s’il vous plaît.', 'Une bière, s’il vous plaît.'], ['La réunion commence.', 'La réunion commence.']].forEach(([a, b]) =>
+      ok(UU.bareFr(a) === b, 'bareFr("' + a + '") gave "' + UU.bareFr(a) + '", wanted "' + b + '"'));
+    const all = NL.content.allItems();
+    const cutNl = all.filter(i => i.kind !== 'word' && UU.bare(i.nl) !== i.nl);
+    const cutFr = all.filter(i => i.kind !== 'word' && UU.bareFr(i.fr) !== i.fr);
+    const midWord = all.filter(i => { const b = UU.bareFr(i.fr); return b !== i.fr && !/(\s|’|')$/.test(i.fr.slice(0, i.fr.length - b.length)); });
+    const empty = all.filter(i => !UU.bare(i.nl).trim() || !UU.bareFr(i.fr).trim());
+    ok(cutNl.length === 0, cutNl.length + ' sentence(s) lose their first word, e.g. ' + (cutNl[0] || {}).nl);
+    ok(cutFr.length === 0, cutFr.length + ' French sentence(s) lose their first word, e.g. ' + (cutFr[0] || {}).fr);
+    ok(midWord.length === 0, midWord.length + ' gloss(es) cut mid-word, e.g. ' + (midWord[0] || {}).fr);
+    ok(empty.length === 0, empty.length + ' item(s) would show an empty label');
+    console.log('  ' + all.length + ' éléments : aucune phrase tronquée, aucun mot coupé, aucune étiquette vide');
+  }
+
   console.log('\nQUALITÉ DES LEURRES');
   /* Un QCM ne vaut que par ses mauvaises réponses. Deux tricheries se mesurent
      sans juger le sens : la bonne réponse qui est toujours la plus longue, et
@@ -255,6 +294,14 @@ NL.state.open().then(() => {
         });
       }
     });
+    /* « Comment le dit-on ici ? » : une phrase face à deux mots isolés se devine. */
+    let mixed = 0, vl = 0;
+    all.filter(i => i.kind === 'phrase' && i.be && UU.norm(i.be) !== UU.norm(i.nl)).forEach(it => {
+      const t = NL.ex.get('vlaams').build(it); vl++;
+      const kinds = t.opts.filter(o => !o.ok).map(o => (all.find(x => x.be === o.label) || {}).kind);
+      if (kinds.some(k => k !== 'phrase')) mixed++;
+    });
+    ok(mixed === 0, 'standaard/Vlaams paired a sentence with single-word distractors ' + mixed + ' of ' + vl + ' times');
     console.log('  ' + built + ' QCM construits, deuxième bonne réponse parmi les leurres : ' + second);
     ok(second === 0, 'a distractor was another correct answer, ' + second + ' times (e.g. ' + example + ')');
   }

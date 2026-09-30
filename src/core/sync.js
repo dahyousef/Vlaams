@@ -309,6 +309,7 @@ NL.sync = (function () {
       out[k] = Array.from(new Set([].concat(a[k] || [], b[k] || [])));
     });
     out.placed = !!(a.placed || b.placed);
+    out.reached = Math.max(a.reached || 0, b.reached || 0);
     out.updatedAt = Math.max(a.updatedAt || 0, b.updatedAt || 0);
     return out;
   }

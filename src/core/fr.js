@@ -156,6 +156,7 @@ NL.t = {
   wordsAdd: 'Ajouter un mot à moi',
   wordsNothing: 'Rien encore. Fais une session et ça apparaît ici.',
   wordsNoResult: 'Rien trouvé.',
+  wordsMineNone: 'Aucun mot à toi pour l’instant. Ajoute-en un avec le bouton ci-dessus.',
   wordsSearch: 'Rechercher…',
   wordsAll: 'tous', wordsWeak: 'fragiles', wordsStrong: 'solides', wordsMine: 'à moi',
   wordsNl: 'Néerlandais', wordsFr: 'Français', wordsBe: 'Comme on dit ici',
@@ -195,12 +196,15 @@ NL.t = {
   placeHigh: 'Tu comprends déjà bien plus que tu ne crois.',
   placeMid: 'Il y a déjà une base, surtout passive.',
   placeLow: 'On commence au début — et c’est très bien.',
-  placeSeeded: n => 'Reconnaître un mot n’est pas savoir le dire, donc rien n’a été marqué comme acquis : ' + n + ' éléments ont simplement été placés plus haut dans l’échelle, en sautant les présentations dont tu n’as clairement pas besoin. Ils doivent encore atteindre l’étape orale.',
+  placeSeeded: n => n === 0
+    ? 'Tout ce que ces unités contiennent était déjà en cours d’apprentissage : le test ne change rien à ta progression.'
+    : 'Reconnaître un mot n’est pas savoir le dire, donc rien n’a été marqué comme acquis : ' + n + ' éléments ont simplement été placés plus haut dans l’échelle, en sautant les présentations dont tu n’as clairement pas besoin. Ils doivent encore atteindre l’étape orale.',
   placeNone: 'Rien n’a été avancé, donc tu pars propre. C’est le point de départ honnête.',
   placeRecognised: 'Reconnus', placeAdvanced: 'Avancés',
   placeUnits: 'Unités', placeAsked: 'Questions',
   placeRule: (a, b) => a + ' bonnes réponses sur ' + b + ' pour créditer l’unité et passer à la suivante.',
   placeStops: n => 'Le test s’arrête à « ' + n + ' » : c’est de là que tu pars.',
+  placeAll: n => 'Les ' + n + ' unités sont passées : tout le niveau A1 est avancé. Il reste à faire monter chaque élément jusqu’à l’oral.',
   placeFirst: 'Commence ta première session',
   placeLater: 'Plus tard',
 

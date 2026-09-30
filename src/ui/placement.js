@@ -28,10 +28,19 @@ NL.screens.placement = (function () {
 
   function buildOpts() {
     const it = T.q[T.at];
+    /* Même règle que les exercices : aucun leurre ne peut être une autre bonne
+       réponse. « collega » existe dans deux unités, et « collègue » affiché deux
+       fois dont un compté faux ferait échouer une unité à tort. */
+    const right = U.bareFr(it.fr);
     const pool = NL.content.allItems().filter(x =>
-      x.id !== it.id && x.kind === it.kind && x.unit !== 'eigen');
-    T.opts = U.shuffle([{ label: U.bareFr(it.fr), ok: true }]
-      .concat(U.sample(pool, 3).map(x => ({ label: U.bareFr(x.fr), ok: false }))));
+      x.id !== it.id && x.kind === it.kind && x.unit !== 'eigen' &&
+      U.norm(U.bareFr(x.fr)) !== U.norm(right) && !NL.ex.sameSense(x, it));
+    const wrong = [];
+    U.shuffle(pool).forEach(x => {
+      const l = U.bareFr(x.fr);
+      if (wrong.length < 3 && !wrong.some(w => U.norm(w) === U.norm(l))) wrong.push(l);
+    });
+    T.opts = U.shuffle([{ label: right, ok: true }].concat(wrong.map(l => ({ label: l, ok: false }))));
     T.sel = null;
   }
 
@@ -100,13 +109,16 @@ NL.screens.placement = (function () {
 
   function summary() {
     const n = T.credited.length;
-    const last = T.credited[n - 1];
+    /* On repart de l'unité ÉCHOUÉE, pas de la dernière réussie ; et si tout est
+       passé, il n'y a pas d'arrêt à annoncer. */
+    const stopAt = NL.content.units[T.ui];
+    const where = stopAt ? t.placeStops(esc(stopAt.name)) : t.placeAll(n);
     return '<div class="lesson"><div class="lesson-body"><div class="stage done-stage">' +
       '<div class="done-mark">\u{1F4CF}</div>' +
       '<h2>' + (n === 0 ? t.placeLow : n >= 4 ? t.placeHigh : t.placeMid) + '</h2>' +
       '<p class="done-sub">' + (n === 0
         ? t.placeNone
-        : t.placeSeeded(T.seeded) + ' ' + t.placeStops(esc(last.name))) + '</p>' +
+        : t.placeSeeded(T.seeded) + ' ' + where) + '</p>' +
       '<div class="tally">' +
       '<div class="tally-box blue"><div class="t-n">' + n + '</div><div class="t-l">' + t.placeUnits + '</div></div>' +
       '<div class="tally-box gold"><div class="t-n">' + T.seeded + '</div><div class="t-l">' + t.placeAdvanced + '</div></div>' +

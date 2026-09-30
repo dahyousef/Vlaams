@@ -38,7 +38,7 @@ function mkEl(tag) {
     addEventListener(t, f) { (listeners[t] = listeners[t] || []).push(f); },
     removeEventListener() {}, setSelectionRange() {}, focus() {}, select() {}, click() {},
     setAttribute() {}, removeAttribute() {}, remove() {}, appendChild() {},
-    insertAdjacentHTML() {}, matches: () => false, closest: () => null,
+    insertAdjacentHTML() {}, matches: () => false, closest: () => null, contains: () => true,
     querySelector: () => null, querySelectorAll: () => [],
     getBoundingClientRect: () => ({ width: 400, height: 600, top: 0, left: 0 })
   };
@@ -190,14 +190,18 @@ function view(screen, arg) {
   head('3. Placement test, answered honestly');
   const P = NL.screens.placement;
   view('placement');
-  let guard = 0;
+  let guard = 0, dupOpts = 0;
   while (guard++ < 40) {
     const html = P.render();
     if (html.indexOf('done-stage') >= 0) break;
+    /* Deux options identiques, dont une comptée fausse, feraient échouer une unité à tort. */
+    const labels = (html.match(/<span class="opt-key">\d<\/span><span>([^<]*)<\/span>/g) || []).map(s => U.norm(s.replace(/<[^>]+>/g, '').slice(1)));
+    if (new Set(labels).size !== labels.length) dupOpts++;
     tap('placement', { opt: '0' });          // whatever is first, like a real guess
     tap('placement', { act: 'next' });
   }
   ok(P.render().indexOf('done-stage') >= 0, 'placement never finished');
+  ok(dupOpts === 0, 'placement showed the same option twice in ' + dupOpts + ' question(s)');
   console.log('   finished in ' + guard + ' questions, seeded ' + NL.srs.counts().seen + ' items');
   ok(NL.state.meta().placed === true, 'placement did not mark itself done');
 
@@ -337,6 +341,24 @@ function view(screen, arg) {
   fire({ toggle: 'showFlemish' });
   fire({ export: '1' });
   console.log('   theme, toggles and export all respond');
+
+  /* Thème Sombre ou Clair : <html data-theme> est un ancêtre de chaque bouton.
+     closest('[data-theme]') le trouvait, et chaque clic de réponse devenait un
+     changement de thème. On clique « Passer » avec ce thème actif. */
+  NL.ui.closeSheet();
+  fire({ theme: 'dark' });
+  const htmlEl = { dataset: { theme: 'dark' } };
+  const skipEl = { dataset: { skip: '1' } };
+  app.contains = el => el !== htmlEl;
+  NL.state.setMeta({ exDay: null, exToday: 0 });
+  S.begin('vandaag'); NL.ui.go('sessie');
+  const beforeSkip = NL.screens.sessie.render();
+  (listeners.click || []).forEach(f => f({ target: { closest: sel => sel.indexOf('[data-skip]') >= 0 ? skipEl : sel.indexOf('[data-theme]') >= 0 ? htmlEl : null } }));
+  const afterSkip = NL.screens.sessie.render();
+  ok(beforeSkip.indexOf('data-next=') < 0 && afterSkip.indexOf('data-next=') >= 0, 'with the dark theme on, tapping an answer button does nothing (the click is read as a theme change)');
+  S.abandon(); NL.ui.go('vandaag');
+  fire({ theme: 'system' });
+  console.log('   dark theme: answer buttons still respond');
 
   /* ---------------------------------------------------------- 9. backup */
   head('9. Backup round trip');

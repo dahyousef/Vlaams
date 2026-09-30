@@ -26,9 +26,17 @@ NL.util = (function () {
   /* Tiles keep their visible punctuation off, but the display string stays intact. */
   const tiles = s => String(s).split(/\s+/).map(t => t.replace(/[.,!?;:"()]/g, '')).filter(Boolean);
 
-  const bare = nl => String(nl).replace(/^(de|het|een)\s+/i, '');
+  /* L'article ne se retire que d'un MOT. Une phrase le garde : sinon « Het
+     regent weer. » s'affiche « regent weer. ». Et l'article doit être suivi d'un
+     espace (ou d'une apostrophe en français) : sans ça, « leur » devenait « ur »,
+     « durer » « rer », et « un » tout seul une option vide. */
+  const sentence = s => /[.!?…]\s*$/.test(s);
+  const bare = nl => { const s = String(nl); return sentence(s) ? s : s.replace(/^(de|het|een)\s+(?=\S)/i, ''); };
   /* Strips the French article so a gloss can be shown bare in a tile or an option. */
-  const bareFr = fr => String(fr).replace(/^(les|le|la|un|une|des|du|de la|de l’|l’)\s?/i, '');
+  const bareFr = fr => {
+    const s = String(fr);
+    return sentence(s) ? s : s.replace(/^(?:(?:les|le|la|une|un|des|du|de la)\s+|(?:de l[’']|l[’']))(?=\S)/i, '');
+  };
 
   function lev(a, b) {
     if (a === b) return 0;

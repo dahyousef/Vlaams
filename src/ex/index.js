@@ -438,8 +438,12 @@ NL.ex = (function () {
   R.vlaams = {
     id: 'vlaams', kicker: NL.t.exVlaams,
     build(item) {
-      const pool = NL.content.allItems().filter(x =>
+      const any = NL.content.allItems().filter(x =>
         x.be && x.id !== item.id && U.norm(x.be) !== U.norm(x.nl) && U.norm(x.be) !== U.norm(item.be));
+      /* Une phrase contre deux mots isolés se devine sans rien savoir : les
+         leurres viennent d'abord du même genre d'élément. */
+      const same = any.filter(x => x.kind === item.kind);
+      const pool = same.length >= 2 ? same : any;
       const opts = U.shuffle([{ label: item.be, ok: true }]
         .concat(U.sample(pool, 2).map(x => ({ label: x.be, ok: false }))));
       return { type: 'vlaams', item, opts };
@@ -511,7 +515,8 @@ NL.ex = (function () {
        pas forcément celle d'origine. */
     ready: (t, L) => L.matchGone.length >= t.pairs.length * 2,
     judge: () => ({ ok: true }),
-    answer: () => '',
+    /* Affiché si l'on passe : les paires elles-mêmes, pas un pied vide. */
+    answer: t => t.pairs.map(p => p.nl + ' = ' + p.fr).join(' · '),
     /* Deux cartes vont ensemble si leurs TEXTES correspondent : « goeiedag » et
        « hallo » disent tous deux « bonjour », et l'écran ne permet pas de savoir
        quel « bonjour » était le sien. */
@@ -521,5 +526,5 @@ NL.ex = (function () {
     }
   };
 
-  return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, recordPanel, selfRate };
+  return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, recordPanel, selfRate, sameSense };
 })();

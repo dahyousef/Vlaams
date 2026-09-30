@@ -14,9 +14,12 @@ NL.screens.luisteren = (function () {
 
   function build() {
     const c = S.clips[S.at];
-    const pool = NL.content.listenClips().filter(x => x.id !== c.id);
+    /* Une même réplique revient d'un scénario à l'autre : sans ce filtre, la
+       bonne traduction pouvait s'afficher deux fois, dont une comptée fausse. */
+    const pool = U.uniq(NL.content.listenClips()
+      .filter(x => x.id !== c.id && U.norm(x.fr) !== U.norm(c.fr)).map(x => x.fr));
     S.opts = U.shuffle([{ label: c.fr, ok: true }].concat(
-      U.sample(pool, 2).map(x => ({ label: x.fr, ok: false }))));
+      U.sample(pool, 2).map(l => ({ label: l, ok: false }))));
     S.plays = 0;
   }
 
@@ -115,8 +118,10 @@ NL.screens.luisteren = (function () {
         '<p class="word-diff">' + sp.parts.map(p => '<span class="' + (p.ok ? (p.close ? 'w-close' : 'w-ok') : 'w-no') + '">' + esc(p.word) + '</span>').join(' ') + '</p>' +
         '<div class="mic-actions"><button class="btn btn-blue" data-act="mic">' + NL.t.replay + '</button></div></div>';
     }
+    /* Un refus s'affiche : sans ça, toucher le micro ne faisait rien, en silence. */
     return '<div class="mic-panel"><button class="mic big" data-act="mic">' + ICON.mic(32) + '</button>' +
-      '<p class="mic-why">' + NL.t.micTap + '</p></div>';
+      '<p class="mic-why">' + (sp.error ? esc(sp.error === 'denied' ? NL.t.micDenied : sp.error === 'silence' ? NL.t.micSilence
+        : sp.error === 'network' ? NL.t.micNetwork : NL.t.micFail) : NL.t.micTap) + '</p></div>';
   }
 
   function menu() {
@@ -156,7 +161,7 @@ NL.screens.luisteren = (function () {
     NL.audio.mic(); NL.ui.render();
     NL.speech.listen({
       onpartial: t => { if (S && S.speech.phase === 'listening') { S.speech.partial = t; NL.ui.render(); } },
-      onerror: () => { if (S) { S.speech.phase = 'idle'; NL.ui.render(); } },
+      onerror: k => { if (S) { S.speech.phase = 'idle'; S.speech.error = k; NL.ui.render(); } },
       onend: (text, alts) => {
         if (!S || S.speech.phase !== 'listening') return;
         const r = NL.speech.score(alts && alts.length ? alts : [text], c.nl);

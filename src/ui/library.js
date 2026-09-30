@@ -48,7 +48,8 @@
         '</div>';
 
       if (!list.length) {
-        html += '<p class="empty">' + (query ? NL.t.wordsNoResult : NL.t.wordsNothing) + '</p>';
+        /* « Mes mots » ne se remplit pas en faisant des séances : seulement par le bouton. */
+        html += '<p class="empty">' + (query ? NL.t.wordsNoResult : filter === 'eigen' ? NL.t.wordsMineNone : NL.t.wordsNothing) + '</p>';
       } else {
         Object.keys(groups).forEach(uid => {
           const u = NL.content.unit(uid);

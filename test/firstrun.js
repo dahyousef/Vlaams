@@ -173,6 +173,23 @@ NL.state.open().then(() => {
   console.log('  ' + before + ' items exported, wiped, restored → ' + NL.srs.counts().seen);
   ok(NL.srs.counts().seen === before, 'restore lost items');
 
+  /* « Passer » sur l'échauffement par paires : le premier écran d'un débutant.
+     Il n'y avait plus de « Continuer », et chaque nouveau « Passer » ajoutait une
+     reprise en recomptant cinq échecs. */
+  console.log('\nSKIPPING THE WARM-UP');
+  NL.state.clearAll(); NL.content.refresh();
+  NL.screens.sessie.begin('vandaag'); NL.ui.go('sessie');
+  if (S.peek() && S.peek().ex === 'match') {
+    const len0 = S.peek() && app.innerHTML.match(/class="pill">\d+\/(\d+)</)[1];
+    S.click({ dataset: {} }, { skip: '1' });
+    ok(app.innerHTML.includes('data-next='), 'skipping the pairs leaves no way to continue');
+    ok(!app.innerHTML.includes('data-skip='), 'the skip button is still offered after skipping');
+    S.click({ dataset: {} }, { next: '1' });
+    ok(!S.peek() || S.peek().ex !== 'match' || app.innerHTML.match(/class="pill">(\d+)\//)[1] !== '1', 'the session did not move past the skipped pairs');
+    console.log('  skipped at 1/' + len0 + ', continue offered, session moved on');
+  } else ok(false, 'a blank account should open on the pairs warm-up');
+  S.abandon();
+
   console.log('\n' + (fails === 0 ? 'FIRST RUN IS CLEAN' : fails + ' PROBLEM(S)'));
   process.exit(fails ? 1 : 0);
 }).catch(e => { console.log('BOOT FAIL: ' + e.stack); process.exit(1); });

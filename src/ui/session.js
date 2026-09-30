@@ -193,7 +193,10 @@ NL.screens.sessie = (function () {
   }
 
   function foot(c, ex) {
-    if (c.ex === 'match') {
+    /* Seulement pendant qu'on joue : après « Passer », le pied normal avec
+       « Continuer » doit apparaître. Sinon on restait bloqué sur le plateau, et
+       chaque nouveau « Passer » ajoutait une reprise et recomptait cinq échecs. */
+    if (c.ex === 'match' && L.phase === 'ask') {
       return '<div class="foot"><div class="foot-in">' +
         '<p class="foot-hint">' + NL.t.matchHint + '</p>' +
         '<button class="btn btn-ghost" data-skip="1">' + NL.t.skip + '</button></div></div>';

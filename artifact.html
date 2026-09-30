@@ -621,9 +621,17 @@ NL.util = (function () {
   /* Tiles keep their visible punctuation off, but the display string stays intact. */
   const tiles = s => String(s).split(/\s+/).map(t => t.replace(/[.,!?;:"()]/g, '')).filter(Boolean);
 
-  const bare = nl => String(nl).replace(/^(de|het|een)\s+/i, '');
+  /* L'article ne se retire que d'un MOT. Une phrase le garde : sinon « Het
+     regent weer. » s'affiche « regent weer. ». Et l'article doit être suivi d'un
+     espace (ou d'une apostrophe en français) : sans ça, « leur » devenait « ur »,
+     « durer » « rer », et « un » tout seul une option vide. */
+  const sentence = s => /[.!?…]\s*$/.test(s);
+  const bare = nl => { const s = String(nl); return sentence(s) ? s : s.replace(/^(de|het|een)\s+(?=\S)/i, ''); };
   /* Strips the French article so a gloss can be shown bare in a tile or an option. */
-  const bareFr = fr => String(fr).replace(/^(les|le|la|un|une|des|du|de la|de l’|l’)\s?/i, '');
+  const bareFr = fr => {
+    const s = String(fr);
+    return sentence(s) ? s : s.replace(/^(?:(?:les|le|la|une|un|des|du|de la)\s+|(?:de l[’']|l[’']))(?=\S)/i, '');
+  };
 
   function lev(a, b) {
     if (a === b) return 0;
@@ -847,6 +855,7 @@ NL.t = {
   wordsAdd: 'Ajouter un mot à moi',
   wordsNothing: 'Rien encore. Fais une session et ça apparaît ici.',
   wordsNoResult: 'Rien trouvé.',
+  wordsMineNone: 'Aucun mot à toi pour l’instant. Ajoute-en un avec le bouton ci-dessus.',
   wordsSearch: 'Rechercher…',
   wordsAll: 'tous', wordsWeak: 'fragiles', wordsStrong: 'solides', wordsMine: 'à moi',
   wordsNl: 'Néerlandais', wordsFr: 'Français', wordsBe: 'Comme on dit ici',
@@ -886,12 +895,15 @@ NL.t = {
   placeHigh: 'Tu comprends déjà bien plus que tu ne crois.',
   placeMid: 'Il y a déjà une base, surtout passive.',
   placeLow: 'On commence au début — et c’est très bien.',
-  placeSeeded: n => 'Reconnaître un mot n’est pas savoir le dire, donc rien n’a été marqué comme acquis : ' + n + ' éléments ont simplement été placés plus haut dans l’échelle, en sautant les présentations dont tu n’as clairement pas besoin. Ils doivent encore atteindre l’étape orale.',
+  placeSeeded: n => n === 0
+    ? 'Tout ce que ces unités contiennent était déjà en cours d’apprentissage : le test ne change rien à ta progression.'
+    : 'Reconnaître un mot n’est pas savoir le dire, donc rien n’a été marqué comme acquis : ' + n + ' éléments ont simplement été placés plus haut dans l’échelle, en sautant les présentations dont tu n’as clairement pas besoin. Ils doivent encore atteindre l’étape orale.',
   placeNone: 'Rien n’a été avancé, donc tu pars propre. C’est le point de départ honnête.',
   placeRecognised: 'Reconnus', placeAdvanced: 'Avancés',
   placeUnits: 'Unités', placeAsked: 'Questions',
   placeRule: (a, b) => a + ' bonnes réponses sur ' + b + ' pour créditer l’unité et passer à la suivante.',
   placeStops: n => 'Le test s’arrête à « ' + n + ' » : c’est de là que tu pars.',
+  placeAll: n => 'Les ' + n + ' unités sont passées : tout le niveau A1 est avancé. Il reste à faire monter chaque élément jusqu’à l’oral.',
   placeFirst: 'Commence ta première session',
   placeLater: 'Plus tard',
 
@@ -1023,7 +1035,8 @@ NL.state = (function () {
     mic: true, autoplay: true, showFlemish: true, unlocked: 1,
     scenariosDone: [], listenDone: [], firstRun: true,
     learnerName: '', town: '', company: '',
-    pace: 'normal', exDay: null, exToday: 0, dataVersion: 2, lastEx: null
+    pace: 'normal', exDay: null, exToday: 0, dataVersion: 2, lastEx: null,
+    reached: 0                 // index of the furthest unit ever opened; never goes back
   });
   let meta = defaults();
 
@@ -2052,6 +2065,7 @@ NL.sync = (function () {
       out[k] = Array.from(new Set([].concat(a[k] || [], b[k] || [])));
     });
     out.placed = !!(a.placed || b.placed);
+    out.reached = Math.max(a.reached || 0, b.reached || 0);
     out.updatedAt = Math.max(a.updatedAt || 0, b.updatedAt || 0);
     return out;
   }
@@ -3972,7 +3986,18 @@ NL.content = NL.content || {};
     const us = NL.content.units;
     let i = 0;
     while (i < us.length - 1 && unitComplete(us[i].id)) i++;
-    return i;
+    /* Une unité ouverte le reste. Sans cette mémoire, quelques rechutes dans
+       l'unité 1 la font repasser sous 80 % et referment les onze suivantes,
+       même entièrement rencontrées. Le maximum atteint reste contigu. */
+    /* Rattrapage pour les progressions d'avant : on ne rencontre les éléments
+       que d'une unité ouverte, donc une unité rencontrée à 80 % l'a été. */
+    for (let j = us.length - 1; j > i; j--) {
+      const items = itemsOf(us[j].id);
+      if (items.length && items.filter(it => NL.srs.stageOf(it) >= 0).length / items.length >= GATE) { i = j; break; }
+    }
+    const reached = Math.min(NL.state.meta().reached || 0, us.length - 1);
+    if (i > reached) { NL.state.setMeta({ reached: i }); return i; }
+    return reached;
   }
 
   function unitOpen(uid) {
@@ -4472,8 +4497,12 @@ NL.ex = (function () {
   R.vlaams = {
     id: 'vlaams', kicker: NL.t.exVlaams,
     build(item) {
-      const pool = NL.content.allItems().filter(x =>
+      const any = NL.content.allItems().filter(x =>
         x.be && x.id !== item.id && U.norm(x.be) !== U.norm(x.nl) && U.norm(x.be) !== U.norm(item.be));
+      /* Une phrase contre deux mots isolés se devine sans rien savoir : les
+         leurres viennent d'abord du même genre d'élément. */
+      const same = any.filter(x => x.kind === item.kind);
+      const pool = same.length >= 2 ? same : any;
       const opts = U.shuffle([{ label: item.be, ok: true }]
         .concat(U.sample(pool, 2).map(x => ({ label: x.be, ok: false }))));
       return { type: 'vlaams', item, opts };
@@ -4545,7 +4574,8 @@ NL.ex = (function () {
        pas forcément celle d'origine. */
     ready: (t, L) => L.matchGone.length >= t.pairs.length * 2,
     judge: () => ({ ok: true }),
-    answer: () => '',
+    /* Affiché si l'on passe : les paires elles-mêmes, pas un pied vide. */
+    answer: t => t.pairs.map(p => p.nl + ' = ' + p.fr).join(' · '),
     /* Deux cartes vont ensemble si leurs TEXTES correspondent : « goeiedag » et
        « hallo » disent tous deux « bonjour », et l'écran ne permet pas de savoir
        quel « bonjour » était le sien. */
@@ -4555,7 +4585,7 @@ NL.ex = (function () {
     }
   };
 
-  return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, recordPanel, selfRate };
+  return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, recordPanel, selfRate, sameSense };
 })();
 </script>
 <script>
@@ -4659,7 +4689,7 @@ NL.ui = (function () {
     }
     if (sheet === 'instellingen') {
       const v = NL.speech.voiceInfo();
-      const mic = NL.speech.listenBlocked();
+      const mic = NL.speech.listenBlocked() || (NL.speech.micRefused() ? 'refused' : null);
       return card(t.setTitle,
         '<div class="set-block"><h4>' + t.setTheme + '</h4><div class="seg">' +
         [['system', t.setSystem], ['light', t.setLight], ['dark', t.setDark]].map(([k, label]) =>
@@ -4742,7 +4772,9 @@ NL.ui = (function () {
 
   const micLine = kind => kind === 'browser' ? (NL.speech.noService() === 'ios' ? t.micNoBrowserIOS : t.micNoBrowser)
     : kind === 'offline' ? t.micOffline
-      : 'Reconnaissance vocale active (nl-BE).';
+      /* Même règle que le docteur audio : après un refus, ne pas dire « active ». */
+      : kind === 'refused' ? 'Micro refusé par le navigateur : autorise-le avec le cadenas de la barre d’adresse.'
+        : 'Reconnaissance vocale active (nl-BE).';
 
   const toggle = (k, label, on) =>
     '<label class="tog"><span>' + label + '</span>' +
@@ -4837,8 +4869,12 @@ NL.ui = (function () {
     root = el;
 
     root.addEventListener('click', e => {
-      const hit = e.target.closest('[data-say],[data-go],[data-sheet],[data-close],[data-backdrop],[data-theme],' +
+      let hit = e.target.closest('[data-say],[data-go],[data-sheet],[data-close],[data-backdrop],[data-theme],' +
         '[data-toggle],[data-reset],[data-reset-yes],[data-quit-yes],[data-export],[data-import],[data-pace],[data-act]');
+      /* Avec le thème Sombre ou Clair, <html> porte data-theme : closest()
+         remontait jusqu'à lui, chaque clic devenait « choisir le thème », et plus
+         aucune réponse ne passait. On ne garde que ce qui est dans l'app. */
+      if (hit && !root.contains(hit)) hit = null;
       const S = NL.screens[route];
 
       if (hit) {
@@ -5125,7 +5161,10 @@ NL.screens.sessie = (function () {
   }
 
   function foot(c, ex) {
-    if (c.ex === 'match') {
+    /* Seulement pendant qu'on joue : après « Passer », le pied normal avec
+       « Continuer » doit apparaître. Sinon on restait bloqué sur le plateau, et
+       chaque nouveau « Passer » ajoutait une reprise et recomptait cinq échecs. */
+    if (c.ex === 'match' && L.phase === 'ask') {
       return '<div class="foot"><div class="foot-in">' +
         '<p class="foot-hint">' + NL.t.matchHint + '</p>' +
         '<button class="btn btn-ghost" data-skip="1">' + NL.t.skip + '</button></div></div>';
@@ -5779,9 +5818,12 @@ NL.screens.luisteren = (function () {
 
   function build() {
     const c = S.clips[S.at];
-    const pool = NL.content.listenClips().filter(x => x.id !== c.id);
+    /* Une même réplique revient d'un scénario à l'autre : sans ce filtre, la
+       bonne traduction pouvait s'afficher deux fois, dont une comptée fausse. */
+    const pool = U.uniq(NL.content.listenClips()
+      .filter(x => x.id !== c.id && U.norm(x.fr) !== U.norm(c.fr)).map(x => x.fr));
     S.opts = U.shuffle([{ label: c.fr, ok: true }].concat(
-      U.sample(pool, 2).map(x => ({ label: x.fr, ok: false }))));
+      U.sample(pool, 2).map(l => ({ label: l, ok: false }))));
     S.plays = 0;
   }
 
@@ -5880,8 +5922,10 @@ NL.screens.luisteren = (function () {
         '<p class="word-diff">' + sp.parts.map(p => '<span class="' + (p.ok ? (p.close ? 'w-close' : 'w-ok') : 'w-no') + '">' + esc(p.word) + '</span>').join(' ') + '</p>' +
         '<div class="mic-actions"><button class="btn btn-blue" data-act="mic">' + NL.t.replay + '</button></div></div>';
     }
+    /* Un refus s'affiche : sans ça, toucher le micro ne faisait rien, en silence. */
     return '<div class="mic-panel"><button class="mic big" data-act="mic">' + ICON.mic(32) + '</button>' +
-      '<p class="mic-why">' + NL.t.micTap + '</p></div>';
+      '<p class="mic-why">' + (sp.error ? esc(sp.error === 'denied' ? NL.t.micDenied : sp.error === 'silence' ? NL.t.micSilence
+        : sp.error === 'network' ? NL.t.micNetwork : NL.t.micFail) : NL.t.micTap) + '</p></div>';
   }
 
   function menu() {
@@ -5921,7 +5965,7 @@ NL.screens.luisteren = (function () {
     NL.audio.mic(); NL.ui.render();
     NL.speech.listen({
       onpartial: t => { if (S && S.speech.phase === 'listening') { S.speech.partial = t; NL.ui.render(); } },
-      onerror: () => { if (S) { S.speech.phase = 'idle'; NL.ui.render(); } },
+      onerror: k => { if (S) { S.speech.phase = 'idle'; S.speech.error = k; NL.ui.render(); } },
       onend: (text, alts) => {
         if (!S || S.speech.phase !== 'listening') return;
         const r = NL.speech.score(alts && alts.length ? alts : [text], c.nl);
@@ -6009,7 +6053,8 @@ NL.screens.luisteren = (function () {
         '</div>';
 
       if (!list.length) {
-        html += '<p class="empty">' + (query ? NL.t.wordsNoResult : NL.t.wordsNothing) + '</p>';
+        /* « Mes mots » ne se remplit pas en faisant des séances : seulement par le bouton. */
+        html += '<p class="empty">' + (query ? NL.t.wordsNoResult : filter === 'eigen' ? NL.t.wordsMineNone : NL.t.wordsNothing) + '</p>';
       } else {
         Object.keys(groups).forEach(uid => {
           const u = NL.content.unit(uid);
@@ -6185,10 +6230,19 @@ NL.screens.placement = (function () {
 
   function buildOpts() {
     const it = T.q[T.at];
+    /* Même règle que les exercices : aucun leurre ne peut être une autre bonne
+       réponse. « collega » existe dans deux unités, et « collègue » affiché deux
+       fois dont un compté faux ferait échouer une unité à tort. */
+    const right = U.bareFr(it.fr);
     const pool = NL.content.allItems().filter(x =>
-      x.id !== it.id && x.kind === it.kind && x.unit !== 'eigen');
-    T.opts = U.shuffle([{ label: U.bareFr(it.fr), ok: true }]
-      .concat(U.sample(pool, 3).map(x => ({ label: U.bareFr(x.fr), ok: false }))));
+      x.id !== it.id && x.kind === it.kind && x.unit !== 'eigen' &&
+      U.norm(U.bareFr(x.fr)) !== U.norm(right) && !NL.ex.sameSense(x, it));
+    const wrong = [];
+    U.shuffle(pool).forEach(x => {
+      const l = U.bareFr(x.fr);
+      if (wrong.length < 3 && !wrong.some(w => U.norm(w) === U.norm(l))) wrong.push(l);
+    });
+    T.opts = U.shuffle([{ label: right, ok: true }].concat(wrong.map(l => ({ label: l, ok: false }))));
     T.sel = null;
   }
 
@@ -6257,13 +6311,16 @@ NL.screens.placement = (function () {
 
   function summary() {
     const n = T.credited.length;
-    const last = T.credited[n - 1];
+    /* On repart de l'unité ÉCHOUÉE, pas de la dernière réussie ; et si tout est
+       passé, il n'y a pas d'arrêt à annoncer. */
+    const stopAt = NL.content.units[T.ui];
+    const where = stopAt ? t.placeStops(esc(stopAt.name)) : t.placeAll(n);
     return '<div class="lesson"><div class="lesson-body"><div class="stage done-stage">' +
       '<div class="done-mark">\u{1F4CF}</div>' +
       '<h2>' + (n === 0 ? t.placeLow : n >= 4 ? t.placeHigh : t.placeMid) + '</h2>' +
       '<p class="done-sub">' + (n === 0
         ? t.placeNone
-        : t.placeSeeded(T.seeded) + ' ' + t.placeStops(esc(last.name))) + '</p>' +
+        : t.placeSeeded(T.seeded) + ' ' + where) + '</p>' +
       '<div class="tally">' +
       '<div class="tally-box blue"><div class="t-n">' + n + '</div><div class="t-l">' + t.placeUnits + '</div></div>' +
       '<div class="tally-box gold"><div class="t-n">' + T.seeded + '</div><div class="t-l">' + t.placeAdvanced + '</div></div>' +

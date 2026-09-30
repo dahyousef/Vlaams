@@ -92,7 +92,18 @@ NL.content = NL.content || {};
     const us = NL.content.units;
     let i = 0;
     while (i < us.length - 1 && unitComplete(us[i].id)) i++;
-    return i;
+    /* Une unité ouverte le reste. Sans cette mémoire, quelques rechutes dans
+       l'unité 1 la font repasser sous 80 % et referment les onze suivantes,
+       même entièrement rencontrées. Le maximum atteint reste contigu. */
+    /* Rattrapage pour les progressions d'avant : on ne rencontre les éléments
+       que d'une unité ouverte, donc une unité rencontrée à 80 % l'a été. */
+    for (let j = us.length - 1; j > i; j--) {
+      const items = itemsOf(us[j].id);
+      if (items.length && items.filter(it => NL.srs.stageOf(it) >= 0).length / items.length >= GATE) { i = j; break; }
+    }
+    const reached = Math.min(NL.state.meta().reached || 0, us.length - 1);
+    if (i > reached) { NL.state.setMeta({ reached: i }); return i; }
+    return reached;
   }
 
   function unitOpen(uid) {
