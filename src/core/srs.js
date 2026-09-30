@@ -223,9 +223,14 @@ NL.srs = (function () {
     const left = budgetLeft();
     const due = Math.min(dueItems().length, left);
     const room = Math.max(0, left - due);
-    const fresh = freshItems(Math.min(room, pace().fresh)).length;
-    const total = Math.min(due + fresh, MAX_TASKS);
-    return { due, fresh, total, left, mins: Math.max(1, Math.round(total * 0.22)) };
+    const found = freshItems(Math.min(room, pace().fresh)).length;
+    /* Les parties doivent faire le tout : la séance est plafonnée à MAX_TASKS,
+       donc on rabote le nouveau, pas les révisions — sinon l'écran affiche
+       « -3 à revoir » en soustrayant un nouveau non plafonné d'un total plafonné. */
+    const total = Math.min(due + found, MAX_TASKS);
+    const dueShown = Math.min(due, total);
+    const fresh = total - dueShown;
+    return { due: dueShown, fresh, total, left, mins: Math.max(1, Math.round(total * 0.22)) };
   }
 
   return {

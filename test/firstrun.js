@@ -73,6 +73,26 @@ NL.state.open().then(() => {
   ok(NL.speech.listenBlocked() === 'browser', 'Opera should report no recogniser');
   ok(NL.speech.tier().id === 'self' || NL.speech.tier().id === 'compare', 'Opera tier should be compare or self');
 
+  /* « -3 à revoir » : le total de la séance est plafonné à MAX_TASKS, le nombre
+     de nouveaux ne l'était pas, et l'écran soustrayait l'un de l'autre. Sur une
+     base vide, les nouveaux dépassent toujours le plafond : c'est ici que ça se
+     voit. */
+  console.log('\nPLAN DU JOUR');
+  {
+    const p0 = NL.srs.plan();
+    console.log('  base vide        ' + p0.due + ' à revoir + ' + p0.fresh + ' nouveaux = ' + p0.total);
+    ok(p0.fresh > 0, 'a blank account should have new material: ' + JSON.stringify(p0));
+    ok(p0.due >= 0 && p0.fresh >= 0, 'negative figures on the home screen: ' + JSON.stringify(p0));
+    ok(p0.due + p0.fresh === p0.total, 'the two halves must add up to the total: ' + JSON.stringify(p0));
+    ok(p0.total <= NL.srs.MAX_TASKS, 'session longer than the cap: ' + JSON.stringify(p0));
+
+    NL.srs.spend(NL.srs.pace().cap * 2);          // journée déjà bien remplie
+    const p1 = NL.srs.plan();
+    console.log('  budget épuisé    ' + p1.due + ' à revoir + ' + p1.fresh + ' nouveaux = ' + p1.total);
+    ok(p1.due >= 0 && p1.fresh >= 0 && p1.total === 0, 'spent budget should offer nothing, got ' + JSON.stringify(p1));
+    NL.state.setMeta({ exDay: null, exToday: 0 });
+  }
+
   console.log('\nFIRST SESSION — answering correctly');
   NL.screens.sessie.begin('vandaag');
   NL.ui.go('sessie');

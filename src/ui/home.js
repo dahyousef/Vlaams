@@ -36,7 +36,7 @@
           ? '<h2>' + t.todayAllDone + '</h2><p class="sc-sub">' + t.todayAllDoneSub + '</p>' +
           '<button class="btn btn-blue wide big" data-go="praten">' + t.todayPractise + '</button>'
           : '<h2>' + t.todayReady(total) + '</h2>' +
-          '<p class="sc-sub">' + t.todaySplit(Math.min(p.due, total - fresh), fresh, mins) + '</p>' +
+          '<p class="sc-sub">' + t.todaySplit(p.due, fresh, mins) + '</p>' +
           '<button class="btn btn-primary wide big" data-act="start">' + t.todayStart + '</button>') +
         '</section>';
 
