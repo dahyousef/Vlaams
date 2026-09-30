@@ -21,13 +21,21 @@ NL.screens.placement = (function () {
     if (!u) return finish();
     const pool = NL.content.itemsOf(u.id).filter(i => i.kind !== 'pattern');
     if (pool.length < PER_UNIT) return finish();
-    T.q = U.sample(pool, PER_UNIT);
+    /* La dernière question se tape : reconnaître parmi quatre ne prouve pas
+       qu'on sait le mot. Un mot simple, pour que ce soit un test et non une dictée. */
+    const typeable = U.shuffle(pool.filter(i => i.kind === 'word' && U.tiles(U.bare(i.nl)).length === 1));
+    const typed = typeable[0] || null;
+    T.q = U.sample(pool.filter(i => i !== typed), PER_UNIT - (typed ? 1 : 0)).concat(typed ? [typed] : []);
+    T.typedAt = typed ? PER_UNIT - 1 : -1;
     T.at = 0; T.hits = 0; T.phase = 'ask'; T.sel = null;
     buildOpts();
   }
 
+  const isTyped = () => T.at === T.typedAt;
+
   function buildOpts() {
     const it = T.q[T.at];
+    T.input = ''; T.typedOk = null;
     /* Même règle que les exercices : aucun leurre ne peut être une autre bonne
        réponse. « collega » existe dans deux unités, et « collègue » affiché deux
        fois dont un compté faux ferait échouer une unité à tort. */
@@ -47,6 +55,15 @@ NL.screens.placement = (function () {
   function answer(i) {
     T.sel = i; T.phase = 'shown'; T.asked++;
     if ((T.opts[i] || {}).ok) { T.hits++; NL.audio.ok(); } else NL.audio.no();
+    NL.ui.render();
+  }
+
+  function submitTyped() {
+    if (!T.input.trim()) return;
+    const target = U.bare(T.q[T.at].nl);
+    T.typedOk = U.typedOk(T.input, target);
+    T.phase = 'shown'; T.asked++;
+    if (T.typedOk) { T.hits++; NL.audio.ok(); } else NL.audio.no();
     NL.ui.render();
   }
 
@@ -90,21 +107,36 @@ NL.screens.placement = (function () {
       '<div class="rail"><div class="rail-fill" style="width:' + Math.max(pct, 4) + '%"></div></div>' +
       '<span class="pill">' + (T.at + 1) + '/' + PER_UNIT + '</span></div>' +
       '<div class="lesson-body"><div class="stage">' +
-      '<div class="kicker"><span class="sub">' + esc(u.name) + ' · ' + t.placeEyebrow + '</span>' + t.placeQ + '</div>' +
-      NL.ex.speakerRow(U.bare(it.nl), { show: true, be: it.be }) +
-      '<div class="opts">' + T.opts.map((o, i) => {
-        let cls = '';
-        if (T.phase === 'shown') { if (o.ok) cls = ' ok'; else if (T.sel === i) cls = ' no'; }
-        return '<button class="opt' + cls + '" data-opt="' + i + '"' + (T.phase === 'shown' ? ' disabled' : '') + '>' +
-          '<span class="opt-key">' + (i + 1) + '</span><span>' + esc(o.label) + '</span></button>';
-      }).join('') + '</div>' +
+      '<div class="kicker"><span class="sub">' + esc(u.name) + ' · ' + t.placeEyebrow + '</span>' + (isTyped() ? t.placeTypeQ : t.placeQ) + '</div>' +
+      (isTyped() ? typedBody(it) : choiceBody(it)) +
       '<p class="place-note">' + t.placeRule(TO_PASS, PER_UNIT) + '</p>' +
       '</div></div>' +
       '<div class="foot"><div class="foot-in">' +
       (T.phase === 'shown'
         ? '<button class="btn btn-primary push" data-act="next">' + t.next + '</button>'
-        : '<button class="btn btn-ghost" data-act="dunno">' + t.dunno + '</button>') +
+        : '<button class="btn btn-ghost" data-act="dunno">' + t.dunno + '</button>' +
+          (isTyped() ? '<button class="btn btn-primary push" data-act="submit"' + (T.input.trim() ? '' : ' disabled') + '>' + t.placeSubmit + '</button>' : '')) +
       '</div></div></div>';
+  }
+
+  function typedBody(it) {
+    const target = U.bare(it.nl);
+    return '<p class="sentence prompt">' + esc(U.bareFr(it.fr)) + '</p>' +
+      '<input class="textin" id="place-in" type="text" value="' + esc(T.input) + '" autocomplete="off" autocapitalize="off" ' +
+      'spellcheck="false" placeholder="' + t.typeHere + '"' + (T.phase === 'shown' ? ' disabled' : '') + '>' +
+      (T.phase === 'shown'
+        ? '<p class="place-verdict ' + (T.typedOk ? 'ok' : 'no') + '">' + (T.typedOk ? U.one(t.praise) : t.wrongTitle) + ' <b>' + esc(target) + '</b></p>'
+        : '');
+  }
+
+  function choiceBody(it) {
+    return NL.ex.speakerRow(U.bare(it.nl), { show: true, be: it.be }) +
+      '<div class="opts">' + T.opts.map((o, i) => {
+        let cls = '';
+        if (T.phase === 'shown') { if (o.ok) cls = ' ok'; else if (T.sel === i) cls = ' no'; }
+        return '<button class="opt' + cls + '" data-opt="' + i + '"' + (T.phase === 'shown' ? ' disabled' : '') + '>' +
+          '<span class="opt-key">' + (i + 1) + '</span><span>' + esc(o.label) + '</span></button>';
+      }).join('') + '</div>';
   }
 
   function summary() {
@@ -135,16 +167,35 @@ NL.screens.placement = (function () {
       if (d.act === 'exit') { T = null; NL.ui.go('vandaag'); return; }
       if (d.act === 'go') { T = null; NL.screens.sessie.begin('vandaag'); NL.ui.go('sessie'); return; }
       if (d.act === 'next') { next(); return; }
-      if (d.act === 'dunno') { T.phase = 'shown'; T.sel = -1; T.asked++; NL.audio.no(); NL.ui.render(); return; }
+      if (d.act === 'dunno') { T.phase = 'shown'; T.sel = -1; T.typedOk = false; T.asked++; NL.audio.no(); NL.ui.render(); return; }
+      if (d.act === 'submit' && T.phase === 'ask') { submitTyped(); return; }
       if (d.opt !== undefined && T.phase === 'ask') answer(+d.opt);
+    },
+    input(el) {
+      if (!T || el.id !== 'place-in') return;
+      const had = !!T.input.trim();
+      T.input = el.value;
+      const b = document.querySelector('[data-act="submit"]');
+      if (b && had !== !!T.input.trim()) b.disabled = !T.input.trim();
+    },
+    after() {
+      const inp = document.getElementById('place-in');
+      if (inp && T && T.phase === 'ask') { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
     },
     key(e) {
       if (!T || T.done) return;
-      if (e.key === 'Enter') { e.preventDefault(); const b = document.querySelector('[data-act="next"]'); if (b) b.click(); return; }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (T.phase === 'ask' && isTyped()) { submitTyped(); return; }
+        const b = document.querySelector('[data-act="next"]'); if (b) b.click(); return;
+      }
+      if (document.activeElement && document.activeElement.id === 'place-in') return;
       if (/^[1-4]$/.test(e.key) && T.phase === 'ask') {
         const b = document.querySelector('[data-opt="' + (+e.key - 1) + '"]'); if (b) b.click();
       }
     },
-    reset() { T = null; }
+    reset() { T = null; },
+    /* Read-only, for the headless tests. */
+    peek: () => (T && !T.done ? { item: T.q[T.at], opts: T.opts, typed: isTyped(), hits: T.hits, credited: T.credited.length } : null)
   };
 })();

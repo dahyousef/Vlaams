@@ -120,9 +120,9 @@ réordonne ensuite la file pour qu'aucun type ne colle à lui-même.
 
 | Barreau | Nom | Mot | Phrase |
 | --- | --- | --- | --- |
-| 0 | découverte | pick | pick |
-| 1 | reconnaissance | article · l'intrus | assemblage · standaard/Vlaams |
-| 2 | à l'oreille | dictée · écrire | trou · corrige l'erreur |
+| 0 | découverte | pick · recall | pick · recall |
+| 1 | reconnaissance | article · l'intrus · dictée | assemblage · standaard/Vlaams · trou |
+| 2 | à l'oreille | dictée · écrire | trou · corrige l'erreur · dictée |
 | 3 | à l'écrit | écrire · trou | dictée · corrige |
 | 4 | à voix haute | écrire · dictée | écrire · trou |
 | 5 | maîtrisé | **parler** | **parler** |
@@ -130,6 +130,24 @@ réordonne ensuite la file pour qu'aucun type ne colle à lui-même.
 
 L'échelon 5 est **parler** et rien d'autre : c'est ce qui garantit que rien n'est
 acquis sans être sorti de ta bouche.
+
+Les QCM proposent **quatre** options, et les leurres sont choisis de même nature
+(nom contre nom, verbe contre verbe) et du même genre : on ne les élimine pas
+sans connaître le mot. À l'écrit, un mot de moins de six lettres s'écrit
+**exactement** ; au-delà, une lettre de travers est pardonnée. Une réponse à une
+lettre près est signalée « Presque ».
+
+## Série et défi
+
+Chaque bonne réponse d'affilée fait monter la **série** (🔥) ; au-delà de 5,
+chaque réponse rapporte un point d'XP de plus, au-delà de 10, deux. La première
+faute la remet à zéro, et le record est gardé.
+
+Le **Défi** (⚡, sur Aujourd'hui et dans Plus) : vingt exercices de production
+tirés de ce que tu as déjà rencontré — écrire, dictée, trou, corrige, ordre —,
+**trois vies**, aucune reprise. Parler en est exclu : l'auto-évaluation n'a pas
+sa place dans un score. Les réponses comptent comme de vraies révisions, et le
+meilleur score reste à battre. Il se débloque après dix éléments rencontrés.
 
 Deux règles trouvées en simulation, et testées :
 
@@ -277,7 +295,8 @@ prénom/commune/employeur.
 **Moteur, refait après simulation** : budget quotidien borné, paliers par
 élément, les deux correctifs d'intervalle, gouverneur de variété et étalement,
 déverrouillage par frontière contiguë, pourcentage de maîtrise seule, test de
-placement en échelle (4 questions, 3 bonnes, arrêt à la première échouée),
+placement en échelle (4 questions dont une à taper, 3 bonnes, arrêt à la
+première échouée),
 quatre nouveaux types d'exercice — l'intrus, corrige l'erreur, standaard of
 Vlaams, réponse libre notée sur rubrique.
 

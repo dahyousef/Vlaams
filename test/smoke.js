@@ -256,7 +256,7 @@ NL.state.open().then(() => {
       n++;
       if (wrong.every(l => l.length < right.length)) longest++;
       if (wrong.some(l => artOf[l] === it.art)) sameArt++;
-      if (wrong.some(l => UU.norm(l) === UU.norm(right)) || wrong[0] === wrong[1]) dup++;
+      if (wrong.some(l => UU.norm(l) === UU.norm(right)) || new Set(wrong.map(UU.norm)).size !== wrong.length) dup++;
     });
     const pct = x => (x / n * 100).toFixed(1) + '%';
     console.log('  ' + n + ' mots à article : bonne réponse la plus longue ' + pct(longest) +
@@ -265,6 +265,42 @@ NL.state.open().then(() => {
     ok(dup === 0, 'an option was repeated or equalled the answer, ' + dup + ' times');
     ok(sameArt / n >= 0.8, 'distractors give the gender away too often: only ' + pct(sameArt) + ' share it');
     ok(longest / n <= 0.25, 'the answer is the longest option too often: ' + pct(longest));
+  }
+
+  /* Un cran plus dur : quatre options, et des leurres de même nature. « oui »
+     face à un verbe et deux noms se devinait sans connaître le mot. */
+  {
+    const UU = NL.util, all = NL.content.allItems();
+    const words = all.filter(i => i.kind === 'word' && !i.art);
+    const verbish = w => /en$/.test(UU.bare(w.nl)) && /^\S+(er|ir|re|oir)$/.test(UU.bareFr(w.fr).split(/\s*\/\s*/)[0]) && UU.bareFr(w.fr).indexOf('-') < 0;
+    let n = 0, four = 0, sameKind = 0;
+    words.forEach(it => {
+      const t = NL.ex.get('pick').build(it); n++;
+      if (t.opts.length === 4) four++;
+      const wrong = t.opts.filter(o => !o.ok).map(o => all.find(x => x.kind === 'word' && UU.bare(x.nl) === o.label)).filter(Boolean);
+      if (wrong.filter(x => verbish(x) === verbish(it) && !x.art).length >= 2) sameKind++;
+    });
+    ok(four === n, 'a word question offered fewer than four options (' + (n - four) + ' of ' + n + ')');
+    ok(sameKind / n >= 0.75, 'distractors are too often a different kind of word: only ' + Math.round(sameKind / n * 100) + '% of questions have two of the same kind');
+    console.log('  ' + n + ' mots sans article : 4 options partout, deux leurres de même nature dans ' + Math.round(sameKind / n * 100) + '% des cas');
+  }
+
+  console.log('\nORTHOGRAPHE');
+  /* Une faute pardonnée sur un mot de trois lettres, c'est un tiers du mot. */
+  {
+    const UU = NL.util, typeEx = NL.ex.get('type');
+    const shortW = NL.content.allItems().find(i => i.kind === 'word' && UU.bare(i.nl) === 'dag');
+    const longW = NL.content.allItems().find(i => i.kind === 'word' && UU.bare(i.nl).length >= 8 && UU.tiles(UU.bare(i.nl)).length === 1);
+    const judge = (it, input) => { const t = typeEx.build(it); return typeEx.judge(t, { input }); };
+    ok(!judge(shortW, 'dat').ok, 'a one-letter slip on a short word ("dag" typed "dat") was accepted');
+    ok(judge(shortW, 'dat').close, 'a one-letter slip on a short word is not flagged as close');
+    ok(judge(shortW, 'dag').ok, 'the exact short word was refused');
+    const noun = NL.content.allItems().find(i => i.kind === 'word' && i.art && UU.bare(i.nl) === 'fiets');
+    if (noun) ok(judge(noun, 'de fiets').ok, 'typing the article with the noun ("de fiets") was refused');
+    ok(!judge(shortW, 'de dat').ok, 'an article must not excuse a misspelt word');
+    const lw = UU.bare(longW.nl), slip = lw.slice(0, -1) + (lw.slice(-1) === 'x' ? 'y' : 'x');
+    ok(judge(longW, slip).ok, 'one slip on a long word ("' + slip + '") was refused');
+    console.log('  « dag » exact obligatoire, « ' + lw + ' » tolère une lettre, le quasi-juste est signalé');
   }
 
   /* Un leurre qui est une AUTRE bonne réponse : « bonjour » avec « hallo » ET

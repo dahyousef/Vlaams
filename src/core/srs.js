@@ -29,10 +29,12 @@ NL.srs = (function () {
   /* Chaque échelon propose un ENSEMBLE de types, pas un seul. Avec quatorze
      passages par élément, la variété n'est pas un ornement : c'est la seule
      chose qui rend 26 000 exercices supportables. */
+  /* Un cran plus exigeant : la découverte alterne les deux sens, et l'oreille
+     (la dictée) arrive dès le deuxième barreau au lieu d'attendre le troisième. */
   const RUNGS = {
     word: [
-      ['pick'],
-      ['article', 'recall', 'intrus'],
+      ['pick', 'recall'],
+      ['article', 'intrus', 'dictation'],
       ['dictation', 'type'],
       ['type', 'cloze'],
       ['type', 'cloze', 'dictation'],
@@ -40,16 +42,16 @@ NL.srs = (function () {
       ['speak', 'type', 'dictation', 'cloze']
     ],
     phrase: [
-      ['pick'],
-      ['bank', 'vlaams'],
-      ['cloze', 'corrige'],
+      ['pick', 'recall'],
+      ['bank', 'vlaams', 'cloze'],
+      ['cloze', 'corrige', 'dictation'],
       ['dictation', 'corrige'],
       ['type', 'cloze', 'corrige'],
       ['speak'],
       ['speak', 'type', 'open', 'corrige', 'dictation']
     ],
     chunk: [
-      ['pick'],
+      ['pick', 'recall'],
       ['bank', 'vlaams'],
       ['cloze'],
       ['type', 'dictation'],

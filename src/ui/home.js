@@ -53,6 +53,7 @@
         '</div>';
 
       html += '<h3 class="sec">' + t.morepractice + '</h3><div class="cards">';
+      html += defiTile(m);
       const scn = (NL.content.scenarios || []).filter(s => (m.scenariosDone || []).indexOf(s.id) < 0)[0] || NL.content.scenarios[0];
       html += tile(scn.icon, scn.title, scn.place, 'scn', scn.id);
       html += tile('\u{1F3A7}', t.listenTitle, t.listenUnderstandSub, 'go', 'luisteren');
@@ -63,11 +64,26 @@
     },
     click(el, d) {
       if (d.act === 'start') { NL.screens.sessie.begin('vandaag'); NL.ui.go('sessie'); return; }
+      if (d.act === 'defi') return openDefi();
       if (d.act === 'skip-place') { NL.state.setMeta({ placed: true }); NL.ui.render(); return; }
       if (d.scn) { NL.ui.go('scenario', d.scn); return; }
       if (d.sheetid) { NL.ui.go('spiek', d.sheetid); return; }
     }
   };
+
+  /* Le défi : visible dès le début, verrouillé tant qu'il n'y a pas de quoi le remplir. */
+  function defiTile(m) {
+    const ready = NL.screens.sessie.defiReady();
+    return '<button class="tile-card defi' + (ready ? '' : ' locked') + '" data-act="defi">' +
+      '<span class="tc-icon">⚡</span>' +
+      '<span class="tc-body"><b>' + t.defiTitle + '</b><i>' +
+      (ready ? (m.defiBest ? t.defiSubBest(m.defiBest) : t.defiSub) : t.defiLocked(NL.screens.sessie.DEFI_MIN)) +
+      '</i></span><span class="tc-cta">›</span></button>';
+  }
+  function openDefi() {
+    if (!NL.screens.sessie.defiReady()) { NL.ui.toast(t.defiLocked(NL.screens.sessie.DEFI_MIN)); return; }
+    NL.screens.sessie.begin('defi'); NL.ui.go('sessie');
+  }
 
   const stat = (n, l) => '<div class="stat-box"><div class="s-n">' + n + '</div><div class="s-l">' + esc(l) + '</div></div>';
   const tile = (icon, title, sub, key, val) =>
@@ -145,6 +161,7 @@
 
       return '<div class="wrap">' +
         '<div class="cards">' +
+        defiTile(m) +
         tile('\u{1F4D2}', t.wordsEyebrow, c.seen + ' vus, ' + c.mature + ' solides', 'go', 'woorden') +
         tile('\u{1F4CB}', t.sheetsEyebrow, t.sheetsTitle, 'go', 'spiek') +
         tile('\u{1F1E7}\u{1F1EA}', t.regEyebrow, t.regTitle, 'go', 'register') +
@@ -165,9 +182,14 @@
         '<span><b>' + c.mature + '</b> ' + t.statStrong + '</span>' +
         '<span><b>' + c.said + '</b> ' + t.statSpoken + '</span>' +
         '<span><b>' + (m.best || 0) + '</b> ' + t.statBest + '</span>' +
+        '<span><b>' + (m.bestCombo || 0) + '</b> ' + t.statCombo + '</span>' +
+        '<span><b>' + (m.defiBest || 0) + '</b> ' + t.statDefi + '</span>' +
         '<span><b>' + m.xp + '</b> XP</span>' +
         '</div></section></div>';
     },
-    click(el, d) { if (d.sheetid) NL.ui.go('spiek', d.sheetid); }
+    click(el, d) {
+      if (d.sheetid) NL.ui.go('spiek', d.sheetid);
+      if (d.act === 'defi') openDefi();
+    }
   };
 })();

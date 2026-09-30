@@ -58,6 +58,15 @@ NL.util = (function () {
     const d = lev(a, b);
     return d <= (tol == null ? Math.max(1, Math.floor(b.length / 8)) : tol);
   };
+  /* Une faute de frappe pardonnée sur « dag » ou « hun », c'est un tiers du mot :
+     les mots courts s'écrivent exactement, une lettre de marge à partir de six. */
+  const tolFor = s => norm(s).replace(/\s+/g, '').length < 6 ? 0 : 1;
+  /* Réponse tapée à un MOT : « de fiets » ou « een beetje » ne sont pas faux
+     parce qu'on a mis l'article — c'est même plus juste. */
+  const typedOk = (input, target, tol) => {
+    const t = tol == null ? tolFor(target) : tol;
+    return near(input, target, t) || near(bare(String(input).trim()), target, t);
+  };
   const ratio = (a, b) => {
     a = norm(a); b = norm(b);
     const m = Math.max(a.length, b.length);
@@ -98,5 +107,5 @@ NL.util = (function () {
 
   const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
 
-  return { esc, shuffle, sample, one, clamp, uniq, norm, words, tiles, bare, bareFr, lev, near, ratio, diffWords, dayKey, dayDiff, ago, debounce, MIN, HOUR, DAY };
+  return { esc, shuffle, sample, one, clamp, uniq, norm, words, tiles, bare, bareFr, lev, near, tolFor, typedOk, ratio, diffWords, dayKey, dayDiff, ago, debounce, MIN, HOUR, DAY };
 })();

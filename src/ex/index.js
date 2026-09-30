@@ -67,8 +67,19 @@ NL.ex = (function () {
     return U.norm(U.bare(a.nl)) === U.norm(U.bare(b.nl));
   }
 
+  /* La nature du mot, grossièrement : « oui » face à « sorry / spreken / ja » se
+     résout sans connaître le mot, parce qu'un verbe ne répond pas à « oui ». */
+  function wordClass(x) {
+    if (x.kind !== 'word') return x.kind;
+    if (x.art) return 'noun';
+    const fr = U.bareFr(x.fr).split(/\s*\/\s*/)[0];
+    if (/^\S+(er|ir|re|oir)$/.test(fr) && fr.indexOf('-') < 0 && /en$/.test(U.bare(x.nl))) return 'verb';
+    return 'other';
+  }
+
   function others(item, n, field) {
     const label = x => field === 'fr' ? U.bareFr(x.fr) : U.bare(x.nl);
+    const cls = wordClass(item);
     const target = label(item), tn = U.norm(target), len = target.length;
 
     let pool = NL.content.itemsOf(item.unit).filter(x => x.id !== item.id && x.kind === item.kind);
@@ -84,6 +95,7 @@ NL.ex = (function () {
       const s = label(x);
       let sc = 0;
       if (item.art && x.art && x.art === item.art) sc += 3;        // pas de tri par de/het
+      if (wordClass(x) === cls) sc += 3;                             // pas de tri par nature
       const gap = Math.abs(s.length - len) / Math.max(len, 1);
       sc += gap < 0.2 ? 3 : gap < 0.45 ? 2 : gap < 0.7 ? 1 : 0;    // pas de tri par longueur
       const d = U.lev(U.norm(s), tn);
@@ -127,8 +139,9 @@ NL.ex = (function () {
     id: 'pick', kicker: NL.t.exPick,
     build(item) {
       const right = U.bare(item.nl);
+      /* Quatre options, pas trois : au hasard on tombe juste une fois sur quatre. */
       const opts = U.shuffle([{ label: right, ok: true }].concat(
-        others(item, 2, 'nl').map(l => ({ label: l, ok: false }))));
+        others(item, 3, 'nl').map(l => ({ label: l, ok: false }))));
       return { type: 'pick', item, prompt: U.bareFr(item.fr), opts };
     },
     view(t, L, phase) {
@@ -143,7 +156,7 @@ NL.ex = (function () {
     id: 'recall', kicker: NL.t.exRecall,
     build(item) {
       const opts = U.shuffle([{ label: U.bareFr(item.fr), ok: true }].concat(
-        others(item, 2, 'fr').map(l => ({ label: l, ok: false }))));
+        others(item, 3, 'fr').map(l => ({ label: l, ok: false }))));
       return { type: 'recall', item, opts };
     },
     view(t, L, phase) {
@@ -222,7 +235,7 @@ NL.ex = (function () {
       const near = pool.slice().sort((a, b) =>
         Math.abs(a.length - gap.length) - Math.abs(b.length - gap.length));
       const opts = U.shuffle([{ label: gap, ok: true }].concat(
-        U.sample(near.slice(0, Math.max(6, Math.min(near.length, 12))), 2).map(l => ({ label: l, ok: false }))));
+        U.sample(near.slice(0, Math.max(8, Math.min(near.length, 14))), 3).map(l => ({ label: l, ok: false }))));
       return { type: 'cloze', item, drill: d, gap, opts, shown: d.nl.replace(new RegExp('(^|\\s)' + gap.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?=\\s|$|[.,!?])'), '$1     ') };
     },
     view(t, L, phase) {
@@ -250,7 +263,9 @@ NL.ex = (function () {
     ready: (t, L) => t.bank ? L.picked.length > 0 : L.input.trim().length > 0,
     judge(t, L) {
       const got = t.bank ? said(t, L) : L.input;
-      return { ok: t.bank ? U.norm(got) === U.norm(t.target) : U.near(got, t.target, 1) };
+      if (t.bank) return { ok: U.norm(got) === U.norm(t.target) };
+      const ok = U.typedOk(got, t.target);
+      return { ok, close: !ok && U.typedOk(got, t.target, 1) };
     },
     answer: t => t.target
   };
@@ -269,7 +284,10 @@ NL.ex = (function () {
         '</div>';
     },
     ready: (t, L) => L.input.trim().length > 0,
-    judge: (t, L) => ({ ok: U.near(L.input, t.target, 1) }),
+    judge(t, L) {
+      const ok = U.typedOk(L.input, t.target);
+      return { ok, close: !ok && U.typedOk(L.input, t.target, 1) };
+    },
     answer: t => t.target
   };
 

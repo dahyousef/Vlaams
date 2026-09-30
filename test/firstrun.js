@@ -164,6 +164,62 @@ NL.state.open().then(() => {
   ok(m.streak === 1, 'streak not started');
   ok(NL.srs.counts().seen > 0, 'nothing recorded in the scheduler');
 
+  /* Répond juste à la tâche en cours, par les mêmes clics qu'un utilisateur. */
+  function answerRight() {
+    const c = S.peek(), task = c.task, ex = NL.ex.get(c.ex);
+    if (task.opts && c.ex !== 'corrige') S.click({ dataset: {} }, { opt: String(task.opts.findIndex(o => o.ok)) });
+    if (task.bank) {
+      const used = new Set();
+      U.tiles(ex.answer(task)).forEach(w => {
+        const i = task.bank.findIndex((b, k) => !used.has(k) && U.norm(b) === U.norm(w));
+        if (i >= 0) { used.add(i); S.click({ dataset: {} }, { pick: String(i) }); }
+      });
+    }
+    if (c.ex === 'corrige') S.click({ dataset: {} }, { opt: String(task.faulty) });
+    if (c.ex === 'type' || (c.ex === 'dictation' && !task.bank)) S.input({ classList: { contains: n => n === 'textin' }, value: ex.answer(task) });
+    S.click({ dataset: {} }, { check: '1' });
+  }
+
+  console.log('\nLE DÉFI');
+  {
+    ok(S.defiReady(), 'after a first session the challenge should be unlocked');
+    const xp0 = NL.state.meta().xp;
+    ok(S.begin('defi'), 'the challenge did not start');
+    NL.ui.go('sessie');
+    const total = +app.innerHTML.match(/class="pill">\d+\/(\d+)</)[1];
+    ok(total === 20 || total === NL.content.allItems().filter(i => NL.srs.stageOf(i) >= 1).length, 'the challenge should hold 20 exercises, got ' + total);
+    ok(app.innerHTML.includes('class="lives"'), 'no lives shown in the challenge');
+    /* Tout juste : vingt sur vingt, la série monte, un record s'écrit. */
+    const kinds = {};
+    for (let i = 0; i < 40 && !app.innerHTML.includes('done-stage'); i++) {
+      kinds[S.peek().ex] = 1;
+      ok(['pick', 'recall', 'match', 'speak', 'article', 'intrus'].indexOf(S.peek().ex) < 0, 'recognition or self-rated exercise in the challenge: ' + S.peek().ex);
+      answerRight();
+      ok(app.innerHTML.includes('foot ok'), 'the challenge rejected a correct answer (' + S.peek().ex + ')');
+      if (i === 5) ok(/class="combo[^"]*"[^>]*>[^<]*6</.test(app.innerHTML), 'the combo counter is not shown after six in a row');
+      S.click({ dataset: {} }, { next: '1' });
+    }
+    ok(app.innerHTML.includes('done-stage'), 'a flawless challenge never reached its summary');
+    ok(NL.state.meta().defiBest === total, 'the challenge record was not saved (' + NL.state.meta().defiBest + ')');
+    ok(NL.state.meta().bestCombo >= total, 'the combo record was not saved (' + NL.state.meta().bestCombo + ')');
+    const gained = NL.state.meta().xp - xp0;
+    ok(gained > total * 3, 'the combo bonus did not add XP (' + gained + ' for ' + total + ')');
+    console.log('  ' + total + '/' + total + ', types ' + Object.keys(kinds).join(', ') + ', +' + gained + ' XP, records saved');
+
+    /* Trois fautes : fin immédiate, sans reprise. */
+    S.begin('defi'); NL.ui.go('sessie');
+    const len = S.peek() && app.innerHTML.match(/class="pill">\d+\/(\d+)</)[1];
+    for (let k = 0; k < 3; k++) {
+      S.click({ dataset: {} }, { skip: '1' });
+      ok(app.innerHTML.match(/class="pill">\d+\/(\d+)</)[1] === len, 'a mistake in the challenge queued a retry');
+      S.click({ dataset: {} }, { next: '1' });
+    }
+    ok(app.innerHTML.includes('done-stage'), 'three mistakes did not end the challenge');
+    ok(NL.state.meta().defiBest === total, 'a worse run overwrote the record');
+    console.log('  three mistakes end it at once, no retries, record kept');
+    S.abandon();
+  }
+
   console.log('\nBACKUP ROUND TRIP');
   const dump = JSON.stringify(NL.state.exportAll());
   const before = NL.srs.counts().seen;

@@ -75,6 +75,7 @@ NL.state.open().then(() => {
     let guard = 0;
     while (app.innerHTML.indexOf('done-stage') < 0 && guard++ < 40) {
       NL.screens.placement.click({ dataset: {} }, { opt: '0' });
+      NL.screens.placement.click({ dataset: {} }, { act: 'dunno' });   // the typed question has no options
       NL.screens.placement.click({ dataset: {} }, { act: 'next' });
     }
     console.log('  ran ' + guard + ' questions, summary rendered: ' + (app.innerHTML.indexOf('done-stage') >= 0));

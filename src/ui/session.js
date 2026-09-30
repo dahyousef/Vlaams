@@ -8,11 +8,47 @@ NL.screens.sessie = (function () {
   const MAX_TASKS = NL.srs.MAX_TASKS;
 
   function blankTurn() {
-    return { sel: null, picked: [], input: '', matchSel: null, matchGone: [], matchBad: null, speech: { phase: 'idle', tries: 0, selfRated: null } };
+    return { sel: null, picked: [], input: '', close: false, matchSel: null, matchGone: [], matchBad: null, speech: { phase: 'idle', tries: 0, selfRated: null } };
+  }
+
+  /* ---------------- le défi ----------------
+     Vingt exercices de PRODUCTION tirés de ce que tu as déjà rencontré, trois
+     vies, pas de reprise. Parler en est exclu : l'auto-évaluation n'a pas sa
+     place dans un score. Les réponses comptent comme de vraies révisions. */
+  const DEFI_SIZE = 20, DEFI_LIVES = 3, DEFI_MIN = 10;
+  const DEFI_TYPES = {
+    word: ['type', 'dictation', 'cloze'],
+    phrase: ['type', 'dictation', 'corrige', 'cloze'],
+    chunk: ['type', 'dictation', 'cloze'],
+    pattern: ['order', 'corrige', 'type']
+  };
+  const defiPool = () => NL.content.allItems().filter(it => NL.srs.stageOf(it) >= 1);
+  const defiReady = () => defiPool().length >= DEFI_MIN;
+
+  function startDefi() {
+    const pool = defiPool();
+    if (pool.length < DEFI_MIN) { L = null; return false; }
+    const queue = [];
+    let last = null;
+    U.shuffle(pool).forEach(it => {
+      if (queue.length >= DEFI_SIZE) return;
+      let names = (DEFI_TYPES[it.kind] || DEFI_TYPES.word).filter(n => NL.srs.supports(it, n));
+      if (!names.length) names = ['type'];
+      const fresh = names.filter(n => n !== last);
+      const name = U.one(fresh.length ? fresh : names);
+      try { queue.push({ ex: name, task: EX.get(name).build(it), items: [it] }); last = name; } catch (e) {}
+    });
+    if (!queue.length) { L = null; return false; }
+    L = Object.assign(blankTurn(), {
+      source: 'defi', queue, at: 0, phase: 'ask', right: 0, wrong: 0, spoken: 0, xp: 0,
+      started: Date.now(), finished: false, newCount: 0, combo: 0, bestCombo: 0, lives: DEFI_LIVES
+    });
+    return true;
   }
 
   function start(source) {
     NL.state.touchDay();
+    if (source === 'defi') return startDefi();
     const m = NL.state.meta();
     const due = NL.srs.dueItems();
     let fresh, pool;
@@ -77,7 +113,7 @@ NL.screens.sessie = (function () {
     L = Object.assign(blankTurn(), {
       source: source || 'vandaag', queue: queue.slice(0, MAX_TASKS + 1), at: 0,
       phase: 'ask', right: 0, wrong: 0, spoken: 0, xp: 0, started: Date.now(), finished: false,
-      newCount: fresh.length
+      newCount: fresh.length, combo: 0, bestCombo: 0, lives: null
     });
     return true;
   }
@@ -101,21 +137,34 @@ NL.screens.sessie = (function () {
     const v = ex.judge(c.task, L);
     L.phase = v.ok ? 'ok' : 'no';
     L.lastSpoken = !!v.spoken;
+    L.close = !!v.close;
 
     c.items.forEach(it => NL.srs.grade(it, v.ok, { spoken: v.spoken, ex: c.ex }));
     NL.srs.spend(1);
 
     if (v.ok) {
       L.right++;
-      L.xp += c.ex === 'speak' ? 4 : 2;
+      L.xp += c.ex === 'speak' ? 4 : L.source === 'defi' ? 3 : 2;
+      L.xp += comboUp();
       if (c.ex === 'speak') L.spoken++;
       NL.audio.ok();
     } else {
       L.wrong++;
+      L.combo = 0;
       NL.audio.no();
-      if (L.queue.length < MAX_TASKS + 6) L.queue.push(retryOf(c));
+      if (L.source === 'defi') L.lives--;
+      else if (L.queue.length < MAX_TASKS + 6) L.queue.push(retryOf(c));
     }
     NL.ui.render();
+  }
+
+  /* La série : chaque bonne réponse d'affilée la fait monter, la première faute
+     la remet à zéro. Au-delà de 5, chaque réponse rapporte un point de plus ;
+     au-delà de 10, deux. De quoi avoir une raison de ne pas relâcher. */
+  function comboUp() {
+    L.combo++;
+    L.bestCombo = Math.max(L.bestCombo, L.combo);
+    return L.combo >= 10 ? 2 : L.combo >= 5 ? 1 : 0;
   }
 
   /* La reprise se reconstruit : servie telle quelle, elle garde les mêmes
@@ -131,7 +180,7 @@ NL.screens.sessie = (function () {
     L.at++;
     Object.assign(L, blankTurn());
     L.phase = 'ask';
-    if (L.at >= L.queue.length) return finish();
+    if (L.at >= L.queue.length || (L.source === 'defi' && L.lives <= 0)) return finish();
     NL.ui.render();
     autoplay();
   }
@@ -141,8 +190,11 @@ NL.screens.sessie = (function () {
     c.items.forEach(it => NL.srs.grade(it, false, { ex: c.ex }));
     NL.srs.spend(1);
     L.wrong++;
+    L.combo = 0;
+    L.close = false;
     L.phase = 'no';
-    if (L.queue.length < MAX_TASKS + 6) L.queue.push(retryOf(c));
+    if (L.source === 'defi') L.lives--;
+    else if (L.queue.length < MAX_TASKS + 6) L.queue.push(retryOf(c));
     NL.audio.no();
     NL.ui.render();
   }
@@ -150,7 +202,14 @@ NL.screens.sessie = (function () {
   function finish() {
     L.finished = true;
     const m = NL.state.meta();
-    NL.state.setMeta({ xp: m.xp + L.xp });
+    /* Les records se retiennent pour qu'il y ait quelque chose à battre. */
+    L.comboRecord = L.bestCombo > (m.bestCombo || 0) && L.bestCombo >= 5;
+    L.defiRecord = L.source === 'defi' && L.right > (m.defiBest || 0);
+    const patch = { xp: m.xp + L.xp };
+    if (L.comboRecord) patch.bestCombo = L.bestCombo;
+    if (L.defiRecord) patch.defiBest = L.right;
+    L.prevDefiBest = m.defiBest || 0;
+    NL.state.setMeta(patch);
     NL.state.creditDay(L.newCount);
     NL.audio.win();
     NL.ui.render();
@@ -169,6 +228,9 @@ NL.screens.sessie = (function () {
       '<div class="lesson-head">' +
       '<button class="iconbtn" data-act="quit" aria-label="' + NL.t.quitYes + '">' + NL.ui.I.x + '</button>' +
       '<div class="rail"><div class="rail-fill" style="width:' + Math.max(pct, 3) + '%"></div></div>' +
+      (L.source === 'defi' ? '<span class="lives" aria-label="' + NL.t.defiLives(L.lives) + '">' +
+        '❤️'.repeat(Math.max(0, L.lives)) + '<i>' + '♡'.repeat(Math.max(0, DEFI_LIVES - L.lives)) + '</i></span>' : '') +
+      (L.combo >= 3 ? '<span class="combo' + (L.combo >= 10 ? ' hot' : '') + '" title="' + NL.t.comboTitle + '">\u{1F525} ' + L.combo + '</span>' : '') +
       '<span class="pill">' + (L.at + 1) + '/' + L.queue.length + '</span>' +
       '</div>' +
 
@@ -211,8 +273,11 @@ NL.screens.sessie = (function () {
     const ok = L.phase === 'ok';
     const ans = ex.answer(c.task);
     const it = c.items[0];
-    const note = ok ? U.one(NL.t.praise)
-      : NL.t.wrongTitle;
+    /* Les paliers de la série se fêtent ; une faute d'une seule lettre se dit. */
+    const note = ok ? (L.combo === 5 || L.combo === 10 || (L.combo > 10 && L.combo % 5 === 0) ? NL.t.comboMilestone(L.combo) : U.one(NL.t.praise))
+      : L.close ? NL.t.almost
+        : L.source === 'defi' && L.lives <= 0 ? NL.t.defiOut
+          : NL.t.wrongTitle;
     const be = (it && it.be && NL.state.meta().showFlemish !== false) ? it.be : null;
     return '<div class="foot ' + (ok ? 'ok' : 'no') + '"><div class="foot-in">' +
       '<div class="verdict ' + (ok ? 'ok' : 'no') + '">' +
@@ -242,6 +307,7 @@ NL.screens.sessie = (function () {
     const acc = (L.right + L.wrong) ? Math.round(L.right / (L.right + L.wrong) * 100) : 100;
     const mins = Math.max(1, Math.round((Date.now() - L.started) / 60000));
     const m = NL.state.meta();
+    if (L.source === 'defi') return defiDone(mins);
     return '<div class="lesson"><div class="lesson-body"><div class="stage done-stage">' +
       '<div class="done-mark">' + (L.wrong === 0 ? '\u{1F3AF}' : '\u{2713}') + '</div>' +
       '<h2>' + (L.wrong === 0 ? NL.t.doneFlawless : NL.t.doneOk) + '</h2>' +
@@ -251,18 +317,42 @@ NL.screens.sessie = (function () {
       '<div class="tally">' +
       box('+' + L.xp, NL.t.tallyXp, 'gold') + box(acc + '%', NL.t.tallyRight, 'blue') +
       box(m.streak, NL.t.tallyDays, 'green') + box(mins + 'm', NL.t.tallyTime, '') +
+      (L.bestCombo >= 3 ? box('\u{1F525} ' + L.bestCombo, NL.t.tallyCombo, L.comboRecord ? 'gold' : '') : '') +
       '</div>' +
+      (L.comboRecord ? '<p class="record">' + NL.t.comboRecord(L.bestCombo) + '</p>' : '') +
       '<div class="done-actions">' +
       '<button class="btn btn-primary wide" data-act="again">' + NL.t.sessionMore + '</button>' +
+      (defiReady() ? '<button class="btn btn-blue wide" data-act="defi">⚡ ' + NL.t.defiTitle + '</button>' : '') +
       '<button class="btn btn-ghost wide" data-go="vandaag">' + NL.t.sessionBack + '</button>' +
       '</div></div></div></div>';
   }
   const box = (n, l, c) => '<div class="tally-box ' + c + '"><div class="t-n">' + n + '</div><div class="t-l">' + l + '</div></div>';
 
+  function defiDone(mins) {
+    const out = L.lives <= 0, flawless = L.wrong === 0;
+    return '<div class="lesson"><div class="lesson-body"><div class="stage done-stage">' +
+      '<div class="done-mark">' + (flawless ? '\u{1F3C6}' : out ? '\u{1F494}' : '⚡') + '</div>' +
+      '<h2>' + (flawless ? NL.t.defiFlawless : out ? NL.t.defiOver : NL.t.defiSurvived) + '</h2>' +
+      '<p class="done-sub">' + NL.t.defiScoreLine(L.right, L.queue.length) + '</p>' +
+      '<div class="tally">' +
+      box(L.right, NL.t.tallyScore, L.defiRecord ? 'gold' : 'blue') +
+      box(Math.max(L.right, L.prevDefiBest), NL.t.tallyRecord, '') +
+      box('+' + L.xp, NL.t.tallyXp, 'gold') +
+      box('\u{1F525} ' + L.bestCombo, NL.t.tallyCombo, L.comboRecord ? 'gold' : '') +
+      '</div>' +
+      (L.defiRecord ? '<p class="record">' + NL.t.defiRecord(L.right, L.prevDefiBest) + '</p>'
+        : '<p class="done-sub">' + NL.t.defiToBeat(L.prevDefiBest) + '</p>') +
+      '<div class="done-actions">' +
+      '<button class="btn btn-primary wide" data-act="defi">' + NL.t.defiAgain + '</button>' +
+      '<button class="btn btn-ghost wide" data-go="vandaag">' + NL.t.sessionBack + '</button>' +
+      '</div></div></div></div>';
+  }
+
   /* ---------------- interaction ---------------- */
   function click(el, d) {
     if (d.act === 'quit') { if (L && !L.finished) NL.ui.openSheet('quit-session'); else { L = null; NL.ui.go('vandaag'); } return; }
     if (d.act === 'again') { L = null; start('vandaag'); NL.ui.render(); autoplay(); return; }
+    if (d.act === 'defi') { L = null; if (!start('defi')) { NL.ui.go('vandaag'); NL.ui.toast(NL.t.defiLocked(DEFI_MIN)); return; } NL.ui.render(); autoplay(); return; }
     if (d.check !== undefined) return check();
     if (d.next !== undefined) return next();
     if (d.skip !== undefined) return skip();
@@ -406,7 +496,7 @@ NL.screens.sessie = (function () {
       if (L.finished) return done();
       return view();
     },
-    click, input, key, after, active, abandon,
+    click, input, key, after, active, abandon, defiReady, DEFI_MIN,
     /* Read-only, for the headless tests: they need the live task to answer it. */
     peek: () => cur(),
     begin(source) { L = null; if (start(source)) { setTimeout(autoplay, 60); return true; } return false; }

@@ -171,6 +171,17 @@ h1,h2,h3,h4,h5{font-family:var(--display);font-weight:700;letter-spacing:-.02em;
 .rail{flex:1;height:12px;border-radius:99px;background:var(--sunk);overflow:hidden}
 .rail-fill{height:100%;border-radius:99px;background:var(--goed);transition:width .3s cubic-bezier(.2,.8,.3,1)}
 .pill{font-family:var(--mono);font-size:12px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.combo{font-family:var(--mono);font-size:12.5px;font-weight:600;color:var(--goud-deep, var(--ink-2));background:var(--goud-soft);border:1px solid var(--goud);border-radius:99px;padding:2px 9px;font-variant-numeric:tabular-nums;white-space:nowrap;animation:combo-pop .25s ease-out}
+.combo.hot{background:var(--amber-soft);border-color:var(--amber)}
+@keyframes combo-pop{from{transform:scale(.8)}to{transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){.combo{animation:none}}
+.lives{font-size:13px;letter-spacing:1px;white-space:nowrap}
+.lives i{font-style:normal;color:var(--ink-3)}
+.record{font-weight:700;color:var(--goed-deep);margin:0 0 14px}
+.place-verdict{margin:12px 0 0;font-size:15px}
+.place-verdict.ok{color:var(--goed-deep)} .place-verdict.no{color:var(--fout-deep)}
+.tile-card.defi{border-color:var(--goud)}
+.tile-card.defi.locked{opacity:.6}
 .head-title{flex:1;display:flex;flex-direction:column;line-height:1.2;min-width:0}
 .head-title b{font-family:var(--display);font-size:14.5px}
 .head-title i{font-style:normal;font-size:11px;color:var(--ink-3)}
@@ -653,6 +664,15 @@ NL.util = (function () {
     const d = lev(a, b);
     return d <= (tol == null ? Math.max(1, Math.floor(b.length / 8)) : tol);
   };
+  /* Une faute de frappe pardonnée sur « dag » ou « hun », c'est un tiers du mot :
+     les mots courts s'écrivent exactement, une lettre de marge à partir de six. */
+  const tolFor = s => norm(s).replace(/\s+/g, '').length < 6 ? 0 : 1;
+  /* Réponse tapée à un MOT : « de fiets » ou « een beetje » ne sont pas faux
+     parce qu'on a mis l'article — c'est même plus juste. */
+  const typedOk = (input, target, tol) => {
+    const t = tol == null ? tolFor(target) : tol;
+    return near(input, target, t) || near(bare(String(input).trim()), target, t);
+  };
   const ratio = (a, b) => {
     a = norm(a); b = norm(b);
     const m = Math.max(a.length, b.length);
@@ -693,7 +713,7 @@ NL.util = (function () {
 
   const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
 
-  return { esc, shuffle, sample, one, clamp, uniq, norm, words, tiles, bare, bareFr, lev, near, ratio, diffWords, dayKey, dayDiff, ago, debounce, MIN, HOUR, DAY };
+  return { esc, shuffle, sample, one, clamp, uniq, norm, words, tiles, bare, bareFr, lev, near, tolFor, typedOk, ratio, diffWords, dayKey, dayDiff, ago, debounce, MIN, HOUR, DAY };
 })();
 </script>
 <script>
@@ -741,7 +761,7 @@ NL.t = {
 
   /* --- parcours --- */
   pathEyebrow: 'Parcours',
-  pathTitle: 'A1 → B2, en douze unités',
+  pathTitle: 'Le niveau A1, en douze unités',
   pathBody: 'Les unités alimentent le planificateur en nouvelles matières. Tu ne dois pas finir une unité pour ouvrir la suivante : elle s’ouvre d’elle-même quand l’essentiel de la précédente a été vu.',
   pathSolid: (a, b) => a + ' éléments sur ' + b + ' sont bien ancrés.',
   unitSeen: (a, b) => a + '/' + b + ' vus',
@@ -755,6 +775,25 @@ NL.t = {
   again2: 'encore une fois',
   praise: ['Bien joué !', 'Exact.', 'Parfait.', 'C’est ça.', 'Amai, bien !'],
   wrongTitle: 'La bonne réponse',
+  almost: 'Presque — une seule lettre de travers.',
+  comboTitle: 'Bonnes réponses d’affilée',
+  comboMilestone: n => 'Série de ' + n + ' ! ' + (n >= 10 ? '+2 XP' : '+1 XP') + ' par réponse.',
+  comboRecord: n => 'Nouveau record de série : ' + n + ' d’affilée.',
+  tallyCombo: 'Série max',
+  tallyScore: 'Score', tallyRecord: 'Record',
+  defiTitle: 'Défi',
+  defiSub: 'Vingt exercices sans filet, trois vies. Tout ce que tu as déjà vu.',
+  defiSubBest: n => 'Trois vies, pas de reprise. Ton record : ' + n + '/20.',
+  defiLocked: n => 'Se débloque après ' + n + ' éléments rencontrés.',
+  defiLives: n => n + (n > 1 ? ' vies restantes' : ' vie restante'),
+  defiOut: 'Plus de vies.',
+  defiOver: 'Plus de vies.',
+  defiSurvived: 'Défi tenu.',
+  defiFlawless: 'Sans faute. Vingt sur vingt.',
+  defiScoreLine: (n, of) => n + ' bonnes réponses sur ' + of + '. Chacune compte comme une vraie révision.',
+  defiRecord: (n, prev) => prev ? 'Nouveau record : ' + n + ', contre ' + prev + ' avant.' : 'Premier record posé : ' + n + '.',
+  defiToBeat: n => 'Record à battre : ' + n + '.',
+  defiAgain: 'Relancer le défi',
   hereThey: 'Ici on dit :',
   matchHint: 'Touche un mot néerlandais, puis sa traduction.',
   doneFlawless: 'Sans faute.',
@@ -901,7 +940,9 @@ NL.t = {
   placeNone: 'Rien n’a été avancé, donc tu pars propre. C’est le point de départ honnête.',
   placeRecognised: 'Reconnus', placeAdvanced: 'Avancés',
   placeUnits: 'Unités', placeAsked: 'Questions',
-  placeRule: (a, b) => a + ' bonnes réponses sur ' + b + ' pour créditer l’unité et passer à la suivante.',
+  placeRule: (a, b) => a + ' bonnes réponses sur ' + b + ', dont une à écrire, pour créditer l’unité et passer à la suivante.',
+  placeTypeQ: 'Écris-le en néerlandais',
+  placeSubmit: 'Valider',
   placeStops: n => 'Le test s’arrête à « ' + n + ' » : c’est de là que tu pars.',
   placeAll: n => 'Les ' + n + ' unités sont passées : tout le niveau A1 est avancé. Il reste à faire monter chaque élément jusqu’à l’oral.',
   placeFirst: 'Commence ta première session',
@@ -953,6 +994,7 @@ NL.t = {
   weekTitle: 'Cette semaine',
   statLearning: 'en cours', statStrong: 'solides', statSpoken: 'dits à voix haute',
   statBest: 'plus longue série',
+  statCombo: 'meilleure série de réponses', statDefi: 'record au défi',
   days: ['dim', 'lun', 'mar', 'mer', 'jeu', 'ven', 'sam'],
 
   /* --- audio doctor --- */
@@ -1248,10 +1290,12 @@ NL.srs = (function () {
   /* Chaque échelon propose un ENSEMBLE de types, pas un seul. Avec quatorze
      passages par élément, la variété n'est pas un ornement : c'est la seule
      chose qui rend 26 000 exercices supportables. */
+  /* Un cran plus exigeant : la découverte alterne les deux sens, et l'oreille
+     (la dictée) arrive dès le deuxième barreau au lieu d'attendre le troisième. */
   const RUNGS = {
     word: [
-      ['pick'],
-      ['article', 'recall', 'intrus'],
+      ['pick', 'recall'],
+      ['article', 'intrus', 'dictation'],
       ['dictation', 'type'],
       ['type', 'cloze'],
       ['type', 'cloze', 'dictation'],
@@ -1259,16 +1303,16 @@ NL.srs = (function () {
       ['speak', 'type', 'dictation', 'cloze']
     ],
     phrase: [
-      ['pick'],
-      ['bank', 'vlaams'],
-      ['cloze', 'corrige'],
+      ['pick', 'recall'],
+      ['bank', 'vlaams', 'cloze'],
+      ['cloze', 'corrige', 'dictation'],
       ['dictation', 'corrige'],
       ['type', 'cloze', 'corrige'],
       ['speak'],
       ['speak', 'type', 'open', 'corrige', 'dictation']
     ],
     chunk: [
-      ['pick'],
+      ['pick', 'recall'],
       ['bank', 'vlaams'],
       ['cloze'],
       ['type', 'dictation'],
@@ -4126,8 +4170,19 @@ NL.ex = (function () {
     return U.norm(U.bare(a.nl)) === U.norm(U.bare(b.nl));
   }
 
+  /* La nature du mot, grossièrement : « oui » face à « sorry / spreken / ja » se
+     résout sans connaître le mot, parce qu'un verbe ne répond pas à « oui ». */
+  function wordClass(x) {
+    if (x.kind !== 'word') return x.kind;
+    if (x.art) return 'noun';
+    const fr = U.bareFr(x.fr).split(/\s*\/\s*/)[0];
+    if (/^\S+(er|ir|re|oir)$/.test(fr) && fr.indexOf('-') < 0 && /en$/.test(U.bare(x.nl))) return 'verb';
+    return 'other';
+  }
+
   function others(item, n, field) {
     const label = x => field === 'fr' ? U.bareFr(x.fr) : U.bare(x.nl);
+    const cls = wordClass(item);
     const target = label(item), tn = U.norm(target), len = target.length;
 
     let pool = NL.content.itemsOf(item.unit).filter(x => x.id !== item.id && x.kind === item.kind);
@@ -4143,6 +4198,7 @@ NL.ex = (function () {
       const s = label(x);
       let sc = 0;
       if (item.art && x.art && x.art === item.art) sc += 3;        // pas de tri par de/het
+      if (wordClass(x) === cls) sc += 3;                             // pas de tri par nature
       const gap = Math.abs(s.length - len) / Math.max(len, 1);
       sc += gap < 0.2 ? 3 : gap < 0.45 ? 2 : gap < 0.7 ? 1 : 0;    // pas de tri par longueur
       const d = U.lev(U.norm(s), tn);
@@ -4186,8 +4242,9 @@ NL.ex = (function () {
     id: 'pick', kicker: NL.t.exPick,
     build(item) {
       const right = U.bare(item.nl);
+      /* Quatre options, pas trois : au hasard on tombe juste une fois sur quatre. */
       const opts = U.shuffle([{ label: right, ok: true }].concat(
-        others(item, 2, 'nl').map(l => ({ label: l, ok: false }))));
+        others(item, 3, 'nl').map(l => ({ label: l, ok: false }))));
       return { type: 'pick', item, prompt: U.bareFr(item.fr), opts };
     },
     view(t, L, phase) {
@@ -4202,7 +4259,7 @@ NL.ex = (function () {
     id: 'recall', kicker: NL.t.exRecall,
     build(item) {
       const opts = U.shuffle([{ label: U.bareFr(item.fr), ok: true }].concat(
-        others(item, 2, 'fr').map(l => ({ label: l, ok: false }))));
+        others(item, 3, 'fr').map(l => ({ label: l, ok: false }))));
       return { type: 'recall', item, opts };
     },
     view(t, L, phase) {
@@ -4281,7 +4338,7 @@ NL.ex = (function () {
       const near = pool.slice().sort((a, b) =>
         Math.abs(a.length - gap.length) - Math.abs(b.length - gap.length));
       const opts = U.shuffle([{ label: gap, ok: true }].concat(
-        U.sample(near.slice(0, Math.max(6, Math.min(near.length, 12))), 2).map(l => ({ label: l, ok: false }))));
+        U.sample(near.slice(0, Math.max(8, Math.min(near.length, 14))), 3).map(l => ({ label: l, ok: false }))));
       return { type: 'cloze', item, drill: d, gap, opts, shown: d.nl.replace(new RegExp('(^|\\s)' + gap.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?=\\s|$|[.,!?])'), '$1     ') };
     },
     view(t, L, phase) {
@@ -4309,7 +4366,9 @@ NL.ex = (function () {
     ready: (t, L) => t.bank ? L.picked.length > 0 : L.input.trim().length > 0,
     judge(t, L) {
       const got = t.bank ? said(t, L) : L.input;
-      return { ok: t.bank ? U.norm(got) === U.norm(t.target) : U.near(got, t.target, 1) };
+      if (t.bank) return { ok: U.norm(got) === U.norm(t.target) };
+      const ok = U.typedOk(got, t.target);
+      return { ok, close: !ok && U.typedOk(got, t.target, 1) };
     },
     answer: t => t.target
   };
@@ -4328,7 +4387,10 @@ NL.ex = (function () {
         '</div>';
     },
     ready: (t, L) => L.input.trim().length > 0,
-    judge: (t, L) => ({ ok: U.near(L.input, t.target, 1) }),
+    judge(t, L) {
+      const ok = U.typedOk(L.input, t.target);
+      return { ok, close: !ok && U.typedOk(L.input, t.target, 1) };
+    },
     answer: t => t.target
   };
 
@@ -4976,11 +5038,47 @@ NL.screens.sessie = (function () {
   const MAX_TASKS = NL.srs.MAX_TASKS;
 
   function blankTurn() {
-    return { sel: null, picked: [], input: '', matchSel: null, matchGone: [], matchBad: null, speech: { phase: 'idle', tries: 0, selfRated: null } };
+    return { sel: null, picked: [], input: '', close: false, matchSel: null, matchGone: [], matchBad: null, speech: { phase: 'idle', tries: 0, selfRated: null } };
+  }
+
+  /* ---------------- le défi ----------------
+     Vingt exercices de PRODUCTION tirés de ce que tu as déjà rencontré, trois
+     vies, pas de reprise. Parler en est exclu : l'auto-évaluation n'a pas sa
+     place dans un score. Les réponses comptent comme de vraies révisions. */
+  const DEFI_SIZE = 20, DEFI_LIVES = 3, DEFI_MIN = 10;
+  const DEFI_TYPES = {
+    word: ['type', 'dictation', 'cloze'],
+    phrase: ['type', 'dictation', 'corrige', 'cloze'],
+    chunk: ['type', 'dictation', 'cloze'],
+    pattern: ['order', 'corrige', 'type']
+  };
+  const defiPool = () => NL.content.allItems().filter(it => NL.srs.stageOf(it) >= 1);
+  const defiReady = () => defiPool().length >= DEFI_MIN;
+
+  function startDefi() {
+    const pool = defiPool();
+    if (pool.length < DEFI_MIN) { L = null; return false; }
+    const queue = [];
+    let last = null;
+    U.shuffle(pool).forEach(it => {
+      if (queue.length >= DEFI_SIZE) return;
+      let names = (DEFI_TYPES[it.kind] || DEFI_TYPES.word).filter(n => NL.srs.supports(it, n));
+      if (!names.length) names = ['type'];
+      const fresh = names.filter(n => n !== last);
+      const name = U.one(fresh.length ? fresh : names);
+      try { queue.push({ ex: name, task: EX.get(name).build(it), items: [it] }); last = name; } catch (e) {}
+    });
+    if (!queue.length) { L = null; return false; }
+    L = Object.assign(blankTurn(), {
+      source: 'defi', queue, at: 0, phase: 'ask', right: 0, wrong: 0, spoken: 0, xp: 0,
+      started: Date.now(), finished: false, newCount: 0, combo: 0, bestCombo: 0, lives: DEFI_LIVES
+    });
+    return true;
   }
 
   function start(source) {
     NL.state.touchDay();
+    if (source === 'defi') return startDefi();
     const m = NL.state.meta();
     const due = NL.srs.dueItems();
     let fresh, pool;
@@ -5045,7 +5143,7 @@ NL.screens.sessie = (function () {
     L = Object.assign(blankTurn(), {
       source: source || 'vandaag', queue: queue.slice(0, MAX_TASKS + 1), at: 0,
       phase: 'ask', right: 0, wrong: 0, spoken: 0, xp: 0, started: Date.now(), finished: false,
-      newCount: fresh.length
+      newCount: fresh.length, combo: 0, bestCombo: 0, lives: null
     });
     return true;
   }
@@ -5069,21 +5167,34 @@ NL.screens.sessie = (function () {
     const v = ex.judge(c.task, L);
     L.phase = v.ok ? 'ok' : 'no';
     L.lastSpoken = !!v.spoken;
+    L.close = !!v.close;
 
     c.items.forEach(it => NL.srs.grade(it, v.ok, { spoken: v.spoken, ex: c.ex }));
     NL.srs.spend(1);
 
     if (v.ok) {
       L.right++;
-      L.xp += c.ex === 'speak' ? 4 : 2;
+      L.xp += c.ex === 'speak' ? 4 : L.source === 'defi' ? 3 : 2;
+      L.xp += comboUp();
       if (c.ex === 'speak') L.spoken++;
       NL.audio.ok();
     } else {
       L.wrong++;
+      L.combo = 0;
       NL.audio.no();
-      if (L.queue.length < MAX_TASKS + 6) L.queue.push(retryOf(c));
+      if (L.source === 'defi') L.lives--;
+      else if (L.queue.length < MAX_TASKS + 6) L.queue.push(retryOf(c));
     }
     NL.ui.render();
+  }
+
+  /* La série : chaque bonne réponse d'affilée la fait monter, la première faute
+     la remet à zéro. Au-delà de 5, chaque réponse rapporte un point de plus ;
+     au-delà de 10, deux. De quoi avoir une raison de ne pas relâcher. */
+  function comboUp() {
+    L.combo++;
+    L.bestCombo = Math.max(L.bestCombo, L.combo);
+    return L.combo >= 10 ? 2 : L.combo >= 5 ? 1 : 0;
   }
 
   /* La reprise se reconstruit : servie telle quelle, elle garde les mêmes
@@ -5099,7 +5210,7 @@ NL.screens.sessie = (function () {
     L.at++;
     Object.assign(L, blankTurn());
     L.phase = 'ask';
-    if (L.at >= L.queue.length) return finish();
+    if (L.at >= L.queue.length || (L.source === 'defi' && L.lives <= 0)) return finish();
     NL.ui.render();
     autoplay();
   }
@@ -5109,8 +5220,11 @@ NL.screens.sessie = (function () {
     c.items.forEach(it => NL.srs.grade(it, false, { ex: c.ex }));
     NL.srs.spend(1);
     L.wrong++;
+    L.combo = 0;
+    L.close = false;
     L.phase = 'no';
-    if (L.queue.length < MAX_TASKS + 6) L.queue.push(retryOf(c));
+    if (L.source === 'defi') L.lives--;
+    else if (L.queue.length < MAX_TASKS + 6) L.queue.push(retryOf(c));
     NL.audio.no();
     NL.ui.render();
   }
@@ -5118,7 +5232,14 @@ NL.screens.sessie = (function () {
   function finish() {
     L.finished = true;
     const m = NL.state.meta();
-    NL.state.setMeta({ xp: m.xp + L.xp });
+    /* Les records se retiennent pour qu'il y ait quelque chose à battre. */
+    L.comboRecord = L.bestCombo > (m.bestCombo || 0) && L.bestCombo >= 5;
+    L.defiRecord = L.source === 'defi' && L.right > (m.defiBest || 0);
+    const patch = { xp: m.xp + L.xp };
+    if (L.comboRecord) patch.bestCombo = L.bestCombo;
+    if (L.defiRecord) patch.defiBest = L.right;
+    L.prevDefiBest = m.defiBest || 0;
+    NL.state.setMeta(patch);
     NL.state.creditDay(L.newCount);
     NL.audio.win();
     NL.ui.render();
@@ -5137,6 +5258,9 @@ NL.screens.sessie = (function () {
       '<div class="lesson-head">' +
       '<button class="iconbtn" data-act="quit" aria-label="' + NL.t.quitYes + '">' + NL.ui.I.x + '</button>' +
       '<div class="rail"><div class="rail-fill" style="width:' + Math.max(pct, 3) + '%"></div></div>' +
+      (L.source === 'defi' ? '<span class="lives" aria-label="' + NL.t.defiLives(L.lives) + '">' +
+        '❤️'.repeat(Math.max(0, L.lives)) + '<i>' + '♡'.repeat(Math.max(0, DEFI_LIVES - L.lives)) + '</i></span>' : '') +
+      (L.combo >= 3 ? '<span class="combo' + (L.combo >= 10 ? ' hot' : '') + '" title="' + NL.t.comboTitle + '">\u{1F525} ' + L.combo + '</span>' : '') +
       '<span class="pill">' + (L.at + 1) + '/' + L.queue.length + '</span>' +
       '</div>' +
 
@@ -5179,8 +5303,11 @@ NL.screens.sessie = (function () {
     const ok = L.phase === 'ok';
     const ans = ex.answer(c.task);
     const it = c.items[0];
-    const note = ok ? U.one(NL.t.praise)
-      : NL.t.wrongTitle;
+    /* Les paliers de la série se fêtent ; une faute d'une seule lettre se dit. */
+    const note = ok ? (L.combo === 5 || L.combo === 10 || (L.combo > 10 && L.combo % 5 === 0) ? NL.t.comboMilestone(L.combo) : U.one(NL.t.praise))
+      : L.close ? NL.t.almost
+        : L.source === 'defi' && L.lives <= 0 ? NL.t.defiOut
+          : NL.t.wrongTitle;
     const be = (it && it.be && NL.state.meta().showFlemish !== false) ? it.be : null;
     return '<div class="foot ' + (ok ? 'ok' : 'no') + '"><div class="foot-in">' +
       '<div class="verdict ' + (ok ? 'ok' : 'no') + '">' +
@@ -5210,6 +5337,7 @@ NL.screens.sessie = (function () {
     const acc = (L.right + L.wrong) ? Math.round(L.right / (L.right + L.wrong) * 100) : 100;
     const mins = Math.max(1, Math.round((Date.now() - L.started) / 60000));
     const m = NL.state.meta();
+    if (L.source === 'defi') return defiDone(mins);
     return '<div class="lesson"><div class="lesson-body"><div class="stage done-stage">' +
       '<div class="done-mark">' + (L.wrong === 0 ? '\u{1F3AF}' : '\u{2713}') + '</div>' +
       '<h2>' + (L.wrong === 0 ? NL.t.doneFlawless : NL.t.doneOk) + '</h2>' +
@@ -5219,18 +5347,42 @@ NL.screens.sessie = (function () {
       '<div class="tally">' +
       box('+' + L.xp, NL.t.tallyXp, 'gold') + box(acc + '%', NL.t.tallyRight, 'blue') +
       box(m.streak, NL.t.tallyDays, 'green') + box(mins + 'm', NL.t.tallyTime, '') +
+      (L.bestCombo >= 3 ? box('\u{1F525} ' + L.bestCombo, NL.t.tallyCombo, L.comboRecord ? 'gold' : '') : '') +
       '</div>' +
+      (L.comboRecord ? '<p class="record">' + NL.t.comboRecord(L.bestCombo) + '</p>' : '') +
       '<div class="done-actions">' +
       '<button class="btn btn-primary wide" data-act="again">' + NL.t.sessionMore + '</button>' +
+      (defiReady() ? '<button class="btn btn-blue wide" data-act="defi">⚡ ' + NL.t.defiTitle + '</button>' : '') +
       '<button class="btn btn-ghost wide" data-go="vandaag">' + NL.t.sessionBack + '</button>' +
       '</div></div></div></div>';
   }
   const box = (n, l, c) => '<div class="tally-box ' + c + '"><div class="t-n">' + n + '</div><div class="t-l">' + l + '</div></div>';
 
+  function defiDone(mins) {
+    const out = L.lives <= 0, flawless = L.wrong === 0;
+    return '<div class="lesson"><div class="lesson-body"><div class="stage done-stage">' +
+      '<div class="done-mark">' + (flawless ? '\u{1F3C6}' : out ? '\u{1F494}' : '⚡') + '</div>' +
+      '<h2>' + (flawless ? NL.t.defiFlawless : out ? NL.t.defiOver : NL.t.defiSurvived) + '</h2>' +
+      '<p class="done-sub">' + NL.t.defiScoreLine(L.right, L.queue.length) + '</p>' +
+      '<div class="tally">' +
+      box(L.right, NL.t.tallyScore, L.defiRecord ? 'gold' : 'blue') +
+      box(Math.max(L.right, L.prevDefiBest), NL.t.tallyRecord, '') +
+      box('+' + L.xp, NL.t.tallyXp, 'gold') +
+      box('\u{1F525} ' + L.bestCombo, NL.t.tallyCombo, L.comboRecord ? 'gold' : '') +
+      '</div>' +
+      (L.defiRecord ? '<p class="record">' + NL.t.defiRecord(L.right, L.prevDefiBest) + '</p>'
+        : '<p class="done-sub">' + NL.t.defiToBeat(L.prevDefiBest) + '</p>') +
+      '<div class="done-actions">' +
+      '<button class="btn btn-primary wide" data-act="defi">' + NL.t.defiAgain + '</button>' +
+      '<button class="btn btn-ghost wide" data-go="vandaag">' + NL.t.sessionBack + '</button>' +
+      '</div></div></div></div>';
+  }
+
   /* ---------------- interaction ---------------- */
   function click(el, d) {
     if (d.act === 'quit') { if (L && !L.finished) NL.ui.openSheet('quit-session'); else { L = null; NL.ui.go('vandaag'); } return; }
     if (d.act === 'again') { L = null; start('vandaag'); NL.ui.render(); autoplay(); return; }
+    if (d.act === 'defi') { L = null; if (!start('defi')) { NL.ui.go('vandaag'); NL.ui.toast(NL.t.defiLocked(DEFI_MIN)); return; } NL.ui.render(); autoplay(); return; }
     if (d.check !== undefined) return check();
     if (d.next !== undefined) return next();
     if (d.skip !== undefined) return skip();
@@ -5374,7 +5526,7 @@ NL.screens.sessie = (function () {
       if (L.finished) return done();
       return view();
     },
-    click, input, key, after, active, abandon,
+    click, input, key, after, active, abandon, defiReady, DEFI_MIN,
     /* Read-only, for the headless tests: they need the live task to answer it. */
     peek: () => cur(),
     begin(source) { L = null; if (start(source)) { setTimeout(autoplay, 60); return true; } return false; }
@@ -5437,6 +5589,7 @@ NL.screens.sessie = (function () {
         '</div>';
 
       html += '<h3 class="sec">' + t.morepractice + '</h3><div class="cards">';
+      html += defiTile(m);
       const scn = (NL.content.scenarios || []).filter(s => (m.scenariosDone || []).indexOf(s.id) < 0)[0] || NL.content.scenarios[0];
       html += tile(scn.icon, scn.title, scn.place, 'scn', scn.id);
       html += tile('\u{1F3A7}', t.listenTitle, t.listenUnderstandSub, 'go', 'luisteren');
@@ -5447,11 +5600,26 @@ NL.screens.sessie = (function () {
     },
     click(el, d) {
       if (d.act === 'start') { NL.screens.sessie.begin('vandaag'); NL.ui.go('sessie'); return; }
+      if (d.act === 'defi') return openDefi();
       if (d.act === 'skip-place') { NL.state.setMeta({ placed: true }); NL.ui.render(); return; }
       if (d.scn) { NL.ui.go('scenario', d.scn); return; }
       if (d.sheetid) { NL.ui.go('spiek', d.sheetid); return; }
     }
   };
+
+  /* Le défi : visible dès le début, verrouillé tant qu'il n'y a pas de quoi le remplir. */
+  function defiTile(m) {
+    const ready = NL.screens.sessie.defiReady();
+    return '<button class="tile-card defi' + (ready ? '' : ' locked') + '" data-act="defi">' +
+      '<span class="tc-icon">⚡</span>' +
+      '<span class="tc-body"><b>' + t.defiTitle + '</b><i>' +
+      (ready ? (m.defiBest ? t.defiSubBest(m.defiBest) : t.defiSub) : t.defiLocked(NL.screens.sessie.DEFI_MIN)) +
+      '</i></span><span class="tc-cta">›</span></button>';
+  }
+  function openDefi() {
+    if (!NL.screens.sessie.defiReady()) { NL.ui.toast(t.defiLocked(NL.screens.sessie.DEFI_MIN)); return; }
+    NL.screens.sessie.begin('defi'); NL.ui.go('sessie');
+  }
 
   const stat = (n, l) => '<div class="stat-box"><div class="s-n">' + n + '</div><div class="s-l">' + esc(l) + '</div></div>';
   const tile = (icon, title, sub, key, val) =>
@@ -5529,6 +5697,7 @@ NL.screens.sessie = (function () {
 
       return '<div class="wrap">' +
         '<div class="cards">' +
+        defiTile(m) +
         tile('\u{1F4D2}', t.wordsEyebrow, c.seen + ' vus, ' + c.mature + ' solides', 'go', 'woorden') +
         tile('\u{1F4CB}', t.sheetsEyebrow, t.sheetsTitle, 'go', 'spiek') +
         tile('\u{1F1E7}\u{1F1EA}', t.regEyebrow, t.regTitle, 'go', 'register') +
@@ -5549,10 +5718,15 @@ NL.screens.sessie = (function () {
         '<span><b>' + c.mature + '</b> ' + t.statStrong + '</span>' +
         '<span><b>' + c.said + '</b> ' + t.statSpoken + '</span>' +
         '<span><b>' + (m.best || 0) + '</b> ' + t.statBest + '</span>' +
+        '<span><b>' + (m.bestCombo || 0) + '</b> ' + t.statCombo + '</span>' +
+        '<span><b>' + (m.defiBest || 0) + '</b> ' + t.statDefi + '</span>' +
         '<span><b>' + m.xp + '</b> XP</span>' +
         '</div></section></div>';
     },
-    click(el, d) { if (d.sheetid) NL.ui.go('spiek', d.sheetid); }
+    click(el, d) {
+      if (d.sheetid) NL.ui.go('spiek', d.sheetid);
+      if (d.act === 'defi') openDefi();
+    }
   };
 })();
 </script>
@@ -6223,13 +6397,21 @@ NL.screens.placement = (function () {
     if (!u) return finish();
     const pool = NL.content.itemsOf(u.id).filter(i => i.kind !== 'pattern');
     if (pool.length < PER_UNIT) return finish();
-    T.q = U.sample(pool, PER_UNIT);
+    /* La dernière question se tape : reconnaître parmi quatre ne prouve pas
+       qu'on sait le mot. Un mot simple, pour que ce soit un test et non une dictée. */
+    const typeable = U.shuffle(pool.filter(i => i.kind === 'word' && U.tiles(U.bare(i.nl)).length === 1));
+    const typed = typeable[0] || null;
+    T.q = U.sample(pool.filter(i => i !== typed), PER_UNIT - (typed ? 1 : 0)).concat(typed ? [typed] : []);
+    T.typedAt = typed ? PER_UNIT - 1 : -1;
     T.at = 0; T.hits = 0; T.phase = 'ask'; T.sel = null;
     buildOpts();
   }
 
+  const isTyped = () => T.at === T.typedAt;
+
   function buildOpts() {
     const it = T.q[T.at];
+    T.input = ''; T.typedOk = null;
     /* Même règle que les exercices : aucun leurre ne peut être une autre bonne
        réponse. « collega » existe dans deux unités, et « collègue » affiché deux
        fois dont un compté faux ferait échouer une unité à tort. */
@@ -6249,6 +6431,15 @@ NL.screens.placement = (function () {
   function answer(i) {
     T.sel = i; T.phase = 'shown'; T.asked++;
     if ((T.opts[i] || {}).ok) { T.hits++; NL.audio.ok(); } else NL.audio.no();
+    NL.ui.render();
+  }
+
+  function submitTyped() {
+    if (!T.input.trim()) return;
+    const target = U.bare(T.q[T.at].nl);
+    T.typedOk = U.typedOk(T.input, target);
+    T.phase = 'shown'; T.asked++;
+    if (T.typedOk) { T.hits++; NL.audio.ok(); } else NL.audio.no();
     NL.ui.render();
   }
 
@@ -6292,21 +6483,36 @@ NL.screens.placement = (function () {
       '<div class="rail"><div class="rail-fill" style="width:' + Math.max(pct, 4) + '%"></div></div>' +
       '<span class="pill">' + (T.at + 1) + '/' + PER_UNIT + '</span></div>' +
       '<div class="lesson-body"><div class="stage">' +
-      '<div class="kicker"><span class="sub">' + esc(u.name) + ' · ' + t.placeEyebrow + '</span>' + t.placeQ + '</div>' +
-      NL.ex.speakerRow(U.bare(it.nl), { show: true, be: it.be }) +
-      '<div class="opts">' + T.opts.map((o, i) => {
-        let cls = '';
-        if (T.phase === 'shown') { if (o.ok) cls = ' ok'; else if (T.sel === i) cls = ' no'; }
-        return '<button class="opt' + cls + '" data-opt="' + i + '"' + (T.phase === 'shown' ? ' disabled' : '') + '>' +
-          '<span class="opt-key">' + (i + 1) + '</span><span>' + esc(o.label) + '</span></button>';
-      }).join('') + '</div>' +
+      '<div class="kicker"><span class="sub">' + esc(u.name) + ' · ' + t.placeEyebrow + '</span>' + (isTyped() ? t.placeTypeQ : t.placeQ) + '</div>' +
+      (isTyped() ? typedBody(it) : choiceBody(it)) +
       '<p class="place-note">' + t.placeRule(TO_PASS, PER_UNIT) + '</p>' +
       '</div></div>' +
       '<div class="foot"><div class="foot-in">' +
       (T.phase === 'shown'
         ? '<button class="btn btn-primary push" data-act="next">' + t.next + '</button>'
-        : '<button class="btn btn-ghost" data-act="dunno">' + t.dunno + '</button>') +
+        : '<button class="btn btn-ghost" data-act="dunno">' + t.dunno + '</button>' +
+          (isTyped() ? '<button class="btn btn-primary push" data-act="submit"' + (T.input.trim() ? '' : ' disabled') + '>' + t.placeSubmit + '</button>' : '')) +
       '</div></div></div>';
+  }
+
+  function typedBody(it) {
+    const target = U.bare(it.nl);
+    return '<p class="sentence prompt">' + esc(U.bareFr(it.fr)) + '</p>' +
+      '<input class="textin" id="place-in" type="text" value="' + esc(T.input) + '" autocomplete="off" autocapitalize="off" ' +
+      'spellcheck="false" placeholder="' + t.typeHere + '"' + (T.phase === 'shown' ? ' disabled' : '') + '>' +
+      (T.phase === 'shown'
+        ? '<p class="place-verdict ' + (T.typedOk ? 'ok' : 'no') + '">' + (T.typedOk ? U.one(t.praise) : t.wrongTitle) + ' <b>' + esc(target) + '</b></p>'
+        : '');
+  }
+
+  function choiceBody(it) {
+    return NL.ex.speakerRow(U.bare(it.nl), { show: true, be: it.be }) +
+      '<div class="opts">' + T.opts.map((o, i) => {
+        let cls = '';
+        if (T.phase === 'shown') { if (o.ok) cls = ' ok'; else if (T.sel === i) cls = ' no'; }
+        return '<button class="opt' + cls + '" data-opt="' + i + '"' + (T.phase === 'shown' ? ' disabled' : '') + '>' +
+          '<span class="opt-key">' + (i + 1) + '</span><span>' + esc(o.label) + '</span></button>';
+      }).join('') + '</div>';
   }
 
   function summary() {
@@ -6337,17 +6543,36 @@ NL.screens.placement = (function () {
       if (d.act === 'exit') { T = null; NL.ui.go('vandaag'); return; }
       if (d.act === 'go') { T = null; NL.screens.sessie.begin('vandaag'); NL.ui.go('sessie'); return; }
       if (d.act === 'next') { next(); return; }
-      if (d.act === 'dunno') { T.phase = 'shown'; T.sel = -1; T.asked++; NL.audio.no(); NL.ui.render(); return; }
+      if (d.act === 'dunno') { T.phase = 'shown'; T.sel = -1; T.typedOk = false; T.asked++; NL.audio.no(); NL.ui.render(); return; }
+      if (d.act === 'submit' && T.phase === 'ask') { submitTyped(); return; }
       if (d.opt !== undefined && T.phase === 'ask') answer(+d.opt);
+    },
+    input(el) {
+      if (!T || el.id !== 'place-in') return;
+      const had = !!T.input.trim();
+      T.input = el.value;
+      const b = document.querySelector('[data-act="submit"]');
+      if (b && had !== !!T.input.trim()) b.disabled = !T.input.trim();
+    },
+    after() {
+      const inp = document.getElementById('place-in');
+      if (inp && T && T.phase === 'ask') { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
     },
     key(e) {
       if (!T || T.done) return;
-      if (e.key === 'Enter') { e.preventDefault(); const b = document.querySelector('[data-act="next"]'); if (b) b.click(); return; }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (T.phase === 'ask' && isTyped()) { submitTyped(); return; }
+        const b = document.querySelector('[data-act="next"]'); if (b) b.click(); return;
+      }
+      if (document.activeElement && document.activeElement.id === 'place-in') return;
       if (/^[1-4]$/.test(e.key) && T.phase === 'ask') {
         const b = document.querySelector('[data-opt="' + (+e.key - 1) + '"]'); if (b) b.click();
       }
     },
-    reset() { T = null; }
+    reset() { T = null; },
+    /* Read-only, for the headless tests. */
+    peek: () => (T && !T.done ? { item: T.q[T.at], opts: T.opts, typed: isTyped(), hits: T.hits, credited: T.credited.length } : null)
   };
 })();
 </script>

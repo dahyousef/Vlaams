@@ -198,12 +198,39 @@ function view(screen, arg) {
     const labels = (html.match(/<span class="opt-key">\d<\/span><span>([^<]*)<\/span>/g) || []).map(s => U.norm(s.replace(/<[^>]+>/g, '').slice(1)));
     if (new Set(labels).size !== labels.length) dupOpts++;
     tap('placement', { opt: '0' });          // whatever is first, like a real guess
+    if (html.indexOf('id="place-in"') >= 0) tap('placement', { act: 'dunno' });
     tap('placement', { act: 'next' });
   }
   ok(P.render().indexOf('done-stage') >= 0, 'placement never finished');
   ok(dupOpts === 0, 'placement showed the same option twice in ' + dupOpts + ' question(s)');
   console.log('   finished in ' + guard + ' questions, seeded ' + NL.srs.counts().seen + ' items');
   ok(NL.state.meta().placed === true, 'placement did not mark itself done');
+
+  /* Répondu juste, y compris la question à taper : toutes les unités passent.
+     Et une question à taper ratée coûte bien un point. */
+  {
+    NL.state.clearAll(); NL.content.refresh(); P.reset();
+    NL.ui.go('placement');
+    let g = 0, typedSeen = 0, missTyped = true;
+    while (g++ < 80) {
+      const html = P.render();
+      if (html.indexOf('done-stage') >= 0) break;
+      const q = P.peek();
+      if (q.typed) {
+        typedSeen++;
+        ok(html.indexOf('data-opt=') < 0, 'the typed placement question still shows options');
+        /* Unité 1 : on rate exprès la question tapée, les trois autres justes. */
+        const want = missTyped ? 'zzzz' : U.bare(q.item.nl);
+        P.input({ id: 'place-in', value: want });
+        tap('placement', { act: 'submit' });
+        if (missTyped) { ok(P.peek().hits === 3, 'a wrong typed answer still counted'); missTyped = false; }
+      } else tap('placement', { opt: String(q.opts.findIndex(o => o.ok)) });
+      tap('placement', { act: 'next' });
+    }
+    ok(typedSeen >= NL.content.units.length, 'not every unit asked a typed question (' + typedSeen + ')');
+    ok(P.render().indexOf('Les 12 unités sont passées') >= 0, 'answering everything right did not pass all twelve units');
+    console.log('   answered right: ' + typedSeen + ' typed questions, all units passed');
+  }
 
   /* ---------------------------------------------------------- 4. every exercise */
   head('4. Every exercise type, driven to a correct answer');
