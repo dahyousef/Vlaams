@@ -264,6 +264,10 @@ un tableau renomme ses éléments et efface leur historique**. Ajoute à la fin.
 
 ## Tests
 
+Toute la suite, comme la CI : `sh test/run-all.sh`. Ce qu'elle couvre, ce
+qu'elle ne voit pas et le dernier passage complet sont dans
+[TESTING.md](TESTING.md). Un par un :
+
 ```sh
 node test/smoke.js    "$(pwd)"              # contenu, échelle, exercices, notation, balayage français
 node test/sim.js      "$(pwd)"              # chaque écran, une séance, un scénario, une série d'écoute
@@ -274,7 +278,7 @@ node test/pace.js     "$(pwd)" 400          # 400 jours : charge, variété, exi
 ```
 
 `journey.js` prend une voix (`nl-BE`, `nl-NL`, `none`) et un navigateur (`OPR`,
-`EDG`), parce que c'est là que vivent les vrais problèmes. Lance les quatre :
+`EDG`), parce que c'est là que vivent les vrais problèmes. Lance les huit :
 
 ```sh
 for c in "nl-BE OPR" "nl-NL OPR" "none OPR" "nl-BE EDG" "nl-NL EDG" "none EDG" "nl-BE IOS" "nl-BE SAF"; do

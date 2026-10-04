@@ -21,22 +21,9 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Build
-        run: sh build.sh
-
-      - name: Test
-        run: |
-          set -e
-          node test/smoke.js    "$PWD"
-          node test/sim.js      "$PWD"
-          node test/firstrun.js "$PWD"
-          node test/sync.js     "$PWD"
-          for c in "nl-BE OPR" "nl-NL OPR" "none OPR" "nl-BE EDG" "nl-NL EDG" "none EDG" "nl-BE IOS" "nl-BE SAF"; do
-            set -- $c
-            echo "--- journey $1 $2 ---"
-            node test/journey.js "$PWD" "$1" "$2"
-          done
-          node test/pace.js "$PWD" 200
+      # Une seule liste de tests, la même qu'en local : test/run-all.sh.
+      - name: Build and test
+        run: sh test/run-all.sh
 
       - name: Build with sync switched on
         env:
