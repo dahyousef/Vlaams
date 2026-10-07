@@ -12,6 +12,7 @@ n'y a qu'une seule liste. Il faut Node et un `sh` (sous Windows, celui de Git).
 | Test | Ce qu'il vérifie |
 | --- | --- |
 | `smoke.js` | Le contenu, l'échelle, chaque type d'exercice, la notation, la qualité des leurres, l'orthographe, et qu'aucune chaîne anglaise ne survit dans le build |
+| `dehet.js` | Chaque nom du cours confronté au Wiktionnaire : `de` ou `het`, sur la fiche **et** dans ses phrases d'exemple |
 | `sim.js` | Chaque écran, une séance, un scénario, une série d'écoute |
 | `firstrun.js` | Une base vide : premier écran, première séance, le défi, la sauvegarde |
 | `sync.js` | Deux appareils et un faux Supabase : adoption, conflits, panne, comptes |
@@ -31,6 +32,13 @@ Ils tournent sans navigateur. Trois choses ne se vérifient qu'en vrai :
 - le **micro réel** et la reconnaissance vocale ;
 - une **vraie voix** néerlandaise, et ce qu'elle donne à l'oreille ;
 - la **série de jours**, sur plusieurs jours réels.
+
+Et une limite du test `de`/`het` : il vérifie l'article du mot drillé, pas tous
+les articles d'une phrase. Un balayage large demanderait une analyse
+grammaticale — « het » est aussi le pronom impersonnel (« is het druk »), et un
+infinitif substantivé est neutre quand son pluriel prend « de » (« van het
+werken »). Restent donc invérifiés : l'article devant un **autre** nom à
+l'intérieur d'une phrase d'exemple, l'idiome, et le registre.
 
 ## Le passage complet du 30 septembre 2026
 

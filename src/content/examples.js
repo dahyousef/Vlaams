@@ -88,7 +88,7 @@
     /* ---- unité 4 : chez le boulanger ---- */
     'het brood': [S('Een half wit brood, alstublieft.', 'Un demi pain blanc, s’il vous plaît.', 'brood'),
       S('Het brood is nog warm.', 'Le pain est encore chaud.', 'brood')],
-    'het pistolet': [S('Vier pistolets, graag.', 'Quatre pistolets, s’il vous plaît.', 'pistolets'),
+    'de pistolet': [S('Vier pistolets, graag.', 'Quatre pistolets, s’il vous plaît.', 'pistolets'),
       S('Een pistolet met hesp.', 'Un pistolet au jambon.', 'pistolet')],
     'de koffiekoek': [S('Twee koffiekoeken voor de kinderen.', 'Deux couques pour les enfants.', 'koffiekoeken'),
       S('Op zondag eten wij een koffiekoek.', 'Le dimanche on mange une couque.', 'koffiekoek')],

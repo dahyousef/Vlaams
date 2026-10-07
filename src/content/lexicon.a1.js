@@ -151,7 +151,7 @@ NL.content.units = NL.content.units || [];
     grammar: ['g-dehet'],
     words: [
       W('het brood', 'le pain', 'het'),
-      W('het pistolet', 'le pistolet', 'het', null, 'Emprunté au français, gardé en Flandre. Le nord dirait « broodje ».'),
+      W('de pistolet', 'le pistolet', 'de', null, 'Emprunté au français, gardé en Flandre. Le nord dirait « broodje ».'),
       W('de koffiekoek', 'la couque', 'de', null, 'La viennoiserie du matin. Le nord dit « zoet broodje ».'),
       W('een half wit', 'un demi pain blanc', null, null, 'Exactement ce qu’on dit au comptoir. Ajoute « gesneden » pour le faire trancher.'),
       W('gesneden', 'tranché'),
