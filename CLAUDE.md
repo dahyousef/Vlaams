@@ -46,8 +46,12 @@ The spec lists what else is deliberately not a goal.
 ## Where the thinking is written down
 
 - `docs/CONSTATS-2026-10-06.md` — what a week of real study found, and how it was found
-- `docs/superpowers/specs/2026-10-08-moteur-et-contenu-design.md` — the current spec
-- `docs/superpowers/plans/2026-10-08-moteur-ecrans-garde-fous.md` — the implementation plan
+- `docs/superpowers/specs/2026-10-08-moteur-et-contenu-design.md` — **superseded in scope.**
+  It covers the engine only. A session on 9 October 2026 decided to replace it with one
+  spec covering the engine, English as the default language, and content to B1. Keep it as
+  history; don't implement from it.
+- `docs/superpowers/plans/2026-10-08-moteur-ecrans-garde-fous.md` — **superseded with it**,
+  for the same reason
 - `TESTING.md` — how this app is tested
 - `ATTRIBUTION.md` — where the Dutch reference data comes from, and why it imposes no licence
 
