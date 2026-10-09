@@ -49,6 +49,11 @@ The spec lists what else is deliberately not a goal.
 
 ## Where the thinking is written down
 
+**The current spec is GitHub issue #12**, "New vocabulary every day, English by default, and
+content to B1". Read it before planning or implementing anything. Tickets hang off it as
+sub-issues. `GLOSSARY.md` holds the vocabulary it uses.
+
+
 - `docs/CONSTATS-2026-10-06.md` — what a week of real study found, and how it was found
 - `docs/superpowers/specs/2026-10-08-moteur-et-contenu-design.md` — **superseded in scope.**
   It covers the engine only. A session on 9 October 2026 decided to replace it with one
