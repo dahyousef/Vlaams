@@ -14,7 +14,20 @@ NL.srs = (function () {
 
   /* Tous les mots ne méritent pas la même montée. Le vocabulaire compris est
      toujours plus large que le vocabulaire produit : on comprend 4 000 mots, on
-     en produit 1 500. Le palier dit jusqu'où un élément doit grimper. */
+     en produit 1 500. Le palier dit jusqu'où un élément doit grimper.
+
+     AUCUN élément ne déclare de palier, et c'est VOULU. Deux règles ont été
+     étudiées et rejetées :
+       - par fréquence : le corpus de sous-titres classe « de bakker », « de
+         apotheek », « trager » et « goeiedag » comme rares. Ce sont exactement
+         les mots qu'il faut savoir DIRE en Flandre ;
+       - par ressemblance écrite : « speciaal », « de trein », « het water » ont
+         l'air offerts et ne se prononcent pas du tout comme leur traduction.
+         Se ressembler à l'écrit ne dit rien du son, et c'est le son que le
+         barreau « à voix haute » travaille.
+     Le mécanisme reste en place : il redeviendra utile quand il y aura de la
+     lecture, donc du vocabulaire qu'on doit comprendre sans devoir le produire.
+     Voir la spécification (issue #12) avant de le remplir. */
   const TIER_MAX = { produce: 6, write: 4, recognise: 2 };
   const maxRung = item => TIER_MAX[(item && item.tier) || 'produce'];
 
