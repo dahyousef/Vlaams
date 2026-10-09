@@ -30,6 +30,10 @@ Every fix leaves a test that fails on the old code. Write it, watch it fail, the
 - Storage keys keep their spelling: `vlaams-onderweg`, `vlaams/fallback`,
   `vlaams/outbox`, `vlaams/owner`. Renaming one orphans every database already on a
   device and every backup already written.
+- The same goes for **field names inside a stored record** — `stage`, `due`, `interval`,
+  `ease`, `reps`, `lapses`, `said`, `retired`. Records are stored and synced whole, so a
+  rename orphans them exactly as a key rename would. `GLOSSARY.md` says to call a stage a
+  **rung** in prose and in new names; it is not an instruction to rename the stored field.
 - The codebase uses `const` and arrow functions throughout and no optional chaining.
 - The repo is **public**. Personal data stays out of tracked files; content personalises
   through `{naam}`, `{stad}` and `{bedrijf}`, substituted once at load.
