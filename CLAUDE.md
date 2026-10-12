@@ -54,6 +54,9 @@ content to B1". Read it before planning or implementing anything. Tickets hang o
 sub-issues. `GLOSSARY.md` holds the vocabulary it uses.
 
 
+- `docs/superpowers/plans/2026-10-12-phase-1-moteur-ecrans-garde-fous.md` — **the phase 1
+  plan**, in progress. Start at its table *Where we are*, which says which step is next.
+  Execute phase 1 from it; its last sections record what was decided while writing it
 - `docs/CONSTATS-2026-10-06.md` — what a week of real study found, and how it was found
 - `docs/superpowers/specs/2026-10-08-moteur-et-contenu-design.md` — **superseded in scope.**
   It covers the engine only. A session on 9 October 2026 decided to replace it with one
