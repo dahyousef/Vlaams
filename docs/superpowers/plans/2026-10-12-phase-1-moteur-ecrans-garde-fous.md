@@ -8,7 +8,7 @@
 
 **Tech Stack:** Plain browser JavaScript hanging off the `NL.*` namespace, concatenated by `build.sh`; no dependencies, no bundler. Tests are Node scripts that load the sources into a `vm` context. Supabase for sync.
 
-**Spec:** GitHub issue #12 on `dahyousef/Vlaams` (`gh issue view 12`). Read it with `GLOSSARY.md` and `docs/adr/0001`–`0005`. The two files under `docs/superpowers/` dated 2026-10-08 are superseded: do not implement from them.
+**Spec:** GitHub issue #12 on `dahyousef/Vlaams` (`gh issue view 12`). Read it with `GLOSSARY.md` and `docs/adr/0001`–`0007`. The two files under `docs/superpowers/` dated 2026-10-08 are superseded: do not implement from them.
 
 ## How this plan was produced, and how far to trust it
 
@@ -33,8 +33,9 @@ An agent runs this plan, but these moments are yours. Each step waits for the on
 | Plan written and reviewed; eight decisions settled; issue #12 corrected | done, 12 October 2026 |
 | 1. Settle the open question, with a prototype | done, 12 October 2026: five weeks is too late, and Tasks 5b and 9b change it. See *The open question, as settled on 12 October 2026*. The addition to issue #12 was applied the same day |
 | 2. Commit the plan, with its pointer in `CLAUDE.md` | done, 12 October 2026: committed and pushed on `phase-1-engine`, ahead of step 1 at the maintainer's request. No pull request is open yet |
-| 3. Glossary and ADRs | not started |
-| 3b. One full run of the thirteen tasks in a scratch copy, before any ticket | not started |
+| 3. Glossary and ADRs | done, 12 October 2026: eight terms added to `GLOSSARY.md`, *reinforcement* kept and *recall* retired; ADR 0006 (the reset) and ADR 0007 (the reserved share); the two candidates from Tasks 5b and 9b fail the first test and get none |
+| 3a. Rewrite Tasks 5b and 9b: a first right spoken answer leaves the rung alone, and a writing exercise in the same session decides the climb | in progress. Decided on 12 October 2026, while defining *produced*: as written below, Task 5b lets reading an item aloud take it past rung 3, so the count of items the learner can produce stops meaning that they wrote it. **Until this line says done, Tasks 5b and 9b below describe the earlier design** |
+| 3b. One full run of the thirteen tasks in a scratch copy, before any ticket | not started. It also renames the flag `recall` that Task 3 gives a queue entry, which the glossary now retires |
 | 4. `/to-tickets` | not started |
 | 5. Guardrail hook, then the run of the thirteen tasks | not started |
 | 6. `/code-review main`, PR body, PR out of draft | not started |
@@ -61,11 +62,13 @@ Three things live outside the repository on purpose. The verified end state of t
    - *Place*: what a session has 22 of, one per item.
    - *Reserved share*: the places kept for items never met.
    - *Produced*: said of an item that has passed the writing rung. The glossary already says progress is "a count the learner can produce" without saying what that is.
-   - *Recall*: the second exercise an item gets in the session where it is met. ADR 0001 calls the same thing *reinforcement*. Pick one word and retire the other.
+   - *Reinforcement*: the second exercise an item gets in the session where it is met. This plan also called it a *recall*, which is already the name of an exercise on the first rung. *Reinforcement* is kept, as in ADR 0001 and the spec, and *recall* is retired.
    - *Said*: of an item the learner has answered aloud, correctly, at least once. Task 5b makes a rule depend on it.
    - *Spoken exercise*: the exercise that asks the learner to say an item aloud. The code calls it `speak`.
+   - *Put off*: of a spoken exercise taken out of a session by « Je ne peux pas parler ». Not the same as skipped, which is a wrong answer.
+   - *Backlog*: the items due and not yet served.
 
-   The glossary holds definitions only, never implementation. By the skill's three tests (hard to reverse, surprising without context, a real trade-off), two decisions of this plan earn an ADR and the others do not: the reset as a timestamp with a fixed migration date (Task 8), and a reserved share that never yields (Task 3 and decision 7). The settlement of the open question adds two candidates to put to the same three tests: that an item's first spoken exercise is certain and costs no rung (Task 5b), and that « je ne peux pas parler » belongs to the session and is deliberately not a setting (Task 9b). Commit the glossary and the ADRs on the branch.
+   The glossary holds definitions only, never implementation. By the skill's three tests (hard to reverse, surprising without context, a real trade-off), two decisions of this plan earn an ADR and the others do not: the reset as a timestamp with a fixed migration date (Task 8), and a reserved share that never yields (Task 3 and decision 7). The settlement of the open question adds two candidates to put to the same three tests: that an item's first spoken exercise is certain and costs no rung (Task 5b), and that « je ne peux pas parler » belongs to the session and is deliberately not a setting (Task 9b). Put to them on 12 October 2026, both fail the first: nothing stored depends on either, and each is a few lines to change back. That is the reason tiers got no ADR. Their reasoning stays in issue #12 and in the comments the two tasks write where someone about to change them will read it. Commit the glossary and the ADRs on the branch.
 
 3b. **Run the whole plan once, in a scratch copy, before any ticket exists.** Tasks 5b and 9b were measured on the end state and then placed in the middle; see *How this plan was produced*. So before step 4 every task is executed in order, in a worktree that is thrown away afterwards: 1, 2, 3, 4, 5, 5b, 6, 7, 8, 9, 9b, 10, 11. Each step is done as written, and what it prints is compared with what the step expects.
 
@@ -245,7 +248,7 @@ Two more skills are held for later phases, so that they are not forgotten: `wayf
 
 Five things the spec does not mention and a learner will meet, and a sixth that it mentions since 12 October 2026. Each has a test in the task that owns the code.
 
-1. **A session abandoned before its in-session recalls.** Items met and then left must come back the next day, and must not fall due again the same day. → Task 3, block *Ce que la spécification ne dit pas*.
+1. **A session abandoned before its reinforcements.** Items met and then left must come back the next day, and must not fall due again the same day. → Task 3, block *Ce que la spécification ne dit pas*.
 2. **Midnight passes during a session.** The session finishes and the new day's budget opens. → Task 3, same block.
 3. **A word the learner added by hand.** It must be met in the next session, not after the whole course: own words sat at the end of the list. → Task 3, same block.
 4. **A second device that is signed in, offline and stale when the reset happens.** Its queued answers must not put deleted progress back on the server. → Task 8, block *Remise à zéro*.
@@ -1443,7 +1446,7 @@ Measured on the tree Task 2 leaves, with unmet items available:
 | 120 | 0 | 0 |
 | 200 | 0 | 0 |
 
-Neither calculation guaranteed anything new, and the two disagreed in between. **The reserved share is the repair**, not insurance for later: new items are taken out first, in one place, and reviews fill what is left. Two other changes ride with it because all three share one cost model, in which an item never met costs two exercises, its meeting and its recall later in the same session.
+Neither calculation guaranteed anything new, and the two disagreed in between. **The reserved share is the repair**, not insurance for later: new items are taken out first, in one place, and reviews fill what is left. Two other changes ride with it because all three share one cost model, in which an item never met costs two exercises, its meeting and its reinforcement later in the same session.
 
 - **Reservation.** Thirty per cent of a session's places, never fewer than four, go to items never met. It is computed from the session, comes out before reviews fill the rest, survives the trim when the day budget is nearly spent, and collapses when nothing is left to meet.
 - **One composer.** `NL.srs.compose()` decides the contents; the home screen and the session both call it, so they cannot disagree again.
@@ -2308,7 +2311,7 @@ git commit -m "fix: a cognate skips the meaning drill and nothing else"
 
 ### Task 5: The long-run simulation moves its clock, and fails on a day with nothing new
 
-`test/pace.js` set the clock once per simulated day and held it. A return due in twelve minutes never arrived, so two hundred simulated days looked healthy while real day two served nothing new. It also graded answers by calling the scheduler directly, which skips the session, and the session is where retries and recalls live.
+`test/pace.js` set the clock once per simulated day and held it. A return due in twelve minutes never arrived, so two hundred simulated days looked healthy while real day two served nothing new. It also graded answers by calling the scheduler directly, which skips the session, and the session is where retries and reinforcements live.
 
 **Files:**
 - Modify: `test/pace.js`, `test/run-all.sh`, `TESTING.md`
@@ -5869,7 +5872,7 @@ Phases 3 and 4, content repair and then expansion to B1, follow in that order, e
 | Old intervals (`main`) | day 3 | day 6 | day 14 | day 36 | day 19 |
 | New intervals (this plan, before Task 5b) | day 2 | day 5 | day 13 | day 35 | day 14 or day 35 |
 
-`speak` was the exercise an item got once it stood **on** rung 5, and the wait before that exercise is the longest of the ladder, 21 days. This was never a side effect of the interval decision: the ladder of this plan is no slower at any rung than the one on `main`, because the recall inside the session climbs the rung the twelve-minute return used to climb.
+`speak` was the exercise an item got once it stood **on** rung 5, and the wait before that exercise is the longest of the ladder, 21 days. This was never a side effect of the interval decision: the ladder of this plan is no slower at any rung than the one on `main`, because the reinforcement inside the session climbs the rung the twelve-minute return used to climb.
 
 **Two corrections to that table, found by running the engine.** For a grammar rule, rung 4 offers `speak` beside `open` and the engine draws one, so about half the rules were first spoken around day 14 and the rest around day 35. And "five weeks" is the figure for a learner who takes every session. The maintainer takes one session a day, two at most. With one, an item met on day 1 was first asked aloud on day 48 to 51, and the typical item on day 74, because an item also has to wait for a place in a session.
 
@@ -5924,7 +5927,7 @@ So:
 
 All three fixes are required, each for its own reason, and each has its own failing test: the gate in Task 2, the allocation and the intervals in Task 3. *Decided:* the reserved share is the primary fix, not insurance for later. Issue #12 was corrected on 12 October 2026 in the four passages that stated the mechanism: the first paragraph of the Problem Statement, the first paragraph of the Solution, "Reproduce the real failure" under Testing Decisions, and the last sentence of the note on the measured state.
 
-**2. "Places" are items, and a new item costs two exercises.** The spec reserves "30% of a session's places, never fewer than four" without saying whether the in-session recall takes a place. Here a session has 22 places for items, the reservation is 7 items, and each new item adds one recall exercise: 22 to 29 exercises a session. New items are capped at 11 a session so that a session with no reviews does not double. *Accepted.* The second exercise is the reinforcement this design adds, so a session gets longer in time as well as in count; Task 3 says so.
+**2. "Places" are items, and a new item costs two exercises.** The spec reserves "30% of a session's places, never fewer than four" without saying whether the reinforcement takes a place. Here a session has 22 places for items, the reservation is 7 items, and each new item adds one reinforcement: 22 to 29 exercises a session. New items are capped at 11 a session so that a session with no reviews does not double. *Accepted.* The second exercise is the reinforcement this design adds, so a session gets longer in time as well as in count; Task 3 says so.
 
 **3. "Can produce" means the writing rung is passed** (`stage >= 4`, capped by tier). The spec uses the phrase without defining it. The alternative was the speaking rung. Writing was chosen because it is the first rung where the learner produces the word from memory instead of recognising it. An item is first asked aloud about a month after it is met (the ladder's intervals put that exercise on day 34), so a count based on speaking would read zero for the first month, which is the fault ADR 0002 exists to remove. That same figure raised a question of its own, kept apart from the count and settled on 12 October 2026: see *The open question, as settled on 12 October 2026*. Task 5b has since brought the first spoken exercise to rung 3; the count stays on the writing rung, which every item still has to pass. On the simulated one-session-a-day learner the count starts moving on day 5. *Accepted.*
 

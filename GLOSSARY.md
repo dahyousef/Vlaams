@@ -49,9 +49,23 @@ _Avoid_: seen, introduced, discovered, rencontré
 The moment an item is next scheduled to be put in front of the learner.
 _Avoid_: scheduled, next review, échéance
 
+**Backlog**:
+The items that are due and have not yet been served.
+_Avoid_: debt, pile, queue, arriéré
+
 **Lapse**:
 A wrong answer on an item that had already climbed above its first rung.
 _Avoid_: miss, failure, mistake, rechute
+
+**Said**:
+Said of an item the learner has got right in a spoken exercise at least once. Speaking in a
+conversation, or repeating after a recording, does not make an item said.
+_Avoid_: spoken, pronounced, dit
+
+**Produced**:
+Said of an item the learner has written in Dutch, correctly, on the rung that asks for it in
+writing. Not the same as free production, which is composing a sentence of one's own.
+_Avoid_: known, learned, acquired, acquis
 
 **Retired**:
 Said of an item whose interval has grown long enough that it has left the daily rotation.
@@ -68,9 +82,32 @@ _Avoid_: mastered, mastery, maîtrisé
 One question put to the learner, built from one item.
 _Avoid_: task, drill, question, activity
 
+**Spoken exercise**:
+An exercise that asks the learner to say an item aloud.
+_Avoid_: speak, speaking drill, oral exercise, dis-le
+
 **Session**:
 One sitting of exercises, bounded by a maximum number of items.
 _Avoid_: lesson, round, séance
+
+**Place**:
+One of the positions a session has to fill, taken by one item however many exercises that
+item leads to.
+_Avoid_: slot, seat, position
+
+**Reserved share**:
+The places of a session kept for items never met, set aside before due items fill the rest.
+_Avoid_: quota, allowance, new-item slots
+
+**Reinforcement**:
+The second exercise an item gets in the session where it is first met, a few minutes after
+the first.
+_Avoid_: recall, learning step, same-day review, rappel
+
+**Put off**:
+Said of a spoken exercise taken out of a session because the learner cannot talk there. Its
+item stays due and is not graded, which is what separates putting off from skipping.
+_Avoid_: skipped, muted, postponed, snoozed
 
 **Day**:
 The period the budget is counted over. Distinct from a session, because several sessions
