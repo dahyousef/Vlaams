@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** New vocabulary reaches the learner every day, the screens report progress as two counts, and mechanical guards stop the same faults returning.
+**Goal:** New vocabulary reaches the learner every day, the screens report progress as two counts, and mechanical guards stop the same faults returning. Since 12 October 2026 it also brings the first spoken exercise forward, from about five weeks after an item is met to about one (Tasks 5b and 9b).
 
 **Architecture:** One function, `NL.srs.compose()`, decides what a session contains, and both the home screen and the session ask it. Reinforcement a few minutes after meeting an item happens inside the running session, as a reserved place in its queue, so nothing is ever scheduled less than a day out. A unit opens the next when three quarters of its items have been met. Everything else in this phase is display, deletion, or a guard around those three decisions.
 
@@ -18,6 +18,8 @@ Task 2 was also applied alone, exactly as written here, and its tests pass on th
 
 What was **not** run is each later intermediate commit on its own. Tasks 3, 6, 7, 9 and 11 touch the same files, and a note in each says which lines belong to a later task. If the suite is red after a task, the cause is almost certainly one of those boundaries: fix it in the task you are in, and keep one commit per task.
 
+Tasks 5b and 9b were added on 12 October 2026, when the open question was settled. They were built on the end state of the other eleven, and the whole suite passes there with them. They were then placed where their dependencies put them: 5b after the simulation of Task 5, 9b after the mistakes session of Task 9. So the trees they start from here are not the tree they were measured on, and the failing output each quotes was measured on that end state with the task's own change left out. The full run of step 3b exists to check all of this before any ticket is written.
+
 Eight points were decided while writing this plan or found to differ from the spec. The maintainer reviewed them on 12 October 2026; they are recorded at the end, under **Decisions, as settled on 12 October 2026**. The first of them corrects what the spec says stopped the new words.
 
 ## The order of work, and what the maintainer types
@@ -29,21 +31,22 @@ An agent runs this plan, but these moments are yours. Each step waits for the on
 | Step | State |
 | --- | --- |
 | Plan written and reviewed; eight decisions settled; issue #12 corrected | done, 12 October 2026 |
-| 1. Settle the open question, with a prototype | **in progress**, in a session of its own, started 12 October 2026 |
+| 1. Settle the open question, with a prototype | done, 12 October 2026: five weeks is too late, and Tasks 5b and 9b change it. See *The open question, as settled on 12 October 2026*. The addition to issue #12 was applied the same day |
 | 2. Commit the plan, with its pointer in `CLAUDE.md` | done, 12 October 2026: committed and pushed on `phase-1-engine`, ahead of step 1 at the maintainer's request. No pull request is open yet |
-| 3. Glossary and two ADRs | not started |
+| 3. Glossary and ADRs | not started |
+| 3b. One full run of the thirteen tasks in a scratch copy, before any ticket | not started |
 | 4. `/to-tickets` | not started |
-| 5. Guardrail hook, then the run of Tasks 1 to 11 | not started |
+| 5. Guardrail hook, then the run of the thirteen tasks | not started |
 | 6. `/code-review main`, PR body, PR out of draft | not started |
 | 7. The two-day check | not started |
 | 8. Merge | not started |
 | 9. `/retro`, then `/improve-codebase-architecture` | not started |
 
-One thing lives outside the repository on purpose: the verified end state of this plan, as a single patch, at `../vlaams-phase-1-prototype.patch`. Its own header says how to use it and why it is not the way to implement.
+Three things live outside the repository on purpose. The verified end state of the eleven original tasks is one patch, at `../vlaams-phase-1-prototype.patch`. What Tasks 5b and 9b add to it is a second patch, `../vlaams-phase-1-5b-9b.patch`, applied after the first. Each header says how to use it and why it is not the way to implement. And `../vlaams-PROTOTYPE-when-first-spoken/` holds the prototype that settled the open question, with the scripts and the raw output behind every figure quoted for it.
 
-1. **Review this plan, and settle the open question.** The eight points at the end were settled on 12 October 2026, and issue #12 was corrected the same day. One thing is still yours, and it must be settled before step 5: the *Open question* near the end, on when a session first asks you to speak.
+1. **Review this plan, and settle the open question.** The eight points at the end were settled on 12 October 2026, and issue #12 was corrected the same day. The open question, on when a session first asks you to speak, was settled later that day: five weeks is too late, and Tasks 5b and 9b change it.
 
-   Settle it with the **`prototype`** skill, in a fresh session: ask for a logic prototype of the ladder. It builds one HTML file you open by double-click, with a button for a right answer, a wrong answer and the next day, and the ladders you want to compare side by side: the one in this plan, `speak` one or two rungs earlier, or shorter middle intervals. You watch a word climb and see the day it is first spoken under each. Then have the simulation run on the ladder you prefer, for the daily load; until Task 5 lands, that simulation lives in the saved prototype patch, applied in a separate worktree. If the ladder changes, a twelfth task is added to this plan before step 4.
+   It was settled with the **`prototype`** skill: one HTML file compared four ladders side by side, and each candidate was then measured on the engine of this plan with the whole course, for a learner who takes one session a day. What was measured, what was chosen and what was declined are in *The open question, as settled on 12 October 2026*.
 
 2. **Have the plan committed** on `phase-1-engine` and pushed, so the tickets can link to it.
 
@@ -59,12 +62,22 @@ One thing lives outside the repository on purpose: the verified end state of thi
    - *Reserved share*: the places kept for items never met.
    - *Produced*: said of an item that has passed the writing rung. The glossary already says progress is "a count the learner can produce" without saying what that is.
    - *Recall*: the second exercise an item gets in the session where it is met. ADR 0001 calls the same thing *reinforcement*. Pick one word and retire the other.
+   - *Said*: of an item the learner has answered aloud, correctly, at least once. Task 5b makes a rule depend on it.
+   - *Spoken exercise*: the exercise that asks the learner to say an item aloud. The code calls it `speak`.
 
-   The glossary holds definitions only, never implementation. By the skill's three tests (hard to reverse, surprising without context, a real trade-off), two decisions of this plan earn an ADR and the others do not: the reset as a timestamp with a fixed migration date (Task 8), and a reserved share that never yields (Task 3 and decision 7). Commit the glossary and the ADRs on the branch.
+   The glossary holds definitions only, never implementation. By the skill's three tests (hard to reverse, surprising without context, a real trade-off), two decisions of this plan earn an ADR and the others do not: the reset as a timestamp with a fixed migration date (Task 8), and a reserved share that never yields (Task 3 and decision 7). The settlement of the open question adds two candidates to put to the same three tests: that an item's first spoken exercise is certain and costs no rung (Task 5b), and that « je ne peux pas parler » belongs to the session and is deliberately not a setting (Task 9b). Commit the glossary and the ADRs on the branch.
+
+3b. **Run the whole plan once, in a scratch copy, before any ticket exists.** Tasks 5b and 9b were measured on the end state and then placed in the middle; see *How this plan was produced*. So before step 4 every task is executed in order, in a worktree that is thrown away afterwards: 1, 2, 3, 4, 5, 5b, 6, 7, 8, 9, 9b, 10, 11. Each step is done as written, and what it prints is compared with what the step expects.
+
+   ```bash
+   git worktree add ../vlaams-full-run phase-1-engine
+   ```
+
+   Where a step does not apply or an output differs, the fault is in this plan. Correct the plan, not the scratch copy, and carry on. Nothing from that worktree is pushed. When Task 11 ends green there, remove the worktree and commit the corrected plan. Only then are the tickets written, so that no ticket points at a task known to be wrong.
 
 4. **Type `/to-tickets`.** Once, here, before any code is written. Point it at this plan and at issue #12.
 
-   It should produce **eleven tickets, one per task below, with the same titles**, as sub-issues of #12, labelled `ready-for-agent`, with GitHub's native dependencies for the blocking edges. Keep each ticket thin: what it delivers, how to tell it is done, and "Plan: Task N". "Done" is a completion criterion in the sense of `writing-for-agents`: something an agent can check, here the output its task's last step expects. The code stays in this plan and nowhere else; the skill itself asks for no file paths and no code in a ticket. It shows you the list and waits for your approval before it publishes anything.
+   It should produce **thirteen tickets, one per task below, with the same titles**, as sub-issues of #12, labelled `ready-for-agent`, with GitHub's native dependencies for the blocking edges. Keep each ticket thin: what it delivers, how to tell it is done, and "Plan: Task N". "Done" is a completion criterion in the sense of `writing-for-agents`: something an agent can check, here the output its task's last step expects. The code stays in this plan and nowhere else; the skill itself asks for no file paths and no code in a ticket. It shows you the list and waits for your approval before it publishes anything.
 
    | Ticket | Same title as | Blocked by |
    | --- | --- | --- |
@@ -73,14 +86,16 @@ One thing lives outside the repository on purpose: the verified end state of thi
    | 3 | Task 3, composer, reservation, reinforcement in the session | 2 |
    | 4 | Task 4, cognates | 3 |
    | 5 | Task 5, the simulation | 4 |
+   | 5b | Task 5b, said aloud from rung 3 | 5 |
    | 6 | Task 6, placement test removed | 1 |
    | 7 | Task 7, counts and unit names | 5 and 6 |
    | 8 | Task 8, reset and migration | 1 |
    | 9 | Task 9, mistakes screen | 7 and 8 |
+   | 9b | Task 9b, « je ne peux pas parler » | 5b and 9 |
    | 10 | Task 10, content guards and stale build | 7 |
    | 11 | Task 11, error log | 7 |
 
-   The edges say what genuinely gates what. The run itself takes the tasks in the order of this plan, 1 to 11, which respects every edge; the changes in each task were cut in that order.
+   The edges say what genuinely gates what. The run itself takes the tasks in the order of this plan, 1, 2, 3, 4, 5, 5b, 6, 7, 8, 9, 9b, 10, 11, which respects every edge. The eleven original tasks were cut in that order; 5b and 9b were placed in it afterwards, which is what step 3b checks.
 
 5. **Install the guardrail, then start the run.**
 
@@ -177,7 +192,7 @@ One thing lives outside the repository on purpose: the verified end state of thi
    ```text
    Use superpowers:subagent-driven-development to execute
    docs/superpowers/plans/2026-10-12-phase-1-moteur-ecrans-garde-fous.md,
-   Tasks 1 to 11, on branch phase-1-engine.
+   every task in order (1 to 5, 5b, 6 to 9, 9b, 10, 11), on branch phase-1-engine.
 
    You may, without asking: push to phase-1-engine, open the draft PR, and comment
    on the phase 1 tickets (sub-issues of #12). Never push to main.
@@ -187,10 +202,10 @@ One thing lives outside the repository on purpose: the verified end state of thi
    not, stop and tell me.
 
    Each task has a ticket with the same title. End each task's commit message with
-   "Refs #<its ticket>", and list "Closes #<ticket>" for all eleven in the PR body.
+   "Refs #<its ticket>", and list "Closes #<ticket>" for all thirteen in the PR body.
    ```
 
-   From there Tasks 1 to 11 run without stopping. **Between tasks you type nothing.** A fresh reviewer checks each task before the next one starts, and a review of the whole branch closes the run. That is the review between tickets, and it is part of the skill.
+   From there the thirteen tasks run without stopping. **Between tasks you type nothing.** A fresh reviewer checks each task before the next one starts, and a review of the whole branch closes the run. That is the review between tickets, and it is part of the skill.
 
 6. **Type `/code-review main`**, and say the spec is issue #12. Once, when Task 11 is pushed and CI is green on the draft PR.
 
@@ -202,7 +217,7 @@ One thing lives outside the repository on purpose: the verified end state of thi
 
 7. **Your own check.** Two sessions on two consecutive days, on the preview deployment of the PR, on the phone and the desktop. See *After the last task*.
 
-8. **Merge the PR** once the check passes. That deploys to production and closes the eleven tickets.
+8. **Merge the PR** once the check passes. That deploys to production and closes the thirteen tickets.
 
 9. **Type `/retro`, then `/improve-codebase-architecture`.** Type `/retro` in the session that ran step 5, before clearing it; from another session, point it at that session's log.
 
@@ -228,13 +243,14 @@ Two more skills are held for later phases, so that they are not forgotten: `wayf
 
 ## Review Focus
 
-Five things the spec does not mention and a learner will meet. Each has a test in the task that owns the code.
+Five things the spec does not mention and a learner will meet, and a sixth that it mentions since 12 October 2026. Each has a test in the task that owns the code.
 
 1. **A session abandoned before its in-session recalls.** Items met and then left must come back the next day, and must not fall due again the same day. → Task 3, block *Ce que la spécification ne dit pas*.
 2. **Midnight passes during a session.** The session finishes and the new day's budget opens. → Task 3, same block.
 3. **A word the learner added by hand.** It must be met in the next session, not after the whole course: own words sat at the end of the list. → Task 3, same block.
 4. **A second device that is signed in, offline and stale when the reset happens.** Its queued answers must not put deleted progress back on the server. → Task 8, block *Remise à zéro*.
 5. **Nothing left to do**: a unit with nothing new and nothing due, or a day budget already spent (including after the pace is lowered mid-day). No session, no error, and the home screen promises nothing. → Task 3, same block; Task 7 renders every screen in that state.
+6. **A place where the learner cannot talk.** A spoken exercise put off must cost nothing, must not come back in the same session, and must come back as a spoken exercise in the next one. → Task 9b, block *Je ne peux pas parler*, and the third learner of `test/pace.js`.
 
 ---
 
@@ -2471,6 +2487,258 @@ git commit -m "test: the long-run simulation moves its clock and fails on a day 
 
 ---
 
+### Task 5b: An item is said aloud from rung 3, and its first spoken answer costs no rung
+
+Added on 12 October 2026, when the open question at the end of this plan was settled. Until this task a session first asks for an item aloud once the item stands on rung 5, after that rung's 21-day wait: day 35 for a learner who takes every session, day 48 to 51 for one who takes one session a day. Three changes to one file bring it into the second week.
+
+Rung 3 offers `speak` for words, phrases and chunks, beside its writing exercises. That alone is not enough: the engine draws one exercise among those a rung offers, so the spoken one would come up for about half the items and the others would still wait for rung 5. So an item that has never been said aloud gets `speak` whenever its rung offers it. `said` is a field every stored record already has; nothing new is stored. For a grammar rule the same rule acts one rung higher, where `speak` already was beside `open`.
+
+And a wrong spoken answer on an item never yet said costs no rung. The spoken exercise shows the Dutch on the screen, so failing it says something about pronunciation or about the recogniser and nothing about memory. Dropping two rungs would send the item back to be recognised again, which is the wrong remedy. The item keeps its rung, is asked again before the session ends like any wrong answer, and is due the next day. Once an item has been said, a wrong spoken answer drops two rungs like any other.
+
+Measured with one session a day and 85 answers right in 100, on the end state of this plan: an item met on day 1 is first asked aloud between day 7 and day 13, and the learner can produce 233 items at day 60, against 201 on the ladder Task 4 leaves. The answer that costs no rung is what keeps that count from depending on the recogniser: with spoken answers right only 60 times in 100 it reads 212 with the rule and 160 without.
+
+**Files:**
+- Modify: `src/core/srs.js`, `test/engine.js`, `test/pace.js`, `TESTING.md`
+
+**Interfaces:**
+- Consumes: the engine of Tasks 2–4; the simulation of Task 5.
+- Produces: `RUNGS.word[3]`, `RUNGS.phrase[3]` and `RUNGS.chunk[3]` include `'speak'`. For an item whose record has `said: false`, `NL.srs.exerciseFor(item)` returns `'speak'` whenever its rung offers it. `NL.srs.grade(item, false, { ex: 'speak' })` on such an item keeps `stage` and `ease` and schedules it one day out. Task 9b builds on both.
+- Produces: `test/pace.js` prints `première demande à voix haute` and makes two more checks, eight in all.
+
+From this task on a session holds spoken exercises from the first week. Every suite answers them through `test/lib/answer.js`, which has known how since Task 1.
+
+- [ ] **Step 1: Write the failing tests**
+
+In `test/engine.js`, insert before the final `console.log`:
+
+````js
+  /* ------------------------------------------------------------------ */
+  console.log('\nÀ VOIX HAUTE — dès le troisième échelon, et la première fois ne coûte rien');
+  {
+    fresh();
+    const words = NL.content.allItems().filter(isWord);
+    const it = words.find(i => !i.cognate);
+    const draw = n => { const seen = {}; for (let k = 0; k < n; k++) seen[NL.srs.exerciseFor(it)] = 1; return Object.keys(seen); };
+
+    /* Jamais dit : dès que l'échelon le propose, c'est ce qui est demandé. */
+    const mute = words.filter(w => { put(w, 3, T0); return NL.srs.exerciseFor(w) !== 'speak'; });
+    ok(mute.length === 0, mute.length + ' of ' + words.length + ' never-said items on rung 3 are not asked aloud, e.g. « ' + (mute[0] && mute[0].nl) + ' »');
+    put(it, 2, T0);
+    ok(draw(30).indexOf('speak') < 0, 'an item is asked aloud on rung 2, before its rung offers it');
+
+    /* Raté sans avoir jamais été dit : l'échelon est gardé, et il revient demain, à voix haute. */
+    put(it, 3, T0);
+    let r = NL.srs.grade(it, false, { ex: 'speak' });
+    ok(r.stage === 3, 'a wrong first spoken answer sends the item from rung 3 to rung ' + r.stage);
+    ok(r.due - B.clock.now() === DAY, 'after a wrong first spoken answer the item is due in ' + Math.round((r.due - B.clock.now()) / DAY * 10) / 10 + ' day(s), not 1');
+    ok(draw(20).join() === 'speak', 'after a wrong first spoken answer the item is asked: ' + draw(20).join(', '));
+    /* Une faute à l'écrit, elle, coûte toujours deux échelons. */
+    put(it, 3, T0);
+    ok(NL.srs.grade(it, false, { ex: 'type' }).stage === 1, 'a wrong written answer on rung 3 no longer drops two rungs');
+
+    /* Dit : il monte. Ensuite l'échelon tire au sort comme avant, et une faute à
+       voix haute coûte comme une autre. */
+    put(it, 3, T0);
+    r = NL.srs.grade(it, true, { ex: 'speak', spoken: true });
+    ok(r.stage === 4 && r.said === true, 'a right spoken answer should leave the item said and on rung 4: it is on rung ' + r.stage + ', said ' + r.said);
+    r.stage = 3; r.lastEx = null; NL.state.setRec(r);
+    const after = draw(60);
+    ok(after.length > 1 && after.indexOf('speak') >= 0, 'once said, rung 3 offers only: ' + after.join(', '));
+    ok(NL.srs.grade(it, false, { ex: 'speak' }).stage === 1, 'once said, a wrong spoken answer no longer drops two rungs');
+    console.log('  ' + words.length + ' mots et phrases dits dès l’échelon 3 ; raté la première fois : échelon gardé, retour le lendemain ; une fois dit : ' + after.sort().join(', '));
+  }
+````
+
+In `test/pace.js`, replace:
+
+````js
+  const perDay = [], mix = {}, seenOnDay = {}, dry = [];
+````
+
+with:
+
+````js
+  const perDay = [], mix = {}, seenOnDay = {}, dry = [], aloud = {};
+````
+
+In `test/pace.js`, replace:
+
+````js
+        prevEx = c.ex;
+````
+
+with:
+
+````js
+        prevEx = c.ex;
+        /* Le jour où chaque élément est demandé à voix haute pour la première fois. */
+        if (c.ex === 'speak' && !aloud[c.items[0].id]) aloud[c.items[0].id] = day;
+````
+
+In `test/pace.js`, insert before the line that begins `ok(over.length === 0, `:
+
+````js
+  /* Dire tôt : un mot ou une phrase rencontré le premier jour est demandé à voix
+     haute en une dizaine de jours, et jamais après trois semaines. Avec « dis-le »
+     au seul échelon 5, c'était cinq semaines. */
+  const firstDay = Object.keys(seenOnDay).filter(id => seenOnDay[id].has(1) && NL.content.byId(id).kind !== 'pattern');
+  const waits = firstDay.map(id => aloud[id] || Infinity).sort((a, b) => a - b);
+  const typical = waits[Math.floor(waits.length / 2)], latest = waits[waits.length - 1];
+  ok(typical <= 10, 'un élément du premier jour est typiquement demandé à voix haute le jour ' + typical + ' : plus de dix jours');
+  ok(latest <= 21, 'un élément du premier jour attend le jour ' + latest + ' pour être demandé à voix haute : plus de trois semaines');
+  P('première demande à voix haute', 'jours ' + waits[0] + ' à ' + latest + ', pour les ' + waits.length + ' éléments du premier jour');
+````
+
+- [ ] **Step 2: Run them and watch them fail**
+
+Run: `node test/engine.js "$(pwd)"; node test/pace.js "$(pwd)" 200; node test/pace.js "$(pwd)" 200 one`
+
+Expected from `test/engine.js`:
+
+```
+À VOIX HAUTE — dès le troisième échelon, et la première fois ne coûte rien
+  FAIL: 430 of 430 never-said items on rung 3 are not asked aloud, e.g. « hallo »
+  FAIL: a wrong first spoken answer sends the item from rung 3 to rung 1
+  FAIL: after a wrong first spoken answer the item is asked: dictation
+  FAIL: once said, rung 3 offers only: type
+
+81 checks, 4 FAILED
+```
+
+Expected from the simulation, for the learner who takes every session:
+
+```
+   ✗ un élément du premier jour est typiquement demandé à voix haute le jour 38 : plus de dix jours
+   ✗ un élément du premier jour attend le jour 74 pour être demandé à voix haute : plus de trois semaines
+8 vérifications, 2 PROBLÈME(S)
+```
+
+and for one session a day the same two lines with day 50 and day 83.
+
+These were measured on the end state of the other eleven tasks, with this task's tests added and its change to `src/core/srs.js` left out. The tree Task 5 leaves has the same `test/engine.js` and the same functions in `src/core/srs.js`, so the lines should be the same there; the full run of step 3b checks it. The exercise named in the third line is a draw: `type` in its place means the same thing.
+
+- [ ] **Step 3: Offer the spoken exercise on rung 3, make the first one certain, and make it cost nothing**
+
+In `src/core/srs.js`, replace:
+
+````js
+     (la dictée) arrive dès le deuxième barreau au lieu d'attendre le troisième. */
+  const RUNGS = {
+````
+
+with:
+
+````js
+     (la dictée) arrive dès le deuxième barreau au lieu d'attendre le troisième. */
+  /* « Dis-le » dès l'échelon 3 pour les mots, les phrases et les expressions :
+     au seul échelon 5, la première demande à voix haute tombait cinq semaines
+     après la rencontre. Voir exerciseFor() pour qui y a droit d'office. */
+  const RUNGS = {
+````
+
+In `src/core/srs.js`, replace:
+
+````js
+      ['dictation', 'type'],
+      ['type', 'cloze'],
+````
+
+with:
+
+````js
+      ['dictation', 'type'],
+      ['type', 'cloze', 'speak'],
+````
+
+In `src/core/srs.js`, replace:
+
+````js
+      ['dictation', 'corrige'],
+````
+
+with:
+
+````js
+      ['dictation', 'corrige', 'speak'],
+````
+
+In `src/core/srs.js`, replace:
+
+````js
+      ['cloze'],
+      ['type', 'dictation'],
+````
+
+with:
+
+````js
+      ['cloze'],
+      ['type', 'dictation', 'speak'],
+````
+
+In `src/core/srs.js`, replace:
+
+````js
+    if (!usable.length) usable = [fallback(item)];
+````
+
+with:
+
+````js
+    if (!usable.length) usable = [fallback(item)];
+    /* Un élément jamais dit à voix haute l'est dès que son échelon le propose.
+       Tiré au sort parmi les exercices de l'échelon, « dis-le » ne tombait qu'une
+       fois sur deux ou trois, et le reste attendait l'échelon 5. */
+    if (!r.said && usable.indexOf('speak') >= 0) return 'speak';
+````
+
+In `src/core/srs.js`, replace:
+
+````js
+      r.stage = clamp(r.stage - 2, r.reps > 1 ? 1 : 0, top);
+      r.ease = clamp(r.ease - 0.2, 1.3, 2.9);
+      r.interval = STEP[Math.min(r.stage, STEP.length - 1)];
+      r.retired = false;
+````
+
+with:
+
+````js
+      /* Un exercice parlé raté tant que l'élément n'a jamais été dit ne coûte
+         aucun échelon. La phrase est à l'écran : ce n'est pas un oubli, c'est la
+         prononciation ou le micro, et redescendre de deux échelons renverrait
+         l'élément se faire reconnaître. Il garde sa place et revient demain. */
+      const unsaid = !r.said && !!opts && opts.ex === 'speak';
+      if (!unsaid) {
+        r.stage = clamp(r.stage - 2, r.reps > 1 ? 1 : 0, top);
+        r.ease = clamp(r.ease - 0.2, 1.3, 2.9);
+      }
+      r.interval = unsaid ? STEP[0] : STEP[Math.min(r.stage, STEP.length - 1)];
+      r.retired = false;
+````
+
+- [ ] **Step 4: Say what the simulation now holds**
+
+In `TESTING.md`, in the table, replace the `pace.js` row with:
+
+````md
+| `pace.js` | 200 jours simulés, pour deux apprenants (budget épuisé chaque jour ; une seule séance par jour) : charge quotidienne, variété, exigence — aucune journée sans élément nouveau tant qu’il en reste, et un élément du premier jour demandé à voix haute en dix jours, jamais après trois semaines. L’horloge avance pendant la journée |
+````
+
+- [ ] **Step 5: Run and commit**
+
+Run: `node test/engine.js "$(pwd)" && sh test/run-all.sh`
+
+Expected: `430 mots et phrases dits dès l’échelon 3 ; raté la première fois : échelon gardé, retour le lendemain ; une fois dit : speak, type`. In the simulation, `première demande à voix haute  jours 5 à 11, pour les 56 éléments du premier jour` for the learner who takes every session and `jours 7 à 13, pour les 11 éléments du premier jour` for one session a day, each ending `8 vérifications, AUCUN PROBLÈME`. Then the suite passes.
+
+````bash
+sh build.sh
+git add src/core/srs.js test/engine.js test/pace.js TESTING.md index.html artifact.html
+git commit -m "feat: an item is said aloud from rung 3, and its first spoken answer costs no rung"
+````
+
+---
+
 ### Task 6: The placement test is removed
 
 Not as a defect: on the learner's own data its credits were not due until after the stall and played no part in it. It is removed because it caused more confusion than it saved time.
@@ -4324,6 +4592,612 @@ git commit -m "feat: a screen for what you keep getting wrong, and a session on 
 
 ---
 
+### Task 9b: « Je ne peux pas parler »: a session without its spoken exercises, and a way past a recogniser that will not hear
+
+Added on 12 October 2026 with Task 5b. Since that task a session holds spoken exercises from the first week, and the learner cannot always talk where he studies. Until now there were two ways past a spoken exercise: answer it, or skip it, and skipping is a wrong answer.
+
+This task puts one button on the spoken exercise. One tap takes every spoken exercise still to come out of that session. The items concerned are not graded and use none of the day's budget. They stay due and come back as spoken exercises in the next session, and in the one after, until they have been said: Task 5b's rule sees to that, because they still have never been said. `NL.srs.compose()` fills their places with other due items, leaving out those whose next exercise can only be spoken, so a session without speaking is not a shorter one. Nothing is stored: the next session asks again.
+
+It is not a setting, for two reasons. Settings travel between devices, and the phone on a train is not the desktop at home. And a setting left off would bring back, without a word, the fault Task 5b removes.
+
+The same task gives a way past a recogniser that will not hear. After three refused tries the exercise offers the two buttons it already shows where there is no recogniser: said it, or not yet. Without that, an item the recogniser cannot hear would be asked aloud every day and never climb.
+
+Measured with one session a day, 85 answers right in 100, and one session in five in a place where the learner cannot talk: the typical item is first asked aloud on day 28, against day 25 when he can always talk; an exercise put off waits one day, two at most; a session with a tap holds as many exercises as any other. Two limits were measured and accepted. A full week without talking leaves the count of items the learner can produce standing still for that week, because items never yet said wait on rung 3, and is absorbed in about five sessions. Two full weeks, at the moment the backlog is highest, are followed by six sessions that are entirely spoken.
+
+**Files:**
+- Modify: `src/core/srs.js`, `src/ui/session.js`, `src/ex/index.js`, `src/core/fr.js`, `test/lib/answer.js`, `test/engine.js`, `test/screens.js`, `test/journey.js`, `test/pace.js`, `test/run-all.sh`, `TESTING.md`
+
+**Interfaces:**
+- Consumes: Task 5b's rule that an item never said is asked aloud; `NL.srs.compose` (Task 3); the mistakes session (Task 9).
+- Produces: `NL.srs.needsVoice(item)`, true when the item's next exercise can only be spoken. `NL.srs.exerciseFor(item, avoid, quiet)`. `NL.srs.compose(source, now, { quiet, without })`, where `without` is a `Set` of item ids. In the session, a click that carries `data-quiet`; the flag `quiet` lives in the running session and nowhere else.
+- Produces: `require('./lib/answer')(B).cantSpeak()`; `node test/pace.js <root> <days> one quiet`, a third learner; the strings `cantSpeak` and `quietOnly`.
+
+- [ ] **Step 1: Teach the test helper the button, and write the failing tests**
+
+In `test/lib/answer.js`, replace:
+
+````js
+     answer.next();    « Continuer »                                            */
+````
+
+with:
+
+````js
+     answer.next();    « Continuer »
+     answer.cantSpeak();  « Je ne peux pas parler », sur un exercice à voix haute  */
+````
+
+In `test/lib/answer.js`, replace:
+
+````js
+  const next = wasMatch => { if (!wasMatch) click({ next: '1' }); };
+
+  return { right, wrong, next, click, type };
+````
+
+with:
+
+````js
+  const next = wasMatch => { if (!wasMatch) click({ next: '1' }); };
+  const cantSpeak = () => { const c = S.peek(); if (!c || c.ex !== 'speak') return false; click({ quiet: '1' }); return true; };
+
+  return { right, wrong, next, cantSpeak, click, type };
+````
+
+In `test/engine.js`, insert before the final `console.log`:
+
+````js
+  /* ------------------------------------------------------------------ */
+  console.log('\nJE NE PEUX PAS PARLER — la séance continue, sans rien à voix haute');
+  {
+    const words = NL.content.allItems().filter(i => isWord(i) && !i.cognate);
+    /* Huit éléments jamais dits, à l'échelon qui demande de les dire, et une
+       cinquantaine d'autres qui n'ont rien à dire. Tous dus. */
+    const voice = words.slice(0, 8), other = words.slice(8, 60);
+    fresh();
+    voice.forEach(it => put(it, 3, T0 - 2 * DAY));
+    other.forEach(it => put(it, 2, T0 - DAY));
+    const kept = () => JSON.stringify(voice.map(it => NL.state.rec(it.id)));
+    const size = () => Number((S.render().match(/class="pill">\d+\/(\d+)</) || [0, 0])[1]);
+
+    ok(voice.every(it => NL.srs.needsVoice(it)) && !other.some(it => NL.srs.needsVoice(it)), 'needsVoice() does not tell the items that can only be spoken from the others');
+    const without = NL.srs.compose('vandaag', undefined, { quiet: true }).due;
+    ok(without.length > 0 && !without.some(it => NL.srs.needsVoice(it)), 'a session composed without speaking still holds ' + without.filter(it => NL.srs.needsVoice(it)).length + ' item(s) that can only be spoken');
+
+    ok(S.begin('vandaag'), 'the session did not start');
+    let guard = 0;
+    while (S.peek() && S.peek().ex !== 'speak' && guard++ < 60) { const m = S.peek().ex === 'match'; B.clock.advance(20000); answer.right(); answer.next(m); }
+    ok(S.peek() && S.peek().ex === 'speak', 'the fixture is wrong: the session holds no spoken exercise');
+    const before = kept(), left = NL.srs.budgetLeft(), held = size();
+
+    ok(answer.cantSpeak(), 'a spoken exercise cannot be put off');
+    ok(kept() === before, 'putting a spoken exercise off changed a stored record');
+    ok(NL.srs.budgetLeft() === left, 'putting a spoken exercise off spent ' + (left - NL.srs.budgetLeft()) + ' of the day budget');
+    ok(size() === held, 'the session went from ' + held + ' exercises to ' + size() + ' although other items were due');
+
+    /* La suite de la séance : rien à voix haute, et aucun des éléments mis de côté. */
+    const rest = [];
+    guard = 0;
+    while (S.peek() && guard++ < 80) {
+      const c = S.peek(), m = c.ex === 'match';
+      rest.push({ ex: c.ex, id: c.items[0].id });
+      B.clock.advance(20000); answer.right(); answer.next(m);
+      if (B.app.innerHTML.indexOf('done-stage') >= 0) break;
+    }
+    S.abandon();
+    ok(rest.length > 0 && !rest.some(x => x.ex === 'speak'), rest.filter(x => x.ex === 'speak').length + ' spoken exercise(s) were served after « je ne peux pas parler »');
+    ok(!rest.some(x => voice.some(it => it.id === x.id)), 'an item put off came back in the same session');
+    ok(kept() === before, 'an item put off was graded before the session ended');
+
+    /* La séance suivante : ils reviennent, et à voix haute. */
+    B.clock.advance(DAY);
+    NL.state.touchDay();
+    const back = play().filter(x => !x.retry && voice.some(it => it.id === x.id));
+    ok(back.length === voice.length, 'of ' + voice.length + ' items put off, ' + back.length + ' came back in the next session');
+    ok(back.every(x => x.ex === 'speak'), back.filter(x => x.ex !== 'speak').length + ' item(s) put off came back as something other than a spoken exercise');
+    console.log('  ' + voice.length + ' exercices parlés mis de côté : rien de noté, budget intact, séance toujours de ' + held + ' exercices ; le lendemain les ' + back.length + ' reviennent à voix haute');
+
+    /* Il ne reste que du parlé : la séance s'arrête là, sans bilan et sans journée comptée. */
+    fresh();
+    const all = NL.content.allItems();
+    all.forEach((it, i) => put(it, 5, i < 5 ? T0 - DAY : T0 + 30 * DAY));
+    ok(S.begin('vandaag') && S.peek().ex === 'speak', 'the fixture is wrong: the session should hold only spoken exercises');
+    const streak = NL.state.meta().streak;
+    answer.cantSpeak();
+    ok(!S.peek() && NL.ui.route === 'vandaag', 'with only spoken exercises left, « je ne peux pas parler » does not close the session');
+    ok(B.app.innerHTML.indexOf('done-stage') < 0 && NL.state.meta().streak === streak, 'a session in which nothing was answered is summed up, or counted as a day');
+    fresh(); NL.ui.go('sessie'); S.abandon();
+
+    /* La séance sur les fautes est une liste fixe : le parlé en sort, rien n'y entre. */
+    fresh();
+    const [a, b, c] = words;
+    put(a, 3, T0 + 5 * DAY); put(b, 3, T0 + 5 * DAY); put(c, 2, T0 + 5 * DAY);
+    other.slice(0, 20).forEach(it => put(it, 2, T0 - DAY));
+    [a, b, c].forEach(it => NL.state.logReview({ id: it.id, t: T0 - DAY, ok: false, stage: 1, kind: it.kind, ex: 'type' }));
+    ok(S.begin('fouten'), 'the mistakes session did not start');
+    const fixed = [];
+    guard = 0;
+    while (S.peek() && guard++ < 20) {
+      if (S.peek().ex === 'speak') { answer.cantSpeak(); continue; }
+      fixed.push(S.peek().items[0].id);
+      answer.right(); answer.next(false);
+      if (B.app.innerHTML.indexOf('done-stage') >= 0) break;
+    }
+    S.abandon();
+    ok(fixed.length === 1 && fixed[0] === c.id, 'after « je ne peux pas parler » the mistakes session served ' + JSON.stringify(fixed) + ' instead of its one item that is not spoken');
+    console.log('  rien que du parlé : retour à l’accueil sans bilan ; séance sur les fautes : le parlé en sort, rien n’y entre');
+  }
+````
+
+In `test/screens.js`, insert before the final `console.log`:
+
+````js
+  /* ------------------------------------------------------------------ */
+  console.log('\nÀ VOIX HAUTE — le bouton « ' + t.cantSpeak + ' »');
+  {
+    fresh();
+    const words = all.filter(it => it.kind !== 'pattern' && !it.cognate);
+    words.slice(0, 4).forEach(it => put(it, 3, T0 - 2 * DAY));      // jamais dits : à dire
+    words.slice(4, 30).forEach(it => put(it, 2, T0 - DAY));         // rien à dire
+    ok(S.begin('vandaag'), 'the session did not start');
+    NL.ui.go('sessie');
+    let guard = 0, stray = 0, asked = 0;
+    while (S.peek() && S.peek().ex !== 'speak' && guard++ < 60) {
+      const wasMatch = S.peek().ex === 'match';
+      asked++;
+      if (S.render().indexOf('data-quiet') >= 0) stray++;
+      answer.right(); answer.next(wasMatch);
+    }
+    ok(S.peek() && S.peek().ex === 'speak', 'the fixture is wrong: the session holds no spoken exercise');
+    ok(stray === 0, stray + ' of ' + asked + ' exercises that are not spoken carry the button');
+    const q = read('sessie/speak', S.render(), 'question');
+    ok(S.render().indexOf('data-quiet="1"') >= 0 && q.indexOf(t.cantSpeak) >= 0, 'the spoken exercise does not offer « ' + t.cantSpeak + ' »');
+
+    /* Une fois la réponse donnée, c'est une réponse : le bouton s'en va. */
+    answer.click({ self: '1' });
+    ok(S.render().indexOf('data-quiet') < 0, 'the button is still offered after the answer was given');
+    answer.click({ check: '1' }); answer.next(false);
+
+    /* Appuyé : l'écran suivant se lit, et il n'y a plus rien à voix haute. */
+    while (S.peek() && S.peek().ex !== 'speak' && guard++ < 120) { const wasMatch = S.peek().ex === 'match'; answer.right(); answer.next(wasMatch); }
+    ok(S.peek() && S.peek().ex === 'speak', 'the fixture is wrong: no second spoken exercise');
+    ok(answer.cantSpeak(), 'the button does nothing');
+    if (S.peek()) read('sessie/' + S.peek().ex, S.render(), 'sans parler');
+    let spoken = 0;
+    while (S.peek() && guard++ < 200) { const wasMatch = S.peek().ex === 'match'; if (S.peek().ex === 'speak') spoken++; answer.right(); answer.next(wasMatch); if (B.app.innerHTML.indexOf('done-stage') >= 0) break; }
+    ok(spoken === 0, spoken + ' spoken exercise(s) after the button was pressed');
+    S.abandon();
+    console.log('  présent sur l’exercice parlé, absent des ' + asked + ' autres, retiré une fois la réponse donnée ; appuyé : plus rien à voix haute');
+  }
+````
+
+In `test/journey.js`, insert before the final `console.log`:
+
+````js
+  /* ---------------------------------------------------------- 15. the recogniser refuses three times */
+  head('15. The recogniser refuses three times');
+  if (noRecogniser) {
+    console.log('   skipped: no recogniser here, a spoken exercise is already self-rated');
+  } else {
+    NL.state.clearAll(); NL.content.refresh();
+    /* Everything met and not due, except one word on the rung that asks for it aloud. */
+    NL.content.allItems().forEach(it => NL.srs.seed(it, 2));
+    const word = NL.content.allItems().find(it => it.kind === 'word' && !it.cognate);
+    NL.srs.seed(word, 3);
+    const due = NL.state.rec(word.id); due.due = 0; NL.state.setRec(due);
+    ok(S.begin('vandaag') && S.peek().ex === 'speak', 'a never-said item on rung 3 is not asked aloud');
+    for (let k = 0; k < 3; k++) {
+      ok(S.render().indexOf('data-self=') < 0, 'self-rating offered after ' + k + ' refusal(s), before the third');
+      ctx.__saidNext = 'iets heel anders';
+      tap('sessie', { mic: 'start' });
+    }
+    ok(S.render().indexOf('data-self="1"') >= 0, 'after three refusals there is still no way to say « ' + NL.t.micSaidIt + ' »');
+    tap('sessie', { self: '1' });
+    tap('sessie', { check: '1' });
+    ok(S.render().indexOf('foot ok') >= 0, 'rating yourself right after three refusals is counted as wrong');
+    const now = NL.state.rec(word.id);
+    ok(now.said === true && now.stage === 4, 'the item should be said and on rung 4: it is said ' + now.said + ', on rung ' + now.stage);
+    S.abandon();
+    console.log('   three refusals, then « ' + NL.t.micSaidIt + ' » is offered and counts');
+  }
+````
+
+In `test/pace.js`, replace:
+
+````js
+const ONE_A_DAY = process.argv[4] === 'one';
+````
+
+with:
+
+````js
+const ONE_A_DAY = process.argv[4] === 'one';
+/* Un troisième : une séance sur cinq se passe là où l'on ne peut pas parler. */
+const QUIET = process.argv[5] === 'quiet';
+````
+
+In `test/pace.js`, replace:
+
+````js
+  let backToBack = 0, prevEx = null, exhausted = null, maxBacklog = 0, tasks = 0, lateRecog = 0;
+````
+
+with:
+
+````js
+  let backToBack = 0, prevEx = null, exhausted = null, maxBacklog = 0, tasks = 0, lateRecog = 0;
+  const owed = {};
+  let sessions = 0, taps = 0, touched = 0, spokeAfter = 0, detour = 0;
+````
+
+In `test/pace.js`, replace:
+
+````js
+      let n = 0;
+      while (S.peek() && n++ < 80) {
+        const c = S.peek(), wasMatch = c.ex === 'match';
+````
+
+with:
+
+````js
+      let n = 0;
+      const cantTalk = QUIET && ++sessions % 5 === 0;
+      let tapped = false;
+      while (S.peek() && n++ < 80) {
+        const c = S.peek(), wasMatch = c.ex === 'match';
+        /* Là où l'on ne peut pas parler : « je ne peux pas parler » au premier
+           exercice à voix haute, et la séance continue sans. */
+        if (c.ex === 'speak' && tapped) spokeAfter++;
+        if (c.ex === 'speak' && cantTalk && !tapped) {
+          const it = c.items[0], before = JSON.stringify(NL.state.rec(it.id)), left = NL.srs.budgetLeft();
+          if (NL.srs.needsVoice(it)) owed[it.id] = true;
+          answer.cantSpeak();
+          tapped = true; taps++;
+          if (JSON.stringify(NL.state.rec(it.id)) !== before || NL.srs.budgetLeft() !== left) touched++;
+          continue;
+        }
+        /* Ce qui a été mis de côté revient à voix haute, pas autrement. */
+        if (!wasMatch && owed[c.items[0].id]) { if (c.ex !== 'speak') detour++; delete owed[c.items[0].id]; }
+````
+
+In `test/pace.js`, insert before the line that begins `ok(over.length === 0, `:
+
+````js
+  /* L'apprenant qui ne peut pas toujours parler : mettre de côté ne coûte rien,
+     ne laisse rien passer à voix haute, et ne fait rien sauter. */
+  if (QUIET) {
+    ok(taps > 0, 'aucune séance sans parler n’a rencontré d’exercice à voix haute : la simulation ne vérifie rien');
+    ok(touched === 0, touched + ' « je ne peux pas parler » ont modifié un enregistrement ou entamé le budget du jour');
+    ok(spokeAfter === 0, spokeAfter + ' exercice(s) à voix haute servis après « je ne peux pas parler »');
+    ok(detour === 0, detour + ' élément(s) mis de côté sont revenus autrement qu’à voix haute');
+    P('séances sans parler', taps + ' : rien de noté, rien à voix haute ensuite, tout revient à voix haute');
+  }
+````
+
+- [ ] **Step 2: Run them and watch them fail**
+
+Run: `node test/engine.js "$(pwd)"; node test/screens.js "$(pwd)"; node test/journey.js "$(pwd)" nl-BE EDG; node test/pace.js "$(pwd)" 200 one quiet`
+
+Expected, as measured on the end state of this plan with this task's tests added and its changes under `src/` left out:
+
+- `test/engine.js`: `CRASH TypeError: NL.srs.needsVoice is not a function`, right after the heading `JE NE PEUX PAS PARLER`.
+- `test/screens.js`: `FAIL: the spoken exercise does not offer « undefined »` and `FAIL: 3 spoken exercise(s) after the button was pressed`.
+- `test/journey.js`: `✗ after three refusals there is still no way to say « Je l’ai dit »`.
+- `test/pace.js`: `BOOT FAIL: TypeError: NL.srs.needsVoice is not a function`.
+
+- [ ] **Step 3: Let the engine tell what can only be spoken, and compose a session without it**
+
+In `src/core/srs.js`, replace:
+
+````js
+  /* `avoid` = les types déjà servis dans cette séance. Le gouverneur évite ce que
+     l'élément a eu la dernière fois, puis ce qui vient de passer. */
+  function exerciseFor(item, avoid) {
+````
+
+with:
+
+````js
+  /* `avoid` = les types déjà servis dans cette séance. Le gouverneur évite ce que
+     l'élément a eu la dernière fois, puis ce qui vient de passer.
+     `quiet` = une séance où l'on ne peut pas parler : rien à voix haute. */
+  function exerciseFor(item, avoid, quiet) {
+````
+
+In `src/core/srs.js`, replace:
+
+````js
+    let usable = set.filter(n => supports(item, n));
+    if (!usable.length) usable = [fallback(item)];
+````
+
+with:
+
+````js
+    let usable = set.filter(n => supports(item, n));
+    if (quiet) usable = usable.filter(n => n !== 'speak');
+    if (!usable.length) usable = [fallback(item)];
+````
+
+In `src/core/srs.js`, replace:
+
+````js
+  const fallback = item => (NL.util.tiles(item.nl || '').length >= 3 ? 'type' : 'pick');
+````
+
+with:
+
+````js
+  const fallback = item => (NL.util.tiles(item.nl || '').length >= 3 ? 'type' : 'pick');
+
+  /* Vrai quand le prochain exercice de l'élément ne peut être que parlé : son
+     échelon n'offre rien d'autre, ou bien il n'a jamais été dit et son échelon
+     propose de le dire. Une séance où l'on ne peut pas parler laisse ces
+     éléments attendre plutôt que de leur donner autre chose. */
+  function needsVoice(item) {
+    const r = recOf(item);
+    const usable = ((RUNGS[item.kind] || RUNGS.word)[clamp(r.stage, 0, 6)] || []).filter(n => supports(item, n));
+    return usable.indexOf('speak') >= 0 && (!r.said || usable.length === 1);
+  }
+````
+
+In `src/core/srs.js`, replace:
+
+````js
+       source   'vandaag' (défaut) ou l'identifiant d'une unité
+       → { due, fresh, left }   deux listes d'éléments, et le budget restant */
+  function compose(source, now) {
+````
+
+with:
+
+````js
+       source   'vandaag' (défaut) ou l'identifiant d'une unité
+       opts     { quiet, without } : une séance où l'on ne peut pas parler laisse
+                attendre ce qui ne peut être que dit, et ne reprend pas les
+                éléments (`without`, un Set d'identifiants) qu'elle contient déjà
+       → { due, fresh, left }   deux listes d'éléments, et le budget restant */
+  function compose(source, now, opts) {
+````
+
+In `src/core/srs.js`, replace:
+
+````js
+    if (uid) due = due.filter(it => it.unit === uid);
+````
+
+with:
+
+````js
+    if (uid) due = due.filter(it => it.unit === uid);
+    if (opts && opts.quiet) due = due.filter(it => !needsVoice(it) && !(opts.without && opts.without.has(it.id)));
+````
+
+In `src/core/srs.js`, replace:
+
+````js
+maxRung, pace, exerciseFor, supports,
+````
+
+with:
+
+````js
+maxRung, pace, exerciseFor, needsVoice, supports,
+````
+
+- [ ] **Step 4: The tap, in the session**
+
+In `src/ui/session.js`, replace:
+
+````js
+  function build(items, recent) {
+    const out = [];
+    items.forEach(it => {
+      const name = NL.srs.exerciseFor(it, new Set(recent));
+````
+
+with:
+
+````js
+  function build(items, recent, quiet) {
+    const out = [];
+    items.forEach(it => {
+      const name = NL.srs.exerciseFor(it, new Set(recent), quiet);
+````
+
+In `src/ui/session.js`, replace:
+
+````js
+name = NL.srs.exerciseFor(L.queue[L.at].items[0], avoid);
+````
+
+with:
+
+````js
+name = NL.srs.exerciseFor(L.queue[L.at].items[0], avoid, L.quiet);
+````
+
+In `src/ui/session.js`, replace:
+
+````js
+const n = NL.srs.exerciseFor(L.queue[j].items[0], avoid);
+````
+
+with:
+
+````js
+const n = NL.srs.exerciseFor(L.queue[j].items[0], avoid, L.quiet);
+````
+
+In `src/ui/session.js`, insert before the line that begins `const cur = () => L &&`:
+
+````js
+  /* « Je ne peux pas parler » : plus rien à voix haute jusqu'à la fin de la
+     séance. Les exercices parlés qui restaient sont retirés sans être notés et
+     sans rien prendre au budget du jour : leurs éléments restent dus, et
+     reviendront à voix haute à la séance suivante. D'autres éléments dus
+     prennent leur place, choisis par compose() comme pour toute séance. Rien
+     n'est retenu au-delà : la séance suivante redemande. Ce n'est pas un
+     réglage, parce qu'un réglage suit l'appareil et s'oublie éteint. */
+  function quiet() {
+    const c = cur();
+    if (!c || c.ex !== 'speak' || L.phase !== 'ask') return;
+    NL.speech.abort(); NL.speech.clearRecording();
+    L.quiet = true;
+    const head = L.queue.slice(0, L.at), rest = L.queue.slice(L.at);
+    const kept = rest.filter(x => x.ex !== 'speak');
+    /* Les séances à liste fixe, les fautes et le défi, ne se complètent pas. */
+    let more = [];
+    if (L.source !== 'fouten' && L.source !== 'defi') {
+      const here = new Set();
+      L.queue.forEach(x => x.items.forEach(it => here.add(it.id)));
+      more = NL.srs.compose(L.source, undefined, { quiet: true, without: here }).due.slice(0, rest.length - kept.length);
+    }
+    L.queue = head.concat(kept, spread(build(more, [], true), kept.length ? kept[kept.length - 1].ex : null));
+    L.queue.forEach(x => { if (x.recall) x.metAt = L.queue.findIndex(y => !y.recall && y.ex !== 'match' && y.items[0] === x.items[0]); });
+    Object.assign(L, blankTurn());
+    L.phase = 'ask';
+    /* Il ne restait que du parlé, et rien n'a encore été répondu : il n'y a pas
+       de séance à conclure, ni de journée à compter. */
+    if (L.at >= L.queue.length && L.right + L.wrong === 0) { L = null; NL.ui.go('vandaag'); NL.ui.toast(NL.t.quietOnly); return; }
+    if (L.at >= L.queue.length) return finish();
+    arm();
+    if (L.at >= L.queue.length) return finish();
+    NL.ui.render();
+    autoplay();
+  }
+````
+
+In `src/ui/session.js`, replace:
+
+````js
+    if (d.skip !== undefined) return skip();
+````
+
+with:
+
+````js
+    if (d.skip !== undefined) return skip();
+    if (d.quiet !== undefined) return quiet();
+````
+
+The mistakes session and the challenge are fixed lists, so nothing is brought in to replace what the tap removes there. The challenge holds no spoken exercise in any case.
+
+- [ ] **Step 5: The button, and the way past the recogniser**
+
+In `src/ex/index.js`, replace:
+
+````js
+          (!sp.ok && sp.tries < 3 ? '<div class="mic-actions"><button class="btn btn-blue" data-mic="start">' + NL.t.micRetry(3 - sp.tries) + '</button></div>' : '') +
+          '</div>';
+````
+
+with:
+
+````js
+          (!sp.ok && sp.tries < 3 ? '<div class="mic-actions"><button class="btn btn-blue" data-mic="start">' + NL.t.micRetry(3 - sp.tries) + '</button></div>' : '') +
+          /* Trois refus : le micro n'entend peut-être simplement pas ce mot-là.
+             Sans cette issue, l'élément serait redemandé chaque jour sans jamais monter. */
+          (!sp.ok && sp.tries >= 3 ? selfRate(sp) : '') +
+          '</div>';
+````
+
+In `src/ex/index.js`, replace:
+
+````js
+      return '<div class="sentence prompt">' + esc(t.target) + flemish(t.item.be, t.target) + '</div>' +
+        '<div class="gloss-line">' + esc(t.prompt) + '</div>' +
+        speakerRow(t.target, {}) + panel;
+    },
+    ready(t, L) {
+      const sp = L.speech;
+      return sp.phase === 'done' || sp.selfRated != null;
+````
+
+with:
+
+````js
+      /* « Je ne peux pas parler » : proposé tant que rien n'a été tenté. Une fois
+         la réponse donnée, c'est une réponse. */
+      const untried = phase === 'ask' && sp.selfRated == null && sp.phase !== 'done' && sp.phase !== 'listening' &&
+        sp.recState !== 'rec' && sp.recState !== 'done';
+      const hush = untried ? '<div class="mic-actions"><button class="btn btn-ghost" data-quiet="1">' + NL.t.cantSpeak + '</button></div>' : '';
+
+      return '<div class="sentence prompt">' + esc(t.target) + flemish(t.item.be, t.target) + '</div>' +
+        '<div class="gloss-line">' + esc(t.prompt) + '</div>' +
+        speakerRow(t.target, {}) + panel + hush;
+    },
+    ready(t, L) {
+      const sp = L.speech;
+      return sp.phase === 'done' || sp.selfRated != null;
+````
+
+In `src/core/fr.js`, replace:
+
+````js
+  micNotYet: 'Pas encore',
+````
+
+with:
+
+````js
+  micNotYet: 'Pas encore',
+  cantSpeak: 'Je ne peux pas parler',
+  quietOnly: 'Il ne reste que des exercices à voix haute. Ils t’attendent à la prochaine séance.',
+````
+
+The button reuses the classes `mic-actions` and `btn-ghost`: `styles.css` does not change. It is offered until an answer has been attempted, and not after: once the learner has tried, it is an answer.
+
+- [ ] **Step 6: List the third learner**
+
+In `test/run-all.sh`, replace:
+
+````sh
+# Deux apprenants : celui qui épuise le budget du jour, et celui qui ne fait
+# qu'une séance. Le défaut d'octobre ne se voyait que chez le second.
+node test/pace.js "$ROOT" "${PACE_DAYS:-200}"
+node test/pace.js "$ROOT" "${PACE_DAYS:-200}" one
+````
+
+with:
+
+````sh
+# Trois apprenants : celui qui épuise le budget du jour, celui qui ne fait
+# qu'une séance, et celui qui, une séance sur cinq, ne peut pas parler. Le
+# défaut d'octobre ne se voyait que chez le deuxième.
+node test/pace.js "$ROOT" "${PACE_DAYS:-200}"
+node test/pace.js "$ROOT" "${PACE_DAYS:-200}" one
+node test/pace.js "$ROOT" "${PACE_DAYS:-200}" one quiet
+````
+
+In `TESTING.md`, in the table, replace the `pace.js` row with:
+
+````md
+| `pace.js` | 200 jours simulés, pour trois apprenants (budget épuisé chaque jour ; une seule séance par jour ; une seule séance, dont une sur cinq là où l’on ne peut pas parler) : charge quotidienne, variété, exigence — aucune journée sans élément nouveau tant qu’il en reste, un élément du premier jour demandé à voix haute en dix jours et jamais après trois semaines, et « je ne peux pas parler » qui ne note rien, ne coûte rien et ne fait rien sauter. L’horloge avance pendant la journée |
+````
+
+- [ ] **Step 7: Run and commit**
+
+Run: `node test/engine.js "$(pwd)" && node test/screens.js "$(pwd)" && node test/journey.js "$(pwd)" nl-BE EDG && sh test/run-all.sh`
+
+Expected:
+
+- `test/engine.js`: `8 exercices parlés mis de côté : rien de noté, budget intact, séance toujours de 30 exercices ; le lendemain les 8 reviennent à voix haute`, then `rien que du parlé : retour à l’accueil sans bilan ; séance sur les fautes : le parlé en sort, rien n’y entre`.
+- `test/screens.js`: `présent sur l’exercice parlé, absent des 11 autres, retiré une fois la réponse donnée ; appuyé : plus rien à voix haute`.
+- `test/journey.js`: `three refusals, then « Je l’ai dit » is offered and counts`. Under Opera and on the iPhone outside Safari it prints `skipped: no recogniser here, a spoken exercise is already self-rated`.
+- the third learner of the simulation: `séances sans parler  37 : rien de noté, rien à voix haute ensuite, tout revient à voix haute`, ending `12 vérifications, AUCUN PROBLÈME`.
+
+Then the suite passes.
+
+````bash
+sh build.sh
+git add src test/lib/answer.js test/engine.js test/screens.js test/journey.js test/pace.js test/run-all.sh TESTING.md index.html artifact.html
+git commit -m "feat: « je ne peux pas parler » takes the spoken exercises out of a session, at no cost"
+````
+
+---
+
 ### Task 10: Content guards, and a build that cannot go stale
 
 Four mechanical checks on the course, run with every change, and one on the committed build. Where today's content already breaks a rule, the guard states a budget that may only ever go down.
@@ -4587,10 +5461,12 @@ for c in "nl-BE OPR" "nl-NL OPR" "none OPR" "nl-BE EDG" "nl-NL EDG" "none EDG" "
   node test/journey.js "$ROOT" "$1" "$2"
 done
 
-# Deux apprenants : celui qui épuise le budget du jour, et celui qui ne fait
-# qu'une séance. Le défaut d'octobre ne se voyait que chez le second.
+# Trois apprenants : celui qui épuise le budget du jour, celui qui ne fait
+# qu'une séance, et celui qui, une séance sur cinq, ne peut pas parler. Le
+# défaut d'octobre ne se voyait que chez le deuxième.
 node test/pace.js "$ROOT" "${PACE_DAYS:-200}"
 node test/pace.js "$ROOT" "${PACE_DAYS:-200}" one
+node test/pace.js "$ROOT" "${PACE_DAYS:-200}" one quiet
 
 # Le build versionné doit correspondre à ses sources : index.html et
 # artifact.html sont ce que Vercel et l'artefact servent. En CI, un écart est
@@ -4637,8 +5513,8 @@ In `TESTING.md`, add three rows to the table:
 
 ````md
 | `content.js` | L'orthographe contre 410 000 formes néerlandaises, que chaque exercice promis se construise vraiment, qu'une phrase d'exemple n'emprunte pas de vocabulaire à une unité ultérieure, et les éléments enseignés deux fois |
-| `engine.js` | Ce qu'une séance contient et quand un élément revient, horloge en marche : la panne d'octobre, deux jours de suite, le rappel dans la séance, la réserve de nouveautés, le seuil des unités |
-| `screens.js` | Chaque écran dans quatre états, relu comme du texte : ni pourcentage, ni maîtrise ; les comptes, le nom de l'unité, ce qui résiste, le journal d'erreurs |
+| `engine.js` | Ce qu'une séance contient et quand un élément revient, horloge en marche : la panne d'octobre, deux jours de suite, le rappel dans la séance, la réserve de nouveautés, le seuil des unités, la première demande à voix haute, « je ne peux pas parler » |
+| `screens.js` | Chaque écran dans quatre états, relu comme du texte : ni pourcentage, ni maîtrise ; les comptes, le nom de l'unité, ce qui résiste, le bouton « je ne peux pas parler », le journal d'erreurs |
 ````
 
 and under **Ce que les tests ne voient pas**, add:
@@ -4905,7 +5781,7 @@ example `node test/engine.js "$(pwd)"`. A new suite loads the app through
 the scheduler itself.
 ```
 
-Under **Conventions you can't infer from the code**, add two bullets:
+Under **Conventions you can't infer from the code**, add three bullets:
 
 ```md
 - One function decides what a session contains, `NL.srs.compose()`, and it takes new items
@@ -4914,6 +5790,9 @@ Under **Conventions you can't infer from the code**, add two bullets:
 - `resetAt` in the stored settings is the moment of the last reset, and other devices compare
   against it. It only ever grows. `ENGINE_EPOCH` in `src/core/state.js` is a fixed date and
   must stay one: changing it wipes progress again, or stops wiping it.
+- `said` on a stored record is what makes an item's first spoken exercise certain and free of
+  a rung. « Je ne peux pas parler » lives in the running session and is deliberately not a
+  setting; issue #12 says why.
 ```
 
 Under **Where the thinking is written down**, change the line added before Task 1 so that it reads as history:
@@ -4938,8 +5817,9 @@ This is the one task that makes two commits.
 
 - Push, and wait for CI on the draft PR.
 - **This is when the maintainer types `/code-review main`**, with issue #12 as the spec (step 6 of *The order of work*). Fix what it finds on the branch in one pass, each fix with a test that failed first, and run the suite again.
-- **Write the PR body with the `pr` skill, then mark the PR ready.** Its template asks for three things, and this phase has a clear answer to each. *Summary*: the smallest picture of the change, which here is the allocation, before and after: new items given what the reviews leave, against new items taken out first. *Evidence*: the block *L'arithmétique* of `test/engine.js`, as it prints on `main` and as it prints on the branch. *Merge danger*: say it plainly. This merge is a **one-way door**. On first load every device erases the progress made on the old engine, on the device and on the server, and reverting the commit does not bring it back. The blast radius is every device that has ever used the app. Keep the eleven `Closes #N` lines under the template.
+- **Write the PR body with the `pr` skill, then mark the PR ready.** Its template asks for three things, and this phase has a clear answer to each. *Summary*: the smallest picture of the change, which here is the allocation, before and after: new items given what the reviews leave, against new items taken out first. *Evidence*: the block *L'arithmétique* of `test/engine.js`, as it prints on `main` and as it prints on the branch. *Merge danger*: say it plainly. This merge is a **one-way door**. On first load every device erases the progress made on the old engine, on the device and on the server, and reverting the commit does not bring it back. The blast radius is every device that has ever used the app. Keep the thirteen `Closes #N` lines under the template.
 - **Remind the maintainer** that phase 1 ends with his own check, which no test can replace: **two sessions on two consecutive days**, on the deployed preview, on the phone and the desktop. One session cannot detect the fault: it only shows on day two. `SUPABASE_URL` and `SUPABASE_ANON_KEY` are set for Preview as well as Production (checked with `vercel env ls` on 12 October 2026), so a preview build has sync and the reset can be tried across two devices.
+- **The two-day check cannot reach a spoken exercise.** With one session a day the first ones arrive around day 7. Until then they are held by `test/engine.js` and by the simulation. The day a session first asks him to speak, and the first time he taps « Je ne peux pas parler », are worth a word back from the maintainer.
 - On first load after the deploy, each device shows the migration toast once and starts from zero. That is intended.
 - If a screen dies during the check, the doctor screen (**Plus → Son et micro**) lists what broke on that device, to copy and send. That is what Task 11 is for.
 - A bug the maintainer reports from the check is worked with the **`diagnosing-bugs`** skill: a command that fails on his exact symptom first, then several ranked hypotheses. Inside the run of step 5 the implementers keep `superpowers:systematic-debugging`, which that pipeline names; one debugging procedure per context, never both.
@@ -4962,6 +5842,7 @@ What phase 1 leaves ready for it:
 - The cognate jump is already narrow (Task 4), so the set of cognates can follow the display language without touching the scheduler.
 - `test/screens.js` reads every screen as text. That is the place to check that nothing is left in the other language.
 - `test/smoke.js` still asserts that no item carries an English gloss. Phase 2 inverts that assertion; it does not delete it.
+- Task 9b adds two interface strings, `cantSpeak` and `quietOnly`. In English the button reads "Can't speak now".
 - Phase 1 changes the interface strings: about thirty go with the placement test and the percentages, about twenty arrive. The counts taken on 9 October have to be taken again.
 
 Before the phase 2 plan is written:
@@ -4977,27 +5858,50 @@ Phases 3 and 4, content repair and then expansion to B1, follow in that order, e
 
 **A named risk for phase 4: the review backlog has no ceiling.** This phase reserves a share of every session for new items and never lets it yield, against a daily budget that is fixed. With 439 items the backlog peaks at 172 for a learner who spends the whole budget, or 309 for one session a day, and then drains. With the several thousand items of B1 it will not drain. Before that content lands, either the reservation has to shrink as the backlog grows or the budget has to follow it. See decision 7.
 
-## Open question for the maintainer, to settle before this plan is executed
+## The open question, as settled on 12 October 2026
 
-**When does a session first ask him to say a Dutch word aloud?** About five weeks after the word is met. He works surrounded by Dutch speakers, so that may be too late. Nothing is decided and no task acts on it.
+**When does a session first ask him to say a Dutch word aloud?** On the ladder as it stood, about five weeks after the word is met. He works surrounded by Dutch speakers. *Decided on 12 October 2026:* five weeks is too late. Tasks 5b and 9b change it, and issue #12 carries the decisions.
 
-Measured on both engines, with a learner who answers everything right and takes every session the day offers. Each cell is the first day a word met on day one gets there:
+**What the ladder gave.** Measured on both engines, with a learner who answers everything right and takes every session the day offers. Each cell is the first day a word met on day one gets there:
 
 | | On rung 3 | On rung 4 | On rung 5 | First spoken exercise, word or phrase | First spoken exercise, grammar rule |
 | --- | --- | --- | --- | --- | --- |
 | Old intervals (`main`) | day 3 | day 6 | day 14 | day 36 | day 19 |
-| New intervals (this plan) | day 2 | day 5 | day 13 | day 35 | day 14 |
+| New intervals (this plan, before Task 5b) | day 2 | day 5 | day 13 | day 35 | day 14 or day 35 |
 
-Why so late: `speak` is the exercise an item gets once it is **on** rung 5, and the wait before that exercise is the longest of the ladder, 21 days. Thirteen days to arrive on rung 5, then twenty-one more before the item is next due. Grammar rules have `speak` one rung lower, which is why they come sooner.
+`speak` was the exercise an item got once it stood **on** rung 5, and the wait before that exercise is the longest of the ladder, 21 days. This was never a side effect of the interval decision: the ladder of this plan is no slower at any rung than the one on `main`, because the recall inside the session climbs the rung the twelve-minute return used to climb.
 
-**This is not a side effect of the interval decision.** The question was first put as "every interval at least a day pushes the first spoken exercise from about day 13 to about day 33". Neither figure holds. Day 13 is when an item arrives on rung 5, on both ladders, not when it is spoken. And the new ladder is no slower at any rung, because the recall inside the session climbs the rung the twelve-minute return used to climb. (The old engine is a day behind in the table only because the simulated learner studies at the same hour every day; its fastest possible path is the same, rung 5 on day 13 and spoken on day 34.) The delay has always been there. The report of 6 October put it at twelve days, which is the arrival on rung 5.
+**Two corrections to that table, found by running the engine.** For a grammar rule, rung 4 offers `speak` beside `open` and the engine draws one, so about half the rules were first spoken around day 14 and the rest around day 35. And "five weeks" is the figure for a learner who takes every session. The maintainer takes one session a day, two at most. With one, an item met on day 1 was first asked aloud on day 48 to 51, and the typical item on day 74, because an item also has to wait for a place in a session.
 
-What already exists: the conversations (**Parler**) use speech recognition and are open from day one, and so is **Écouter → Répéter après**, which scores what is said. Sessions are not the only speaking practice.
+**What was compared.** One session a day, 85 answers right in 100, 200 simulated days, the whole course of 439 items. Days are counted from the day an item is met; the typical item is the median one.
 
-If five weeks is too late, two options, either of which would be a twelfth task:
+| Ladder | An item met on day 1 is first asked aloud | The typical item |
+| --- | --- | --- |
+| As it stood | day 48 to 51 | day 74 |
+| `speak` added to rung 4, drawn like any exercise | day 17 to 19 for about half, day 29 or later for the rest | day 67 |
+| `speak` added to rung 3, drawn like any exercise | day 7 or 8 for most, day 52 or later for the rest | day 42 |
+| Shorter middle waits, 2, 5 and 13 days | day 34 to 39 | day 71 |
+| `speak` on rung 4 and certain the first time, waits of 2, 4 and 21 days | day 12 to 14 | day 46 |
+| **`speak` on rung 3, certain the first time and free the first time (Tasks 5b and 9b)** | **day 7 to 13** | **day 26** |
 
-- **Move `speak` earlier in the ladder**, in `RUNGS` in `src/core/srs.js`. Beside the writing exercises on rung 4 it could first appear on day 13; on rung 3, on day 5. No interval and no daily load changes.
-- **Shorten the middle intervals** (3, 8 and 21 days), in `STEP`. That moves every rung and the review load with it, and the simulation's thresholds would need taking again.
+**What was decided, and why.**
+
+1. *Rung 3 offers the spoken exercise, and an item never yet said gets it.* Adding `speak` to a rung only puts it beside that rung's other exercises, and the engine draws one: it reached about a third of the items on rung 4 and a bit over half on rung 3, and the others waited for rung 5 as before. Shorter waits moved every item, but hardly the learner who takes one session a day: there an item is held back by the queue for a place, not by its wait.
+2. *A wrong spoken answer costs no rung while the item has never been said.* Without this, bringing the spoken exercise forward made progress depend on the recogniser. Items the learner can produce at day 60, with spoken answers right 85, 60 and 40 times in 100: 201, 209 and 201 on the ladder as it stood; 200, 160 and 93 with the first two decisions alone; 230, 212 and 180 with this one. The maintainer expects to be right about 75 times in 100.
+3. *« Je ne peux pas parler » belongs to the session, not to the settings.* He cannot always talk where he studies. With one session in five in such a place, the typical item is first asked aloud on day 28 against day 25, an exercise put off waits one day and two at most, and a session with a tap is as long as any other. A tap changes no stored record and spends none of the day's budget.
+4. *After three refusals the learner rates himself*, so that an item the recogniser cannot hear does not stay on rung 3 and get asked aloud every day.
+
+The waits are unchanged, and so is rung 5, which still offers only the spoken exercise: every item is said a second time there.
+
+**What it costs.** About 29 exercises in 100 become spoken, where there were 14. A session takes about a minute longer a day in the first two months. The backlog does not rise: it peaks at 295 against 309.
+
+**Limits measured and accepted.** A full week without talking leaves the count of items he can produce standing still for that week, because items never yet said wait on rung 3; it is absorbed in about five sessions and nothing is lost by day 30. Two full weeks without talking, at the moment the backlog is highest, are followed by six sessions that are entirely spoken, and the count has recovered by day 100.
+
+**Declined on 12 October 2026.** A setting that turns the spoken exercises off: settings travel between devices, and one left off would bring the fault back without a word. A ceiling on spoken exercises in one session. A count of spoken exercises on the home screen or at the end of a session. Letting an item count as due a few hours early: it moves the first spoken exercises from day 7 to day 5 and nothing else that matters.
+
+**What already existed and still does.** The conversations (**Parler**) use speech recognition and are open from day one, and so is **Écouter → Répéter après**, which scores what is said.
+
+**Where the evidence is.** Outside the repository, in `../vlaams-PROTOTYPE-when-first-spoken/`: the prototype that compared the first four ladders, `measure.js`, and under `option-2-measurement/` the scripts and the raw output behind every figure in this section. The figures of decisions 2 and 3 were measured on scratch builds of the design before it was written as Tasks 5b and 9b; the engine those tasks produce was then measured again and gives the last row of the table above.
 
 ## Decisions, as settled on 12 October 2026
 
@@ -5022,7 +5926,7 @@ All three fixes are required, each for its own reason, and each has its own fail
 
 **2. "Places" are items, and a new item costs two exercises.** The spec reserves "30% of a session's places, never fewer than four" without saying whether the in-session recall takes a place. Here a session has 22 places for items, the reservation is 7 items, and each new item adds one recall exercise: 22 to 29 exercises a session. New items are capped at 11 a session so that a session with no reviews does not double. *Accepted.* The second exercise is the reinforcement this design adds, so a session gets longer in time as well as in count; Task 3 says so.
 
-**3. "Can produce" means the writing rung is passed** (`stage >= 4`, capped by tier). The spec uses the phrase without defining it. The alternative was the speaking rung. Writing was chosen because it is the first rung where the learner produces the word from memory instead of recognising it. An item is first asked aloud about a month after it is met (the ladder's intervals put that exercise on day 34), so a count based on speaking would read zero for the first month, which is the fault ADR 0002 exists to remove. That same figure raises a question of its own, kept apart from the count: see *Open question for the maintainer*. On the simulated one-session-a-day learner the count starts moving on day 5. *Accepted.*
+**3. "Can produce" means the writing rung is passed** (`stage >= 4`, capped by tier). The spec uses the phrase without defining it. The alternative was the speaking rung. Writing was chosen because it is the first rung where the learner produces the word from memory instead of recognising it. An item is first asked aloud about a month after it is met (the ladder's intervals put that exercise on day 34), so a count based on speaking would read zero for the first month, which is the fault ADR 0002 exists to remove. That same figure raised a question of its own, kept apart from the count and settled on 12 October 2026: see *The open question, as settled on 12 October 2026*. Task 5b has since brought the first spoken exercise to rung 3; the count stays on the writing rung, which every item still has to pass. On the simulated one-session-a-day learner the count starts moving on day 5. *Accepted.*
 
 **4. The duplicates budget is 9, not 8.** Compared without case or punctuation, as the alias matching of phase 3 will compare, "Tot maandag." and "Tot maandag!" are the same phrase taught twice. An exact string comparison misses that pair, which is where 8 came from. `TESTING.md` already says nine. *Accepted: 9.*
 
