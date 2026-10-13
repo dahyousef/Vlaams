@@ -46,76 +46,132 @@ NL.screens.sessie = (function () {
     return true;
   }
 
-  function start(source) {
-    NL.state.touchDay();
-    if (source === 'defi') return startDefi();
-    const m = NL.state.meta();
-    const due = NL.srs.dueItems();
-    let fresh, pool;
-
-    if (source && source !== 'vandaag') {
-      const items = NL.content.itemsOf(source);
-      pool = items.filter(it => NL.srs.stageOf(it) >= 0 && NL.state.rec(it.id).due <= Date.now());
-      fresh = items.filter(it => NL.srs.stageOf(it) < 0).slice(0, NL.srs.pace().fresh);
-    } else {
-      const left = NL.srs.budgetLeft();
-      pool = due.slice(0, left);
-      fresh = NL.srs.freshItems(Math.min(Math.max(0, left - pool.length), NL.srs.pace().fresh));
-    }
-
-    const queue = [];
-    /* Brand-new items get met as a matching warm-up before anything is demanded. */
-    const newWords = fresh.filter(it => it.kind !== 'pattern');
-    if (newWords.length >= 4) {
-      queue.push({ ex: 'match', task: EX.registry.match.build(newWords.slice(0, 5)), items: newWords.slice(0, 5) });
-    }
-    /* Grammar rules are nine items among four hundred, so uniform sampling buries
-       them — a whole week could pass without one. Give them a guaranteed seat. */
-    const pats = pool.filter(it => it.kind === 'pattern').slice(0, 2);
-    const others = pool.filter(it => pats.indexOf(it) < 0).slice(0, MAX_TASKS - pats.length);
-    /* Le gouverneur : on retient les deux derniers types servis pour qu'aucun
-       ne se répète coup sur coup. */
-    const rest = U.shuffle(pats.concat(others, fresh));
-    const recent = [];
-    rest.forEach(it => {
+  /* Un exercice par élément. Le gouverneur retient les deux derniers types
+     servis pour qu'aucun ne se répète coup sur coup. */
+  function build(items, recent) {
+    const out = [];
+    items.forEach(it => {
       const name = NL.srs.exerciseFor(it, new Set(recent));
-      const ex = EX.get(name);
       try {
-        queue.push({ ex: name, task: ex.build(it), items: [it] });
+        out.push({ ex: name, task: EX.get(name).build(it), items: [it] });
         recent.push(name);
         if (recent.length > 2) recent.shift();
       } catch (e) { /* un élément mal formé est simplement sauté */ }
     });
+    return out;
+  }
 
-    /* Étalement optimal. Choisir « le premier qui diffère » ne suffit pas : quand
-       un type domine la file, il faut le répartir activement. On puise donc à
-       tour de rôle dans le plus gros paquet restant, ce qui est l'ordonnancement
-       qui minimise réellement les voisins identiques. La mémoire traverse aussi
-       les séances : sans elle, chaque nouvelle séance repart aveugle. */
-    const head = queue.length && queue[0].ex === 'match' ? [queue.shift()] : [];
+  /* Étalement optimal. Choisir « le premier qui diffère » ne suffit pas : quand
+     un type domine la file, il faut le répartir activement. On puise donc à
+     tour de rôle dans le plus gros paquet restant, ce qui est l'ordonnancement
+     qui minimise réellement les voisins identiques. */
+  function spread(list, last) {
     const bucket = {};
-    queue.forEach(x => { (bucket[x.ex] = bucket[x.ex] || []).push(x); });
-    queue.length = 0;                      // la file est vidée : on la reconstruit étalée
-    const spread = [];
-    let last = head.length ? head[0].ex : NL.state.meta().lastEx || null;
+    list.forEach(x => { (bucket[x.ex] = bucket[x.ex] || []).push(x); });
+    const out = [];
     const left = () => Object.keys(bucket).filter(k => bucket[k].length);
     while (left().length) {
       const keys = left().sort((a, b) => bucket[b].length - bucket[a].length);
       const k = keys.find(x => x !== last) || keys[0];
-      spread.push(bucket[k].shift());
+      out.push(bucket[k].shift());
       last = k;
     }
-    queue.push.apply(queue, head.concat(spread));
-    if (queue.length) NL.state.setMeta({ lastEx: queue[queue.length - 1].ex });
+    return out;
+  }
+
+  /* Trois temps : les rencontres, les révisions, puis le renforcement de chaque
+     rencontre. C'est ce renforcement qui remplace l'ancien retour à douze minutes :
+     l'élément revient quelques minutes plus tard, dans la même séance, sans
+     jamais devenir une échéance. Sa place est réservée dès le départ, pour que
+     le compteur de la séance ne s'allonge pas en cours de route. */
+  function start(source) {
+    NL.state.touchDay();
+    if (source === 'defi') return startDefi();
+    /* Ce que la séance contient, c'est compose() qui le décide — le même appel
+       que l'écran d'accueil. */
+    const c = NL.srs.compose(source);
+
+    const queue = [];
+    /* Brand-new items get met as a matching warm-up before anything is demanded. */
+    const newWords = c.fresh.filter(it => it.kind !== 'pattern');
+    if (newWords.length >= 4) {
+      queue.push({ ex: 'match', task: EX.registry.match.build(newWords.slice(0, 5)), items: newWords.slice(0, 5) });
+    }
+    /* La mémoire du dernier type traverse les séances : sans elle, chaque
+       nouvelle séance repart aveugle. */
+    const recent = [];
+    const meetings = spread(build(c.fresh, recent), queue.length ? 'match' : NL.state.meta().lastEx || null);
+    const reviews = spread(build(U.shuffle(c.due), recent), meetings.length ? meetings[meetings.length - 1].ex : NL.state.meta().lastEx || null);
+    queue.push.apply(queue, lace(meetings, reviews));
+    queue.forEach((x, i) => { if (x.second) x.metAt = queue.findIndex(y => !y.second && y.ex !== 'match' && y.items[0] === x.items[0]); });
 
     if (queue.length === 0) { L = null; return false; }
+    const built = meetings.concat(reviews);
+    if (built.length) NL.state.setMeta({ lastEx: built[built.length - 1].ex });
 
     L = Object.assign(blankTurn(), {
-      source: source || 'vandaag', queue: queue.slice(0, MAX_TASKS + 1), at: 0,
+      source: source || 'vandaag', queue, at: 0, cap: queue.length + 6,
       phase: 'ask', right: 0, wrong: 0, spoken: 0, xp: 0, started: Date.now(), finished: false,
-      newCount: fresh.length, combo: 0, bestCombo: 0, lives: null
+      newCount: c.fresh.length, combo: 0, bestCombo: 0, lives: null
     });
-    return true;
+    arm();
+    return !!L.queue.length;
+  }
+
+  /* Un renforcement ne revient jamais à moins de trois exercices de sa rencontre. */
+  const SECOND_GAP = 3;
+
+  /* Tresse les rencontres, les révisions et le renforcement de chaque rencontre. Les
+     renforcements se glissent à intervalles réguliers dans ce qui suit leur rencontre :
+     groupés en fin de séance, ils formeraient une longue file du même exercice. */
+  function lace(meetings, reviews) {
+    const base = meetings.concat(reviews);
+    const every = Math.max(1, Math.floor(base.length / Math.max(1, meetings.length)));
+    const out = [], waiting = [];
+    let i = 0, since = 0;
+    while (i < base.length || waiting.length) {
+      const ripe = waiting.length && out.length - waiting[0].after > SECOND_GAP;
+      if (waiting.length && (i >= base.length || (ripe && since >= every))) {
+        out.push(waiting.shift().slot); since = 0;
+        continue;
+      }
+      if (i < meetings.length) waiting.push({ after: out.length, slot: { ex: null, task: null, items: base[i].items, second: true } });
+      out.push(base[i++]); since++;
+    }
+    return out;
+  }
+
+  /* Le renforcement d'une rencontre se construit quand son tour arrive : son exercice
+     dépend de l'échelon que l'élément vient d'atteindre. Raté à la rencontre, il
+     est redemandé au même échelon ; réussi, à l'échelon suivant.
+     Quand plusieurs renforcements se suivent, on sert d'abord celui dont l'exercice
+     diffère du précédent — sans jamais rapprocher un renforcement de sa rencontre. */
+  function arm() {
+    while (L && L.at < L.queue.length && !L.queue[L.at].task) {
+      const prev = L.at > 0 ? L.queue[L.at - 1].ex : null;
+      const after = L.queue[L.at + 1] && L.queue[L.at + 1].task ? L.queue[L.at + 1].ex : null;
+      const avoid = new Set([prev, after].filter(Boolean));
+      let at = L.at, name = NL.srs.exerciseFor(L.queue[L.at].items[0], avoid);
+      for (let j = L.at + 1; name === prev && j < L.queue.length && !L.queue[j].task; j++) {
+        if (L.at - L.queue[j].metAt < SECOND_GAP) continue;
+        const n = NL.srs.exerciseFor(L.queue[j].items[0], avoid);
+        if (n !== prev) { at = j; name = n; }
+      }
+      const c = L.queue[at];
+      L.queue[at] = L.queue[L.at];
+      L.queue[L.at] = c;
+      try {
+        c.ex = name;
+        c.task = EX.get(name).build(c.items[0]);
+      } catch (e) { L.queue.splice(L.at, 1); }
+    }
+  }
+
+  /* Une faute sur un élément dont le renforcement attend plus loin n'ajoute pas de
+     reprise : le renforcement EST sa seconde chance. */
+  function again(c) {
+    const waiting = L.queue.slice(L.at + 1).some(x => x.second && !x.task && x.items[0] === c.items[0]);
+    if (!waiting && L.queue.length < L.cap) L.queue.push(retryOf(c));
   }
 
   const cur = () => L && L.queue[L.at];
@@ -153,7 +209,7 @@ NL.screens.sessie = (function () {
       L.combo = 0;
       NL.audio.no();
       if (L.source === 'defi') L.lives--;
-      else if (L.queue.length < MAX_TASKS + 6) L.queue.push(retryOf(c));
+      else again(c);
     }
     NL.ui.render();
   }
@@ -181,6 +237,8 @@ NL.screens.sessie = (function () {
     Object.assign(L, blankTurn());
     L.phase = 'ask';
     if (L.at >= L.queue.length || (L.source === 'defi' && L.lives <= 0)) return finish();
+    arm();
+    if (L.at >= L.queue.length) return finish();
     NL.ui.render();
     autoplay();
   }
@@ -194,7 +252,7 @@ NL.screens.sessie = (function () {
     L.close = false;
     L.phase = 'no';
     if (L.source === 'defi') L.lives--;
-    else if (L.queue.length < MAX_TASKS + 6) L.queue.push(retryOf(c));
+    else again(c);
     NL.audio.no();
     NL.ui.render();
   }
@@ -237,7 +295,7 @@ NL.screens.sessie = (function () {
       '<div class="lesson-body"><div class="stage">' +
       '<div class="kicker"><span class="sub">' +
       esc(unit ? unit.name : 'Mes mots') +
-      (c.retry ? ' · ' + NL.t.again2 : '') +
+      (c.retry || c.second ? ' · ' + NL.t.again2 : '') +
       '</span>' + esc(ex.kicker) + stagePips(stage, it) + '</div>' +
       ex.view(c.task, L, L.phase) +
       '</div></div>' +

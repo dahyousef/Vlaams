@@ -348,10 +348,11 @@ function view(screen, arg) {
   NL.state.clearAll(); NL.content.refresh();
   const plan = NL.srs.plan();
   S.begin('vandaag');
+  const warmup = S.peek() && S.peek().ex === 'match' ? 1 : 0;
   const real = S.peek() ? NL.screens.sessie.render().match(/class="pill">\d+\/(\d+)</) : null;
   const delivered = real ? +real[1] : 0;
-  console.log('   promised ' + plan.total + ', session holds ' + delivered);
-  ok(Math.abs(plan.total - delivered) <= 1, 'home promises ' + plan.total + ' but the session holds ' + delivered);
+  console.log('   promised ' + plan.tasks + ' exercises (' + plan.due + ' to review, ' + plan.fresh + ' new), session holds ' + (delivered - warmup) + (warmup ? ' after its warm-up' : ''));
+  ok(delivered - warmup === plan.tasks, 'home promises ' + plan.tasks + ' exercises but the session holds ' + (delivered - warmup));
   S.abandon();
 
   /* ---------------------------------------------------------- 14. mic refused mid-scenario */

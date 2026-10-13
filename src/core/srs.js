@@ -4,11 +4,19 @@
    budget = ce qui empêche la dette de révisions d'exploser */
 NL.srs = (function () {
   'use strict';
-  const { clamp, MIN, DAY } = NL.util;
+  const { clamp, DAY } = NL.util;
 
-  const MAX_TASKS = 22;
+  const MAX_TASKS = 22;             // les places d'une séance : un élément par place
   const MAX_STAGE = 6;
   const GRADUATED = 5;              // atteint uniquement en disant l'élément à voix haute
+  /* La part de chaque séance réservée à ce qui n'a jamais été rencontré. Sans
+     elle, les révisions finissent par occuper toutes les places et plus rien de
+     neuf n'arrive. Elle se calcule sur la SÉANCE, jamais sur le budget du jour :
+     le budget vaut plusieurs séances, et en réserver 30 % dépasserait la séance. */
+  const NEW_SHARE = 0.3, NEW_MIN = 4;
+  /* Un élément rencontré revient une fois dans la même séance : il coûte donc
+     deux exercices. Au-delà de la moitié des places, la séance doublerait. */
+  const NEW_MAX = MAX_TASKS / 2;
   const RETIRE_AT = 200 * DAY;
   const MAX_INTERVAL = 365 * DAY;   // au-delà, l'élément est acquis, pas oublié      // au-delà, l'élément sort du paquet quotidien
 
@@ -83,8 +91,11 @@ NL.srs = (function () {
     ]
   };
 
-  /* Sous la journée, l'élément reste dans la même séance ; au-dessus, SM-2 prend le relais. */
-  const STEP = [2 * MIN, 12 * MIN, 1 * DAY, 3 * DAY, 8 * DAY, 21 * DAY];
+  /* Aucun intervalle enregistré ne descend sous un jour. Le renforcement quelques
+     minutes après la rencontre existe toujours, mais c'est la séance en cours
+     qui le fait (src/ui/session.js) : enregistré comme une échéance, il
+     disputait les places de la séance à tout le reste. Voir docs/adr/0001. */
+  const STEP = [1 * DAY, 1 * DAY, 1 * DAY, 3 * DAY, 8 * DAY, 21 * DAY];
 
   const blank = (id, kind) => ({
     id, kind: kind || 'word', stage: 0, due: 0, interval: 0,
@@ -182,16 +193,20 @@ NL.srs = (function () {
   const stageOf = item => { const r = NL.state.rec(item.id); return r ? r.stage : -1; };
   const atTop = item => { const r = NL.state.rec(item.id); return !!r && r.stage >= maxRung(item); };
 
+  /* Les vrais retards passent devant. Un arriéré tombé au même instant est
+     départagé par un tirage qui dépend de l'élément et du nombre d'exercices
+     faits aujourd'hui : il change d'une séance à l'autre, mais pas entre l'écran
+     qui annonce la séance et la séance elle-même. */
+  const tieBreak = s => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
   function dueItems(now) {
     now = now || Date.now();
-    const list = NL.content.allItems().filter(it => {
-      const r = NL.state.rec(it.id);
-      return r && !r.retired && r.due <= now;
-    });
-    /* Mélange puis tri stable par échéance : les vrais retards passent devant,
-       mais un arriéré tombé au même instant est puisé uniformément au lieu de
-       rendre la même tranche à chaque séance. */
-    return NL.util.shuffle(list).sort((a, b) => NL.state.rec(a.id).due - NL.state.rec(b.id).due);
+    const m = NL.state.meta();
+    const salt = ':' + (m.exDay || '') + ':' + (m.exToday || 0);
+    return NL.content.allItems()
+      .filter(it => { const r = NL.state.rec(it.id); return r && !r.retired && r.due <= now; })
+      .map(it => ({ it, due: NL.state.rec(it.id).due, k: tieBreak(it.id + salt) }))
+      .sort((a, b) => a.due - b.due || a.k - b.k)
+      .map(x => x.it);
   }
 
   function counts() {
@@ -222,35 +237,82 @@ NL.srs = (function () {
     NL.state.setMeta({ exDay: today, exToday: (m.exDay === today ? (m.exToday || 0) : 0) + (n || 1) });
   }
 
-  /* Du nouveau seulement si la journée a de la place une fois les révisions faites. */
-  function freshItems(n) {
+  /* Les n premiers éléments jamais rencontrés des unités ouvertes, dans l'ordre
+     du cours. `uid` restreint à une unité. */
+  function freshItems(n, uid) {
     const out = [];
-    for (const it of NL.content.allItems()) {
+    if (n <= 0) return out;
+    const open = NL.content.frontier();
+    const at = {};
+    NL.content.units.forEach((u, i) => { at[u.id] = i; });
+    /* Les mots que la personne a ajoutés passent devant le cours : rangés en fin
+       de liste, ils attendaient que tout le reste ait été rencontré. */
+    const all = NL.content.allItems();
+    for (const it of all.filter(x => x.unit === 'eigen').concat(all.filter(x => x.unit !== 'eigen'))) {
       if (out.length >= n) break;
       if (NL.state.rec(it.id)) continue;
-      if (!NL.content.unitOpen(it.unit)) continue;
+      if (uid && it.unit !== uid) continue;
+      if (it.unit !== 'eigen' && !(at[it.unit] <= open)) continue;
       out.push(it);
     }
     return out;
   }
 
+  /* LE seul endroit qui décide de ce qu'une séance contient. L'écran qui
+     l'annonce et la séance elle-même posent tous deux la question ici : ils ne
+     peuvent donc pas se contredire.
+       source   'vandaag' (défaut) ou l'identifiant d'une unité
+       → { due, fresh, left }   deux listes d'éléments, et le budget restant */
+  function compose(source, now) {
+    const uid = source && source !== 'vandaag' ? source : null;
+    /* Travailler une unité précise est un choix : le budget du jour ne la bride pas. */
+    const left = uid ? Infinity : budgetLeft();
+    const places = Math.min(MAX_TASKS, left);
+    if (places <= 0) return { due: [], fresh: [], left };
+
+    let due = dueItems(now);
+    if (uid) due = due.filter(it => it.unit === uid);
+    const unmet = freshItems(MAX_TASKS, uid);
+
+    /* La réserve sort AVANT que les révisions remplissent le reste, et elle
+       disparaît d'elle-même quand il ne reste rien à rencontrer. */
+    const reserve = Math.min(unmet.length, places, Math.max(NEW_MIN, Math.ceil(places * NEW_SHARE)));
+    let nDue = Math.min(due.length, places - reserve);
+    let nNew = Math.min(unmet.length, Math.max(reserve, Math.min(NEW_MAX, Math.floor((places + reserve - nDue) / 2))));
+    /* Budget presque épuisé : on rabote les révisions d'abord. La réserve survit
+       au rabotage — c'est précisément ce qu'elle doit faire. */
+    while (nDue + 2 * nNew > left && nDue > 0) nDue--;
+    while (nDue + 2 * nNew > left && nNew > 1) nNew--;
+
+    /* Les règles de grammaire sont neuf parmi quatre cents : sans siège garanti,
+       une semaine entière peut passer sans en revoir une. */
+    const pats = due.filter(it => it.kind === 'pattern').slice(0, Math.min(2, nDue));
+    const rest = due.filter(it => pats.indexOf(it) < 0).slice(0, nDue - pats.length);
+    return { due: pats.concat(rest), fresh: unmet.slice(0, nNew), left };
+  }
+
+  /* Ce que l'écran d'accueil annonce : les comptes de compose(), rien d'autre.
+       total = éléments ; tasks = exercices (un nouveau en coûte deux) */
   function plan() {
-    const left = budgetLeft();
-    const due = Math.min(dueItems().length, left);
-    const room = Math.max(0, left - due);
-    const found = freshItems(Math.min(room, pace().fresh)).length;
-    /* Les parties doivent faire le tout : la séance est plafonnée à MAX_TASKS,
-       donc on rabote le nouveau, pas les révisions — sinon l'écran affiche
-       « -3 à revoir » en soustrayant un nouveau non plafonné d'un total plafonné. */
-    const total = Math.min(due + found, MAX_TASKS);
-    const dueShown = Math.min(due, total);
-    const fresh = total - dueShown;
-    return { due: dueShown, fresh, total, left, mins: Math.max(1, Math.round(total * 0.22)) };
+    const c = compose('vandaag');
+    const tasks = c.due.length + 2 * c.fresh.length;
+    return {
+      due: c.due.length, fresh: c.fresh.length, total: c.due.length + c.fresh.length,
+      tasks, left: c.left, mins: Math.max(1, Math.round(tasks * 0.22)),
+      units: unitSpan(c.due.concat(c.fresh))
+    };
+  }
+
+  /* Les unités que couvre une liste d'éléments : la première et la dernière. */
+  function unitSpan(items) {
+    const ns = [];
+    items.forEach(it => { const u = NL.content.unit(it.unit); if (u) ns.push(u.n); });
+    return ns.length ? { from: Math.min.apply(null, ns), to: Math.max.apply(null, ns) } : null;
   }
 
   return {
-    RUNGS, STEP, PACE, MAX_STAGE, MAX_TASKS, GRADUATED, TIER_MAX, RETIRE_AT,
+    RUNGS, STEP, PACE, MAX_STAGE, MAX_TASKS, GRADUATED, NEW_SHARE, NEW_MIN, NEW_MAX, TIER_MAX, RETIRE_AT,
     maxRung, pace, exerciseFor, supports, grade, seed, isSeen, stageOf, atTop,
-    dueItems, counts, freshItems, plan, recOf, budgetLeft, spend
+    dueItems, counts, freshItems, compose, plan, unitSpan, recOf, budgetLeft, spend
   };
 })();
