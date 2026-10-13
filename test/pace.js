@@ -2,73 +2,23 @@
    C'est la suite qui aurait attrapé chacun des défauts trouvés jusqu'ici :
    la dette de révisions, l'oscillation sous plafond, la monotonie des types,
    et le contenu épuisé au jour 27. */
-const fs = require('fs'), path = require('path'), vm = require('vm');
+const browser = require('./lib/browser');
 const ROOT = process.argv[2];
 const DAYS = Number(process.argv[3] || 400);
+const T0 = Date.parse('2026-01-05T08:00:00Z');
 
-let NOW = Date.parse('2026-01-05T08:00:00Z');
 let fails = 0, checks = 0;
 const ok = (c, m) => { checks++; if (!c) { console.log('   ✗ ' + m); fails++; } };
 const P = (l, v) => console.log('  ' + String(l).padEnd(38) + v);
-
-
-/* Générateur déterministe : un test qui échoue au hasard vaut moins que pas de
-   test du tout. La graine rend chaque exécution reproductible, en local comme
-   en CI, et un échec devient donc un vrai signal. */
-function rng(seed) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6D2B79F5) >>> 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-const RAND = rng(Number(process.env.SEED || 20260917));
-const SafeMath = Object.create(Math);
-SafeMath.random = RAND;
-
-const store = {};
-const mk = () => ({
-  tagName: 'DIV', innerHTML: '', value: '', dataset: {}, files: [],
-  classList: { contains: () => false, add() {}, remove() {} },
-  addEventListener() {}, setSelectionRange() {}, focus() {}, click() {}, select() {},
-  querySelector: () => null, querySelectorAll: () => [], closest: () => null,
-  matches: () => false, remove() {}, appendChild() {}, setAttribute() {}, removeAttribute() {},
-  getBoundingClientRect: () => ({ width: 400, height: 600, top: 0, left: 0 })
+const B = browser.open({
+  root: ROOT, seed: browser.SEED, now: T0, ua: 'Chrome/120 OPR/106', blobs: true, byId: 'stub',
+  voices: [{ name: 'Bart', lang: 'nl-BE' }]
 });
-const app = mk();
-class FakeDate extends Date {
-  constructor(...a) { if (!a.length) super(NOW); else super(...a); }
-  static now() { return NOW; }
-}
-const ctx = {
-  console, setTimeout: f => { try { f(); } catch (e) {} return 0; },
-  clearTimeout() {}, setInterval() {}, clearInterval() {}, requestAnimationFrame: f => f(),
-  Math: SafeMath, Date: FakeDate, JSON, Map, Set, RegExp, Array, Object, String, Number, Promise, Error, Boolean,
-  URL: { createObjectURL: () => 'b', revokeObjectURL() {} },
-  Blob: function () {}, Audio: function () { return { play: () => Promise.resolve() }; },
-  localStorage: {
-    getItem: k => (k in store ? store[k] : null),
-    setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; }
-  },
-  navigator: { onLine: true, userAgent: 'Chrome/120 OPR/106' },
-  location: { hash: '', protocol: 'https:' },
-  speechSynthesis: { getVoices: () => [{ name: 'Bart', lang: 'nl-BE' }], speak(u) { if (u.onend) u.onend(); }, cancel() {}, addEventListener() {} },
-  SpeechSynthesisUtterance: function (t) { this.text = t; },
-  document: {
-    readyState: 'complete', documentElement: { setAttribute() {}, removeAttribute() {} },
-    getElementById: id => (id === 'app' ? app : mk()),
-    querySelector: () => null, querySelectorAll: () => [], addEventListener() {},
-    activeElement: { tagName: 'BODY' }, createElement: mk, body: { appendChild() {} }
-  }
-};
-ctx.window = ctx; ctx.globalThis = ctx; ctx.self = ctx; ctx.top = ctx; ctx.addEventListener = () => {};
-vm.createContext(ctx);
-fs.readFileSync(path.join(ROOT, 'build.sh'), 'utf8').match(/SRC="([\s\S]*?)"/)[1]
-  .split('\n').map(s => s.trim()).filter(Boolean)
-  .forEach(f => vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), ctx, { filename: f }));
-const NL = ctx.NL, U = NL.util;
+const NL = B.NL, U = NL.util, RAND = B.random;
+const answer = require('./lib/answer')(B);
+const MIN = 60000, DAY = 86400000;
+/* Un deuxième apprenant, moins assidu : une seule séance par jour. */
+const ONE_A_DAY = process.argv[4] === 'one';
 
 /* Combien de secondes coûte chaque type — pour traduire la charge en minutes. */
 const SECS = { match: 22, pick: 7, recall: 7, intrus: 9, article: 6, vlaams: 9,
@@ -83,7 +33,7 @@ NL.state.open().then(() => {
   let backToBack = 0, prevEx = null, exhausted = null, maxBacklog = 0, tasks = 0, lateRecog = 0;
 
   for (let day = 1; day <= DAYS; day++) {
-    NOW = Date.parse('2026-01-05T08:00:00Z') + (day - 1) * 86400000;
+    B.clock.set(T0 + (day - 1) * 86400000);
     NL.state.touchDay();
     maxBacklog = Math.max(maxBacklog, NL.srs.dueItems().length);
 

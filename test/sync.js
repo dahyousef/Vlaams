@@ -3,12 +3,8 @@
    appareil à l'autre, la révision la plus récente qui gagne, la fusion des
    réglages, la boîte d'envoi qui survit à une panne réseau, l'effacement quand un
    autre compte se connecte, et l'inertie totale sans configuration. */
-const fs = require('fs'), path = require('path'), vm = require('vm');
+const browser = require('./lib/browser');
 const ROOT = process.argv[2];
-
-const FILES = fs.readFileSync(path.join(ROOT, 'build.sh'), 'utf8')
-  .match(/SRC="([\s\S]*?)"/)[1].split('\n').map(s => s.trim()).filter(Boolean)
-  .filter(f => f !== 'src/app.js');
 
 let fails = 0, checks = 0;
 const ok = (c, m) => { checks++; if (!c) { console.log('  FAIL: ' + m); fails++; } };
@@ -94,42 +90,16 @@ function fakeLib(device) {
 
 /* ---------------- un appareil ---------------- */
 function device(name, withConfig, store) {
-  const dev = { name, store: store || {}, winHandlers: {} };
-  const ctx = {
-    console, setTimeout, clearTimeout, setInterval: () => 0, clearInterval() {},
-    Math, Date, JSON, Map, Set, RegExp, Array, Object, String, Number, Promise, Error, Boolean,
-    localStorage: {
-      getItem: k => (k in dev.store ? dev.store[k] : null),
-      setItem: (k, v) => { dev.store[k] = String(v); },
-      removeItem: k => { delete dev.store[k]; }
-    },
-    navigator: { onLine: true, userAgent: 'Mozilla/5.0 Chrome/120' },
-    location: { hash: '', protocol: 'https:', origin: 'https://vlaams.example', pathname: '/' },
-    document: {
-      readyState: 'complete', visibilityState: 'visible',
-      documentElement: { setAttribute() {}, removeAttribute() {} },
-      getElementById: () => null, querySelector: () => null, querySelectorAll: () => [],
-      addEventListener() {}, activeElement: { tagName: 'BODY' }
-    },
-    addEventListener: (ev, fn) => { (dev.winHandlers[ev] = dev.winHandlers[ev] || []).push(fn); },
-    removeEventListener() {}
-  };
-  ctx.window = ctx; ctx.globalThis = ctx; ctx.self = ctx;
-  if (withConfig) {
-    ctx.NL_CONFIG = { supabaseUrl: 'https://example.supabase.co', supabaseAnonKey: 'anon' };
-    ctx.supabase = fakeLib(dev);
-  }
-  vm.createContext(ctx);
-  for (const f of FILES) {
-    try { vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), ctx, { filename: f }); }
-    catch (e) { console.log('LOAD FAIL ' + f + ': ' + e.message); process.exit(1); }
-  }
-  dev.ctx = ctx; dev.NL = ctx.NL;
-  const root = {
-    innerHTML: "", dataset: {}, addEventListener() {}, querySelector: () => null, querySelectorAll: () => [],
-    classList: { add() {}, remove() {}, contains: () => false }
-  };
-  dev.root = root;
+  const dev = { name, store: store || {} };
+  /* Des minuteurs réels : la boîte d'envoi se vide après un délai, et c'est ce
+     délai que le test attend. app.js est laissé de côté, le test démarre lui-même. */
+  const B = browser.open({
+    root: ROOT, timers: 'real', skip: ['src/app.js'], store: dev.store, ua: 'Mozilla/5.0 Chrome/120',
+    config: withConfig ? { supabaseUrl: 'https://example.supabase.co', supabaseAnonKey: 'anon' } : null,
+    supabase: withConfig ? fakeLib(dev) : null
+  });
+  const ctx = B.ctx, root = B.app;
+  dev.ctx = ctx; dev.NL = B.NL; dev.root = root;
   dev.boot = async () => {
     await dev.NL.state.open(); dev.NL.content.refresh();
     dev.NL.ui.bind(root);
@@ -141,7 +111,7 @@ function device(name, withConfig, store) {
     await wait(5);
     return r;
   };
-  dev.offline = v => { ctx.navigator.onLine = !v; (dev.winHandlers[v ? 'offline' : 'online'] || []).forEach(f => f()); };
+  dev.offline = v => { ctx.navigator.onLine = !v; (B.listeners[v ? 'offline' : 'online'] || []).forEach(f => f()); };
   return dev;
 }
 

@@ -1,59 +1,15 @@
 /* Cold start: empty database, first screen, first session answered CORRECTLY
    (not skipped), and the credit that should follow. */
-const fs = require('fs'), path = require('path'), vm = require('vm');
+const browser = require('./lib/browser');
 const ROOT = process.argv[2];
 
-
-/* Générateur déterministe : un test qui échoue au hasard vaut moins que pas de
-   test du tout. La graine rend chaque exécution reproductible, en local comme
-   en CI, et un échec devient donc un vrai signal. */
-function rng(seed) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6D2B79F5) >>> 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-const RAND = rng(Number(process.env.SEED || 20260917));
-const SafeMath = Object.create(Math);
-SafeMath.random = RAND;
-
-const store = {};
-const mkEl = () => ({
-  innerHTML: '', value: '', disabled: false, scrollTop: 0, tagName: 'DIV', dataset: {},
-  classList: { contains: () => false, add() {}, remove() {} },
-  addEventListener() {}, setSelectionRange() {}, focus() {}, click() {}, select() {},
-  querySelector: () => null, querySelectorAll: () => [], closest: () => null,
-  insertAdjacentHTML() {}, matches: () => false, remove() {},
-  getBoundingClientRect: () => ({ width: 400, height: 400, top: 0, left: 0 })
+/* Opera, dans un cadre : ni reconnaissance vocale, ni voix. */
+const B = browser.open({
+  root: ROOT, seed: browser.SEED, ua: browser.UA.OPR, framed: true, blobs: true,
+  location: { origin: 'https://claude.ai' }
 });
-const app = mkEl();
-const ctx = {
-  console, setTimeout: f => { try { f(); } catch (e) {} }, clearTimeout, setInterval, clearInterval,
-  requestAnimationFrame: f => f(),
-  Math: SafeMath, Date, JSON, Map, Set, RegExp, Array, Object, String, Number, Promise, Error, Boolean, Blob: function () {},
-  localStorage: { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } },
-  navigator: { onLine: true, userAgent: 'Mozilla/5.0 (Windows NT 10.0) Chrome/120 OPR/106' },
-  location: { hash: '', protocol: 'https:', origin: 'https://claude.ai' },
-  document: {
-    readyState: 'complete', documentElement: { setAttribute() {}, removeAttribute() {} },
-    getElementById: id => (id === 'app' ? app : null),
-    querySelector: () => null, querySelectorAll: () => [], addEventListener() {},
-    activeElement: { tagName: 'BODY' }, createElement: mkEl, body: { appendChild() {} }
-  }
-};
-ctx.addEventListener = () => {}; ctx.window = ctx; ctx.globalThis = ctx; ctx.self = ctx; ctx.top = {};
-vm.createContext(ctx);
-
-const FILES = fs.readFileSync(path.join(ROOT, 'build.sh'), 'utf8')
-  .match(/SRC="([\s\S]*?)"/)[1].split('\n').map(s => s.trim()).filter(Boolean);
-for (const f of FILES) {
-  try { vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), ctx, { filename: f }); }
-  catch (e) { console.log('LOAD FAIL ' + f + ': ' + e.message); process.exit(1); }
-}
-const NL = ctx.NL, U = NL.util;
+const NL = B.NL, U = NL.util, app = B.app;
+const answer = require('./lib/answer')(B);
 let fails = 0;
 const ok = (c, m) => { if (!c) { console.log('  FAIL: ' + m); fails++; } };
 
@@ -126,30 +82,8 @@ NL.state.open().then(() => {
       ok(!app.innerHTML.includes('data-match=') || S.peek().ex !== 'match', 'the matching board did not clear after every pair was matched');
       continue;
     }
-    /* Answer it properly, using the live task. */
-    const c = S.peek();
-    const task = c && c.task, ex = NL.ex.get(c ? c.ex : 'pick');
-    if (task) {
-      if (task.opts) {
-        const i = task.opts.findIndex(o => o.ok);
-        S.click({ dataset: {} }, { opt: String(i < 0 ? 0 : i) });
-      }
-      if (task.bank) {
-        const want = U.tiles(ex.answer(task)), used = new Set();
-        want.forEach(w => {
-          const i = task.bank.findIndex((b, k) => !used.has(k) && U.norm(b) === U.norm(w));
-          if (i >= 0) { used.add(i); S.click({ dataset: {} }, { pick: String(i) }); }
-        });
-      }
-      if (c.ex === 'corrige') tap('sessie', { opt: String(task.faulty) });
-      if (c.ex === 'open') S.input({ classList: { contains: n => n === 'textin' }, value: task.task.model });
-      if (c.ex === 'type' || (c.ex === 'dictation' && !task.bank)) {
-        S.input({ classList: { contains: n => n === 'textin' }, value: ex.answer(task) });
-      }
-      if (c.ex === 'speak') S.click({ dataset: {} }, { self: '1' });
-    }
-    S.click({ dataset: {} }, { check: '1' });
-    S.click({ dataset: {} }, { next: '1' });
+    answer.right();
+    answer.next(false);
   }
   console.log('  turns           ' + turns + (twins ? ', ' + twins + ' twin translation(s) matched crosswise' : ''));
   Object.keys(kickers).forEach(k => console.log('    ' + (k || '(match)').padEnd(32) + kickers[k]));
@@ -163,22 +97,6 @@ NL.state.open().then(() => {
   ok(m.xp > 0, 'no XP credited');
   ok(m.streak === 1, 'streak not started');
   ok(NL.srs.counts().seen > 0, 'nothing recorded in the scheduler');
-
-  /* Répond juste à la tâche en cours, par les mêmes clics qu'un utilisateur. */
-  function answerRight() {
-    const c = S.peek(), task = c.task, ex = NL.ex.get(c.ex);
-    if (task.opts && c.ex !== 'corrige') S.click({ dataset: {} }, { opt: String(task.opts.findIndex(o => o.ok)) });
-    if (task.bank) {
-      const used = new Set();
-      U.tiles(ex.answer(task)).forEach(w => {
-        const i = task.bank.findIndex((b, k) => !used.has(k) && U.norm(b) === U.norm(w));
-        if (i >= 0) { used.add(i); S.click({ dataset: {} }, { pick: String(i) }); }
-      });
-    }
-    if (c.ex === 'corrige') S.click({ dataset: {} }, { opt: String(task.faulty) });
-    if (c.ex === 'type' || (c.ex === 'dictation' && !task.bank)) S.input({ classList: { contains: n => n === 'textin' }, value: ex.answer(task) });
-    S.click({ dataset: {} }, { check: '1' });
-  }
 
   console.log('\nLE DÉFI');
   {
@@ -194,7 +112,7 @@ NL.state.open().then(() => {
     for (let i = 0; i < 40 && !app.innerHTML.includes('done-stage'); i++) {
       kinds[S.peek().ex] = 1;
       ok(['pick', 'recall', 'match', 'speak', 'article', 'intrus'].indexOf(S.peek().ex) < 0, 'recognition or self-rated exercise in the challenge: ' + S.peek().ex);
-      answerRight();
+      answer.right();
       ok(app.innerHTML.includes('foot ok'), 'the challenge rejected a correct answer (' + S.peek().ex + ')');
       if (i === 5) ok(/class="combo[^"]*"[^>]*>[^<]*6</.test(app.innerHTML), 'the combo counter is not shown after six in a row');
       S.click({ dataset: {} }, { next: '1' });

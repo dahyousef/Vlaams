@@ -5,7 +5,10 @@
 #   PACE_DAYS=400 sh test/run-all.sh   simulation de charge plus longue
 set -e
 cd "$(dirname "$0")/.."
-ROOT="$(pwd)"
+# « . » et non « $(pwd) » : sous Git Bash, node veut C:/… et le shell ne
+# convertit /c/… pour lui que si rien ne le lui interdit. Une session d'agent
+# le lui interdit (MSYS_NO_PATHCONV). Toutes les suites acceptent « . ».
+ROOT=.
 
 sh build.sh
 

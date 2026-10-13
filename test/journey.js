@@ -1,7 +1,7 @@
 /* Full user journey with a Dutch voice installed.
    Walks every screen and every flow the way a person would, and reports
    anything that throws, renders empty, or contradicts itself. */
-const fs = require('fs'), path = require('path'), vm = require('vm');
+const browser = require('./lib/browser');
 const ROOT = process.argv[2];
 const VOICE = process.argv[3] || 'nl-BE';
 const BROWSER = process.argv[4] || 'OPR';
@@ -10,120 +10,20 @@ let fails = 0, checks = 0;
 const ok = (c, m) => { checks++; if (!c) { console.log('   ✗ ' + m); fails++; } };
 const head = s => console.log('\n' + s);
 
-/* ---------- a browser, roughly ---------- */
-
-/* Générateur déterministe : un test qui échoue au hasard vaut moins que pas de
-   test du tout. La graine rend chaque exécution reproductible, en local comme
-   en CI, et un échec devient donc un vrai signal. */
-function rng(seed) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6D2B79F5) >>> 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-const RAND = rng(Number(process.env.SEED || 20260917));
-const SafeMath = Object.create(Math);
-SafeMath.random = RAND;
-
-const store = {};
-const listeners = {};
-function mkEl(tag) {
-  const el = {
-    tagName: (tag || 'div').toUpperCase(), innerHTML: '', value: '', disabled: false,
-    scrollTop: 0, dataset: {}, files: [], style: {}, children: [],
-    classList: { _s: new Set(), contains(n) { return this._s.has(n); }, add(n) { this._s.add(n); }, remove(n) { this._s.delete(n); } },
-    addEventListener(t, f) { (listeners[t] = listeners[t] || []).push(f); },
-    removeEventListener() {}, setSelectionRange() {}, focus() {}, select() {}, click() {},
-    setAttribute() {}, removeAttribute() {}, remove() {}, appendChild() {},
-    insertAdjacentHTML() {}, matches: () => false, closest: () => null, contains: () => true,
-    querySelector: () => null, querySelectorAll: () => [],
-    getBoundingClientRect: () => ({ width: 400, height: 600, top: 0, left: 0 })
-  };
-  return el;
-}
-const app = mkEl('div');
-
 const voices = VOICE === 'none' ? [{ name: 'Microsoft Hazel', lang: 'en-GB' }]
   : VOICE === 'nl-NL' ? [{ name: 'Microsoft Frank', lang: 'nl-NL' }, { name: 'Microsoft Hazel', lang: 'en-GB' }]
     : [{ name: 'Microsoft Bart - Dutch (Belgium)', lang: 'nl-BE', localService: true },
        { name: 'Microsoft Dena Online (Natural) - Dutch (Belgium)', lang: 'nl-BE', localService: false },
        { name: 'Microsoft Frank', lang: 'nl-NL', localService: true }, { name: 'Microsoft Hazel', lang: 'en-GB' }];
 
-const spoken = [];
-const ctx = {
-  console,
-  setTimeout: (f) => { try { f(); } catch (e) { console.log('   ✗ timer threw: ' + e.message); fails++; } return 0; },
-  clearTimeout() {}, setInterval() {}, clearInterval() {}, requestAnimationFrame: f => f(),
-  Math: SafeMath, Date, JSON, Map, Set, RegExp, Array, Object, String, Number, Promise, Error, Boolean,
-  URL: { createObjectURL: () => 'blob:x', revokeObjectURL() {} },
-  Blob: function (parts) { this.size = (parts && parts[0] || '').length; },
-  Audio: function () { return { play: () => Promise.resolve(), onended: null }; },
-  FileReader: function () { this.readAsText = () => { this.onload && this.onload(); }; },
-  localStorage: {
-    getItem: k => (k in store ? store[k] : null),
-    setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; }
-  },
-  navigator: {
-    onLine: true,
-    userAgent: {
-      OPR: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120 Safari/537.36 OPR/106.0',
-      EDG: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120 Safari/537.36 Edg/120.0',
-      /* iPhone : Chrome est Safari par-dessous et n'a pas de reconnaissance. */
-      IOS: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 CriOS/120 Mobile/15E148 Safari/604.1',
-      SAF: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1'
-    }[BROWSER],
-    mediaDevices: { getUserMedia: () => Promise.reject(Object.assign(new Error('no'), { name: 'NotAllowedError' })) },
-    clipboard: { writeText: () => Promise.resolve() }
-  },
-  MediaRecorder: function () {},
-  location: { hash: '', protocol: 'https:', origin: 'https://claude.ai', href: 'https://claude.ai/x' },
-  speechSynthesis: {
-    getVoices: () => voices,
-    speak: u => { spoken.push({ text: u.text, lang: u.lang, rate: u.rate }); if (u.onend) u.onend(); },
-    cancel() {}, addEventListener() {}
-  },
-  SpeechSynthesisUtterance: function (t) { this.text = t; },
-  document: {
-    readyState: 'complete', documentElement: { setAttribute() {}, removeAttribute() {} },
-    getElementById: id => (id === 'app' ? app : mkEl('input')),
-    querySelector: () => null, querySelectorAll: () => [],
-    addEventListener(t, f) { (listeners[t] = listeners[t] || []).push(f); },
-    activeElement: { tagName: 'BODY' }, createElement: mkEl, body: { appendChild() {} },
-    execCommand: () => true
-  }
-};
-/* iOS expose l'API même là où elle ne marche pas : le stub aussi. */
-if (BROWSER !== 'OPR') {
-  ctx.webkitSpeechRecognition = function () {
-    this.start = () => {
-      /* Le navigateur refuse le micro : erreur puis fin, comme Chrome et Edge. */
-      if (ctx.__denyNext) {
-        ctx.__denyNext = false;
-        if (this.onerror) this.onerror({ error: 'not-allowed' });
-        if (this.onend) this.onend();
-        return;
-      }
-      const said = ctx.__saidNext || '';
-      if (this.onresult) this.onresult({ resultIndex: 0, results: [Object.assign([{ transcript: said }], { isFinal: true, length: 1 })] });
-      if (this.onend) this.onend();
-    };
-    this.abort = () => {};
-  };
-}
-ctx.window = ctx; ctx.globalThis = ctx; ctx.self = ctx; ctx.top = ctx;
-ctx.addEventListener = (t, f) => { (listeners[t] = listeners[t] || []).push(f); };
-vm.createContext(ctx);
-
-const FILES = fs.readFileSync(path.join(ROOT, 'build.sh'), 'utf8')
-  .match(/SRC="([\s\S]*?)"/)[1].split('\n').map(s => s.trim()).filter(Boolean);
-for (const f of FILES) {
-  try { vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), ctx, { filename: f }); }
-  catch (e) { console.log('LOAD FAIL ' + f + ': ' + e.message); process.exit(1); }
-}
-const NL = ctx.NL, U = NL.util;
+/* Opera définit l'API de reconnaissance sans service derrière : pas de stub. */
+const B = browser.open({
+  root: ROOT, seed: browser.SEED, ua: browser.UA[BROWSER], voices, media: true, byId: 'stub',
+  recogniser: BROWSER !== 'OPR',
+  location: { origin: 'https://claude.ai', href: 'https://claude.ai/x' },
+  onTimerError: e => { console.log('   ✗ timer threw: ' + e.message); fails++; }
+});
+const NL = B.NL, U = NL.util, ctx = B.ctx, app = B.app, listeners = B.listeners, spoken = B.spoken, mkEl = B.mkEl;
 
 /* Drives a screen's click handler the way the shell would. */
 function tap(screen, data) {

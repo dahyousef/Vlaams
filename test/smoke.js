@@ -1,58 +1,19 @@
 /* Headless smoke test: loads every module into a stubbed browser and exercises
    the content model, the scheduler and all ten exercise types. */
-const fs = require('fs'), path = require('path'), vm = require('vm');
+const path = require('path'), fs = require('fs');
+const browser = require('./lib/browser');
 const ROOT = process.argv[2];
 
-/* Même graine que les autres suites : une mesure statistique qui échoue une fois
-   sur dix ne dit rien. SEED=... pour rejouer une autre distribution. */
-function rng(seed) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6D2B79F5) >>> 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-const SafeMath = Object.create(Math);
-SafeMath.random = rng(Number(process.env.SEED || 20260917));
-
-const store = {};
-const ctx = {
-  console,
-  setTimeout, clearTimeout, setInterval, clearInterval,
-  Math: SafeMath, Date, JSON, Map, Set, RegExp, Array, Object, String, Number, Promise, Error,
-  localStorage: {
-    getItem: k => (k in store ? store[k] : null),
-    setItem: (k, v) => { store[k] = String(v); },
-    removeItem: k => { delete store[k]; }
-  },
-  navigator: { onLine: true },
-  location: { hash: '', protocol: 'file:' },
-  document: {
-    readyState: 'complete',
-    documentElement: { setAttribute() {}, removeAttribute() {} },
-    getElementById: () => null,
-    querySelector: () => null,
-    querySelectorAll: () => [],
-    addEventListener() {},
-    activeElement: { tagName: 'BODY' }
-  }
-};
-ctx.window = ctx;
-ctx.globalThis = ctx;
-vm.createContext(ctx);
-
-const FILES = `src/core/util.js src/core/fr.js src/core/state.js src/core/srs.js src/core/speech.js src/core/audio.js
-src/content/lexicon.a1.js src/content/lexicon.a1b.js src/content/grammar.js src/content/open.js src/content/reference.js
-src/content/scenarios.js src/content/index.js src/ex/index.js`.split(/\s+/).filter(Boolean);
-
-for (const f of FILES) {
-  try { vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), ctx, { filename: f }); }
-  catch (e) { console.log('LOAD FAIL ' + f + ': ' + e.message); process.exit(1); }
-}
-
-const NL = ctx.NL;
+/* Le contenu, le planificateur et les exercices : ni interface, ni synchro, ni
+   phrases d'exemple. */
+const B = browser.open({
+  root: ROOT, seed: browser.SEED, timers: 'real', location: { protocol: 'file:' },
+  files: ['src/core/util.js', 'src/core/fr.js', 'src/core/state.js', 'src/core/srs.js', 'src/core/speech.js',
+    'src/core/audio.js', 'src/content/lexicon.a1.js', 'src/content/lexicon.a1b.js', 'src/content/grammar.js',
+    'src/content/open.js', 'src/content/reference.js', 'src/content/scenarios.js', 'src/content/index.js',
+    'src/ex/index.js']
+});
+const NL = B.NL;
 let fails = 0;
 const ok = (cond, msg) => { if (!cond) { console.log('  FAIL: ' + msg); fails++; } };
 
