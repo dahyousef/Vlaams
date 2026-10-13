@@ -4028,11 +4028,18 @@ NL.content = NL.content || {};
      « reconnaître » plafonne à l'échelon 2 et ne peut pas atteindre l'échelon 5. */
   const READY = it => NL.srs.stageOf(it) >= Math.min(3, NL.srs.maxRung(it));
   const MASTERED = it => NL.srs.stageOf(it) >= Math.min(NL.srs.GRADUATED, NL.srs.maxRung(it));
-  const GATE = 0.8;
+  const MET = it => NL.srs.stageOf(it) >= 0;
+
+  /* Une unité ouvre la suivante quand les trois quarts de ses éléments ont été
+     RENCONTRÉS. Le seuil portait sur un échelon qui demande au moins deux jours
+     de bonnes réponses : une unité entièrement rencontrée n'ouvrait pas la
+     suivante, et il ne restait alors rien de neuf à servir. */
+  const GATE = 0.75;
+  const gateSize = n => Math.ceil(n * GATE);
 
   const unitComplete = uid => {
     const items = itemsOf(uid);
-    return !items.length || items.filter(READY).length / items.length >= GATE;
+    return items.filter(MET).length >= gateSize(items.length);
   };
 
   /* La frontière : on remonte depuis la première unité tant qu'elle est faite ;
@@ -4043,15 +4050,8 @@ NL.content = NL.content || {};
     const us = NL.content.units;
     let i = 0;
     while (i < us.length - 1 && unitComplete(us[i].id)) i++;
-    /* Une unité ouverte le reste. Sans cette mémoire, quelques rechutes dans
-       l'unité 1 la font repasser sous 80 % et referment les onze suivantes,
-       même entièrement rencontrées. Le maximum atteint reste contigu. */
-    /* Rattrapage pour les progressions d'avant : on ne rencontre les éléments
-       que d'une unité ouverte, donc une unité rencontrée à 80 % l'a été. */
-    for (let j = us.length - 1; j > i; j--) {
-      const items = itemsOf(us[j].id);
-      if (items.length && items.filter(it => NL.srs.stageOf(it) >= 0).length / items.length >= GATE) { i = j; break; }
-    }
+    /* Une unité ouverte le reste : la frontière ne recule jamais, et le
+       maximum atteint reste contigu. */
     const reached = Math.min(NL.state.meta().reached || 0, us.length - 1);
     if (i > reached) { NL.state.setMeta({ reached: i }); return i; }
     return reached;
@@ -4068,7 +4068,7 @@ NL.content = NL.content || {};
      rien n'est appris est pire. */
   function unitProgress(uid) {
     const items = itemsOf(uid);
-    if (!items.length) return { pct: 0, met: 0, ready: 0, mastered: 0, total: 0, gate: 0, level: 0 };
+    if (!items.length) return { pct: 0, met: 0, ready: 0, mastered: 0, total: 0, gate: 0, level: 0, toOpen: 0 };
     const met = items.filter(it => NL.srs.stageOf(it) >= 0).length;
     const ready = items.filter(READY).length;
     const mastered = items.filter(MASTERED).length;
@@ -4076,7 +4076,8 @@ NL.content = NL.content || {};
     return {
       pct, met, ready, mastered, total: items.length,
       gate: Math.round(ready / items.length * 100),
-      level: Math.min(5, Math.floor(pct / 20))
+      level: Math.min(5, Math.floor(pct / 20)),
+      toOpen: Math.max(0, gateSize(items.length) - met)
     };
   }
 

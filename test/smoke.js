@@ -150,28 +150,26 @@ NL.state.open().then(() => {
     console.log('  transparent     « ' + cog.nl + ' » démarre à l’échelon ' + NL.srs.stageOf(cog));
   }
 
-  /* La frontière est contiguë : impossible d'ouvrir une unité par-dessus un trou. */
-  NL.content.units.forEach(u => NL.content.itemsOf(u.id).forEach(it => NL.srs.seed(it, 5)));
+  /* La frontière est contiguë : impossible d'ouvrir une unité par-dessus un trou.
+     Le trou, c'est une unité dont rien n'a été RENCONTRÉ. */
+  NL.state.clearAll();
   const gapUnit = NL.content.units[3];
-  NL.content.itemsOf(gapUnit.id).forEach(it => NL.srs.seed(it, 0));
+  NL.content.units.forEach(u => { if (u !== gapUnit) NL.content.itemsOf(u.id).forEach(it => NL.srs.seed(it, 5)); });
   const opened = NL.content.units.map(u => NL.content.unitOpen(u.id));
   const firstShut = opened.indexOf(false);
   ok(firstShut < 0 || opened.slice(firstShut).every(o => !o),
     'the open range is not contiguous — a unit is open beyond a locked one');
   console.log('  frontière       ' + (firstShut < 0 ? 'tout ouvert' : firstShut + ' unités ouvertes, puis fermé') + ' — contigu');
 
-  /* Une unité ouverte ne se referme pas : quelques rechutes dans l'unité 1
-     refermaient les onze suivantes, pourtant déjà rencontrées. */
+  /* Une unité ouverte ne se referme pas : la frontière est gardée en mémoire,
+     et des rechutes dans l'unité 1 ne referment rien. */
   {
-    NL.state.setMeta({ reached: 0 });
+    NL.state.clearAll();
     NL.content.units.forEach(u => NL.content.itemsOf(u.id).forEach(it => NL.srs.seed(it, 5)));
-    ok(NL.content.units.every(u => NL.content.unitOpen(u.id)), 'a fully worked course is not fully open');
-    NL.content.itemsOf(NL.content.units[0].id).forEach(it => NL.srs.seed(it, 1));
+    ok(NL.content.units.every(u => NL.content.unitOpen(u.id)), 'a fully met course is not fully open');
+    NL.content.itemsOf(NL.content.units[0].id).forEach(it => NL.srs.grade(it, false));
     const stillOpen = NL.content.units.filter(u => NL.content.unitOpen(u.id)).length;
     ok(stillOpen === NL.content.units.length, 'lapses in unit 1 closed ' + (NL.content.units.length - stillOpen) + ' unit(s) that were already open');
-    /* Rattrapage : sans mémoire enregistrée, une unité rencontrée à 80 % compte comme ouverte. */
-    NL.state.setMeta({ reached: 0 });
-    ok(NL.content.unitOpen(NL.content.units[NL.content.units.length - 1].id), 'an older profile with every unit met stays locked');
     console.log('  frontière       une unité ouverte le reste, même après des rechutes');
   }
 
