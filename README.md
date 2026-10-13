@@ -87,7 +87,7 @@ hébergé, et **copier/coller** qui marche partout.
 | Écran | À quoi il sert |
 | --- | --- |
 | **Aujourd'hui** | L'écran par défaut, et le seul dont tu as besoin la plupart des jours. Une seule action, environ quinze minutes. |
-| **Parcours** | Douze unités A1 avec les explications de grammaire. Alimente le planificateur. |
+| **Parcours** | Douze unités A1 avec les explications de grammaire. Chaque carte d'unité dit combien d'éléments il reste à rencontrer avant que la suivante s'ouvre. Alimente le planificateur. |
 | **Parler** | Six jeux de rôle. Tu choisis ta réplique puis tu la dis. |
 | **Écouter** | Du flamand à vitesse réelle sans texte, plus du shadowing. |
 | **Plus** | Tes mots, les antisèches, standard/flamand, le français caché, les sons, les familles de de/het, le docteur audio. |
@@ -125,7 +125,7 @@ réordonne ensuite la file pour qu'aucun type ne colle à lui-même.
 | 2 | à l'oreille | dictée · écrire | trou · corrige l'erreur · dictée |
 | 3 | à l'écrit | écrire · trou | dictée · corrige |
 | 4 | à voix haute | écrire · dictée | écrire · trou |
-| 5 | maîtrisé | **parler** | **parler** |
+| 5 | consolidé | **parler** | **parler** |
 | 6 | ancré | alterné | alterné, dont réponse libre |
 
 L'échelon 5 est **parler** et rien d'autre : c'est ce qui garantit que rien n'est
@@ -298,7 +298,7 @@ prénom/commune/employeur.
 
 **Moteur, refait après simulation** : budget quotidien borné, paliers par
 élément, les deux correctifs d'intervalle, gouverneur de variété et étalement,
-déverrouillage par frontière contiguë, pourcentage de maîtrise seule,
+déverrouillage par frontière contiguë, deux comptes, rencontrés et produits, sans pourcentage,
 quatre nouveaux types d'exercice — l'intrus, corrige l'erreur, standaard of
 Vlaams, réponse libre notée sur rubrique.
 

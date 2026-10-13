@@ -19,7 +19,7 @@
       const q = U.norm(query);
       let list = (filter === 'eigen' ? all.filter(it => it.unit === 'eigen')
         : filter === 'zwak' ? seen.filter(it => NL.srs.stageOf(it) < 3)
-          : filter === 'sterk' ? seen.filter(it => NL.srs.stageOf(it) >= NL.srs.GRADUATED)
+          : filter === 'sterk' ? seen.filter(it => NL.srs.stageOf(it) >= NL.srs.PRODUCE)
             : seen);
       if (q) list = all.filter(it => U.norm(it.nl).indexOf(q) >= 0 || U.norm(it.fr).indexOf(q) >= 0 || (it.be && U.norm(it.be).indexOf(q) >= 0));
 

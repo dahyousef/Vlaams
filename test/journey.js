@@ -39,6 +39,7 @@ function view(screen, arg) {
     ok(html.indexOf('undefined') < 0, screen + ' printed the word "undefined"');
     ok(html.indexOf('[object Object]') < 0, screen + ' printed [object Object]');
     ok(html.indexOf('NaN') < 0, screen + ' printed NaN');
+    ok(!/\d\s?%/.test(html.replace(/<[^>]*>/g, ' ')), screen + ' shows a percentage');
     return html;
   } catch (e) { console.log('   ✗ ' + screen + ' render threw: ' + e.message); fails++; return ''; }
 }
@@ -147,6 +148,7 @@ function view(screen, arg) {
       const after = S.render();
       if (c.ex !== 'match') ok(after.indexOf('foot ok') >= 0 || after.indexOf('foot no') >= 0, c.ex + ' gave no verdict');
       if (c.ex !== 'match') ok(after.indexOf('foot no') < 0, c.ex + ' rejected a correct answer');
+      ok(!/\d\s?%/.test(after.replace(/<[^>]*>/g, ' ')), c.ex + ' shows a percentage after the answer');
       tap('sessie', { next: '1' });
     }
     S.abandon();

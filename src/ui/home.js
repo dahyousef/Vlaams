@@ -4,14 +4,10 @@
   'use strict';
   const U = NL.util, esc = U.esc, t = NL.t;
 
-  const pct = n => Math.max(0, Math.min(100, Math.round(n)));
-  const bar = (p, cls) => '<span class="bar"><span class="bar-fill ' + (cls || '') + '" style="width:' + pct(p) + '%"></span></span>';
-
   /* ---------------------------------------------------- Aujourd'hui */
   NL.screens.vandaag = {
     render() {
       const m = NL.state.meta();
-      const c = NL.srs.counts();
       const cp = NL.content.courseProgress();
       const p = NL.srs.plan();
       const fresh = p.fresh, total = p.total, mins = p.mins;
@@ -19,9 +15,10 @@
 
       let html = '<div class="wrap">';
 
-      /* The one thing this screen is for. */
+      /* The one thing this screen is for. Elle nomme l'unité — ou les deux, quand
+         la séance en couvre plusieurs : un libellé ne dit jamais une demi-vérité. */
       html += '<section class="card session-card">' +
-        '<span class="eyebrow">' + t.todayEyebrow + '</span>' +
+        '<span class="eyebrow">' + t.todayEyebrow + (p.units ? ' · ' + esc(unitLabel(p.units)) : '') + '</span>' +
         (total === 0
           ? '<h2>' + t.todayAllDone + '</h2><p class="sc-sub">' + t.todayAllDoneSub + '</p>' +
           '<button class="btn btn-blue wide big" data-go="praten">' + t.todayPractise + '</button>'
@@ -38,8 +35,8 @@
 
       html += '<div class="tri">' +
         stat(m.streak, t.statStreak(m.streak)) +
-        stat(c.said, t.statSaid) +
-        stat(cp.pct + '%', t.statCourse) +
+        stat(cp.met, t.statMet) +
+        stat(cp.produce, t.statProduce) +
         '</div>';
 
       html += '<h3 class="sec">' + t.morepractice + '</h3><div class="cards">';
@@ -74,6 +71,13 @@
     NL.screens.sessie.begin('defi'); NL.ui.go('sessie');
   }
 
+  /* « Unité 5 · Chez le boulanger », ou « Unités 4–5 ». */
+  function unitLabel(span) {
+    if (span.from !== span.to) return t.unitsRange(span.from, span.to);
+    const u = NL.content.units.find(x => x.n === span.from);
+    return t.unitOne(span.from) + (u ? ' · ' + u.name : '');
+  }
+
   const stat = (n, l) => '<div class="stat-box"><div class="s-n">' + n + '</div><div class="s-l">' + esc(l) + '</div></div>';
   const tile = (icon, title, sub, key, val) =>
     '<button class="tile-card" data-' + key + '="' + esc(val) + '">' +
@@ -90,8 +94,7 @@
         '<span class="eyebrow">' + t.pathEyebrow + '</span>' +
         '<h1>' + t.pathTitle + '</h1>' +
         '<p>' + t.pathBody + '</p>' +
-        '<div class="prog-line">' + bar(cp.pct) + '<b>' + cp.pct + '%</b></div>' +
-        '<p class="muted small">' + t.masteredOf(cp.mastered, cp.total) + '</p>' +
+        '<p class="muted small">' + t.courseCounts(cp.met, cp.produce, cp.total) + '</p>' +
         '</section>';
 
       NL.content.units.forEach(u => {
@@ -105,12 +108,13 @@
           '<span class="uc-icon">' + u.icon + '</span>' +
           '<div class="uc-title"><span class="eyebrow">Unité ' + u.n + ' · ' + u.level + ' · ' + trackName(u.track) + '</span>' +
           '<h2>' + esc(u.name) + '<i class="uc-nl">' + esc(u.nlName || '') + '</i></h2></div>' +
-          '<span class="uc-pct" title="' + t.unitLevel(p.level) + '">' + p.pct + '%</span>' +
+          '<span class="uc-pct">' + p.met + '/' + p.total + '</span>' +
           '</div>' +
           '<p class="uc-blurb">' + esc(u.blurb) + '</p>' +
-          '<div class="prog-line">' + bar(p.pct) + '<span class="muted small">' + t.metOf(p.met, p.total) + '</span></div>' +
-          (open && !NL.content.unitComplete(u.id)
-            ? '<p class="uc-gate">' + t.unitGate(p.gate, 80) + '</p>' : '') +
+          '<p class="muted small">' + t.unitCounts(p.met, p.produce, p.total) + '</p>' +
+          /* Le seuil est un compte à rebours, pas un mystère. */
+          (open && p.toOpen > 0 && u !== NL.content.units[NL.content.units.length - 1]
+            ? '<p class="uc-gate">' + t.unitGate(p.toOpen) + '</p>' : '') +
           (g.length ? '<div class="uc-gram">' + g.map(x =>
             '<button class="gram-chip" data-act="gram" data-id="' + x.id + '">' + esc(x.title) + '</button>').join('') + '</div>' : '') +
           (open
@@ -151,7 +155,7 @@
       return '<div class="wrap">' +
         '<div class="cards">' +
         defiTile(m) +
-        tile('\u{1F4D2}', t.wordsEyebrow, c.seen + ' vus, ' + c.mature + ' solides', 'go', 'woorden') +
+        tile('\u{1F4D2}', t.wordsEyebrow, t.wordsTile(c.seen, c.mature), 'go', 'woorden') +
         tile('\u{1F4CB}', t.sheetsEyebrow, t.sheetsTitle, 'go', 'spiek') +
         tile('\u{1F1E7}\u{1F1EA}', t.regEyebrow, t.regTitle, 'go', 'register') +
         tile('\u{1F444}', t.soundsEyebrow, t.soundsTitle, 'go', 'klanken') +

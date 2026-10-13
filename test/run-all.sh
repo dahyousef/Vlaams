@@ -15,6 +15,7 @@ sh build.sh
 node test/smoke.js    "$ROOT"
 node test/dehet.js    "$ROOT"
 node test/engine.js   "$ROOT"
+node test/screens.js  "$ROOT"
 node test/sim.js      "$ROOT"
 node test/firstrun.js "$ROOT"
 node test/sync.js     "$ROOT"

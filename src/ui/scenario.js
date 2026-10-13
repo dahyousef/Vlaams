@@ -90,7 +90,7 @@
         }
         return '<div class="bub you"><div><p class="bub-nl">' + esc(b.nl) + '</p>' +
           '<p class="bub-en">' + esc(b.fr) + '</p>' +
-          (b.pct != null ? '<p class="bub-score">' + b.pct + '% prononcé</p>' : '') + '</div></div>';
+          (b.score ? '<p class="bub-score">' + esc(b.score) + '</p>' : '') + '</div></div>';
       }).join('');
 
       let panel = '';
@@ -143,7 +143,7 @@
       if (d.mic !== undefined) return mic(d.mic);
       if (d.rec !== undefined) return recAction(d.rec);
       if (d.self !== undefined) { P.speech.selfRated = d.self === '1'; commit(d.self === '1', null); return; }
-      if (d.act === 'accept') { commit(!!P.speech.ok, P.speech.pct); return; }
+      if (d.act === 'accept') { commit(!!P.speech.ok, NL.ex.wordScore(P.speech.parts)); return; }
     },
     key(e) {
       if (!P) return;
@@ -160,12 +160,12 @@
     }
   };
 
-  function commit(ok, pct) {
+  function commit(ok, score) {
     const step = P.scn.steps[P.at];
     if (!step || !step.you || P.choice == null) return;
     const c = step.you.choices[P.choice];
     if (ok) P.spoken++;
-    P.log.push({ who: 'you', nl: c.nl, fr: c.fr, pct: pct });
+    P.log.push({ who: 'you', nl: c.nl, fr: c.fr, score: score });
     P.at++;
     if (c.reply) {
       P.log.push({ who: 'them', nl: c.reply.nl, be: c.reply.be, fr: c.reply.fr });
@@ -223,7 +223,7 @@
     }
     if (sp.phase === 'done') {
       return '<div class="mic-panel ' + (sp.ok ? 'good' : 'bad') + '">' +
-        '<div class="score-row"><span class="score">' + sp.pct + '%</span>' +
+        '<div class="score-row"><span class="score">' + NL.ex.wordScore(sp.parts) + '</span>' +
         '<span class="score-bar"><span style="width:' + sp.pct + '%"></span></span></div>' +
         '<p class="word-diff">' + sp.parts.map(p =>
           '<span class="' + (p.ok ? (p.close ? 'w-close' : 'w-ok') : 'w-no') + '">' + esc(p.word) + '</span>').join(' ') + '</p>' +

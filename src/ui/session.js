@@ -301,7 +301,6 @@ NL.screens.sessie = (function () {
     const pct = Math.round(L.at / L.queue.length * 100);
     const it = c.items[0];
     const unit = NL.content.unit(it.unit);
-    const stage = NL.srs.stageOf(it);
 
     return '<div class="lesson">' +
       '<div class="lesson-head">' +
@@ -317,20 +316,11 @@ NL.screens.sessie = (function () {
       '<div class="kicker"><span class="sub">' +
       esc(unit ? unit.name : 'Mes mots') +
       (c.retry || c.second ? ' · ' + NL.t.again2 : '') +
-      '</span>' + esc(ex.kicker) + stagePips(stage, it) + '</div>' +
+      '</span>' + esc(ex.kicker) + '</div>' +
       ex.view(c.task, L, L.phase) +
       '</div></div>' +
       foot(c, ex) +
       '</div>';
-  }
-
-  function stagePips(stage, item) {
-    const top = NL.srs.maxRung(item);
-    const r = Math.max(0, stage);
-    let s = '<span class="pips">';
-    for (let i = 0; i < top; i++) s += '<i class="' + (i <= stage ? 'on' : '') + '"></i>';
-    s += '<b>' + NL.t.rungs[Math.min(r, NL.t.rungs.length - 1)] + '</b>';
-    return s + '</span>';
   }
 
   function foot(c, ex) {
@@ -383,7 +373,6 @@ NL.screens.sessie = (function () {
   }
 
   function done() {
-    const acc = (L.right + L.wrong) ? Math.round(L.right / (L.right + L.wrong) * 100) : 100;
     const mins = Math.max(1, Math.round((Date.now() - L.started) / 60000));
     const m = NL.state.meta();
     if (L.source === 'defi') return defiDone(mins);
@@ -394,7 +383,7 @@ NL.screens.sessie = (function () {
         ? NL.t.doneSpoken(L.spoken)
         : NL.t.doneNoSpoken) + '</p>' +
       '<div class="tally">' +
-      box('+' + L.xp, NL.t.tallyXp, 'gold') + box(acc + '%', NL.t.tallyRight, 'blue') +
+      box('+' + L.xp, NL.t.tallyXp, 'gold') + box(L.right + '/' + (L.right + L.wrong), NL.t.tallyRight, 'blue') +
       box(m.streak, NL.t.tallyDays, 'green') + box(mins + 'm', NL.t.tallyTime, '') +
       (L.bestCombo >= 3 ? box('\u{1F525} ' + L.bestCombo, NL.t.tallyCombo, L.comboRecord ? 'gold' : '') : '') +
       '</div>' +

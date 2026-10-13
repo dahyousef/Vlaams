@@ -73,11 +73,11 @@ NL.content = NL.content || {};
   const unit = id => NL.content.units.find(u => u.id === id) || null;
   const itemsOf = uid => allItems().filter(it => it.unit === uid);
 
-  /* Deux seuils, tenant compte du palier de chaque élément : un mot du palier
-     « reconnaître » plafonne à l'échelon 2 et ne peut pas atteindre l'échelon 5. */
-  const READY = it => NL.srs.stageOf(it) >= Math.min(3, NL.srs.maxRung(it));
-  const MASTERED = it => NL.srs.stageOf(it) >= Math.min(NL.srs.GRADUATED, NL.srs.maxRung(it));
+  /* Deux comptes, et pas de troisième. Rencontré : l'élément a été vu au moins
+     une fois. Produit : il a passé l'échelon de l'écrit — en tenant compte du
+     palier, puisqu'un mot du palier « reconnaître » plafonne à l'échelon 2. */
   const MET = it => NL.srs.stageOf(it) >= 0;
+  const PRODUCED = it => NL.srs.stageOf(it) >= Math.min(NL.srs.PRODUCE, NL.srs.maxRung(it));
 
   /* Une unité ouvre la suivante quand les trois quarts de ses éléments ont été
      RENCONTRÉS. Le seuil portait sur un échelon qui demande au moins deux jours
@@ -112,32 +112,22 @@ NL.content = NL.content || {};
     return i >= 0 && i <= frontier();
   }
 
-  /* Le pourcentage ne compte QUE la maîtrise : ce que tu as dit à voix haute et
-     réussi. Il affiche 0% pendant des jours. C'est la vérité — 33% alors que
-     rien n'est appris est pire. */
+  /* Des comptes, jamais de pourcentage : un compte bouge tous les jours, et ne
+     peut pas être exact et muet à la fois. Voir docs/adr/0002.
+       toOpen = combien d'éléments restent à rencontrer avant l'unité suivante */
   function unitProgress(uid) {
     const items = itemsOf(uid);
-    if (!items.length) return { pct: 0, met: 0, ready: 0, mastered: 0, total: 0, gate: 0, level: 0, toOpen: 0 };
-    const met = items.filter(it => NL.srs.stageOf(it) >= 0).length;
-    const ready = items.filter(READY).length;
-    const mastered = items.filter(MASTERED).length;
-    const pct = Math.round(mastered / items.length * 100);
+    const met = items.filter(MET).length;
     return {
-      pct, met, ready, mastered, total: items.length,
-      gate: Math.round(ready / items.length * 100),
-      level: Math.min(5, Math.floor(pct / 20)),
+      met, produce: items.filter(PRODUCED).length, total: items.length,
       toOpen: Math.max(0, gateSize(items.length) - met)
     };
   }
 
   function courseProgress() {
     const items = allItems().filter(it => it.unit !== 'eigen');
-    const mastered = items.filter(MASTERED).length;
-    const ready = items.filter(READY).length;
     return {
-      pct: Math.round(mastered / items.length * 100),
-      mastered, ready, total: items.length,
-      unitsDone: NL.content.units.filter(u => unitComplete(u.id)).length,
+      met: items.filter(MET).length, produce: items.filter(PRODUCED).length, total: items.length,
       current: NL.content.units[frontier()] || null
     };
   }

@@ -8,7 +8,7 @@ NL.srs = (function () {
 
   const MAX_TASKS = 22;             // les places d'une séance : un élément par place
   const MAX_STAGE = 6;
-  const GRADUATED = 5;              // atteint uniquement en disant l'élément à voix haute
+  const PRODUCE = 4;                // l'échelon de l'écrit est passé : l'élément se produit
   /* La part de chaque séance réservée à ce qui n'a jamais été rencontré. Sans
      elle, les révisions finissent par occuper toutes les places et plus rien de
      neuf n'arrive. Elle se calcule sur la SÉANCE, jamais sur le budget du jour :
@@ -254,7 +254,7 @@ NL.srs = (function () {
     NL.state.allRecs().forEach(r => {
       if (r.retired) { retired++; mature++; return; }
       if (r.due <= now) due++;
-      if (r.stage >= GRADUATED) mature++; else learning++;
+      if (r.stage >= PRODUCE) mature++; else learning++;
       if (r.said) said++;
     });
     return { due, learning, mature, said, retired, seen: NL.state.seenCount() };
@@ -357,7 +357,7 @@ NL.srs = (function () {
   }
 
   return {
-    RUNGS, STEP, PACE, MAX_STAGE, MAX_TASKS, GRADUATED, NEW_SHARE, NEW_MIN, NEW_MAX, TIER_MAX, RETIRE_AT,
+    RUNGS, STEP, PACE, MAX_STAGE, MAX_TASKS, PRODUCE, NEW_SHARE, NEW_MIN, NEW_MAX, TIER_MAX, RETIRE_AT,
     maxRung, pace, exerciseFor, firstAloud, supports, grade, seed, isSeen, stageOf, atTop,
     dueItems, counts, freshItems, compose, plan, unitSpan, recOf, budgetLeft, spend
   };

@@ -744,21 +744,23 @@ NL.t = {
   todayAllDone: 'Tout est à jour.',
   todayAllDoneSub: 'Rien à revoir. Réviser trop tôt ne sert à rien — ça brûle la répétition. Repasse plus tard, ou travaille quelque chose de précis ci-dessous.',
   todayReady: n => n + (n === 1 ? ' élément t’attend' : ' éléments t’attendent'),
-  todaySplit: (due, fresh, mins) => due + ' à revoir, ' + fresh + ' nouveaux · environ ' + mins + ' minutes.',
+  todaySplit: (due, fresh, mins) => due + ' à revoir, ' + fresh + (fresh === 1 ? ' nouveau' : ' nouveaux') + ' · environ ' + mins + ' minutes.',
+  unitOne: n => 'Unité ' + n,
+  unitsRange: (a, b) => 'Unités ' + a + '–' + b,
   todayStart: 'Démarrer la session',
   todayPractise: 'Travailler une conversation',
   todayGoal: (a, b) => a + ' / ' + b + ' nouveaux',
   statStreak: n => n === 1 ? 'jour d’affilée' : 'jours d’affilée',
-  statSaid: 'dits à voix haute',
-  statCourse: 'du cours',
+  statMet: 'rencontrés',
+  statProduce: 'que tu sais produire',
   morepractice: 'Continuer autrement',
 
   /* --- parcours --- */
   pathEyebrow: 'Parcours',
   pathTitle: 'Le niveau A1, en douze unités',
   pathBody: 'Les unités alimentent le planificateur en nouvelles matières. Tu ne dois pas finir une unité pour ouvrir la suivante : elle s’ouvre d’elle-même quand l’essentiel de la précédente a été vu.',
-  pathSolid: (a, b) => a + ' éléments sur ' + b + ' sont bien ancrés.',
-  unitSeen: (a, b) => a + '/' + b + ' vus',
+  courseCounts: (met, produce, total) => met + ' rencontrés sur ' + total + ', dont ' + produce + ' que tu sais produire.',
+  unitCounts: (met, produce, total) => met + ' rencontrés sur ' + total + ' · ' + produce + ' que tu sais produire',
   unitStart: 'Commencer cette unité',
   unitPractise: 'Travailler cette unité',
   unitLocked: n => 'S’ouvre quand l’unité ' + n + ' aura été vue en grande partie.',
@@ -818,7 +820,6 @@ NL.t = {
   exOpen: 'À toi d’écrire',
   openPlaceholder: 'Écris ta réponse en néerlandais…',
   openModel: 'Un exemple :',
-  rungs: ['découverte', 'reconnaissance', 'à l’oreille', 'à l’écrit', 'à voix haute', 'maîtrisé', 'ancré'],
   tapWords: 'Touche les mots ci-dessous',
   specialLetters: 'Lettres spéciales',
   typeHere: 'Tape en néerlandais',
@@ -828,6 +829,7 @@ NL.t = {
   micTap: 'Touche et dis la phrase.',
   micListening: 'J’écoute…',
   micHeard: 'Entendu :',
+  wordsHeard: (a, b) => a + (a === 1 ? ' mot' : ' mots') + ' sur ' + b,
   micRetry: n => 'Réessayer (' + n + ')',
   micAnyway: 'Continuer quand même',
   micSaidIt: 'Je l’ai dit',
@@ -890,7 +892,8 @@ NL.t = {
   wordsNoResult: 'Rien trouvé.',
   wordsMineNone: 'Aucun mot à toi pour l’instant. Ajoute-en un avec le bouton ci-dessus.',
   wordsSearch: 'Rechercher…',
-  wordsAll: 'tous', wordsWeak: 'fragiles', wordsStrong: 'solides', wordsMine: 'à moi',
+  wordsAll: 'tous', wordsWeak: 'fragiles', wordsStrong: 'produits', wordsMine: 'à moi',
+  wordsTile: (met, produce) => met + ' rencontrés, ' + produce + ' que tu sais produire',
   wordsNl: 'Néerlandais', wordsFr: 'Français', wordsBe: 'Comme on dit ici',
   wordsOptional: '(facultatif)',
   wordsNeedBoth: 'Le néerlandais et le français sont nécessaires.',
@@ -918,7 +921,7 @@ NL.t = {
   soundsEasy: 'tu l’as déjà',
   soundsWatch: 'attention',
   dehetTitle: 'Les familles de het',
-  dehetBody: 'Environ 70% des mots het suivent une règle. Apprends les familles au lieu des 425 articles un par un — et ne traduis jamais depuis le français : het huis est neutre, la maison est féminine.',
+  dehetBody: 'Environ sept mots het sur dix suivent une règle. Apprends les familles au lieu des 425 articles un par un — et ne traduis jamais depuis le français : het huis est neutre, la maison est féminine.',
   dehetHet: 'Prennent het', dehetDe: 'Prennent de',
   dehetSure: 'sans exception',
 
@@ -941,10 +944,7 @@ NL.t = {
   paceWhy: 'Le plafond quotidien est ce qui empêche les révisions de s’accumuler jusqu’à deux heures par jour au sixième mois. Ce qui déborde attend son tour.',
   budgetDone: 'Le quota du jour est atteint. C’est voulu : demain sera plus léger.',
   migrated: 'Progression remise à zéro — l’ancien test de niveau créditait des unités entières sans preuve.',
-  unitGate: (a, b) => 'L’unité suivante s’ouvre à ' + b + '% travaillés — tu es à ' + a + '%.',
-  unitLevel: n => 'Niveau ' + n + ' / 5',
-  masteredOf: (a, b) => a + ' maîtrisés sur ' + b,
-  metOf: (a, b) => a + ' rencontrés sur ' + b,
+  unitGate: n => n === 1 ? 'Encore un élément à rencontrer avant l’unité suivante.' : 'Encore ' + n + ' éléments à rencontrer avant l’unité suivante.',
   currentUnit: 'À faire maintenant',
   setVoice: 'Voix et micro',
   setDoctor: 'Tester le son et le micro',
@@ -1243,7 +1243,7 @@ NL.srs = (function () {
 
   const MAX_TASKS = 22;             // les places d'une séance : un élément par place
   const MAX_STAGE = 6;
-  const GRADUATED = 5;              // atteint uniquement en disant l'élément à voix haute
+  const PRODUCE = 4;                // l'échelon de l'écrit est passé : l'élément se produit
   /* La part de chaque séance réservée à ce qui n'a jamais été rencontré. Sans
      elle, les révisions finissent par occuper toutes les places et plus rien de
      neuf n'arrive. Elle se calcule sur la SÉANCE, jamais sur le budget du jour :
@@ -1489,7 +1489,7 @@ NL.srs = (function () {
     NL.state.allRecs().forEach(r => {
       if (r.retired) { retired++; mature++; return; }
       if (r.due <= now) due++;
-      if (r.stage >= GRADUATED) mature++; else learning++;
+      if (r.stage >= PRODUCE) mature++; else learning++;
       if (r.said) said++;
     });
     return { due, learning, mature, said, retired, seen: NL.state.seenCount() };
@@ -1592,7 +1592,7 @@ NL.srs = (function () {
   }
 
   return {
-    RUNGS, STEP, PACE, MAX_STAGE, MAX_TASKS, GRADUATED, NEW_SHARE, NEW_MIN, NEW_MAX, TIER_MAX, RETIRE_AT,
+    RUNGS, STEP, PACE, MAX_STAGE, MAX_TASKS, PRODUCE, NEW_SHARE, NEW_MIN, NEW_MAX, TIER_MAX, RETIRE_AT,
     maxRung, pace, exerciseFor, firstAloud, supports, grade, seed, isSeen, stageOf, atTop,
     dueItems, counts, freshItems, compose, plan, unitSpan, recOf, budgetLeft, spend
   };
@@ -4106,11 +4106,11 @@ NL.content = NL.content || {};
   const unit = id => NL.content.units.find(u => u.id === id) || null;
   const itemsOf = uid => allItems().filter(it => it.unit === uid);
 
-  /* Deux seuils, tenant compte du palier de chaque élément : un mot du palier
-     « reconnaître » plafonne à l'échelon 2 et ne peut pas atteindre l'échelon 5. */
-  const READY = it => NL.srs.stageOf(it) >= Math.min(3, NL.srs.maxRung(it));
-  const MASTERED = it => NL.srs.stageOf(it) >= Math.min(NL.srs.GRADUATED, NL.srs.maxRung(it));
+  /* Deux comptes, et pas de troisième. Rencontré : l'élément a été vu au moins
+     une fois. Produit : il a passé l'échelon de l'écrit — en tenant compte du
+     palier, puisqu'un mot du palier « reconnaître » plafonne à l'échelon 2. */
   const MET = it => NL.srs.stageOf(it) >= 0;
+  const PRODUCED = it => NL.srs.stageOf(it) >= Math.min(NL.srs.PRODUCE, NL.srs.maxRung(it));
 
   /* Une unité ouvre la suivante quand les trois quarts de ses éléments ont été
      RENCONTRÉS. Le seuil portait sur un échelon qui demande au moins deux jours
@@ -4145,32 +4145,22 @@ NL.content = NL.content || {};
     return i >= 0 && i <= frontier();
   }
 
-  /* Le pourcentage ne compte QUE la maîtrise : ce que tu as dit à voix haute et
-     réussi. Il affiche 0% pendant des jours. C'est la vérité — 33% alors que
-     rien n'est appris est pire. */
+  /* Des comptes, jamais de pourcentage : un compte bouge tous les jours, et ne
+     peut pas être exact et muet à la fois. Voir docs/adr/0002.
+       toOpen = combien d'éléments restent à rencontrer avant l'unité suivante */
   function unitProgress(uid) {
     const items = itemsOf(uid);
-    if (!items.length) return { pct: 0, met: 0, ready: 0, mastered: 0, total: 0, gate: 0, level: 0, toOpen: 0 };
-    const met = items.filter(it => NL.srs.stageOf(it) >= 0).length;
-    const ready = items.filter(READY).length;
-    const mastered = items.filter(MASTERED).length;
-    const pct = Math.round(mastered / items.length * 100);
+    const met = items.filter(MET).length;
     return {
-      pct, met, ready, mastered, total: items.length,
-      gate: Math.round(ready / items.length * 100),
-      level: Math.min(5, Math.floor(pct / 20)),
+      met, produce: items.filter(PRODUCED).length, total: items.length,
       toOpen: Math.max(0, gateSize(items.length) - met)
     };
   }
 
   function courseProgress() {
     const items = allItems().filter(it => it.unit !== 'eigen');
-    const mastered = items.filter(MASTERED).length;
-    const ready = items.filter(READY).length;
     return {
-      pct: Math.round(mastered / items.length * 100),
-      mastered, ready, total: items.length,
-      unitsDone: NL.content.units.filter(u => unitComplete(u.id)).length,
+      met: items.filter(MET).length, produce: items.filter(PRODUCED).length, total: items.length,
       current: NL.content.units[frontier()] || null
     };
   }
@@ -4248,6 +4238,9 @@ NL.ex = (function () {
   const tileShuffleGuard = html => html || '<span class="muted">—</span>';
 
   const said = (task, L) => L.picked.map(i => task.bank[i]).join(' ');
+
+  /* Une note de prononciation se dit en mots reconnus, pas en pourcentage. */
+  const wordScore = parts => NL.t.wordsHeard((parts || []).filter(p => p.ok).length, (parts || []).length);
 
   /* Les mauvaises réponses décident de la difficulté d'un QCM. Tirées au hasard
      dans l'unité, elles s'éliminent sans connaître le mot : la bonne est la plus
@@ -4508,7 +4501,7 @@ NL.ex = (function () {
           (sp.partial ? '<p class="heard">' + esc(sp.partial) + '</p>' : '') + '</div>';
       } else if (sp.phase === 'done') {
         panel = '<div class="mic-panel ' + (sp.ok ? 'good' : 'bad') + '">' +
-          '<div class="score-row"><span class="score">' + sp.pct + '%</span>' +
+          '<div class="score-row"><span class="score">' + wordScore(sp.parts) + '</span>' +
           '<span class="score-bar"><span style="width:' + sp.pct + '%"></span></span></div>' +
           '<p class="word-diff">' + sp.parts.map(p =>
             '<span class="' + (p.ok ? (p.close ? 'w-close' : 'w-ok') : 'w-no') + '">' + esc(p.word) + '</span>').join(' ') + '</p>' +
@@ -4743,7 +4736,7 @@ NL.ex = (function () {
     }
   };
 
-  return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, recordPanel, selfRate, sameSense };
+  return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, recordPanel, selfRate, sameSense, wordScore };
 })();
 </script>
 <script>
@@ -5427,7 +5420,6 @@ NL.screens.sessie = (function () {
     const pct = Math.round(L.at / L.queue.length * 100);
     const it = c.items[0];
     const unit = NL.content.unit(it.unit);
-    const stage = NL.srs.stageOf(it);
 
     return '<div class="lesson">' +
       '<div class="lesson-head">' +
@@ -5443,20 +5435,11 @@ NL.screens.sessie = (function () {
       '<div class="kicker"><span class="sub">' +
       esc(unit ? unit.name : 'Mes mots') +
       (c.retry || c.second ? ' · ' + NL.t.again2 : '') +
-      '</span>' + esc(ex.kicker) + stagePips(stage, it) + '</div>' +
+      '</span>' + esc(ex.kicker) + '</div>' +
       ex.view(c.task, L, L.phase) +
       '</div></div>' +
       foot(c, ex) +
       '</div>';
-  }
-
-  function stagePips(stage, item) {
-    const top = NL.srs.maxRung(item);
-    const r = Math.max(0, stage);
-    let s = '<span class="pips">';
-    for (let i = 0; i < top; i++) s += '<i class="' + (i <= stage ? 'on' : '') + '"></i>';
-    s += '<b>' + NL.t.rungs[Math.min(r, NL.t.rungs.length - 1)] + '</b>';
-    return s + '</span>';
   }
 
   function foot(c, ex) {
@@ -5509,7 +5492,6 @@ NL.screens.sessie = (function () {
   }
 
   function done() {
-    const acc = (L.right + L.wrong) ? Math.round(L.right / (L.right + L.wrong) * 100) : 100;
     const mins = Math.max(1, Math.round((Date.now() - L.started) / 60000));
     const m = NL.state.meta();
     if (L.source === 'defi') return defiDone(mins);
@@ -5520,7 +5502,7 @@ NL.screens.sessie = (function () {
         ? NL.t.doneSpoken(L.spoken)
         : NL.t.doneNoSpoken) + '</p>' +
       '<div class="tally">' +
-      box('+' + L.xp, NL.t.tallyXp, 'gold') + box(acc + '%', NL.t.tallyRight, 'blue') +
+      box('+' + L.xp, NL.t.tallyXp, 'gold') + box(L.right + '/' + (L.right + L.wrong), NL.t.tallyRight, 'blue') +
       box(m.streak, NL.t.tallyDays, 'green') + box(mins + 'm', NL.t.tallyTime, '') +
       (L.bestCombo >= 3 ? box('\u{1F525} ' + L.bestCombo, NL.t.tallyCombo, L.comboRecord ? 'gold' : '') : '') +
       '</div>' +
@@ -5715,14 +5697,10 @@ NL.screens.sessie = (function () {
   'use strict';
   const U = NL.util, esc = U.esc, t = NL.t;
 
-  const pct = n => Math.max(0, Math.min(100, Math.round(n)));
-  const bar = (p, cls) => '<span class="bar"><span class="bar-fill ' + (cls || '') + '" style="width:' + pct(p) + '%"></span></span>';
-
   /* ---------------------------------------------------- Aujourd'hui */
   NL.screens.vandaag = {
     render() {
       const m = NL.state.meta();
-      const c = NL.srs.counts();
       const cp = NL.content.courseProgress();
       const p = NL.srs.plan();
       const fresh = p.fresh, total = p.total, mins = p.mins;
@@ -5730,9 +5708,10 @@ NL.screens.sessie = (function () {
 
       let html = '<div class="wrap">';
 
-      /* The one thing this screen is for. */
+      /* The one thing this screen is for. Elle nomme l'unité — ou les deux, quand
+         la séance en couvre plusieurs : un libellé ne dit jamais une demi-vérité. */
       html += '<section class="card session-card">' +
-        '<span class="eyebrow">' + t.todayEyebrow + '</span>' +
+        '<span class="eyebrow">' + t.todayEyebrow + (p.units ? ' · ' + esc(unitLabel(p.units)) : '') + '</span>' +
         (total === 0
           ? '<h2>' + t.todayAllDone + '</h2><p class="sc-sub">' + t.todayAllDoneSub + '</p>' +
           '<button class="btn btn-blue wide big" data-go="praten">' + t.todayPractise + '</button>'
@@ -5749,8 +5728,8 @@ NL.screens.sessie = (function () {
 
       html += '<div class="tri">' +
         stat(m.streak, t.statStreak(m.streak)) +
-        stat(c.said, t.statSaid) +
-        stat(cp.pct + '%', t.statCourse) +
+        stat(cp.met, t.statMet) +
+        stat(cp.produce, t.statProduce) +
         '</div>';
 
       html += '<h3 class="sec">' + t.morepractice + '</h3><div class="cards">';
@@ -5785,6 +5764,13 @@ NL.screens.sessie = (function () {
     NL.screens.sessie.begin('defi'); NL.ui.go('sessie');
   }
 
+  /* « Unité 5 · Chez le boulanger », ou « Unités 4–5 ». */
+  function unitLabel(span) {
+    if (span.from !== span.to) return t.unitsRange(span.from, span.to);
+    const u = NL.content.units.find(x => x.n === span.from);
+    return t.unitOne(span.from) + (u ? ' · ' + u.name : '');
+  }
+
   const stat = (n, l) => '<div class="stat-box"><div class="s-n">' + n + '</div><div class="s-l">' + esc(l) + '</div></div>';
   const tile = (icon, title, sub, key, val) =>
     '<button class="tile-card" data-' + key + '="' + esc(val) + '">' +
@@ -5801,8 +5787,7 @@ NL.screens.sessie = (function () {
         '<span class="eyebrow">' + t.pathEyebrow + '</span>' +
         '<h1>' + t.pathTitle + '</h1>' +
         '<p>' + t.pathBody + '</p>' +
-        '<div class="prog-line">' + bar(cp.pct) + '<b>' + cp.pct + '%</b></div>' +
-        '<p class="muted small">' + t.masteredOf(cp.mastered, cp.total) + '</p>' +
+        '<p class="muted small">' + t.courseCounts(cp.met, cp.produce, cp.total) + '</p>' +
         '</section>';
 
       NL.content.units.forEach(u => {
@@ -5816,12 +5801,13 @@ NL.screens.sessie = (function () {
           '<span class="uc-icon">' + u.icon + '</span>' +
           '<div class="uc-title"><span class="eyebrow">Unité ' + u.n + ' · ' + u.level + ' · ' + trackName(u.track) + '</span>' +
           '<h2>' + esc(u.name) + '<i class="uc-nl">' + esc(u.nlName || '') + '</i></h2></div>' +
-          '<span class="uc-pct" title="' + t.unitLevel(p.level) + '">' + p.pct + '%</span>' +
+          '<span class="uc-pct">' + p.met + '/' + p.total + '</span>' +
           '</div>' +
           '<p class="uc-blurb">' + esc(u.blurb) + '</p>' +
-          '<div class="prog-line">' + bar(p.pct) + '<span class="muted small">' + t.metOf(p.met, p.total) + '</span></div>' +
-          (open && !NL.content.unitComplete(u.id)
-            ? '<p class="uc-gate">' + t.unitGate(p.gate, 80) + '</p>' : '') +
+          '<p class="muted small">' + t.unitCounts(p.met, p.produce, p.total) + '</p>' +
+          /* Le seuil est un compte à rebours, pas un mystère. */
+          (open && p.toOpen > 0 && u !== NL.content.units[NL.content.units.length - 1]
+            ? '<p class="uc-gate">' + t.unitGate(p.toOpen) + '</p>' : '') +
           (g.length ? '<div class="uc-gram">' + g.map(x =>
             '<button class="gram-chip" data-act="gram" data-id="' + x.id + '">' + esc(x.title) + '</button>').join('') + '</div>' : '') +
           (open
@@ -5862,7 +5848,7 @@ NL.screens.sessie = (function () {
       return '<div class="wrap">' +
         '<div class="cards">' +
         defiTile(m) +
-        tile('\u{1F4D2}', t.wordsEyebrow, c.seen + ' vus, ' + c.mature + ' solides', 'go', 'woorden') +
+        tile('\u{1F4D2}', t.wordsEyebrow, t.wordsTile(c.seen, c.mature), 'go', 'woorden') +
         tile('\u{1F4CB}', t.sheetsEyebrow, t.sheetsTitle, 'go', 'spiek') +
         tile('\u{1F1E7}\u{1F1EA}', t.regEyebrow, t.regTitle, 'go', 'register') +
         tile('\u{1F444}', t.soundsEyebrow, t.soundsTitle, 'go', 'klanken') +
@@ -5986,7 +5972,7 @@ NL.screens.sessie = (function () {
         }
         return '<div class="bub you"><div><p class="bub-nl">' + esc(b.nl) + '</p>' +
           '<p class="bub-en">' + esc(b.fr) + '</p>' +
-          (b.pct != null ? '<p class="bub-score">' + b.pct + '% prononcé</p>' : '') + '</div></div>';
+          (b.score ? '<p class="bub-score">' + esc(b.score) + '</p>' : '') + '</div></div>';
       }).join('');
 
       let panel = '';
@@ -6039,7 +6025,7 @@ NL.screens.sessie = (function () {
       if (d.mic !== undefined) return mic(d.mic);
       if (d.rec !== undefined) return recAction(d.rec);
       if (d.self !== undefined) { P.speech.selfRated = d.self === '1'; commit(d.self === '1', null); return; }
-      if (d.act === 'accept') { commit(!!P.speech.ok, P.speech.pct); return; }
+      if (d.act === 'accept') { commit(!!P.speech.ok, NL.ex.wordScore(P.speech.parts)); return; }
     },
     key(e) {
       if (!P) return;
@@ -6056,12 +6042,12 @@ NL.screens.sessie = (function () {
     }
   };
 
-  function commit(ok, pct) {
+  function commit(ok, score) {
     const step = P.scn.steps[P.at];
     if (!step || !step.you || P.choice == null) return;
     const c = step.you.choices[P.choice];
     if (ok) P.spoken++;
-    P.log.push({ who: 'you', nl: c.nl, fr: c.fr, pct: pct });
+    P.log.push({ who: 'you', nl: c.nl, fr: c.fr, score: score });
     P.at++;
     if (c.reply) {
       P.log.push({ who: 'them', nl: c.reply.nl, be: c.reply.be, fr: c.reply.fr });
@@ -6119,7 +6105,7 @@ NL.screens.sessie = (function () {
     }
     if (sp.phase === 'done') {
       return '<div class="mic-panel ' + (sp.ok ? 'good' : 'bad') + '">' +
-        '<div class="score-row"><span class="score">' + sp.pct + '%</span>' +
+        '<div class="score-row"><span class="score">' + NL.ex.wordScore(sp.parts) + '</span>' +
         '<span class="score-bar"><span style="width:' + sp.pct + '%"></span></span></div>' +
         '<p class="word-diff">' + sp.parts.map(p =>
           '<span class="' + (p.ok ? (p.close ? 'w-close' : 'w-ok') : 'w-no') + '">' + esc(p.word) + '</span>').join(' ') + '</p>' +
@@ -6254,7 +6240,7 @@ NL.screens.luisteren = (function () {
     }
     if (sp.phase === 'done') {
       return '<div class="mic-panel ' + (sp.ok ? 'good' : 'bad') + '">' +
-        '<div class="score-row"><span class="score">' + sp.pct + '%</span>' +
+        '<div class="score-row"><span class="score">' + NL.ex.wordScore(sp.parts) + '</span>' +
         '<span class="score-bar"><span style="width:' + sp.pct + '%"></span></span></div>' +
         '<p class="word-diff">' + sp.parts.map(p => '<span class="' + (p.ok ? (p.close ? 'w-close' : 'w-ok') : 'w-no') + '">' + esc(p.word) + '</span>').join(' ') + '</p>' +
         '<div class="mic-actions"><button class="btn btn-blue" data-act="mic">' + NL.t.replay + '</button></div></div>';
@@ -6288,7 +6274,7 @@ NL.screens.luisteren = (function () {
         ? (pct >= 70 ? NL.t.listenGoodEar : NL.t.listenHardEar)
         : NL.t.listenShadowDone) + '</p>' +
       '<div class="tally">' +
-      (S.mode === 'begrijpen' ? '<div class="tally-box blue"><div class="t-n">' + pct + '%</div><div class="t-l">' + NL.t.listenUnderstood + '</div></div>' : '') +
+      (S.mode === 'begrijpen' ? '<div class="tally-box blue"><div class="t-n">' + S.right + '/' + S.clips.length + '</div><div class="t-l">' + NL.t.listenUnderstood + '</div></div>' : '') +
       '<div class="tally-box gold"><div class="t-n">+8</div><div class="t-l">XP</div></div></div>' +
       '<button class="btn btn-primary wide" data-act="menu">' + NL.t.listenMore + '</button>' +
       '<button class="btn btn-ghost wide" data-go="vandaag">' + NL.t.back + '</button>' +
@@ -6361,7 +6347,7 @@ NL.screens.luisteren = (function () {
       const q = U.norm(query);
       let list = (filter === 'eigen' ? all.filter(it => it.unit === 'eigen')
         : filter === 'zwak' ? seen.filter(it => NL.srs.stageOf(it) < 3)
-          : filter === 'sterk' ? seen.filter(it => NL.srs.stageOf(it) >= NL.srs.GRADUATED)
+          : filter === 'sterk' ? seen.filter(it => NL.srs.stageOf(it) >= NL.srs.PRODUCE)
             : seen);
       if (q) list = all.filter(it => U.norm(it.nl).indexOf(q) >= 0 || U.norm(it.fr).indexOf(q) >= 0 || (it.be && U.norm(it.be).indexOf(q) >= 0));
 

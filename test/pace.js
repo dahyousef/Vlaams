@@ -82,7 +82,7 @@ NL.state.open().then(() => {
     const met = NL.srs.counts().seen;
     if (!exhausted && met >= total) exhausted = day;
     perDay.push({ day, tasks: dayTasks, spent, mins: Math.round(daySecs / 60), met,
-      produce: NL.content.courseProgress().mastered });
+      produce: NL.content.courseProgress().produce });
   }
 
   const cap = NL.srs.pace().cap;

@@ -397,11 +397,11 @@ NL.state.open().then(() => {
     console.log('  ' + label.padEnd(14) + r.pct + '%  ' + (r.pass ? 'pass' : 'fail'));
   });
 
-  console.log('\nPLACEMENT / PROGRESS');
+  console.log('\nPROGRESS');
   const before = NL.content.unitProgress('overleven');
   NL.content.itemsOf('tijd').forEach(i => { if (i.kind !== 'pattern') NL.srs.seed(i, 2); });
-  console.log('  unit progress   overleven ' + before.pct + '%, tijd ' + NL.content.unitProgress('tijd').pct + '%');
-  console.log('  course          ' + NL.content.courseProgress().pct + '%');
+  console.log('  unit progress   overleven ' + before.met + '/' + before.total + ' met, tijd ' + NL.content.unitProgress('tijd').met + '/' + NL.content.unitProgress('tijd').total);
+  console.log('  course          ' + NL.content.courseProgress().met + ' met, ' + NL.content.courseProgress().produce + ' produced');
   console.log('  unit 2 open?    ' + NL.content.unitOpen('ikengij'));
   console.log('  counts          ' + JSON.stringify(NL.srs.counts()));
   console.log('  storage         ' + NL.state.storage);

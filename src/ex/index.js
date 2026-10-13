@@ -50,6 +50,9 @@ NL.ex = (function () {
 
   const said = (task, L) => L.picked.map(i => task.bank[i]).join(' ');
 
+  /* Une note de prononciation se dit en mots reconnus, pas en pourcentage. */
+  const wordScore = parts => NL.t.wordsHeard((parts || []).filter(p => p.ok).length, (parts || []).length);
+
   /* Les mauvaises réponses décident de la difficulté d'un QCM. Tirées au hasard
      dans l'unité, elles s'éliminent sans connaître le mot : la bonne est la plus
      longue, ou la seule avec le bon article, ou la seule du bon champ lexical.
@@ -309,7 +312,7 @@ NL.ex = (function () {
           (sp.partial ? '<p class="heard">' + esc(sp.partial) + '</p>' : '') + '</div>';
       } else if (sp.phase === 'done') {
         panel = '<div class="mic-panel ' + (sp.ok ? 'good' : 'bad') + '">' +
-          '<div class="score-row"><span class="score">' + sp.pct + '%</span>' +
+          '<div class="score-row"><span class="score">' + wordScore(sp.parts) + '</span>' +
           '<span class="score-bar"><span style="width:' + sp.pct + '%"></span></span></div>' +
           '<p class="word-diff">' + sp.parts.map(p =>
             '<span class="' + (p.ok ? (p.close ? 'w-close' : 'w-ok') : 'w-no') + '">' + esc(p.word) + '</span>').join(' ') + '</p>' +
@@ -544,5 +547,5 @@ NL.ex = (function () {
     }
   };
 
-  return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, recordPanel, selfRate, sameSense };
+  return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, recordPanel, selfRate, sameSense, wordScore };
 })();
