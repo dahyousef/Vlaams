@@ -28,64 +28,80 @@ NL.state.open().then(() => {
   NL.content.refresh();
   const S = NL.screens.sessie;
   const total = NL.content.allItems().length;
+  NL.ui.go('sessie');
 
-  const perDay = [], mix = {}, seenOnDay = {};
+  const perDay = [], mix = {}, seenOnDay = {}, dry = [];
   let backToBack = 0, prevEx = null, exhausted = null, maxBacklog = 0, tasks = 0, lateRecog = 0;
 
   for (let day = 1; day <= DAYS; day++) {
-    B.clock.set(T0 + (day - 1) * 86400000);
+    B.clock.set(T0 + (day - 1) * DAY);
     NL.state.touchDay();
     maxBacklog = Math.max(maxBacklog, NL.srs.dueItems().length);
+    const unmetAtDawn = total - NL.srs.counts().seen;
 
-    let dayTasks = 0, daySecs = 0, guard = 0;
-    /* Autant de séances que le budget du jour l'autorise. */
-    while (NL.srs.budgetLeft() > 0 && guard++ < 12 && S.begin('vandaag')) {
+    let dayTasks = 0, daySecs = 0, dayNew = 0, guard = 0;
+    /* Autant de séances que le budget du jour l'autorise — ou une seule. */
+    while (NL.srs.budgetLeft() > 0 && guard++ < (ONE_A_DAY ? 1 : 12) && S.begin('vandaag')) {
       let n = 0;
-      while (n++ < 40) {
-        const c = S.peek(); if (!c) break;
+      while (S.peek() && n++ < 80) {
+        const c = S.peek(), wasMatch = c.ex === 'match';
         tasks++; dayTasks++;
         daySecs += SECS[c.ex] || 15;
         mix[c.ex] = (mix[c.ex] || 0) + 1;
         const wasAt = NL.srs.stageOf(c.items[0]);
+        if (!wasMatch && wasAt < 0) dayNew++;
         if (wasAt >= 1 && (c.ex === 'pick' || c.ex === 'recall' || c.ex === 'match')) lateRecog++;
-        if (c.ex === prevEx && c.ex !== 'match') backToBack++;
+        if (c.ex === prevEx && c.ex !== 'match' && !c.retry) backToBack++;
         prevEx = c.ex;
         c.items.forEach(it => {
           seenOnDay[it.id] = seenOnDay[it.id] || new Set();
           seenOnDay[it.id].add(day);
         });
-        const right = RAND() < 0.85;
-        c.items.forEach(it => NL.srs.grade(it, right, { spoken: c.ex === 'speak' && right, ex: c.ex }));
-        NL.srs.spend(1);
-        const before = S.peek();
-        try { S.click({ dataset: {} }, { next: '1' }); } catch (e) { break; }
-        if (S.peek() === before) break;
+        /* L'horloge avance PENDANT la journée, du temps que coûte chaque
+           exercice. Figée à huit heures, un retour prévu dans douze minutes
+           n'arrivait jamais : deux cents jours simulés avaient l'air sains
+           pendant que le deuxième jour réel ne servait rien de neuf. */
+        B.clock.advance((SECS[c.ex] || 15) * 1000);
+        /* Et la réponse passe par l'écran, pas par le planificateur : c'est la
+           séance qui porte les reprises et le renforcement des rencontres. */
+        if (wasMatch || RAND() < 0.85) answer.right(); else answer.wrong();
+        answer.next(wasMatch);
+        if (B.app.innerHTML.indexOf('done-stage') >= 0) break;
       }
       S.abandon();
+      B.clock.advance(10 * MIN);          // une pause entre deux séances
     }
+    if (unmetAtDawn > 0 && dayNew === 0) dry.push(day);
+    const spent = NL.state.meta().exToday || 0;
     const met = NL.srs.counts().seen;
     if (!exhausted && met >= total) exhausted = day;
-    perDay.push({ day, tasks: dayTasks, mins: Math.round(daySecs / 60), met,
-      mastered: NL.content.courseProgress().mastered });
+    perDay.push({ day, tasks: dayTasks, spent, mins: Math.round(daySecs / 60), met,
+      produce: NL.content.courseProgress().mastered });
   }
 
   const cap = NL.srs.pace().cap;
-  const over = perDay.filter(d => d.tasks > cap + 2);
+  /* Une séance commencée avec du budget se termine : ses reprises (six au plus)
+     et son échauffement par paires peuvent déborder le plafond, jamais plus. */
+  const over = perDay.filter(d => d.spent > cap + 7);
   const peak = Math.max(...perDay.map(d => d.mins));
-  const busiest = Math.max(...perDay.map(d => d.tasks));
+  const busiest = Math.max(...perDay.map(d => d.spent));
 
   console.log('\nCHARGE SUR ' + DAYS + ' JOURS   (rythme ' + (NL.state.meta().pace || 'normal') +
     ', plafond ' + cap + ' exercices)');
   console.log('='.repeat(70));
-  console.log('  jour   exercices   minutes   rencontrés   maîtrisés');
+  console.log('  jour   exercices   minutes   rencontrés   produits');
   [1, 7, 30, 90, 180, 300, DAYS].filter(d => d <= DAYS).forEach(d => {
     const r = perDay[d - 1];
     console.log('  ' + String(r.day).padStart(4) + String(r.tasks).padStart(12) +
-      String(r.mins).padStart(10) + String(r.met).padStart(13) + String(r.mastered).padStart(12));
+      String(r.mins).padStart(10) + String(r.met).padStart(13) + String(r.produce).padStart(11));
   });
 
   console.log('\nCE QUE LA SIMULATION VÉRIFIE');
   console.log('='.repeat(70));
+  /* Le défaut que tout ce travail répare : une journée sans rien de neuf alors
+     qu'il reste du cours à rencontrer. */
+  ok(dry.length === 0, dry.length + ' jour(s) sans aucun élément nouveau alors qu’il en restait à rencontrer — le premier : jour ' + dry[0]);
+  P('jours sans rien de neuf', dry.length === 0 ? 'aucun' : dry.length + ' (jours ' + dry.slice(0, 8).join(', ') + '…)');
   ok(over.length === 0, over.length + ' jours dépassent le plafond quotidien — la dette explose');
   P('plafond quotidien respecté', over.length === 0 ? 'oui, ' + busiest + ' au maximum' : 'NON');
   P('pic de charge', peak + ' min');
@@ -129,9 +145,9 @@ NL.state.open().then(() => {
   console.log('='.repeat(70));
   P('éléments au catalogue', total);
   P('tout rencontré le jour', exhausted || 'pas encore');
-  P('maîtrisé au jour ' + DAYS, perDay[DAYS - 1].mastered + ' / ' + total);
+  P('produits au jour ' + DAYS, perDay[DAYS - 1].produce + ' / ' + total);
   if (exhausted && exhausted < 200) {
-    console.log('  → le contenu s’épuise : c’est la phase 2 qui le règle, pas le moteur.');
+    console.log('  → le contenu s’épuise : c’est la phase 4 qui le règle, pas le moteur.');
   }
 
   console.log('\n' + checks + ' vérifications, ' + (fails === 0 ? 'AUCUN PROBLÈME' : fails + ' PROBLÈME(S)'));

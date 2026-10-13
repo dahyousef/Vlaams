@@ -26,7 +26,10 @@ for c in "nl-BE OPR" "nl-NL OPR" "none OPR" "nl-BE EDG" "nl-NL EDG" "none EDG" "
   node test/journey.js "$ROOT" "$1" "$2"
 done
 
+# Deux apprenants : celui qui épuise le budget du jour, et celui qui ne fait
+# qu'une séance. Le défaut d'octobre ne se voyait que chez le second.
 node test/pace.js "$ROOT" "${PACE_DAYS:-200}"
+node test/pace.js "$ROOT" "${PACE_DAYS:-200}" one
 
 echo
 echo "TOUTE LA SUITE EST PASSÉE"

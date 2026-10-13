@@ -17,7 +17,7 @@ n'y a qu'une seule liste. Il faut Node et un `sh` (sous Windows, celui de Git).
 | `firstrun.js` | Une base vide : premier écran, première séance, le défi, la sauvegarde |
 | `sync.js` | Deux appareils et un faux Supabase : adoption, conflits, panne, comptes |
 | `journey.js` | Le parcours complet d'un utilisateur, pour une voix et un navigateur donnés |
-| `pace.js` | 200 jours simulés : charge quotidienne, variété, exigence |
+| `pace.js` | 200 jours simulés, pour deux apprenants (budget épuisé chaque jour ; une seule séance par jour) : charge quotidienne, variété, exigence — et aucune journée sans élément nouveau tant qu’il en reste. L’horloge avance pendant la journée |
 
 `journey.js` tourne huit fois : trois voix (flamande, néerlandaise du nord,
 aucune) sous Opera et Edge, plus Chrome et Safari sur iPhone. Les tests sont
