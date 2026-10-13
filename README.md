@@ -53,7 +53,8 @@ python -m http.server 8080      # puis http://localhost:8080
 
 Tout dépend du navigateur, et l'app le mesure au lieu de le supposer :
 **Plus → Son et micro** teste tes voix, joue une phrase, demande le micro et te
-dit dans quel niveau tu es.
+dit dans quel niveau tu es. Cet écran liste aussi les dernières erreurs vues
+sur l'appareil, à copier et à envoyer.
 
 | Où | Audio | Oral |
 | --- | --- | --- |

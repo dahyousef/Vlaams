@@ -21,6 +21,11 @@ under `src/`, run `sh build.sh` and commit both.
 goes in that list or it never runs. `TESTING.md` says what each suite covers — and what
 the suite cannot see.
 
+The suite takes three to six minutes. While working, run the one file you are changing, for
+example `node test/engine.js .`. A new suite loads the app through
+`test/lib/browser.js` and answers exercises through `test/lib/answer.js`, never by calling
+the scheduler itself.
+
 Every fix leaves a test that fails on the old code. Write it, watch it fail, then fix it.
 
 ## Conventions you can't infer from the code
@@ -40,6 +45,16 @@ Every fix leaves a test that fails on the old code. Write it, watch it fail, the
 - `SUPABASE_URL` and `SUPABASE_ANON_KEY` must exist for **Production and Preview**.
   Without them `build.sh` ships the local-only page and sync quietly does nothing.
 - The Supabase anon key is public by design; row-level security protects the data.
+- One function decides what a session contains, `NL.srs.compose()`, and it takes new items
+  out before reviews. The home screen and the session both ask it. A second calculation
+  anywhere is the fault phase 1 removed.
+- `resetAt` in the stored settings is the moment of the last reset, and other devices compare
+  against it. It only ever grows. `ENGINE_EPOCH` in `src/core/state.js` is a fixed date and
+  must stay one: changing it wipes progress again, or stops wiping it.
+- `said` on a stored record is what makes an item's first spoken exercise certain. That
+  exercise never moves the item's rung: a written one, later in the same session, decides.
+  « Je ne peux pas parler » lives in the running session and is deliberately not a
+  setting. Issue #12 says why, for all three.
 
 ## Decisions already taken
 
@@ -54,9 +69,8 @@ content to B1". Read it before planning or implementing anything. Tickets hang o
 sub-issues. `GLOSSARY.md` holds the vocabulary it uses.
 
 
-- `docs/superpowers/plans/2026-10-12-phase-1-moteur-ecrans-garde-fous.md` — **the phase 1
-  plan**, in progress. Start at its table *Where we are*, which says which step is next.
-  Execute phase 1 from it; its last sections record what was decided while writing it
+- `docs/superpowers/plans/2026-10-12-phase-1-moteur-ecrans-garde-fous.md` — the phase 1
+  plan, implemented. Its last sections record why the engine is as it is
 - `docs/CONSTATS-2026-10-06.md` — what a week of real study found, and how it was found
 - `docs/superpowers/specs/2026-10-08-moteur-et-contenu-design.md` — **superseded in scope.**
   It covers the engine only. A session on 9 October 2026 decided to replace it with one
