@@ -199,6 +199,26 @@ NL.state.open().then(() => {
     console.log('  présent sur l’exercice parlé, absent des ' + asked + ' autres, retiré une fois la réponse donnée ; appuyé : plus rien à voix haute');
   }
 
+  /* ------------------------------------------------------------------ */
+  console.log('\nCE QUI A CASSÉ SUR CET APPAREIL');
+  {
+    fresh(); NL.errlog.clear();
+    ok(text(NL.screens.doctor.render()).indexOf(t.errNone) >= 0, 'with no error recorded the doctor screen does not say so');
+    ok((B.listeners.error || []).length > 0 && (B.listeners.unhandledrejection || []).length > 0, 'the app does not listen for errors');
+    NL.ui.go('leerpad');
+    B.listeners.error.forEach(f => f({ error: new Error('boum dans le parcours') }));
+    B.listeners.unhandledrejection.forEach(f => f({ reason: new Error('promesse perdue') }));
+    const doc = read('doctor', NL.screens.doctor.render(), 'deux erreurs');
+    ok(doc.indexOf('boum dans le parcours') >= 0 && doc.indexOf('promesse perdue') >= 0, 'a recorded error is not shown');
+    ok(doc.indexOf('[leerpad') >= 0, 'the error does not say which screen it happened on');
+    ok(Object.keys(B.store).some(k => k === 'vlaams/errors'), 'the errors are not kept across a reload');
+    for (let i = 0; i < 40; i++) NL.errlog.note(new Error('n° ' + i), 'essai');
+    ok(NL.errlog.all().length === NL.errlog.KEEP, 'the log keeps ' + NL.errlog.all().length + ' errors instead of the last ' + NL.errlog.KEEP);
+    NL.screens.doctor.click({ dataset: {} }, { act: 'errclear' });
+    ok(NL.errlog.all().length === 0, 'the list cannot be emptied');
+    console.log('  erreur de fenêtre et promesse rejetée enregistrées avec leur écran, vingt au plus, vidables');
+  }
+
   console.log('\n' + checks + ' checks, ' + (fails ? fails + ' FAILED' : 'SCREENS OK'));
   process.exit(fails ? 1 : 0);
 }).catch(e => { console.log('CRASH ' + (e && e.stack || e)); process.exit(1); });

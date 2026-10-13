@@ -56,7 +56,11 @@ NL.screens.sessie = (function () {
         out.push({ ex: name, task: EX.get(name).build(it), items: [it] });
         recent.push(name);
         if (recent.length > 2) recent.shift();
-      } catch (e) { /* un élément mal formé est simplement sauté */ }
+      } catch (e) {
+        /* Un élément mal formé est sauté — mais plus en silence : sans trace,
+           il pouvait n'être jamais drillé sans que personne le sache. */
+        NL.errlog.note(e, 'exercice ' + name + ' · ' + it.id);
+      }
     });
     return out;
   }

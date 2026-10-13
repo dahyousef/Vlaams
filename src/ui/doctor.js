@@ -24,6 +24,18 @@ NL.screens.doctor = (function () {
       (/BE/i.test(v.lang) ? ' · flamande' : ' · nord') + '</span></li>').join('') + '</ul>';
   }
 
+  /* Ce que l'app a vu casser sur CET appareil. Sur un téléphone il n'y a pas de
+     console : sans cette liste, tout ce qu'on peut rapporter est « ça ne marche
+     plus ». Rien ne quitte l'appareil — c'est à copier et à envoyer soi-même. */
+  function errorBlock() {
+    const list = NL.errlog.all();
+    if (!list.length) return '<p class="muted small">' + t.errNone + '</p>';
+    return '<p class="muted small">' + t.errCount(list.length) + '</p>' +
+      '<textarea class="backup-box" id="err-out" readonly spellcheck="false">' + esc(NL.errlog.text()) + '</textarea>' +
+      '<div class="row"><button class="btn btn-blue" data-act="errcopy">' + t.errCopy + '</button>' +
+      '<button class="btn btn-ghost" data-act="errclear">' + t.errClear + '</button></div>';
+  }
+
   function render() {
     const v = NL.speech.voiceInfo();
     const tier = NL.speech.tier();
@@ -70,6 +82,8 @@ NL.screens.doctor = (function () {
       (S.micMsg ? '<p class="doc-verdict ' + (S.mic ? 'good' : 'bad') + '">' + esc(S.micMsg) + '</p>' : '') +
       '</section>' +
 
+      '<section class="doc-block"><h4>' + t.errTitle + '</h4>' + errorBlock() + '</section>' +
+
       (v.quality !== 'be'
         ? '<section class="doc-fix">' +
         '<h4>' + t.docFixTitle + '</h4>' +
@@ -92,6 +106,16 @@ NL.screens.doctor = (function () {
       if (d.act === 'heard-no') { S.heard = false; NL.ui.render(); return; }
       if (d.act === 'recheck') { NL.speech.rescanVoices(); S.heard = null; NL.ui.render(); NL.ui.toast('Revérifié.'); return; }
       if (d.act === 'playrec') { NL.speech.playRecording(); return; }
+      if (d.act === 'errclear') { NL.errlog.clear(); NL.ui.render(); return; }
+      if (d.act === 'errcopy') {
+        const box = document.getElementById('err-out');
+        if (box) box.select();
+        const done = navigator.clipboard
+          ? navigator.clipboard.writeText(NL.errlog.text()).then(() => true).catch(() => false)
+          : Promise.resolve(!!(document.execCommand && document.execCommand('copy')));
+        Promise.resolve(done).then(good => NL.ui.toast(good ? t.errCopied : t.errCopyByHand));
+        return;
+      }
       if (d.act === 'recstop') { NL.speech.stopRecord(); return; }
       if (d.act === 'rec') {
         S.rec = 'rec'; S.micMsg = 'Parle maintenant…'; S.mic = null; NL.ui.render();

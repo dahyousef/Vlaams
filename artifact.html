@@ -717,6 +717,45 @@ NL.util = (function () {
 })();
 </script>
 <script>
+/* Le journal d'erreurs local.
+
+   Sur un téléphone il n'y a pas de console : quand un écran meurt, tout ce qu'on
+   peut rapporter est « ça ne marche plus ». Ce journal garde les vingt dernières
+   erreurs, sur l'appareil et nulle part ailleurs — il n'est ni synchronisé ni
+   envoyé. L'écran « Son et micro » les affiche et permet de les copier. */
+NL.errlog = (function () {
+  'use strict';
+  const KEY = 'vlaams/errors', KEEP = 20;
+
+  const all = () => { try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (e) { return []; } };
+
+  /* `where` dit d'où vient l'erreur quand ce n'est pas la fenêtre elle-même. */
+  function note(err, where) {
+    const list = all();
+    list.push({
+      t: Date.now(), where: where || '', route: (NL.ui && NL.ui.route) || '',
+      msg: String((err && err.message) || err).slice(0, 300),
+      stack: String((err && err.stack) || '').split('\n').slice(0, 4).join('\n').slice(0, 600)
+    });
+    try { localStorage.setItem(KEY, JSON.stringify(list.slice(-KEEP))); } catch (e) {}
+  }
+
+  const clear = () => { try { localStorage.removeItem(KEY); } catch (e) {} };
+
+  /* Le texte à copier : une erreur par paragraphe, la plus récente en dernier. */
+  const text = () => all().map(e =>
+    new Date(e.t).toISOString() + ' [' + (e.route || '?') + (e.where ? ' · ' + e.where : '') + '] ' + e.msg +
+    (e.stack ? '\n' + e.stack : '')).join('\n\n');
+
+  function watch() {
+    window.addEventListener('error', e => note((e && e.error) || (e && e.message), 'fenêtre'));
+    window.addEventListener('unhandledrejection', e => note(e && e.reason, 'promesse'));
+  }
+
+  return { note, all, clear, text, watch, KEEP };
+})();
+</script>
+<script>
 /* Toute l'interface, en un seul endroit. Une seule langue d'interface, donc une
    table plate plutôt qu'un système i18n complet — ça garde le ton cohérent et
    rend un basculement vers le néerlandais possible plus tard. */
@@ -995,6 +1034,11 @@ NL.t = {
   docPlayTest: 'Jouer la phrase test',
   docMicTest: 'Tester le micro',
   docTierTitle: 'Ton niveau actuel',
+  errTitle: 'Ce qui a cassé sur cet appareil',
+  errNone: 'Aucune erreur enregistrée.',
+  errCount: n => n === 1 ? 'Une erreur enregistrée. Rien ne quitte cet appareil : copie le texte pour l’envoyer.' : n + ' erreurs enregistrées. Rien ne quitte cet appareil : copie le texte pour l’envoyer.',
+  errCopy: 'Copier', errClear: 'Vider la liste',
+  errCopied: 'Copié.', errCopyByHand: 'Sélectionne le texte et copie-le à la main.',
   docFixTitle: 'Installer la voix flamande sur Windows',
   docFixSteps: [
     'Paramètres → Heure et langue → Langue et région',
@@ -5320,7 +5364,11 @@ NL.screens.sessie = (function () {
         out.push({ ex: name, task: EX.get(name).build(it), items: [it] });
         recent.push(name);
         if (recent.length > 2) recent.shift();
-      } catch (e) { /* un élément mal formé est simplement sauté */ }
+      } catch (e) {
+        /* Un élément mal formé est sauté — mais plus en silence : sans trace,
+           il pouvait n'être jamais drillé sans que personne le sache. */
+        NL.errlog.note(e, 'exercice ' + name + ' · ' + it.id);
+      }
     });
     return out;
   }
@@ -6795,6 +6843,18 @@ NL.screens.doctor = (function () {
       (/BE/i.test(v.lang) ? ' · flamande' : ' · nord') + '</span></li>').join('') + '</ul>';
   }
 
+  /* Ce que l'app a vu casser sur CET appareil. Sur un téléphone il n'y a pas de
+     console : sans cette liste, tout ce qu'on peut rapporter est « ça ne marche
+     plus ». Rien ne quitte l'appareil — c'est à copier et à envoyer soi-même. */
+  function errorBlock() {
+    const list = NL.errlog.all();
+    if (!list.length) return '<p class="muted small">' + t.errNone + '</p>';
+    return '<p class="muted small">' + t.errCount(list.length) + '</p>' +
+      '<textarea class="backup-box" id="err-out" readonly spellcheck="false">' + esc(NL.errlog.text()) + '</textarea>' +
+      '<div class="row"><button class="btn btn-blue" data-act="errcopy">' + t.errCopy + '</button>' +
+      '<button class="btn btn-ghost" data-act="errclear">' + t.errClear + '</button></div>';
+  }
+
   function render() {
     const v = NL.speech.voiceInfo();
     const tier = NL.speech.tier();
@@ -6841,6 +6901,8 @@ NL.screens.doctor = (function () {
       (S.micMsg ? '<p class="doc-verdict ' + (S.mic ? 'good' : 'bad') + '">' + esc(S.micMsg) + '</p>' : '') +
       '</section>' +
 
+      '<section class="doc-block"><h4>' + t.errTitle + '</h4>' + errorBlock() + '</section>' +
+
       (v.quality !== 'be'
         ? '<section class="doc-fix">' +
         '<h4>' + t.docFixTitle + '</h4>' +
@@ -6863,6 +6925,16 @@ NL.screens.doctor = (function () {
       if (d.act === 'heard-no') { S.heard = false; NL.ui.render(); return; }
       if (d.act === 'recheck') { NL.speech.rescanVoices(); S.heard = null; NL.ui.render(); NL.ui.toast('Revérifié.'); return; }
       if (d.act === 'playrec') { NL.speech.playRecording(); return; }
+      if (d.act === 'errclear') { NL.errlog.clear(); NL.ui.render(); return; }
+      if (d.act === 'errcopy') {
+        const box = document.getElementById('err-out');
+        if (box) box.select();
+        const done = navigator.clipboard
+          ? navigator.clipboard.writeText(NL.errlog.text()).then(() => true).catch(() => false)
+          : Promise.resolve(!!(document.execCommand && document.execCommand('copy')));
+        Promise.resolve(done).then(good => NL.ui.toast(good ? t.errCopied : t.errCopyByHand));
+        return;
+      }
       if (d.act === 'recstop') { NL.speech.stopRecord(); return; }
       if (d.act === 'rec') {
         S.rec = 'rec'; S.micMsg = 'Parle maintenant…'; S.mic = null; NL.ui.render();
@@ -7016,6 +7088,7 @@ NL.screens.compte = (function () {
   'use strict';
   function start() {
     const root = document.getElementById('app');
+    NL.errlog.watch();
     NL.state.open().then(() => {
       const wiped = NL.state.migrate();
       NL.content.refresh();

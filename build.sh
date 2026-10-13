@@ -14,6 +14,7 @@ set -e
 cd "$(dirname "$0")"
 
 SRC="src/core/util.js
+src/core/errlog.js
 src/core/fr.js
 src/core/state.js
 src/core/srs.js

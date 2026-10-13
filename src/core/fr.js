@@ -276,6 +276,11 @@ NL.t = {
   docPlayTest: 'Jouer la phrase test',
   docMicTest: 'Tester le micro',
   docTierTitle: 'Ton niveau actuel',
+  errTitle: 'Ce qui a cassé sur cet appareil',
+  errNone: 'Aucune erreur enregistrée.',
+  errCount: n => n === 1 ? 'Une erreur enregistrée. Rien ne quitte cet appareil : copie le texte pour l’envoyer.' : n + ' erreurs enregistrées. Rien ne quitte cet appareil : copie le texte pour l’envoyer.',
+  errCopy: 'Copier', errClear: 'Vider la liste',
+  errCopied: 'Copié.', errCopyByHand: 'Sélectionne le texte et copie-le à la main.',
   docFixTitle: 'Installer la voix flamande sur Windows',
   docFixSteps: [
     'Paramètres → Heure et langue → Langue et région',

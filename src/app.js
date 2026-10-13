@@ -3,6 +3,7 @@
   'use strict';
   function start() {
     const root = document.getElementById('app');
+    NL.errlog.watch();
     NL.state.open().then(() => {
       const wiped = NL.state.migrate();
       NL.content.refresh();
