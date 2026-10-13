@@ -109,8 +109,9 @@ NL.srs = (function () {
 
   /* ---------------- choix de l'exercice ---------------- */
   /* `avoid` = les types déjà servis dans cette séance. Le gouverneur évite ce que
-     l'élément a eu la dernière fois, puis ce qui vient de passer. */
-  function exerciseFor(item, avoid) {
+     l'élément a eu la dernière fois, puis ce qui vient de passer.
+     `quiet` = une séance où l'on ne peut pas parler : rien à voix haute. */
+  function exerciseFor(item, avoid, quiet) {
     const r = recOf(item);
     /* Un mot transparent n'a pas besoin qu'on lui enseigne son sens : sa
        première rencontre se fait à l'échelon suivant. Rien d'autre n'est sauté —
@@ -118,6 +119,7 @@ NL.srs = (function () {
     const rung = (r.reps === 0 && item.cognate) ? 1 : clamp(r.stage, 0, 6);
     const set = (RUNGS[item.kind] || RUNGS.word)[rung] || ['pick'];
     let usable = set.filter(n => supports(item, n));
+    if (quiet) usable = usable.filter(n => n !== 'speak');
     if (!usable.length) usable = [fallback(item)];
     /* Un élément jamais dit à voix haute l'est dès que son échelon le propose.
        Tiré au sort parmi les exercices de l'échelon, « dis-le » ne tombait qu'une
@@ -149,6 +151,16 @@ NL.srs = (function () {
     }
   }
   const fallback = item => (NL.util.tiles(item.nl || '').length >= 3 ? 'type' : 'pick');
+
+  /* Vrai quand le prochain exercice de l'élément ne peut être que parlé : son
+     échelon n'offre rien d'autre, ou bien il n'a jamais été dit et son échelon
+     propose de le dire. Une séance où l'on ne peut pas parler laisse ces
+     éléments attendre plutôt que de leur donner autre chose. */
+  function needsVoice(item) {
+    const r = recOf(item);
+    const usable = ((RUNGS[item.kind] || RUNGS.word)[clamp(r.stage, 0, 6)] || []).filter(n => supports(item, n));
+    return usable.indexOf('speak') >= 0 && (!r.said || usable.length === 1);
+  }
 
   /* Vrai quand l'élément n'a jamais été dit et que son échelon propose de le
      dire à côté d'un autre exercice. Le dire ne déplace alors rien : réussi, il
@@ -322,8 +334,11 @@ NL.srs = (function () {
      l'annonce et la séance elle-même posent tous deux la question ici : ils ne
      peuvent donc pas se contredire.
        source   'vandaag' (défaut) ou l'identifiant d'une unité
+       opts     { quiet, without } : une séance où l'on ne peut pas parler laisse
+                attendre ce qui ne peut être que dit, et ne reprend pas les
+                éléments (`without`, un Set d'identifiants) qu'elle contient déjà
        → { due, fresh, left }   deux listes d'éléments, et le budget restant */
-  function compose(source, now) {
+  function compose(source, now, opts) {
     const uid = source && source !== 'vandaag' ? source : null;
     /* Travailler une unité précise est un choix : le budget du jour ne la bride pas. */
     const left = uid ? Infinity : budgetLeft();
@@ -332,6 +347,7 @@ NL.srs = (function () {
 
     let due = dueItems(now);
     if (uid) due = due.filter(it => it.unit === uid);
+    if (opts && opts.quiet) due = due.filter(it => !needsVoice(it) && !(opts.without && opts.without.has(it.id)));
     const unmet = freshItems(MAX_TASKS, uid);
 
     /* La réserve sort AVANT que les révisions remplissent le reste, et elle
@@ -379,7 +395,7 @@ NL.srs = (function () {
 
   return {
     RUNGS, STEP, PACE, MAX_STAGE, MAX_TASKS, PRODUCE, NEW_SHARE, NEW_MIN, NEW_MAX, TIER_MAX, RETIRE_AT,
-    maxRung, pace, exerciseFor, firstAloud, supports, grade, seed, isSeen, stageOf, atTop,
+    maxRung, pace, exerciseFor, firstAloud, needsVoice, supports, grade, seed, isSeen, stageOf, atTop,
     dueItems, counts, freshItems, compose, plan, unitSpan, mistakes, recOf, budgetLeft, spend
   };
 })();

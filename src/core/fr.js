@@ -115,6 +115,8 @@ NL.t = {
   micAnyway: 'Continuer quand même',
   micSaidIt: 'Je l’ai dit',
   micNotYet: 'Pas encore',
+  cantSpeak: 'Je ne peux pas parler',
+  quietOnly: 'Il ne reste que des exercices à voix haute. Ils t’attendent à la prochaine séance.',
   micNotedOk: 'Noté comme réussi.',
   micNotedNo: 'Noté — on le retravaillera.',
   micDenied: 'Micro bloqué. Autorise-le dans la barre d’adresse, ou évalue-toi toi-même.',

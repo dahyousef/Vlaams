@@ -19,6 +19,8 @@ const answer = require('./lib/answer')(B);
 const MIN = 60000, DAY = 86400000;
 /* Un deuxième apprenant, moins assidu : une seule séance par jour. */
 const ONE_A_DAY = process.argv[4] === 'one';
+/* Un troisième : une séance sur cinq se passe là où l'on ne peut pas parler. */
+const QUIET = process.argv[5] === 'quiet';
 
 /* Combien de secondes coûte chaque type — pour traduire la charge en minutes. */
 const SECS = { match: 22, pick: 7, recall: 7, intrus: 9, article: 6, vlaams: 9,
@@ -34,6 +36,8 @@ NL.state.open().then(() => {
   /* Passé l'échelon 3, un élément compte parmi ceux que l'on sait produire. */
   const PAST = 4;
   let backToBack = 0, prevEx = null, exhausted = null, maxBacklog = 0, tasks = 0, lateRecog = 0;
+  const owed = {};
+  let sessions = 0, taps = 0, touched = 0, spokeAfter = 0, detour = 0;
 
   for (let day = 1; day <= DAYS; day++) {
     B.clock.set(T0 + (day - 1) * DAY);
@@ -45,8 +49,23 @@ NL.state.open().then(() => {
     /* Autant de séances que le budget du jour l'autorise — ou une seule. */
     while (NL.srs.budgetLeft() > 0 && guard++ < (ONE_A_DAY ? 1 : 12) && S.begin('vandaag')) {
       let n = 0;
+      const cantTalk = QUIET && ++sessions % 5 === 0;
+      let tapped = false;
       while (S.peek() && n++ < 80) {
         const c = S.peek(), wasMatch = c.ex === 'match';
+        /* Là où l'on ne peut pas parler : « je ne peux pas parler » au premier
+           exercice à voix haute, et la séance continue sans. */
+        if (c.ex === 'speak' && tapped) spokeAfter++;
+        if (c.ex === 'speak' && cantTalk && !tapped) {
+          const it = c.items[0], before = JSON.stringify(NL.state.rec(it.id)), left = NL.srs.budgetLeft();
+          if (NL.srs.needsVoice(it)) owed[it.id] = true;
+          answer.cantSpeak();
+          tapped = true; taps++;
+          if (JSON.stringify(NL.state.rec(it.id)) !== before || NL.srs.budgetLeft() !== left) touched++;
+          continue;
+        }
+        /* Ce qui a été mis de côté revient à voix haute, pas autrement. */
+        if (!wasMatch && owed[c.items[0].id]) { if (c.ex !== 'speak') detour++; delete owed[c.items[0].id]; }
         tasks++; dayTasks++;
         daySecs += SECS[c.ex] || 15;
         mix[c.ex] = (mix[c.ex] || 0) + 1;
@@ -125,6 +144,15 @@ NL.state.open().then(() => {
   const passed = Object.keys(passedOn), read = passed.filter(id => passedOn[id] === 'speak');
   ok(read.length <= passed.length / 5, read.length + ' des ' + passed.length + ' éléments qui ont passé l’échelon de l’écrit l’ont passé en étant lus à voix haute');
   P('échelon de l’écrit passé par écrit', (passed.length - read.length) + ' sur ' + passed.length);
+  /* L'apprenant qui ne peut pas toujours parler : mettre de côté ne coûte rien,
+     ne laisse rien passer à voix haute, et ne fait rien sauter. */
+  if (QUIET) {
+    ok(taps > 0, 'aucune séance sans parler n’a rencontré d’exercice à voix haute : la simulation ne vérifie rien');
+    ok(touched === 0, touched + ' « je ne peux pas parler » ont modifié un enregistrement ou entamé le budget du jour');
+    ok(spokeAfter === 0, spokeAfter + ' exercice(s) à voix haute servis après « je ne peux pas parler »');
+    ok(detour === 0, detour + ' élément(s) mis de côté sont revenus autrement qu’à voix haute');
+    P('séances sans parler', taps + ' : rien de noté, rien à voix haute ensuite, tout revient à voix haute');
+  }
   ok(over.length === 0, over.length + ' jours dépassent le plafond quotidien — la dette explose');
   P('plafond quotidien respecté', over.length === 0 ? 'oui, ' + busiest + ' au maximum' : 'NON');
   P('pic de charge', peak + ' min');

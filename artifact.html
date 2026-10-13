@@ -834,6 +834,8 @@ NL.t = {
   micAnyway: 'Continuer quand même',
   micSaidIt: 'Je l’ai dit',
   micNotYet: 'Pas encore',
+  cantSpeak: 'Je ne peux pas parler',
+  quietOnly: 'Il ne reste que des exercices à voix haute. Ils t’attendent à la prochaine séance.',
   micNotedOk: 'Noté comme réussi.',
   micNotedNo: 'Noté — on le retravaillera.',
   micDenied: 'Micro bloqué. Autorise-le dans la barre d’adresse, ou évalue-toi toi-même.',
@@ -1397,8 +1399,9 @@ NL.srs = (function () {
 
   /* ---------------- choix de l'exercice ---------------- */
   /* `avoid` = les types déjà servis dans cette séance. Le gouverneur évite ce que
-     l'élément a eu la dernière fois, puis ce qui vient de passer. */
-  function exerciseFor(item, avoid) {
+     l'élément a eu la dernière fois, puis ce qui vient de passer.
+     `quiet` = une séance où l'on ne peut pas parler : rien à voix haute. */
+  function exerciseFor(item, avoid, quiet) {
     const r = recOf(item);
     /* Un mot transparent n'a pas besoin qu'on lui enseigne son sens : sa
        première rencontre se fait à l'échelon suivant. Rien d'autre n'est sauté —
@@ -1406,6 +1409,7 @@ NL.srs = (function () {
     const rung = (r.reps === 0 && item.cognate) ? 1 : clamp(r.stage, 0, 6);
     const set = (RUNGS[item.kind] || RUNGS.word)[rung] || ['pick'];
     let usable = set.filter(n => supports(item, n));
+    if (quiet) usable = usable.filter(n => n !== 'speak');
     if (!usable.length) usable = [fallback(item)];
     /* Un élément jamais dit à voix haute l'est dès que son échelon le propose.
        Tiré au sort parmi les exercices de l'échelon, « dis-le » ne tombait qu'une
@@ -1437,6 +1441,16 @@ NL.srs = (function () {
     }
   }
   const fallback = item => (NL.util.tiles(item.nl || '').length >= 3 ? 'type' : 'pick');
+
+  /* Vrai quand le prochain exercice de l'élément ne peut être que parlé : son
+     échelon n'offre rien d'autre, ou bien il n'a jamais été dit et son échelon
+     propose de le dire. Une séance où l'on ne peut pas parler laisse ces
+     éléments attendre plutôt que de leur donner autre chose. */
+  function needsVoice(item) {
+    const r = recOf(item);
+    const usable = ((RUNGS[item.kind] || RUNGS.word)[clamp(r.stage, 0, 6)] || []).filter(n => supports(item, n));
+    return usable.indexOf('speak') >= 0 && (!r.said || usable.length === 1);
+  }
 
   /* Vrai quand l'élément n'a jamais été dit et que son échelon propose de le
      dire à côté d'un autre exercice. Le dire ne déplace alors rien : réussi, il
@@ -1610,8 +1624,11 @@ NL.srs = (function () {
      l'annonce et la séance elle-même posent tous deux la question ici : ils ne
      peuvent donc pas se contredire.
        source   'vandaag' (défaut) ou l'identifiant d'une unité
+       opts     { quiet, without } : une séance où l'on ne peut pas parler laisse
+                attendre ce qui ne peut être que dit, et ne reprend pas les
+                éléments (`without`, un Set d'identifiants) qu'elle contient déjà
        → { due, fresh, left }   deux listes d'éléments, et le budget restant */
-  function compose(source, now) {
+  function compose(source, now, opts) {
     const uid = source && source !== 'vandaag' ? source : null;
     /* Travailler une unité précise est un choix : le budget du jour ne la bride pas. */
     const left = uid ? Infinity : budgetLeft();
@@ -1620,6 +1637,7 @@ NL.srs = (function () {
 
     let due = dueItems(now);
     if (uid) due = due.filter(it => it.unit === uid);
+    if (opts && opts.quiet) due = due.filter(it => !needsVoice(it) && !(opts.without && opts.without.has(it.id)));
     const unmet = freshItems(MAX_TASKS, uid);
 
     /* La réserve sort AVANT que les révisions remplissent le reste, et elle
@@ -1667,7 +1685,7 @@ NL.srs = (function () {
 
   return {
     RUNGS, STEP, PACE, MAX_STAGE, MAX_TASKS, PRODUCE, NEW_SHARE, NEW_MIN, NEW_MAX, TIER_MAX, RETIRE_AT,
-    maxRung, pace, exerciseFor, firstAloud, supports, grade, seed, isSeen, stageOf, atTop,
+    maxRung, pace, exerciseFor, firstAloud, needsVoice, supports, grade, seed, isSeen, stageOf, atTop,
     dueItems, counts, freshItems, compose, plan, unitSpan, mistakes, recOf, budgetLeft, spend
   };
 })();
@@ -4622,6 +4640,9 @@ NL.ex = (function () {
             '<span class="' + (p.ok ? (p.close ? 'w-close' : 'w-ok') : 'w-no') + '">' + esc(p.word) + '</span>').join(' ') + '</p>' +
           (sp.heard ? '<p class="heard">' + NL.t.micHeard + ' &ldquo;' + esc(sp.heard) + '&rdquo;</p>' : '') +
           (!sp.ok && sp.tries < 3 ? '<div class="mic-actions"><button class="btn btn-blue" data-mic="start">' + NL.t.micRetry(3 - sp.tries) + '</button></div>' : '') +
+          /* Trois refus : le micro n'entend peut-être simplement pas ce mot-là.
+             Sans cette issue, l'élément serait redemandé chaque jour sans jamais monter. */
+          (!sp.ok && sp.tries >= 3 ? selfRate(sp) : '') +
           '</div>';
       } else {
         panel = '<div class="mic-panel"><button class="mic big" data-mic="start" aria-label="' + NL.t.speak + '">' + ICON.mic(34) + '</button>' +
@@ -4629,9 +4650,15 @@ NL.ex = (function () {
           (sp.error ? selfRate(sp) : '') + '</div>';
       }
 
+      /* « Je ne peux pas parler » : proposé tant que rien n'a été tenté. Une fois
+         la réponse donnée, c'est une réponse. */
+      const untried = phase === 'ask' && sp.selfRated == null && sp.phase !== 'done' && sp.phase !== 'listening' &&
+        sp.recState !== 'rec' && sp.recState !== 'done';
+      const hush = untried ? '<div class="mic-actions"><button class="btn btn-ghost" data-quiet="1">' + NL.t.cantSpeak + '</button></div>' : '';
+
       return '<div class="sentence prompt">' + esc(t.target) + flemish(t.item.be, t.target) + '</div>' +
         '<div class="gloss-line">' + esc(t.prompt) + '</div>' +
-        speakerRow(t.target, {}) + panel;
+        speakerRow(t.target, {}) + panel + hush;
     },
     ready(t, L) {
       const sp = L.speech;
@@ -5285,10 +5312,10 @@ NL.screens.sessie = (function () {
 
   /* Un exercice par élément. Le gouverneur retient les deux derniers types
      servis pour qu'aucun ne se répète coup sur coup. */
-  function build(items, recent) {
+  function build(items, recent, quiet) {
     const out = [];
     items.forEach(it => {
-      const name = NL.srs.exerciseFor(it, new Set(recent));
+      const name = NL.srs.exerciseFor(it, new Set(recent), quiet);
       try {
         out.push({ ex: name, task: EX.get(name).build(it), items: [it] });
         recent.push(name);
@@ -5414,10 +5441,10 @@ NL.screens.sessie = (function () {
       const prev = L.at > 0 ? L.queue[L.at - 1].ex : null;
       const after = L.queue[L.at + 1] && L.queue[L.at + 1].task ? L.queue[L.at + 1].ex : null;
       const avoid = new Set([prev, after].filter(Boolean));
-      let at = L.at, name = NL.srs.exerciseFor(L.queue[L.at].items[0], avoid);
+      let at = L.at, name = NL.srs.exerciseFor(L.queue[L.at].items[0], avoid, L.quiet);
       for (let j = L.at + 1; name === prev && j < L.queue.length && !L.queue[j].task; j++) {
         if (L.at - L.queue[j].metAt < SECOND_GAP) continue;
-        const n = NL.srs.exerciseFor(L.queue[j].items[0], avoid);
+        const n = NL.srs.exerciseFor(L.queue[j].items[0], avoid, L.quiet);
         if (n !== prev) { at = j; name = n; }
       }
       const c = L.queue[at];
@@ -5446,6 +5473,46 @@ NL.screens.sessie = (function () {
     L.queue.forEach(x => { if (x.second && x.metAt >= pos) x.metAt++; });
     L.queue.splice(pos, 0, retryOf(c));
     L.queue[at + 1].metAt = pos;
+  }
+
+  /* « Je ne peux pas parler » : plus rien à voix haute jusqu'à la fin de la
+     séance. Les exercices parlés qui restaient sont retirés sans être notés et
+     sans rien prendre au budget du jour : leurs éléments restent dus, et
+     reviendront à voix haute à la séance suivante. D'autres éléments dus
+     prennent leur place, choisis par compose() comme pour toute séance. Rien
+     n'est retenu au-delà : la séance suivante redemande. Ce n'est pas un
+     réglage, parce qu'un réglage suit l'appareil et s'oublie éteint. */
+  function quiet() {
+    const c = cur();
+    if (!c || c.ex !== 'speak' || L.phase !== 'ask') return;
+    NL.speech.abort(); NL.speech.clearRecording();
+    L.quiet = true;
+    const head = L.queue.slice(0, L.at), rest = L.queue.slice(L.at);
+    const spoken = rest.filter(x => x.ex === 'speak').length;
+    /* Le second exercice d'un élément qui ne peut être que dit part avec son
+       exercice parlé : servi sans parler, il le ferait monter par écrit sans
+       qu'il ait jamais été dit. Sa place, elle, est reprise ; la séance
+       raccourcit donc d'un exercice par élément mis de côté. */
+    const kept = rest.filter(x => x.ex !== 'speak' && !(!x.task && NL.srs.needsVoice(x.items[0])));
+    /* Les séances à liste fixe, les fautes et le défi, ne se complètent pas. */
+    let more = [];
+    if (L.source !== 'fouten' && L.source !== 'defi') {
+      const here = new Set();
+      L.queue.forEach(x => x.items.forEach(it => here.add(it.id)));
+      more = NL.srs.compose(L.source, undefined, { quiet: true, without: here }).due.slice(0, spoken);
+    }
+    L.queue = head.concat(kept, spread(build(more, [], true), kept.length ? kept[kept.length - 1].ex : null));
+    L.queue.forEach(x => { if (x.second) x.metAt = L.queue.findIndex(y => !y.second && y.ex !== 'match' && y.items[0] === x.items[0]); });
+    Object.assign(L, blankTurn());
+    L.phase = 'ask';
+    /* Il ne restait que du parlé, et rien n'a encore été répondu : il n'y a pas
+       de séance à conclure, ni de journée à compter. */
+    if (L.at >= L.queue.length && L.right + L.wrong === 0) { L = null; NL.ui.go('vandaag'); NL.ui.toast(NL.t.quietOnly); return; }
+    if (L.at >= L.queue.length) return finish();
+    arm();
+    if (L.at >= L.queue.length) return finish();
+    NL.ui.render();
+    autoplay();
   }
 
   const cur = () => L && L.queue[L.at];
@@ -5677,6 +5744,7 @@ NL.screens.sessie = (function () {
     if (d.check !== undefined) return check();
     if (d.next !== undefined) return next();
     if (d.skip !== undefined) return skip();
+    if (d.quiet !== undefined) return quiet();
     if (!L || L.phase !== 'ask') return;
 
     const c = cur();

@@ -48,10 +48,10 @@ NL.screens.sessie = (function () {
 
   /* Un exercice par élément. Le gouverneur retient les deux derniers types
      servis pour qu'aucun ne se répète coup sur coup. */
-  function build(items, recent) {
+  function build(items, recent, quiet) {
     const out = [];
     items.forEach(it => {
-      const name = NL.srs.exerciseFor(it, new Set(recent));
+      const name = NL.srs.exerciseFor(it, new Set(recent), quiet);
       try {
         out.push({ ex: name, task: EX.get(name).build(it), items: [it] });
         recent.push(name);
@@ -177,10 +177,10 @@ NL.screens.sessie = (function () {
       const prev = L.at > 0 ? L.queue[L.at - 1].ex : null;
       const after = L.queue[L.at + 1] && L.queue[L.at + 1].task ? L.queue[L.at + 1].ex : null;
       const avoid = new Set([prev, after].filter(Boolean));
-      let at = L.at, name = NL.srs.exerciseFor(L.queue[L.at].items[0], avoid);
+      let at = L.at, name = NL.srs.exerciseFor(L.queue[L.at].items[0], avoid, L.quiet);
       for (let j = L.at + 1; name === prev && j < L.queue.length && !L.queue[j].task; j++) {
         if (L.at - L.queue[j].metAt < SECOND_GAP) continue;
-        const n = NL.srs.exerciseFor(L.queue[j].items[0], avoid);
+        const n = NL.srs.exerciseFor(L.queue[j].items[0], avoid, L.quiet);
         if (n !== prev) { at = j; name = n; }
       }
       const c = L.queue[at];
@@ -209,6 +209,46 @@ NL.screens.sessie = (function () {
     L.queue.forEach(x => { if (x.second && x.metAt >= pos) x.metAt++; });
     L.queue.splice(pos, 0, retryOf(c));
     L.queue[at + 1].metAt = pos;
+  }
+
+  /* « Je ne peux pas parler » : plus rien à voix haute jusqu'à la fin de la
+     séance. Les exercices parlés qui restaient sont retirés sans être notés et
+     sans rien prendre au budget du jour : leurs éléments restent dus, et
+     reviendront à voix haute à la séance suivante. D'autres éléments dus
+     prennent leur place, choisis par compose() comme pour toute séance. Rien
+     n'est retenu au-delà : la séance suivante redemande. Ce n'est pas un
+     réglage, parce qu'un réglage suit l'appareil et s'oublie éteint. */
+  function quiet() {
+    const c = cur();
+    if (!c || c.ex !== 'speak' || L.phase !== 'ask') return;
+    NL.speech.abort(); NL.speech.clearRecording();
+    L.quiet = true;
+    const head = L.queue.slice(0, L.at), rest = L.queue.slice(L.at);
+    const spoken = rest.filter(x => x.ex === 'speak').length;
+    /* Le second exercice d'un élément qui ne peut être que dit part avec son
+       exercice parlé : servi sans parler, il le ferait monter par écrit sans
+       qu'il ait jamais été dit. Sa place, elle, est reprise ; la séance
+       raccourcit donc d'un exercice par élément mis de côté. */
+    const kept = rest.filter(x => x.ex !== 'speak' && !(!x.task && NL.srs.needsVoice(x.items[0])));
+    /* Les séances à liste fixe, les fautes et le défi, ne se complètent pas. */
+    let more = [];
+    if (L.source !== 'fouten' && L.source !== 'defi') {
+      const here = new Set();
+      L.queue.forEach(x => x.items.forEach(it => here.add(it.id)));
+      more = NL.srs.compose(L.source, undefined, { quiet: true, without: here }).due.slice(0, spoken);
+    }
+    L.queue = head.concat(kept, spread(build(more, [], true), kept.length ? kept[kept.length - 1].ex : null));
+    L.queue.forEach(x => { if (x.second) x.metAt = L.queue.findIndex(y => !y.second && y.ex !== 'match' && y.items[0] === x.items[0]); });
+    Object.assign(L, blankTurn());
+    L.phase = 'ask';
+    /* Il ne restait que du parlé, et rien n'a encore été répondu : il n'y a pas
+       de séance à conclure, ni de journée à compter. */
+    if (L.at >= L.queue.length && L.right + L.wrong === 0) { L = null; NL.ui.go('vandaag'); NL.ui.toast(NL.t.quietOnly); return; }
+    if (L.at >= L.queue.length) return finish();
+    arm();
+    if (L.at >= L.queue.length) return finish();
+    NL.ui.render();
+    autoplay();
   }
 
   const cur = () => L && L.queue[L.at];
@@ -440,6 +480,7 @@ NL.screens.sessie = (function () {
     if (d.check !== undefined) return check();
     if (d.next !== undefined) return next();
     if (d.skip !== undefined) return skip();
+    if (d.quiet !== undefined) return quiet();
     if (!L || L.phase !== 'ask') return;
 
     const c = cur();

@@ -6,7 +6,8 @@
      const answer = require('./lib/answer')(B);
      answer.right();   répond juste, puis laisse l'écran sur le verdict
      answer.wrong();   passe l'exercice : c'est la faute la plus simple à produire
-     answer.next();    « Continuer »                                            */
+     answer.next();    « Continuer »
+     answer.cantSpeak();  « Je ne peux pas parler », sur un exercice à voix haute  */
 module.exports = function (B) {
   const NL = B.NL, U = NL.util, S = NL.screens.sessie;
   const click = d => S.click({ dataset: d }, d);
@@ -46,6 +47,7 @@ module.exports = function (B) {
   const wrong = () => { if (!S.peek()) return false; click({ skip: '1' }); return true; };
   /* Après les paires, la séance a déjà avancé : il n'y a pas de verdict à quitter. */
   const next = wasMatch => { if (!wasMatch) click({ next: '1' }); };
+  const cantSpeak = () => { const c = S.peek(); if (!c || c.ex !== 'speak') return false; click({ quiet: '1' }); return true; };
 
-  return { right, wrong, next, click, type };
+  return { right, wrong, next, cantSpeak, click, type };
 };

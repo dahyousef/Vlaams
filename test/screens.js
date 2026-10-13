@@ -161,6 +161,44 @@ NL.state.open().then(() => {
     console.log('  classés du plus raté au moins raté, séance sur ces éléments, filtre « fragiles » aligné');
   }
 
+  /* ------------------------------------------------------------------ */
+  console.log('\nÀ VOIX HAUTE — le bouton « ' + t.cantSpeak + ' »');
+  {
+    fresh();
+    const words = all.filter(it => it.kind !== 'pattern' && !it.cognate);
+    words.slice(0, 4).forEach(it => put(it, 3, T0 - 2 * DAY));      // jamais dits : à dire
+    words.slice(4, 30).forEach(it => put(it, 2, T0 - DAY));         // rien à dire
+    ok(S.begin('vandaag'), 'the session did not start');
+    NL.ui.go('sessie');
+    let guard = 0, stray = 0, asked = 0;
+    while (S.peek() && S.peek().ex !== 'speak' && guard++ < 60) {
+      const wasMatch = S.peek().ex === 'match';
+      asked++;
+      if (S.render().indexOf('data-quiet') >= 0) stray++;
+      answer.right(); answer.next(wasMatch);
+    }
+    ok(S.peek() && S.peek().ex === 'speak', 'the fixture is wrong: the session holds no spoken exercise');
+    ok(stray === 0, stray + ' of ' + asked + ' exercises that are not spoken carry the button');
+    const q = read('sessie/speak', S.render(), 'question');
+    ok(S.render().indexOf('data-quiet="1"') >= 0 && q.indexOf(t.cantSpeak) >= 0, 'the spoken exercise does not offer « ' + t.cantSpeak + ' »');
+
+    /* Une fois la réponse donnée, c'est une réponse : le bouton s'en va. */
+    answer.click({ self: '1' });
+    ok(S.render().indexOf('data-quiet') < 0, 'the button is still offered after the answer was given');
+    answer.click({ check: '1' }); answer.next(false);
+
+    /* Appuyé : l'écran suivant se lit, et il n'y a plus rien à voix haute. */
+    while (S.peek() && S.peek().ex !== 'speak' && guard++ < 120) { const wasMatch = S.peek().ex === 'match'; answer.right(); answer.next(wasMatch); }
+    ok(S.peek() && S.peek().ex === 'speak', 'the fixture is wrong: no second spoken exercise');
+    ok(answer.cantSpeak(), 'the button does nothing');
+    if (S.peek()) read('sessie/' + S.peek().ex, S.render(), 'sans parler');
+    let spoken = 0;
+    while (S.peek() && guard++ < 200) { const wasMatch = S.peek().ex === 'match'; if (S.peek().ex === 'speak') spoken++; answer.right(); answer.next(wasMatch); if (B.app.innerHTML.indexOf('done-stage') >= 0) break; }
+    ok(spoken === 0, spoken + ' spoken exercise(s) after the button was pressed');
+    S.abandon();
+    console.log('  présent sur l’exercice parlé, absent des ' + asked + ' autres, retiré une fois la réponse donnée ; appuyé : plus rien à voix haute');
+  }
+
   console.log('\n' + checks + ' checks, ' + (fails ? fails + ' FAILED' : 'SCREENS OK'));
   process.exit(fails ? 1 : 0);
 }).catch(e => { console.log('CRASH ' + (e && e.stack || e)); process.exit(1); });

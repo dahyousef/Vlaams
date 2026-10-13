@@ -318,6 +318,9 @@ NL.ex = (function () {
             '<span class="' + (p.ok ? (p.close ? 'w-close' : 'w-ok') : 'w-no') + '">' + esc(p.word) + '</span>').join(' ') + '</p>' +
           (sp.heard ? '<p class="heard">' + NL.t.micHeard + ' &ldquo;' + esc(sp.heard) + '&rdquo;</p>' : '') +
           (!sp.ok && sp.tries < 3 ? '<div class="mic-actions"><button class="btn btn-blue" data-mic="start">' + NL.t.micRetry(3 - sp.tries) + '</button></div>' : '') +
+          /* Trois refus : le micro n'entend peut-être simplement pas ce mot-là.
+             Sans cette issue, l'élément serait redemandé chaque jour sans jamais monter. */
+          (!sp.ok && sp.tries >= 3 ? selfRate(sp) : '') +
           '</div>';
       } else {
         panel = '<div class="mic-panel"><button class="mic big" data-mic="start" aria-label="' + NL.t.speak + '">' + ICON.mic(34) + '</button>' +
@@ -325,9 +328,15 @@ NL.ex = (function () {
           (sp.error ? selfRate(sp) : '') + '</div>';
       }
 
+      /* « Je ne peux pas parler » : proposé tant que rien n'a été tenté. Une fois
+         la réponse donnée, c'est une réponse. */
+      const untried = phase === 'ask' && sp.selfRated == null && sp.phase !== 'done' && sp.phase !== 'listening' &&
+        sp.recState !== 'rec' && sp.recState !== 'done';
+      const hush = untried ? '<div class="mic-actions"><button class="btn btn-ghost" data-quiet="1">' + NL.t.cantSpeak + '</button></div>' : '';
+
       return '<div class="sentence prompt">' + esc(t.target) + flemish(t.item.be, t.target) + '</div>' +
         '<div class="gloss-line">' + esc(t.prompt) + '</div>' +
-        speakerRow(t.target, {}) + panel;
+        speakerRow(t.target, {}) + panel + hush;
     },
     ready(t, L) {
       const sp = L.speech;

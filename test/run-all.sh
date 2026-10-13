@@ -27,10 +27,12 @@ for c in "nl-BE OPR" "nl-NL OPR" "none OPR" "nl-BE EDG" "nl-NL EDG" "none EDG" "
   node test/journey.js "$ROOT" "$1" "$2"
 done
 
-# Deux apprenants : celui qui épuise le budget du jour, et celui qui ne fait
-# qu'une séance. Le défaut d'octobre ne se voyait que chez le second.
+# Trois apprenants : celui qui épuise le budget du jour, celui qui ne fait
+# qu'une séance, et celui qui, une séance sur cinq, ne peut pas parler. Le
+# défaut d'octobre ne se voyait que chez le deuxième.
 node test/pace.js "$ROOT" "${PACE_DAYS:-200}"
 node test/pace.js "$ROOT" "${PACE_DAYS:-200}" one
+node test/pace.js "$ROOT" "${PACE_DAYS:-200}" one quiet
 
 echo
 echo "TOUTE LA SUITE EST PASSÉE"

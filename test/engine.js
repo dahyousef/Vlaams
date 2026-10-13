@@ -465,6 +465,91 @@ NL.state.open().then(() => {
     console.log('  raté une fois : redit ' + Math.min.apply(null, regaps) + ' exercices au moins avant d’être écrit ; raté deux fois : dit à la troisième, écrit le lendemain ; séance quittée : dit, échelon gardé ; sept exercices de budget : ' + tight.due.length + ' révision(s), ' + tight.fresh.length + ' rencontre(s), ' + cost(tight) + ' exercices');
   }
 
+  /* ------------------------------------------------------------------ */
+  console.log('\nJE NE PEUX PAS PARLER — la séance continue, sans rien à voix haute');
+  {
+    const words = NL.content.allItems().filter(i => isWord(i) && !i.cognate);
+    /* Huit éléments jamais dits, à l'échelon qui demande de les dire, et une
+       cinquantaine d'autres qui n'ont rien à dire. Tous dus. */
+    const voice = words.slice(0, 8), other = words.slice(8, 60);
+    fresh();
+    voice.forEach(it => put(it, 3, T0 - 2 * DAY));
+    other.forEach(it => put(it, 2, T0 - DAY));
+    const kept = () => JSON.stringify(voice.map(it => NL.state.rec(it.id)));
+    const size = () => Number((S.render().match(/class="pill">\d+\/(\d+)</) || [0, 0])[1]);
+
+    ok(voice.every(it => NL.srs.needsVoice(it)) && !other.some(it => NL.srs.needsVoice(it)), 'needsVoice() does not tell the items that can only be spoken from the others');
+    const without = NL.srs.compose('vandaag', undefined, { quiet: true }).due;
+    ok(without.length > 0 && !without.some(it => NL.srs.needsVoice(it)), 'a session composed without speaking still holds ' + without.filter(it => NL.srs.needsVoice(it)).length + ' item(s) that can only be spoken');
+
+    ok(S.begin('vandaag'), 'the session did not start');
+    let guard = 0;
+    while (S.peek() && S.peek().ex !== 'speak' && guard++ < 60) { const m = S.peek().ex === 'match'; B.clock.advance(20000); answer.right(); answer.next(m); }
+    ok(S.peek() && S.peek().ex === 'speak', 'the fixture is wrong: the session holds no spoken exercise');
+    const before = kept(), left = NL.srs.budgetLeft(), held = size();
+
+    ok(answer.cantSpeak(), 'a spoken exercise cannot be put off');
+    ok(kept() === before, 'putting a spoken exercise off changed a stored record');
+    ok(NL.srs.budgetLeft() === left, 'putting a spoken exercise off spent ' + (left - NL.srs.budgetLeft()) + ' of the day budget');
+    /* Les places sont reprises par d'autres éléments dus ; seul part le second
+       exercice de chacun de ceux qu'on a mis de côté. */
+    ok(size() === held - voice.length, 'the session went from ' + held + ' exercises to ' + size() + ': it should lose the second exercise of each of the ' + voice.length + ' items put off, and nothing else');
+
+    /* La suite de la séance : rien à voix haute, et aucun des éléments mis de côté. */
+    const rest = [];
+    guard = 0;
+    while (S.peek() && guard++ < 80) {
+      const c = S.peek(), m = c.ex === 'match';
+      rest.push({ ex: c.ex, id: c.items[0].id });
+      B.clock.advance(20000); answer.right(); answer.next(m);
+      if (B.app.innerHTML.indexOf('done-stage') >= 0) break;
+    }
+    S.abandon();
+    ok(rest.length > 0 && !rest.some(x => x.ex === 'speak'), rest.filter(x => x.ex === 'speak').length + ' spoken exercise(s) were served after « je ne peux pas parler »');
+    ok(!rest.some(x => voice.some(it => it.id === x.id)), 'an item put off came back in the same session');
+    ok(kept() === before, 'an item put off was graded before the session ended');
+
+    /* La séance suivante : ils reviennent, à voix haute d'abord, puis par écrit. */
+    B.clock.advance(DAY);
+    NL.state.touchDay();
+    const next = play().filter(x => !x.retry && voice.some(it => it.id === x.id));
+    const back = next.filter(x => !x.second), written = next.filter(x => x.second);
+    ok(back.length === voice.length, 'of ' + voice.length + ' items put off, ' + back.length + ' came back in the next session');
+    ok(back.every(x => x.ex === 'speak'), back.filter(x => x.ex !== 'speak').length + ' item(s) put off came back as something other than a spoken exercise');
+    ok(written.length === voice.length && written.every(x => x.ex !== 'speak'), 'of ' + voice.length + ' items said at last, ' + written.filter(x => x.ex !== 'speak').length + ' were then asked in writing');
+    console.log('  ' + voice.length + ' exercices parlés mis de côté : rien de noté, budget intact, séance de ' + held + ' exercices ramenée à ' + (held - voice.length) + ' ; le lendemain les ' + back.length + ' reviennent à voix haute, puis par écrit');
+
+    /* Il ne reste que du parlé : la séance s'arrête là, sans bilan et sans journée comptée. */
+    fresh();
+    const all = NL.content.allItems();
+    all.forEach((it, i) => put(it, 5, i < 5 ? T0 - DAY : T0 + 30 * DAY));
+    ok(S.begin('vandaag') && S.peek().ex === 'speak', 'the fixture is wrong: the session should hold only spoken exercises');
+    const streak = NL.state.meta().streak;
+    answer.cantSpeak();
+    ok(!S.peek() && NL.ui.route === 'vandaag', 'with only spoken exercises left, « je ne peux pas parler » does not close the session');
+    ok(B.app.innerHTML.indexOf('done-stage') < 0 && NL.state.meta().streak === streak, 'a session in which nothing was answered is summed up, or counted as a day');
+    fresh(); NL.ui.go('sessie'); S.abandon();
+
+    /* La séance sur les fautes est une liste fixe : le parlé en sort, rien n'y entre. */
+    fresh();
+    const [a, b, c] = words;
+    put(a, 3, T0 + 5 * DAY); put(b, 3, T0 + 5 * DAY); put(c, 2, T0 + 5 * DAY);
+    other.slice(0, 20).forEach(it => put(it, 2, T0 - DAY));
+    [a, b, c].forEach(it => NL.state.logReview({ id: it.id, t: T0 - DAY, ok: false, stage: 1, kind: it.kind, ex: 'type' }));
+    ok(S.begin('fouten'), 'the mistakes session did not start');
+    const fixed = [];
+    guard = 0;
+    while (S.peek() && guard++ < 20) {
+      if (S.peek().ex === 'speak') { answer.cantSpeak(); continue; }
+      fixed.push(S.peek().items[0].id);
+      answer.right(); answer.next(false);
+      if (B.app.innerHTML.indexOf('done-stage') >= 0) break;
+    }
+    S.abandon();
+    ok(fixed.length === 1 && fixed[0] === c.id, 'after « je ne peux pas parler » the mistakes session served ' + JSON.stringify(fixed) + ' instead of its one item that is not spoken');
+    console.log('  rien que du parlé : retour à l’accueil sans bilan ; séance sur les fautes : le parlé en sort, rien n’y entre');
+  }
+
   console.log('\n' + checks + ' checks, ' + (fails ? fails + ' FAILED' : 'ENGINE OK'));
   process.exit(fails ? 1 : 0);
 }).catch(e => { console.log('CRASH ' + (e && e.stack || e)); process.exit(1); });

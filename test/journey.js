@@ -344,6 +344,36 @@ function view(screen, arg) {
     console.log('   refusal explained, self-rating offered, scenario continues');
   }
 
+  /* ---------------------------------------------------------- 15. the recogniser refuses three times */
+  head('15. The recogniser refuses three times');
+  if (noRecogniser) {
+    console.log('   skipped: no recogniser here, a spoken exercise is already self-rated');
+  } else {
+    NL.state.clearAll(); NL.content.refresh();
+    /* Everything met and not due, except one word on the rung that asks for it aloud. */
+    NL.content.allItems().forEach(it => NL.srs.seed(it, 2));
+    const word = NL.content.allItems().find(it => it.kind === 'word' && !it.cognate);
+    NL.srs.seed(word, 3);
+    const due = NL.state.rec(word.id); due.due = 0; NL.state.setRec(due);
+    ok(S.begin('vandaag') && S.peek().ex === 'speak', 'a never-said item on rung 3 is not asked aloud');
+    for (let k = 0; k < 3; k++) {
+      ok(S.render().indexOf('data-self=') < 0, 'self-rating offered after ' + k + ' refusal(s), before the third');
+      ctx.__saidNext = 'iets heel anders';
+      tap('sessie', { mic: 'start' });
+    }
+    ok(S.render().indexOf('data-self="1"') >= 0, 'after three refusals there is still no way to say « ' + NL.t.micSaidIt + ' »');
+    tap('sessie', { self: '1' });
+    tap('sessie', { check: '1' });
+    ok(S.render().indexOf('foot ok') >= 0, 'rating yourself right after three refusals is counted as wrong');
+    const now = NL.state.rec(word.id);
+    ok(now.said === true && now.stage === 3, 'the item should be said and still on rung 3: it is said ' + now.said + ', on rung ' + now.stage);
+    /* Dit, il lui reste à être écrit : c'est son second exercice dans la séance. */
+    tap('sessie', { next: '1' });
+    ok(S.peek() && S.peek().items[0].id === word.id && S.peek().ex !== 'speak', 'once said, the item is not asked in writing before the session ends');
+    S.abandon();
+    console.log('   three refusals, then « ' + NL.t.micSaidIt + ' » is offered and counts');
+  }
+
   console.log('\n' + checks + ' checks, ' + (fails === 0 ? 'NO PROBLEMS' : fails + ' PROBLEM(S)'));
   process.exit(fails ? 1 : 0);
 })().catch(e => { console.log('BOOT FAIL: ' + e.stack); process.exit(1); });
