@@ -907,6 +907,15 @@ NL.t = {
   wordsSearch: 'Rechercher…',
   wordsAll: 'tous', wordsWeak: 'fragiles', wordsStrong: 'produits', wordsMine: 'à moi',
   wordsTile: (met, produce) => met + ' rencontrés, ' + produce + ' que tu sais produire',
+
+  /* --- ce qui résiste --- */
+  missEyebrow: 'Ce qui résiste',
+  missTitle: n => n === 1 ? 'Un élément te résiste' : n + ' éléments te résistent',
+  missBody: 'Classés par nombre de réponses fausses sur les deux derniers mois, le plus raté d’abord. Une séance ici les attaque directement, sans attendre qu’ils reviennent.',
+  missNone: 'Rien ne te résiste pour l’instant : aucune réponse fausse sur les deux derniers mois.',
+  missTile: n => n === 0 ? 'Rien pour l’instant' : n === 1 ? 'Un élément souvent raté' : n + ' éléments souvent ratés',
+  missRow: (wrong, total) => 'raté ' + wrong + ' fois sur ' + total,
+  missStart: n => n === 1 ? 'Travailler cet élément' : 'Travailler les ' + n + ' plus ratés',
   wordsNl: 'Néerlandais', wordsFr: 'Français', wordsBe: 'Comme on dit ici',
   wordsOptional: '(facultatif)',
   wordsNeedBoth: 'Le néerlandais et le français sont nécessaires.',
@@ -1552,6 +1561,27 @@ NL.srs = (function () {
     return { due, learning, mature, said, retired, seen: NL.state.seenCount() };
   }
 
+  /* ---------------- ce qui résiste ---------------- */
+  /* Chaque réponse est enregistrée depuis le premier jour, et aucun écran ne
+     l'avait jamais relue. Les éléments sont classés par nombre de réponses
+     fausses sur les deux derniers mois, le plus raté d'abord. Un élément
+     toujours réussi n'y figure pas ; une réponse qui nomme un élément disparu
+     du cours est ignorée plutôt que de casser l'écran. */
+  const MISS_WINDOW = 62 * DAY;
+  function mistakes(now) {
+    now = now || Date.now();
+    const by = new Map();
+    NL.state.logs().forEach(l => {
+      if (!l || !l.id || l.t < now - MISS_WINDOW) return;
+      const item = NL.content.byId(l.id);
+      if (!item) return;
+      const x = by.get(l.id) || { item, wrong: 0, right: 0, last: 0 };
+      if (l.ok) x.right++; else { x.wrong++; x.last = Math.max(x.last, l.t); }
+      by.set(l.id, x);
+    });
+    return [...by.values()].filter(x => x.wrong > 0).sort((a, b) => b.wrong - a.wrong || b.last - a.last);
+  }
+
   /* ---------------- budget quotidien ---------------- */
   /* Le seul mécanisme qui empêche la dette de révisions de transformer le mois six
      en deux heures par jour. Ce qui déborde attend, et ne s'affiche jamais comme
@@ -1651,7 +1681,7 @@ NL.srs = (function () {
   return {
     RUNGS, STEP, PACE, MAX_STAGE, MAX_TASKS, PRODUCE, NEW_SHARE, NEW_MIN, NEW_MAX, TIER_MAX, RETIRE_AT,
     maxRung, pace, exerciseFor, firstAloud, supports, grade, seed, isSeen, stageOf, atTop,
-    dueItems, counts, freshItems, compose, plan, unitSpan, recOf, budgetLeft, spend
+    dueItems, counts, freshItems, compose, plan, unitSpan, mistakes, recOf, budgetLeft, spend
   };
 })();
 </script>
@@ -4862,7 +4892,7 @@ NL.ui = (function () {
     luisteren: '<path d="M4 13.5a8 8 0 0 1 16 0M4 13.5v3a2.5 2.5 0 0 0 5 0v-3M20 13.5v3a2.5 2.5 0 0 1-5 0v-3"/>',
     meer: '<circle cx="6" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="18" cy="12" r="1.4"/>'
   };
-  const UNDER_MEER = ['woorden', 'spiek', 'register', 'klanken', 'doctor', 'dehet'];
+  const UNDER_MEER = ['woorden', 'spiek', 'register', 'klanken', 'doctor', 'dehet', 'fouten'];
   const FULLSCREEN = { sessie: 1, scenario: 1, doctor: 1, compte: 1 };
 
   function go(to, a) {
@@ -5307,6 +5337,7 @@ NL.screens.sessie = (function () {
   function start(source) {
     NL.state.touchDay();
     if (source === 'defi') return startDefi();
+    if (source === 'fouten') return startMistakes();
     /* Ce que la séance contient, c'est compose() qui le décide — le même appel
        que l'écran d'accueil. */
     const c = NL.srs.compose(source);
@@ -5369,6 +5400,21 @@ NL.screens.sessie = (function () {
       out.push(base[i++]); since++;
     }
     return out.concat(last);
+  }
+
+  /* Une séance sur ce qui résiste : les éléments le plus souvent ratés, chacun à
+     l'échelon où il se trouve. Comme le défi, elle ne compte pas dans le budget
+     du jour qu'elle n'a pas à attendre, et ses réponses sont de vraies révisions. */
+  function startMistakes() {
+    const items = NL.srs.mistakes().slice(0, MAX_TASKS).map(x => x.item);
+    const queue = spread(build(items, []), NL.state.meta().lastEx || null);
+    if (!queue.length) { L = null; return false; }
+    L = Object.assign(blankTurn(), {
+      source: 'fouten', queue, at: 0, cap: queue.length + 6,
+      phase: 'ask', right: 0, wrong: 0, spoken: 0, xp: 0, started: Date.now(), finished: false,
+      newCount: 0, combo: 0, bestCombo: 0, lives: null
+    });
+    return true;
   }
 
   /* Le renforcement d'une rencontre se construit quand son tour arrive : son exercice
@@ -5950,6 +5996,7 @@ NL.screens.sessie = (function () {
         '<div class="cards">' +
         defiTile(m) +
         tile('\u{1F4D2}', t.wordsEyebrow, t.wordsTile(c.seen, c.mature), 'go', 'woorden') +
+        tile('\u{1F3AF}', t.missEyebrow, t.missTile(NL.srs.mistakes().length), 'go', 'fouten') +
         tile('\u{1F4CB}', t.sheetsEyebrow, t.sheetsTitle, 'go', 'spiek') +
         tile('\u{1F1E7}\u{1F1EA}', t.regEyebrow, t.regTitle, 'go', 'register') +
         tile('\u{1F444}', t.soundsEyebrow, t.soundsTitle, 'go', 'klanken') +
@@ -6446,8 +6493,11 @@ NL.screens.luisteren = (function () {
       /* Your own words show from the moment you add them; the rest appear once met. */
       const seen = all.filter(it => NL.srs.stageOf(it) >= 0 || it.unit === 'eigen');
       const q = U.norm(query);
+      /* « Fragile » veut dire raté, pas récent : un mot rencontré hier est sur un
+         échelon bas et n'a rien de fragile. */
+      const missed = new Set(NL.srs.mistakes().map(x => x.item.id));
       let list = (filter === 'eigen' ? all.filter(it => it.unit === 'eigen')
-        : filter === 'zwak' ? seen.filter(it => NL.srs.stageOf(it) < 3)
+        : filter === 'zwak' ? seen.filter(it => missed.has(it.id))
           : filter === 'sterk' ? seen.filter(it => NL.srs.stageOf(it) >= NL.srs.PRODUCE)
             : seen);
       if (q) list = all.filter(it => U.norm(it.nl).indexOf(q) >= 0 || U.norm(it.fr).indexOf(q) >= 0 || (it.be && U.norm(it.be).indexOf(q) >= 0));
@@ -6619,6 +6669,46 @@ NL.screens.luisteren = (function () {
           (s.good ? '<span class="snd-tag good">' + NL.t.soundsEasy + '</span>' : s.warn ? '<span class="snd-tag warn">' + NL.t.soundsWatch + '</span>' : '') + '</div>' +
           '<p>' + s.say + '</p></div>').join('') +
         '</div>';
+    }
+  };
+})();
+</script>
+<script>
+/* Ce qui résiste : les éléments le plus souvent ratés, et une séance pour les
+   attaquer. Tout vient du journal des réponses, enregistré depuis le premier
+   jour et qu'aucun écran n'avait jamais relu. */
+NL.screens.fouten = (function () {
+  'use strict';
+  const U = NL.util, esc = U.esc, t = NL.t;
+  const SHOWN = 40;
+
+  function render() {
+    const list = NL.srs.mistakes();
+    let html = '<div class="wrap">' +
+      '<section class="card lead slim"><span class="eyebrow">' + t.missEyebrow + '</span>' +
+      '<h1>' + (list.length ? t.missTitle(list.length) : t.missEyebrow) + '</h1>' +
+      '<p>' + (list.length ? t.missBody : t.missNone) + '</p>' +
+      (list.length ? '<button class="btn btn-primary" data-act="start">' +
+        t.missStart(Math.min(list.length, NL.srs.MAX_TASKS)) + '</button>' : '') +
+      '</section>';
+
+    list.slice(0, SHOWN).forEach(x => {
+      const it = x.item;
+      html += '<div class="vrow">' +
+        '<button class="speaker tiny" data-say="' + esc(U.bare(it.nl)) + '" aria-label="' + t.listen + '">' + NL.ex.ICON.speaker(17) + '</button>' +
+        '<span class="v-nl">' + (it.art ? '<span class="art ' + it.art + '">' + it.art + '</span>' : '') + esc(U.bare(it.nl)) + '</span>' +
+        '<span class="v-en">' + esc(U.bareFr(it.fr)) + '</span>' +
+        '<span class="muted small">' + t.missRow(x.wrong, x.wrong + x.right) + '</span>' +
+        '</div>';
+    });
+    return html + '</div>';
+  }
+
+  return {
+    render,
+    click(el, d) {
+      if (d.act !== 'start') return;
+      if (NL.screens.sessie.begin('fouten')) NL.ui.go('sessie');
     }
   };
 })();

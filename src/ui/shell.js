@@ -22,7 +22,7 @@ NL.ui = (function () {
     luisteren: '<path d="M4 13.5a8 8 0 0 1 16 0M4 13.5v3a2.5 2.5 0 0 0 5 0v-3M20 13.5v3a2.5 2.5 0 0 1-5 0v-3"/>',
     meer: '<circle cx="6" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="18" cy="12" r="1.4"/>'
   };
-  const UNDER_MEER = ['woorden', 'spiek', 'register', 'klanken', 'doctor', 'dehet'];
+  const UNDER_MEER = ['woorden', 'spiek', 'register', 'klanken', 'doctor', 'dehet', 'fouten'];
   const FULLSCREEN = { sessie: 1, scenario: 1, doctor: 1, compte: 1 };
 
   function go(to, a) {

@@ -83,9 +83,9 @@ function view(screen, arg) {
   /* ---------------------------------------------------------- 2. every screen */
   head('2. Every screen renders');
   ['vandaag', 'leerpad', 'praten', 'luisteren', 'meer', 'woorden', 'spiek',
-   'register', 'klanken', 'dehet', 'doctor'].forEach(s => view(s));
+   'register', 'klanken', 'dehet', 'doctor', 'fouten'].forEach(s => view(s));
   NL.content.sheets.forEach(sh => view('spiek', sh.id));
-  console.log('   ' + (11 + NL.content.sheets.length) + ' screens drawn');
+  console.log('   ' + (12 + NL.content.sheets.length) + ' screens drawn');
 
   /* ---------------------------------------------------------- 3. no placement */
   head('3. No placement test');

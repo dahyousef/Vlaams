@@ -87,6 +87,7 @@ NL.screens.sessie = (function () {
   function start(source) {
     NL.state.touchDay();
     if (source === 'defi') return startDefi();
+    if (source === 'fouten') return startMistakes();
     /* Ce que la séance contient, c'est compose() qui le décide — le même appel
        que l'écran d'accueil. */
     const c = NL.srs.compose(source);
@@ -149,6 +150,21 @@ NL.screens.sessie = (function () {
       out.push(base[i++]); since++;
     }
     return out.concat(last);
+  }
+
+  /* Une séance sur ce qui résiste : les éléments le plus souvent ratés, chacun à
+     l'échelon où il se trouve. Comme le défi, elle ne compte pas dans le budget
+     du jour qu'elle n'a pas à attendre, et ses réponses sont de vraies révisions. */
+  function startMistakes() {
+    const items = NL.srs.mistakes().slice(0, MAX_TASKS).map(x => x.item);
+    const queue = spread(build(items, []), NL.state.meta().lastEx || null);
+    if (!queue.length) { L = null; return false; }
+    L = Object.assign(blankTurn(), {
+      source: 'fouten', queue, at: 0, cap: queue.length + 6,
+      phase: 'ask', right: 0, wrong: 0, spoken: 0, xp: 0, started: Date.now(), finished: false,
+      newCount: 0, combo: 0, bestCombo: 0, lives: null
+    });
+    return true;
   }
 
   /* Le renforcement d'une rencontre se construit quand son tour arrive : son exercice

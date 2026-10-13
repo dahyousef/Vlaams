@@ -175,6 +175,15 @@ NL.t = {
   wordsSearch: 'Rechercher…',
   wordsAll: 'tous', wordsWeak: 'fragiles', wordsStrong: 'produits', wordsMine: 'à moi',
   wordsTile: (met, produce) => met + ' rencontrés, ' + produce + ' que tu sais produire',
+
+  /* --- ce qui résiste --- */
+  missEyebrow: 'Ce qui résiste',
+  missTitle: n => n === 1 ? 'Un élément te résiste' : n + ' éléments te résistent',
+  missBody: 'Classés par nombre de réponses fausses sur les deux derniers mois, le plus raté d’abord. Une séance ici les attaque directement, sans attendre qu’ils reviennent.',
+  missNone: 'Rien ne te résiste pour l’instant : aucune réponse fausse sur les deux derniers mois.',
+  missTile: n => n === 0 ? 'Rien pour l’instant' : n === 1 ? 'Un élément souvent raté' : n + ' éléments souvent ratés',
+  missRow: (wrong, total) => 'raté ' + wrong + ' fois sur ' + total,
+  missStart: n => n === 1 ? 'Travailler cet élément' : 'Travailler les ' + n + ' plus ratés',
   wordsNl: 'Néerlandais', wordsFr: 'Français', wordsBe: 'Comme on dit ici',
   wordsOptional: '(facultatif)',
   wordsNeedBoth: 'Le néerlandais et le français sont nécessaires.',

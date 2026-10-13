@@ -260,6 +260,27 @@ NL.srs = (function () {
     return { due, learning, mature, said, retired, seen: NL.state.seenCount() };
   }
 
+  /* ---------------- ce qui résiste ---------------- */
+  /* Chaque réponse est enregistrée depuis le premier jour, et aucun écran ne
+     l'avait jamais relue. Les éléments sont classés par nombre de réponses
+     fausses sur les deux derniers mois, le plus raté d'abord. Un élément
+     toujours réussi n'y figure pas ; une réponse qui nomme un élément disparu
+     du cours est ignorée plutôt que de casser l'écran. */
+  const MISS_WINDOW = 62 * DAY;
+  function mistakes(now) {
+    now = now || Date.now();
+    const by = new Map();
+    NL.state.logs().forEach(l => {
+      if (!l || !l.id || l.t < now - MISS_WINDOW) return;
+      const item = NL.content.byId(l.id);
+      if (!item) return;
+      const x = by.get(l.id) || { item, wrong: 0, right: 0, last: 0 };
+      if (l.ok) x.right++; else { x.wrong++; x.last = Math.max(x.last, l.t); }
+      by.set(l.id, x);
+    });
+    return [...by.values()].filter(x => x.wrong > 0).sort((a, b) => b.wrong - a.wrong || b.last - a.last);
+  }
+
   /* ---------------- budget quotidien ---------------- */
   /* Le seul mécanisme qui empêche la dette de révisions de transformer le mois six
      en deux heures par jour. Ce qui déborde attend, et ne s'affiche jamais comme
@@ -359,6 +380,6 @@ NL.srs = (function () {
   return {
     RUNGS, STEP, PACE, MAX_STAGE, MAX_TASKS, PRODUCE, NEW_SHARE, NEW_MIN, NEW_MAX, TIER_MAX, RETIRE_AT,
     maxRung, pace, exerciseFor, firstAloud, supports, grade, seed, isSeen, stageOf, atTop,
-    dueItems, counts, freshItems, compose, plan, unitSpan, recOf, budgetLeft, spend
+    dueItems, counts, freshItems, compose, plan, unitSpan, mistakes, recOf, budgetLeft, spend
   };
 })();

@@ -156,6 +156,7 @@
         '<div class="cards">' +
         defiTile(m) +
         tile('\u{1F4D2}', t.wordsEyebrow, t.wordsTile(c.seen, c.mature), 'go', 'woorden') +
+        tile('\u{1F3AF}', t.missEyebrow, t.missTile(NL.srs.mistakes().length), 'go', 'fouten') +
         tile('\u{1F4CB}', t.sheetsEyebrow, t.sheetsTitle, 'go', 'spiek') +
         tile('\u{1F1E7}\u{1F1EA}', t.regEyebrow, t.regTitle, 'go', 'register') +
         tile('\u{1F444}', t.soundsEyebrow, t.soundsTitle, 'go', 'klanken') +

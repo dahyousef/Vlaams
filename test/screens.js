@@ -20,7 +20,7 @@ const answer = require('./lib/answer')(B);
 const text = html => String(html).replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ');
 const put = (it, stage, due) => { NL.srs.seed(it, stage); const r = NL.state.rec(it.id); r.due = due; NL.state.setRec(r); };
 const fresh = () => { NL.state.clearAll(); NL.content.refresh(); B.clock.set(T0); };
-const SCREENS = ['vandaag', 'leerpad', 'praten', 'luisteren', 'meer', 'woorden', 'spiek', 'register', 'klanken', 'dehet', 'doctor'];
+const SCREENS = ['vandaag', 'leerpad', 'praten', 'luisteren', 'meer', 'woorden', 'spiek', 'register', 'klanken', 'dehet', 'doctor', 'fouten'];
 
 /* Ce qu'aucun écran ne doit montrer, quel que soit l'état. */
 function read(name, html, state) {
@@ -112,6 +112,53 @@ NL.state.open().then(() => {
     ok(tally, 'the summary does not count the right answers out of the total: « ' + done.slice(0, 160) + ' »');
     S.abandon();
     console.log('  ' + asked + ' exercices lus, bilan en « ' + tally + ' »');
+  }
+
+  /* ------------------------------------------------------------------ */
+  console.log('\nCE QUI RÉSISTE');
+  {
+    fresh();
+    const [a, b, c, d] = all.filter(it => it.kind === 'word').slice(0, 4);
+    [a, b, c, d].forEach(it => put(it, 2, T0 + 5 * DAY));
+    const log = (it, okAns, ago) => NL.state.logReview({ id: it.id, t: T0 - ago, ok: okAns, stage: 1, kind: it.kind, ex: 'type' });
+    log(a, false, 3 * DAY); log(a, false, 2 * DAY); log(a, true, DAY);      // raté deux fois
+    log(b, false, DAY);                                                    // raté une fois
+    log(c, true, DAY); log(c, true, 2 * DAY);                              // toujours juste
+    log(d, false, 70 * DAY);                                               // raté, mais il y a plus de deux mois
+    NL.state.logReview({ id: 'disparu:w99', t: T0 - DAY, ok: false, stage: 1, kind: 'word', ex: 'type' });
+
+    const list = NL.srs.mistakes();
+    ok(list.length === 2, 'expected 2 missed items, got ' + list.length + ' (' + list.map(x => x.item.nl).join(', ') + ')');
+    ok(list[0] && list[0].item.id === a.id && list[0].wrong === 2 && list[0].right === 1, 'the most-missed item is not first, or is miscounted');
+    ok(!list.some(x => x.item.id === c.id), 'an item answered right every time is listed');
+    ok(!list.some(x => x.item.id === d.id), 'a miss older than two months is still counted');
+
+    const screen = read('fouten', NL.screens.fouten.render(), 'deux ratés');
+    ok(screen.indexOf(t.missTitle(2)) >= 0, 'the screen does not announce 2 items');
+    ok(screen.indexOf(t.missRow(2, 3)) >= 0, 'the screen does not say « ' + t.missRow(2, 3) + ' »');
+    ok(screen.indexOf(NL.util.bare(a.nl)) < screen.indexOf(NL.util.bare(b.nl)), 'the list is not ordered most-missed first');
+    ok(text(NL.screens.meer.render()).indexOf(t.missTile(2)) >= 0, 'the Plus screen does not lead to the mistakes');
+
+    /* « Fragile », dans le dictionnaire, veut maintenant dire raté. */
+    NL.screens.woorden.click({ dataset: { f: 'zwak' } }, { act: 'filter' });
+    const weak = NL.screens.woorden.render();
+    const rows = (weak.match(/class="vrow"/g) || []).length;
+    ok(rows === 2, 'the fragile filter lists ' + rows + ' items: it should list the 2 that were missed, not the 4 sitting on a low rung');
+    NL.screens.woorden.click({ dataset: { f: 'alles' } }, { act: 'filter' });
+
+    /* Une séance sur exactement ces éléments. */
+    NL.screens.fouten.click({ dataset: {} }, { act: 'start' });
+    const served = [];
+    let guard = 0;
+    while (S.peek() && guard++ < 20) { served.push(S.peek().items[0].id); answer.right(); answer.next(false); if (B.app.innerHTML.indexOf('done-stage') >= 0) break; }
+    S.abandon();
+    ok(served.length === 2 && served.indexOf(a.id) >= 0 && served.indexOf(b.id) >= 0, 'the mistakes session served ' + JSON.stringify(served));
+
+    /* Rien de raté : l'écran le dit, et n'offre pas de séance vide. */
+    fresh();
+    const none = NL.screens.fouten.render();
+    ok(text(none).indexOf(t.missNone) >= 0 && none.indexOf('data-act="start"') < 0, 'with nothing missed the screen still offers a session');
+    console.log('  classés du plus raté au moins raté, séance sur ces éléments, filtre « fragiles » aligné');
   }
 
   console.log('\n' + checks + ' checks, ' + (fails ? fails + ' FAILED' : 'SCREENS OK'));

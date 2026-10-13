@@ -17,7 +17,7 @@ NL.state.open().then(() => {
   NL.ui.bind(app);
 
   console.log('SCREENS');
-  ['vandaag', 'leerpad', 'praten', 'luisteren', 'meer', 'woorden', 'spiek', 'register', 'klanken', 'dehet', 'doctor']
+  ['vandaag', 'leerpad', 'praten', 'luisteren', 'meer', 'woorden', 'spiek', 'register', 'klanken', 'dehet', 'doctor', 'fouten']
     .forEach(r => {
       try {
         NL.ui.go(r);
