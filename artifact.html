@@ -1369,7 +1369,11 @@ NL.srs = (function () {
      l'élément a eu la dernière fois, puis ce qui vient de passer. */
   function exerciseFor(item, avoid) {
     const r = recOf(item);
-    const set = (RUNGS[item.kind] || RUNGS.word)[clamp(r.stage, 0, 6)] || ['pick'];
+    /* Un mot transparent n'a pas besoin qu'on lui enseigne son sens : sa
+       première rencontre se fait à l'échelon suivant. Rien d'autre n'est sauté —
+       ressembler à un mot connu ne dit ni son article ni comment il sonne. */
+    const rung = (r.reps === 0 && item.cognate) ? 1 : clamp(r.stage, 0, 6);
+    const set = (RUNGS[item.kind] || RUNGS.word)[rung] || ['pick'];
     let usable = set.filter(n => supports(item, n));
     if (!usable.length) usable = [fallback(item)];
 
@@ -1410,9 +1414,10 @@ NL.srs = (function () {
 
     if (ok) {
       if (opts && opts.spoken) r.said = true;
-      /* Les transparents (de tram, de garage, direct) ne méritent pas douze
-         passages : la première réussite en saute deux. */
-      const jump = (r.reps === 1 && item.cognate) ? 3 : 1;
+      /* Un transparent (de tram, de garage, direct) a été rencontré à l'échelon 1 :
+         sa première réussite le mène donc à l'échelon 2. Un seul échelon sauté,
+         celui du sens. Voir docs/adr/0004. */
+      const jump = (r.reps === 1 && item.cognate) ? 2 : 1;
       r.stage = clamp(r.stage + jump, 0, top);
       r.ease = clamp(r.ease + 0.05, 1.3, 2.9);
       /* PIÈGE 1 — au sommet de son palier, l'intervalle doit continuer de croître.

@@ -146,8 +146,8 @@ NL.state.open().then(() => {
   if (cog) {
     NL.state.setRec({ id: cog.id, kind: 'word', stage: 0, due: 0, interval: 0, ease: 2.5, reps: 0, lapses: 0, last: 0, said: false, retired: false, lastEx: null });
     NL.srs.grade(cog, true);
-    ok(NL.srs.stageOf(cog) >= 3, 'un mot transparent devrait sauter les premiers échelons');
-    console.log('  transparent     « ' + cog.nl + ' » démarre à l’échelon ' + NL.srs.stageOf(cog));
+    ok(NL.srs.stageOf(cog) === 2, 'a cognate skips one rung, the meaning drill, and no more — it sits on rung ' + NL.srs.stageOf(cog));
+    console.log('  transparent     « ' + cog.nl + ' » saute le sens, et rien d’autre : échelon ' + NL.srs.stageOf(cog));
   }
 
   /* La frontière est contiguë : impossible d'ouvrir une unité par-dessus un trou.

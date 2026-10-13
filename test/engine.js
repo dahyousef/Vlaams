@@ -253,6 +253,26 @@ NL.state.open().then(() => {
   }
 
   /* ------------------------------------------------------------------ */
+  console.log('\nLES TRANSPARENTS — le sens est offert, rien d’autre');
+  {
+    fresh();
+    const cog = NL.content.allItems().filter(i => i.cognate);
+    ok(cog.length > 10, 'the fixture is gone: only ' + cog.length + ' cognates');
+    const seen = {};
+    cog.forEach(it => { for (let k = 0; k < 12; k++) seen[NL.srs.exerciseFor(it)] = 1; });
+    ok(!seen.pick && !seen.recall, 'a never-met cognate is still asked what it means (' + Object.keys(seen).join(', ') + ')');
+    ok(seen.dictation, 'a never-met cognate is never asked by ear');
+    ok(seen.article, 'a never-met cognate noun is never asked its article');
+    const noun = cog.find(i => i.art);
+    NL.srs.grade(noun, true, { ex: 'article' });
+    ok(NL.srs.stageOf(noun) === 2, 'one right answer puts a cognate on rung ' + NL.srs.stageOf(noun) + ', not 2');
+    const next = {};
+    for (let k = 0; k < 20; k++) next[NL.srs.exerciseFor(noun)] = 1;
+    ok(next.dictation || next.type, 'after its first answer a cognate skips the ear and the pen');
+    console.log('  ' + cog.length + ' transparents : première rencontre par ' + Object.keys(seen).join(', ') + ' — puis ' + Object.keys(next).join(', '));
+  }
+
+  /* ------------------------------------------------------------------ */
   console.log('\nCE QUE LA SPÉCIFICATION NE DIT PAS, ET QUI ARRIVE');
   {
     /* Séance quittée en route, avant le renforcement des rencontres : rien n'est perdu,
