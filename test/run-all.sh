@@ -14,6 +14,7 @@ sh build.sh
 
 node test/smoke.js    "$ROOT"
 node test/dehet.js    "$ROOT"
+node test/content.js  "$ROOT"
 node test/engine.js   "$ROOT"
 node test/screens.js  "$ROOT"
 node test/sim.js      "$ROOT"
@@ -33,6 +34,18 @@ done
 node test/pace.js "$ROOT" "${PACE_DAYS:-200}"
 node test/pace.js "$ROOT" "${PACE_DAYS:-200}" one
 node test/pace.js "$ROOT" "${PACE_DAYS:-200}" one quiet
+
+# Le build versionné doit correspondre à ses sources : index.html et
+# artifact.html sont ce que Vercel et l'artefact servent. En CI, un écart est
+# une erreur ; en local, c'est simplement ce qu'il reste à versionner.
+if ! git diff --quiet -- index.html artifact.html; then
+  if [ -n "$CI" ]; then
+    echo "FAIL: index.html ou artifact.html ne correspond pas à src/. Lancer « sh build.sh » et versionner les deux."
+    git diff --stat -- index.html artifact.html
+    exit 1
+  fi
+  echo "(note) index.html ou artifact.html diffère du dernier commit : à versionner avec ce changement."
+fi
 
 echo
 echo "TOUTE LA SUITE EST PASSÉE"

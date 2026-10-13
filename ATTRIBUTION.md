@@ -19,3 +19,20 @@ node test/tools/build-dehet.js nl.jsonl
 
 Le Wiktionnaire est publié sous CC BY-SA 3.0. Le crédit est donné ici par
 correction, et parce qu'un fichier de données doit toujours dire d'où il vient.
+
+## OpenTaal — formes de mots
+
+`test/data/nl-words.txt.gz` est la liste de mots d'[OpenTaal](https://github.com/OpenTaal/opentaal-wordlist),
+mise en minuscules, triée et compressée : environ 410 000 formes, flexions
+comprises. Elle ne contient que des **faits** — une forme existe, ou non — et
+sert au contrôle d'orthographe de `test/content.js`. Aucune définition n'en est
+tirée.
+
+Régénérer :
+
+```sh
+node test/tools/build-wordlist.js
+```
+
+La liste est publiée sous licence BSD révisée et CC BY 3.0, au choix. Le crédit
+est donné ici pour la même raison que ci-dessus.
