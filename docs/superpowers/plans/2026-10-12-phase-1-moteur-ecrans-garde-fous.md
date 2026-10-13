@@ -37,7 +37,7 @@ An agent runs this plan, but these moments are yours. Each step waits for the on
 | 3a. Rewrite Tasks 5b and 9b: a first right spoken answer leaves the rung alone, and a writing exercise in the same session decides the climb | done, 13 October 2026. Decided on 12 October while defining *produced*: as first written, Task 5b let reading an item aloud take it past rung 3, so the count of items the learner can produce stopped meaning that they wrote it. See *The correction of 12 and 13 October 2026* near the end. The amendment to issue #12 was applied on 13 October 2026 |
 | 3b. One full run of the thirteen tasks in a scratch copy, before any ticket | done, 13 October 2026, in two passes, then a third after three changes the maintainer asked for the same day. The suite passes after every task, and Tasks 5b and 9b hold where they were placed. The sources the plan produces are those of the build that was tested and measured, and the page built from them is the same page. The corrections to this plan are listed in the commit that carries this line. The flag `recall` that Task 3 gave a queue entry is now `second`: Task 5b also puts it on the written exercise that follows a first spoken answer, which is not a reinforcement. The exercise `recall` keeps its name. In the French comments « rappel » is now « renforcement » |
 | 4. `/to-tickets` | done, 13 October 2026: thirteen tickets, #13 to #25, sub-issues of #12, each labelled `ready-for-agent`, with the fifteen blocking edges of step 4's table as native dependencies. Checked on GitHub against that table. In task order: 1 is #13, 2 is #14, 3 is #15, 4 is #16, 5 is #17, 5b is #18, 6 is #19, 7 is #20, 8 is #21, 9 is #22, 9b is #23, 10 is #24, 11 is #25 |
-| 5. Guardrail hook, then the run of the thirteen tasks | not started |
+| 5. Guardrail hook, then the run of the thirteen tasks | in progress. The hook is installed (13 October 2026). Checked inside Claude Code: its first command line let everything through, and the corrected one refuses a push to `main` for a session and for its subagent. The run of the thirteen tasks starts in a session of its own |
 | 6. `/code-review main`, PR body, PR out of draft | not started |
 | 7. The two-day check | not started |
 | 8. Merge | not started |
@@ -163,7 +163,7 @@ Three things live outside the repository on purpose. The verified end state of t
    module.exports = { verdict };
    ````
 
-   Create `.claude/settings.json`. The matcher names both shells, because on Windows a session has a PowerShell tool as well as Bash, and a hook on Bash alone would be walked around without anyone meaning to:
+   Create `.claude/settings.json`. The matcher names both shells, because on Windows a session has a PowerShell tool as well as Bash, and a hook on Bash alone would be walked around without anyone meaning to. The command asks no shell to expand anything. On this machine Claude Code does not find Git Bash (Git is installed per user, not under Program Files), so it runs hook commands in PowerShell, where `$CLAUDE_PROJECT_DIR` is an empty PowerShell variable: written the usual way, the hook could not be found, node failed, and every command went through. So node reads the variable itself, and anything but a clean pass is a block, a hook that cannot start included. `exit $LASTEXITCODE` hands node's exit code on under PowerShell, which otherwise reports 1; under `sh` the variable is empty and `exit` alone does the same:
 
    ```json
    {
@@ -172,7 +172,7 @@ Three things live outside the repository on purpose. The verified end state of t
          {
            "matcher": "Bash|PowerShell",
            "hooks": [
-             { "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/block-dangerous-git.js\"" }
+             { "type": "command", "command": "node -e \"process.exit(require('child_process').spawnSync(process.execPath,[(process.env.CLAUDE_PROJECT_DIR||'.')+'/.claude/hooks/block-dangerous-git.js'],{stdio:'inherit'}).status===0?0:2)\"; exit $LASTEXITCODE" }
            ]
          }
        ]
@@ -180,7 +180,7 @@ Three things live outside the repository on purpose. The verified end state of t
    }
    ```
 
-   The script was tested on 12 October 2026 against thirty commands, fourteen it must let through and sixteen it must block, and got all thirty right. What was **not** tested is the hook running inside Claude Code on this machine: whether that command line resolves on Windows, and whether the hook also covers subagents. So check it for real, twice, with a command that is harmless even if the hook does nothing:
+   The script was tested on 12 October 2026 against thirty commands, fourteen it must let through and sixteen it must block, and got all thirty right; on 13 October against forty-three, all right, and its command line against fourteen cases under PowerShell and under `sh`. The hook running inside Claude Code was then checked for real, with a command that is harmless even if the hook does nothing. As first written the command line did not resolve, and a session and its subagent both ran `git push --dry-run origin main` unhindered. With the line above, both are refused. Check it again whenever either file changes, first outside Claude Code:
 
    ```bash
    echo '{"tool_input":{"command":"git push origin main"}}' | node .claude/hooks/block-dangerous-git.js; echo "exit $?"

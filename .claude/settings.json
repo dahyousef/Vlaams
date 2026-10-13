@@ -4,7 +4,7 @@
       {
         "matcher": "Bash|PowerShell",
         "hooks": [
-          { "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/block-dangerous-git.js\"" }
+          { "type": "command", "command": "node -e \"process.exit(require('child_process').spawnSync(process.execPath,[(process.env.CLAUDE_PROJECT_DIR||'.')+'/.claude/hooks/block-dangerous-git.js'],{stdio:'inherit'}).status===0?0:2)\"; exit $LASTEXITCODE" }
         ]
       }
     ]
