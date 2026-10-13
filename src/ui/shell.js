@@ -318,9 +318,12 @@ NL.ui = (function () {
         }
         if (d.reset !== undefined) { sheet = 'reset-confirm'; render(); return; }
         if (d.resetYes !== undefined) {
-          Promise.resolve(NL.state.clearAll()).then(() => {
-            NL.content.refresh(); sheet = null; route = 'vandaag'; render(); toast(t.wiped);
-          });
+          /* La progression seulement : réglages, score et mots personnels
+             restent. Connecté, le serveur est effacé avant d'être relu — sinon
+             la synchro suivante rendrait tout ce qu'on vient d'effacer. */
+          NL.state.resetProgress();
+          NL.content.refresh(); sheet = null; route = 'vandaag'; render(); toast(t.wiped);
+          if (NL.sync.user) NL.sync.flush();
           return;
         }
         if (d.quitYes !== undefined) { NL.screens.sessie.abandon(); sheet = null; go('vandaag'); return; }

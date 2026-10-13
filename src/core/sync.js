@@ -20,7 +20,7 @@ NL.sync = (function () {
   const QKEY = 'vlaams/outbox';
   const OWNER = 'vlaams/owner';
   const PAGE = 1000;
-  const LOG_DAYS = 45;
+  const LOG_DAYS = 62;            // deux mois : ce que l'écran des fautes relit
 
   let client = null, user = null;
   let state = enabled ? 'idle' : 'off';     // off | idle | syncing | error | offline
@@ -28,7 +28,7 @@ NL.sync = (function () {
   const subs = [];
 
   /* ---------------- boîte d'envoi ---------------- */
-  const empty = () => ({ recs: {}, customs: {}, meta: false, logs: [] });
+  const empty = () => ({ recs: {}, customs: {}, meta: false, logs: [], reset: 0 });
   let box = load();
   function load() {
     try { return Object.assign(empty(), JSON.parse(localStorage.getItem(QKEY) || '{}')); }
@@ -36,7 +36,7 @@ NL.sync = (function () {
   }
   function persist() { try { localStorage.setItem(QKEY, JSON.stringify(box)); } catch (e) {} }
   const pending = () => Object.keys(box.recs).length + Object.keys(box.customs).length +
-    (box.meta ? 1 : 0) + box.logs.length;
+    (box.meta ? 1 : 0) + box.logs.length + (box.reset ? 1 : 0);
 
   const owner = () => { try { return localStorage.getItem(OWNER); } catch (e) { return null; } };
   const setOwner = id => { try { id ? localStorage.setItem(OWNER, id) : localStorage.removeItem(OWNER); } catch (e) {} };
@@ -53,6 +53,12 @@ NL.sync = (function () {
     else if (type === 'custom') box.customs[v.id] = 1;
     else if (type === 'custom-del') box.customs[v] = 'deleted';
     else if (type === 'log') { box.logs.push(v); if (box.logs.length > 5000) box.logs.shift(); }
+    /* Une remise à zéro : ce qui attendait d'être envoyé n'existe plus, et le
+       serveur devra effacer la même chose avant d'être relu. */
+    else if (type === 'reset') {
+      box.reset = Math.max(box.reset || 0, v);
+      box.recs = {}; box.logs = box.logs.filter(l => l.t >= v); box.meta = true;
+    }
     persist();
     schedule();
   });
@@ -169,12 +175,39 @@ NL.sync = (function () {
     }
   }
 
+  /* Les remises à zéro passent AVANT tout le reste, dans les deux sens.
+     La nôtre d'abord : le serveur efface ce que cet appareil a effacé, sinon la
+     lecture qui suit le lui rendrait. Puis celle des autres : si le serveur
+     porte une remise à zéro plus récente, la copie locale est périmée et rien
+     d'elle ne doit repartir. Rend les réglages du serveur, déjà lus. */
+  async function settleResets() {
+    if (box.reset) {
+      let r = await client.from('srs_records').delete().lt('updated_at', box.reset);
+      if (r.error) throw r.error;
+      r = await client.from('review_log').delete().lt('t', box.reset);
+      if (r.error) throw r.error;
+      box.reset = 0; box.meta = true; persist();
+    }
+    const { data, error } = await client.from('user_meta').select('*').range(0, 0);
+    if (error) throw error;
+    const remote = data && data[0] ? data[0].data : null;
+    if (remote && (remote.resetAt || 0) > (NL.state.meta().resetAt || 0)) {
+      NL.state.resetProgress(remote.resetAt, true);
+      box.recs = {}; box.logs = box.logs.filter(l => l.t >= remote.resetAt); persist();
+      NL.content.refresh();
+    }
+    return remote;
+  }
+
   async function pull() {
     if (!user) return;
     state = 'syncing'; notify();
     try {
+      const remoteMeta = await settleResets();
+      const cut = NL.state.meta().resetAt || 0;
       const recs = await selectAll('srs_records');
       recs.forEach(row => {
+        if (row.updated_at < cut) return;      // antérieur à la remise à zéro : en cours d'effacement
         const local = NL.state.rec(row.item_id);
         if (box.recs[row.item_id] && local && (local.updatedAt || 0) >= row.updated_at) return;
         if (!local || (local.updatedAt || 0) < row.updated_at) {
@@ -190,11 +223,10 @@ NL.sync = (function () {
         else NL.state.putCustom(Object.assign({}, row.data, { id: row.id, updatedAt: row.updated_at }), true);
       });
 
-      const metaRows = await selectAll('user_meta');
-      if (metaRows[0]) {
-        const merged = mergeMeta(NL.state.meta(), metaRows[0].data);
+      if (remoteMeta) {
+        const merged = mergeMeta(NL.state.meta(), remoteMeta);
         NL.state.setMeta(merged, true);
-        if (JSON.stringify(merged) !== JSON.stringify(metaRows[0].data)) { box.meta = true; persist(); }
+        if (JSON.stringify(merged) !== JSON.stringify(remoteMeta)) { box.meta = true; persist(); }
       } else {
         box.meta = true; persist();
       }
@@ -223,6 +255,10 @@ NL.sync = (function () {
   async function doFlush() {
     if (!pending()) { done(); return; }
     state = 'syncing'; notify();
+    let remoteMeta = null;
+    try { remoteMeta = await settleResets(); }
+    catch (e) { fail(e); schedule(30000); return; }
+    if (!pending()) { done(); return; }
     /* On prend un instantané et on vide la boîte : ce qui s'écrit PENDANT
        l'envoi repart dans une boîte neuve au lieu d'être effacé par erreur. */
     const snap = box; box = empty(); persist();
@@ -250,9 +286,7 @@ NL.sync = (function () {
       if (snap.meta) {
         /* Les réglages se fusionnent avec la copie du serveur AVANT l'envoi :
            l'XP gagnée ailleurs pendant que cet appareil était hors ligne reste. */
-        const { data: remote, error: readErr } = await client.from('user_meta').select('*').range(0, 0);
-        if (readErr) throw readErr;
-        if (remote && remote[0]) NL.state.setMeta(mergeMeta(NL.state.meta(), remote[0].data), true);
+        if (remoteMeta) NL.state.setMeta(mergeMeta(NL.state.meta(), remoteMeta), true);
         const m = NL.state.meta();
         const { error } = await client.from('user_meta').upsert(
           { user_id: uid, data: m, updated_at: m.updatedAt || now }, { onConflict: 'user_id' });
@@ -305,11 +339,18 @@ NL.sync = (function () {
       if (da === db) out[cnt] = Math.max(a[cnt] || 0, b[cnt] || 0);
       else { const w = da > db ? a : b; out[k] = w[k]; out[cnt] = w[cnt]; }
     });
-    ['scenariosDone', 'listenDone'].forEach(k => {
-      out[k] = Array.from(new Set([].concat(a[k] || [], b[k] || [])));
-    });
     out.placed = !!(a.placed || b.placed);
-    out.reached = Math.max(a.reached || 0, b.reached || 0);
+    /* La frontière ne recule jamais et les listes de choses faites s'unissent —
+       sauf remise à zéro : tout ce qui relève de la progression suit alors le
+       côté qui porte la plus récente, sinon l'autre appareil rendrait ce qu'on
+       vient d'effacer. */
+    const ra = a.resetAt || 0, rb = b.resetAt || 0;
+    const later = ra > rb ? a : b;
+    out.resetAt = Math.max(ra, rb);
+    out.reached = ra === rb ? Math.max(a.reached || 0, b.reached || 0) : (later.reached || 0);
+    ['scenariosDone', 'listenDone'].forEach(k => {
+      out[k] = ra === rb ? Array.from(new Set([].concat(a[k] || [], b[k] || []))) : (later[k] || []).slice();
+    });
     out.updatedAt = Math.max(a.updatedAt || 0, b.updatedAt || 0);
     return out;
   }

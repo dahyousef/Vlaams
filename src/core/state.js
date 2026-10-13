@@ -17,20 +17,57 @@ NL.state = (function () {
     mic: true, autoplay: true, showFlemish: true, unlocked: 1,
     scenariosDone: [], listenDone: [], firstRun: true,
     learnerName: '', town: '', company: '',
-    pace: 'normal', exDay: null, exToday: 0, dataVersion: 2, lastEx: null,
-    reached: 0                 // index of the furthest unit ever opened; never goes back
+    pace: 'normal', exDay: null, exToday: 0, dataVersion: 3, lastEx: null,
+    reached: 0,                // index of the furthest unit ever opened; never goes back
+    resetAt: 0                 // l'instant de la dernière remise à zéro ; tout ce qui est plus ancien est effacé
   });
   let meta = defaults();
 
-  /* Une seule fois : la progression fabriquée par l'ancien test de placement
-     — des unités entières créditées sur une réponse chanceuse — est effacée.
-     XP, série, réglages et mots personnels survivent. */
+  /* Le journal garde deux mois de réponses au rythme le plus soutenu : c'est ce
+     que l'écran des fautes relit. */
+  const LOG_KEEP = 12000;
+
+  /* Tout ce qui a été appris avec l'ancien moteur — retours à douze minutes,
+     unités créditées par le test de niveau — est antérieur à cet instant. La
+     date est FIXE, et non « maintenant » : un second appareil qui migre un jour
+     plus tard effacerait sinon ce que le premier a appris entre-temps. */
+  const ENGINE_EPOCH = Date.UTC(2026, 9, 13);
+
+  /* Une seule fois par appareil : la progression de l'ancien moteur est effacée,
+     ici et sur le serveur. Réglages, score et mots personnels survivent. */
   function migrate() {
-    if ((meta.dataVersion || 1) >= 2) return false;
-    mem.srs.clear();
-    if (useIDB) { try { db.transaction('srs', 'readwrite').objectStore('srs').clear(); } catch (e) {} }
-    setMeta({ dataVersion: 2, placed: false, exDay: null, exToday: 0 });
-    return true;
+    if ((meta.dataVersion || 1) >= 3) return false;
+    const had = [...mem.srs.values()].some(r => (r.updatedAt || 0) < ENGINE_EPOCH);
+    resetProgress(ENGINE_EPOCH);
+    setMeta({ dataVersion: 3 });
+    return had;
+  }
+
+  /* Remet la PROGRESSION à zéro : les fiches, le journal des réponses, la
+     frontière, et les conversations et écoutes cochées — repartir de zéro en
+     gardant « six conversations faites », ce n'est pas repartir de zéro.
+     Réglages, score et mots personnels restent.
+       before   n'efface que ce qui est antérieur à cet instant (défaut : tout)
+       silent   la remise à zéro vient du serveur : elle n'y repart pas
+     L'instant est gardé dans les réglages (resetAt) : c'est lui qui dit aux
+     autres appareils que leur copie est périmée. */
+  function resetProgress(before, silent) {
+    const cut = before || Date.now();
+    [...mem.srs.values()].forEach(r => { if ((r.updatedAt || 0) < cut) mem.srs.delete(r.id); });
+    mem.log = mem.log.filter(l => l.t >= cut);
+    if (useIDB) {
+      try {
+        const s = db.transaction('srs', 'readwrite').objectStore('srs');
+        s.clear(); mem.srs.forEach(r => s.put(r));
+        const l = db.transaction('log', 'readwrite').objectStore('log');
+        l.clear(); mem.log.forEach(e => l.put(e));
+      } catch (e) {}
+    }
+    setMeta({
+      resetAt: Math.max(meta.resetAt || 0, cut), reached: 0, exDay: null, exToday: 0,
+      scenariosDone: [], listenDone: []
+    }, silent);
+    if (!silent) emit('reset', cut);
   }
 
   function open() {
@@ -53,7 +90,7 @@ NL.state = (function () {
           c.forEach(r => mem.custom.set(r.id, r));
           /* Le journal était enregistré mais jamais relu : le graphique de la
              semaine ne montrait que la séance en cours. */
-          mem.log = (l || []).slice(-4000);
+          mem.log = (l || []).slice(-LOG_KEEP);
           if (m && m.v) meta = Object.assign(defaults(), m.v);
           resolve();
         }).catch(() => resolve(loadLS()));
@@ -128,7 +165,7 @@ NL.state = (function () {
   /* ---- review log, for the stats strip ---- */
   function logReview(entry, silent) {
     mem.log.push(entry);
-    if (mem.log.length > 4000) mem.log.shift();
+    if (mem.log.length > LOG_KEEP) mem.log.shift();
     if (useIDB) { try { db.transaction('log', 'readwrite').objectStore('log').put(entry); } catch (e) {} }
     if (!silent) emit('log', entry);
   }
@@ -169,12 +206,19 @@ NL.state = (function () {
   }
   function importAll(data) {
     if (!data || data.app !== 'vlaams-onderweg' || !Array.isArray(data.srs)) return false;
+    /* Restaurer une sauvegarde est une remise à zéro suivie d'un rechargement :
+       les fiches sont datées de maintenant, sinon les autres appareils les
+       prendraient pour de la progression effacée. */
+    const stamp = Date.now();
     mem.srs.clear(); mem.custom.clear();
-    data.srs.forEach(r => { if (r && r.id) { mem.srs.set(r.id, r); put('srs', r); } });
+    data.srs.forEach(r => { if (r && r.id) { r.updatedAt = stamp; mem.srs.set(r.id, r); put('srs', r); } });
     (data.custom || []).forEach(r => { if (r && r.id) { mem.custom.set(r.id, r); put('custom', r); } });
-    if (data.meta) { meta = Object.assign(defaults(), data.meta); put('meta', { k: 'meta', v: meta }); }
+    if (data.meta) meta = Object.assign(defaults(), data.meta);
+    meta.resetAt = stamp; meta.updatedAt = stamp;
+    put('meta', { k: 'meta', v: meta });
     mem.log = Array.isArray(data.log) ? data.log : [];
     saveLS();
+    emit('reset', stamp);
     return true;
   }
 
@@ -195,5 +239,5 @@ NL.state = (function () {
     setMeta(patch);
   }
 
-  return { open, migrate, onWrite, rec, setRec, allRecs, seenCount, meta: m, setMeta, logReview, logs, addCustom, putCustom, delCustom, customs, clearAll, touchDay, creditDay, exportAll, importAll, get storage() { return useIDB ? 'IndexedDB' : 'localStorage'; } };
+  return { open, migrate, resetProgress, ENGINE_EPOCH, onWrite, rec, setRec, allRecs, seenCount, meta: m, setMeta, logReview, logs, addCustom, putCustom, delCustom, customs, clearAll, touchDay, creditDay, exportAll, importAll, get storage() { return useIDB ? 'IndexedDB' : 'localStorage'; } };
 })();

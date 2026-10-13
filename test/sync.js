@@ -37,11 +37,17 @@ function fakeLib(device) {
           if (!uid()) return Promise.resolve({ data: [], error: null });     // RLS : rien sans session
           let rows = rowsFor(table, uid());
           q.filters.forEach(f => { rows = rows.filter(f); });
+          if (q.del) {
+            rows.forEach(r => server.tables[table].delete(keyOf(table, r)));
+            return Promise.resolve({ error: null });
+          }
           return Promise.resolve({ data: clone(rows.slice(q.from, q.to + 1)), error: null });
         };
         const b = {
           select() { return b; },
           gte(col, v) { q.filters.push(r => r[col] >= v); return b; },
+          lt(col, v) { q.filters.push(r => r[col] < v); return b; },
+          delete() { q.del = true; return b; },
           range(a, z) { q.from = a; q.to = z; return b; },
           then(res, rej) { return run().then(res, rej); },
           upsert(rows, o) {
@@ -221,6 +227,12 @@ const items = NL => NL.content.allItems();
   ok(m1.scenariosDone.length === 2, 'done lists should union');
   ok(m1.doneToday === 7, 'same-day counter should take the max');
   ok(m1.placed === true, 'placement should never be undone');
+  /* Remise à zéro : ce qui relève de la progression suit le côté qui la porte,
+     même si l'autre appareil a été modifié plus tard. */
+  const m4 = M({ resetAt: 500, reached: 0, scenariosDone: [], xp: 9, updatedAt: 500 },
+               { resetAt: 0, reached: 3, scenariosDone: ['a', 'b'], xp: 4, updatedAt: 900 });
+  ok(m4.reached === 0 && m4.scenariosDone.length === 0, 'a stale device gave back what the reset erased: ' + JSON.stringify([m4.reached, m4.scenariosDone]));
+  ok(m4.resetAt === 500 && m4.xp === 9, 'the reset stamp or the score was lost in the merge');
   /* Le robot de sauvegarde écrit lastBackup sans toucher à updated_at : la
      fusion doit le garder même quand l'autre côté est « plus récent ». */
   const m3 = M({ xp: 5, updatedAt: 50 }, { xp: 4, lastBackup: 4242, updatedAt: 10 });
@@ -276,6 +288,125 @@ const items = NL => NL.content.allItems();
   ok(rowsFor('srs_records', C2.NL.sync.user.id).length === 0, 'previous learner leaked into the third account');
   ok(rowsFor('srs_records', uid).length === 17, 'first account lost rows');
   console.log('  aucun mélange entre comptes');
+
+  console.log('\nREMISE À ZÉRO');
+  {
+    /* Deux appareils connectés au même compte, tous deux avec de la progression. */
+    const R1 = device('R1', true), R2 = device('R2', true);
+    await R1.boot(); await R1.signIn('reset@example.com');
+    const rid = R1.NL.sync.user.id, ri = items(R1.NL);
+    ri.slice(0, 10).forEach(it => R1.NL.srs.grade(it, true, { ex: 'type' }));
+    R1.NL.state.setMeta({ xp: 77, theme: 'dark', reached: 2, scenariosDone: ['bakker', 'dokter'] });
+    R1.NL.state.addCustom({ nl: 'de koffiekoek', fr: 'la viennoiserie' });
+    await R1.NL.sync.flush();
+    await R2.boot(); await R2.signIn('reset@example.com');
+    ok(R2.NL.state.seenCount() === 10 && rowsFor('srs_records', rid).length === 10, 'the fixture is wrong: both devices should hold 10 records');
+
+    /* R2, hors ligne, répond encore à un élément : la réponse attend dans sa boîte. */
+    R2.offline(true);
+    R2.NL.srs.grade(ri[0], true, { ex: 'type' });
+    await wait(5);
+
+    R1.NL.state.resetProgress();
+    await R1.NL.sync.flush();
+    ok(R1.NL.state.seenCount() === 0 && R1.NL.state.logs().length === 0, 'the reset left progress on the device that asked for it');
+    ok(rowsFor('srs_records', rid).length === 0, 'the reset left ' + rowsFor('srs_records', rid).length + ' records on the server');
+    ok(rowsFor('review_log', rid).length === 0, 'the reset left the answer history on the server');
+    ok(R1.NL.state.meta().xp === 77 && R1.NL.state.meta().theme === 'dark', 'the reset took the score or the settings with it');
+    ok(R1.NL.state.customs().length === 1 && rowsFor('custom_words', rid).length === 1, 'the reset took the learner’s own words with it');
+    ok(R1.NL.state.meta().reached === 0, 'the frontier survived the reset');
+    ok(R1.NL.state.meta().scenariosDone.length === 0, 'after the reset the device still claims ' + R1.NL.state.meta().scenariosDone.length + ' conversations done');
+    ok(rowsFor('user_meta', rid)[0].data.scenariosDone.length === 0, 'after the reset the server still lists conversations as done');
+
+    /* La synchro suivante ne doit rien rendre. */
+    await R1.NL.sync.pull();
+    ok(R1.NL.state.seenCount() === 0, 'the next synchronisation restored ' + R1.NL.state.seenCount() + ' deleted records');
+
+    /* R2 revient en ligne avec sa copie périmée et une réponse en attente. */
+    R2.offline(false);
+    await R2.NL.sync.flush();
+    ok(rowsFor('srs_records', rid).length === 0, 'a stale device pushed ' + rowsFor('srs_records', rid).length + ' deleted record(s) back to the server');
+    await R2.NL.sync.pull();
+    ok(R2.NL.state.seenCount() === 0, 'the second device still shows ' + R2.NL.state.seenCount() + ' records after the reset');
+    ok(R2.NL.state.meta().reached === 0, 'the second device kept its frontier');
+    ok(R2.NL.state.meta().scenariosDone.length === 0, 'the second device still claims ' + R2.NL.state.meta().scenariosDone.length + ' conversations done');
+    ok(R2.NL.state.meta().xp === 77 && R2.NL.state.customs().length === 1, 'the second device lost the score or the own words');
+
+    /* Ce qui est appris APRÈS la remise à zéro circule normalement. */
+    await wait(3);
+    R2.NL.srs.grade(ri[3], true, { ex: 'type' });
+    await R2.NL.sync.flush();
+    await R1.NL.sync.pull();
+    ok(R1.NL.state.seenCount() === 1 && rowsFor('srs_records', rid).length === 1, 'progress made after the reset did not travel');
+    R2.NL.state.setMeta({ scenariosDone: ['bakker'] });
+    await R2.NL.sync.flush();
+    await R1.NL.sync.pull();
+    ok(R1.NL.state.meta().scenariosDone.join() === 'bakker', 'a conversation done after the reset did not travel: ' + JSON.stringify(R1.NL.state.meta().scenariosDone));
+
+    /* Un appareil neuf qui se connecte ne voit que l'après. */
+    const R3 = device('R3', true);
+    await R3.boot(); await R3.signIn('reset@example.com');
+    ok(R3.NL.state.seenCount() === 1, 'a new device sees ' + R3.NL.state.seenCount() + ' records, expected the single one made since the reset');
+    console.log('  effacé ici, sur le serveur et sur le second appareil ; réglages, score et mots gardés');
+
+    /* Hors ligne au moment de la remise à zéro, puis page rechargée : le serveur
+       est effacé AVANT d'être relu. */
+    await wait(3);
+    R1.offline(true);
+    R1.NL.state.resetProgress();
+    await wait(450);
+    const R1b = device('R1b', true, JSON.parse(JSON.stringify(R1.store)));
+    await R1b.boot();
+    await wait(20);
+    ok(rowsFor('srs_records', rid).length === 0, 'a reset made offline never reached the server');
+    ok(R1b.NL.state.seenCount() === 0, 'after an offline reset and a reload, the server gave the progress back');
+    console.log('  remise à zéro hors ligne : envoyée au rechargement, avant toute lecture');
+
+    /* Restaurer une sauvegarde après coup reste possible, et se propage. */
+    const dump = JSON.parse(JSON.stringify(R3.NL.state.exportAll()));
+    ok(R3.NL.state.importAll(dump), 'import refused');
+    R3.NL.sync.queueAll(); await R3.NL.sync.flush();
+    ok(rowsFor('srs_records', rid).length === 1, 'a backup restored after a reset did not reach the server');
+    await R2.NL.sync.pull();
+    ok(R2.NL.state.seenCount() === 1, 'a backup restored after a reset did not reach the other device');
+    console.log('  une sauvegarde restaurée ensuite se propage');
+  }
+
+  console.log('\nMIGRATION — l’ancien moteur');
+  {
+    const M1 = device('M1', true);
+    await M1.boot(); await M1.signIn('old@example.com');
+    const mid = M1.NL.sync.user.id, mi = items(M1.NL), EPOCH = M1.NL.state.ENGINE_EPOCH;
+    /* De la progression datée d'avant le nouveau moteur, sur l'appareil et le serveur. */
+    mi.slice(0, 6).forEach(it => M1.NL.state.setRec({ id: it.id, kind: it.kind, stage: 3, due: EPOCH, interval: 0, ease: 2.5, reps: 1, lapses: 0, last: 0, said: false, retired: false, lastEx: null, updatedAt: EPOCH - 5000 }, true));
+    M1.NL.sync.queueAll(); await M1.NL.sync.flush();
+    M1.NL.state.setMeta({ dataVersion: 2, xp: 40 });
+    await M1.NL.sync.flush();
+    ok(rowsFor('srs_records', mid).length === 6, 'the fixture is wrong: 6 old records should be on the server');
+    await wait(450);
+    const M2 = device('M2', true, JSON.parse(JSON.stringify(M1.store)));
+    await M2.NL.state.open();
+    ok(M2.NL.state.seenCount() === 6, 'the fixture is wrong: the reloaded device should hold 6 old records');
+    ok(M2.NL.state.migrate() === true, 'a device carrying old progress did not migrate');
+    ok(M2.NL.state.seenCount() === 0, 'the migration left old progress on the device');
+    ok(M2.NL.state.meta().xp === 40, 'the migration took the score');
+    ok(M2.NL.state.migrate() === false, 'the migration ran twice');
+    M2.NL.content.refresh(); M2.NL.ui.bind(M2.root);
+    await M2.NL.sync.init(); await wait(20);
+    ok(rowsFor('srs_records', mid).length === 0, 'the migration left ' + rowsFor('srs_records', mid).length + ' old records on the server');
+    ok(M2.NL.state.seenCount() === 0, 'the synchronisation gave the old progress back');
+    /* Un second appareil qui migre plus tard n'efface pas ce qui a été appris depuis. */
+    M2.NL.srs.grade(mi[0], true, { ex: 'type' });
+    await M2.NL.sync.flush();
+    const M3 = device('M3', true);
+    await M3.NL.state.open();
+    M3.NL.state.setMeta({ dataVersion: 2 });
+    M3.NL.state.migrate(); M3.NL.content.refresh(); M3.NL.ui.bind(M3.root);
+    await M3.NL.sync.init(); await M3.signIn('old@example.com');
+    ok(rowsFor('srs_records', mid).length === 1, 'a second device migrating later deleted what had been learned since');
+    ok(M3.NL.state.seenCount() === 1, 'the second device did not receive the new progress');
+    console.log('  ancienne progression effacée partout, une seule fois ; la nouvelle survit à la migration d’un second appareil');
+  }
 
   console.log('\nÉCRAN COMPTE');
   {
