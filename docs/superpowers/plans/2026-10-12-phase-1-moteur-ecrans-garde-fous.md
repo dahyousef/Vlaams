@@ -12,11 +12,11 @@
 
 ## How this plan was produced, and how far to trust it
 
-Every change below was built and run in a scratch copy of the repository before being written down. At the end of Task 11 the complete suite (`sh test/run-all.sh`, about six minutes) passes with no failure. The new tests were also run against today's engine and fail there, for the reasons each task states.
+Every change below was built and run in a scratch copy of the repository before being written down. At the end of Task 11 the complete suite (`sh test/run-all.sh`, three to six minutes) passes with no failure. The new tests were also run against today's engine and fail there, for the reasons each task states.
 
 Task 2 was also applied alone, exactly as written here, and its tests pass on that tree. The failing output quoted in Tasks 2, 3 and 4 was measured on the tree each of those tasks starts from.
 
-Until 13 October 2026 the later intermediate commits had not been run on their own. The full run of step 3b did that: the thirteen tasks in order on a fresh copy, each step as written, the whole suite after every task. It was done twice. The first pass found what did not apply and what printed something else, and this plan was corrected; the second followed the corrected plan with no diff touched by hand, and the suite passed after every task. Tasks 2, 3, 6 and 9 used to carry diffs cut from the end state, with a note saying which of their lines belonged to a later task. Each of those diffs is now exactly what its task writes, and the notes are gone. Tasks 3, 6, 7, 9 and 11 still touch the same files: if the suite is red after a task all the same, look there first, fix it in the task you are in, and keep one commit per task.
+Until 13 October 2026 the later intermediate commits had not been run on their own. The full run of step 3b did that: the thirteen tasks in order on a fresh copy, each step as written, the whole suite after every task. It was done twice. The first pass found what did not apply and what printed something else, and this plan was corrected; the second followed the corrected plan with no diff touched by hand, and the suite passed after every task. A third pass followed the same day, after the maintainer chose `second` as the name of the flag Task 3 gives a queue entry and « renforcement » for « rappel » in the French comments: the same result. Tasks 2, 3, 6 and 9 used to carry diffs cut from the end state, with a note saying which of their lines belonged to a later task. Each of those diffs is now exactly what its task writes, and the notes are gone. Tasks 3, 6, 7, 9 and 11 still touch the same files: if the suite is red after a task all the same, look there first, fix it in the task you are in, and keep one commit per task.
 
 Tasks 5b and 9b were added on 12 October 2026, when the open question was settled, and rewritten on 13 October 2026, when defining *produced* for the glossary showed what the first version did to the second count. They were built on the end state of the other eleven, and the whole suite passes there with them. They were then placed where their dependencies put them: 5b after the simulation of Task 5, 9b after the mistakes session of Task 9. So the trees they start from here are not the tree they were measured on, and the failing output each quotes was measured on that end state with the task's own change left out. The full run of step 3b checked all of this on 13 October 2026, before any ticket was written: in their own place every edit of the two tasks applied, and every line they quote was printed.
 
@@ -35,8 +35,8 @@ An agent runs this plan, but these moments are yours. Each step waits for the on
 | 2. Commit the plan, with its pointer in `CLAUDE.md` | done, 12 October 2026: committed and pushed on `phase-1-engine`, ahead of step 1 at the maintainer's request. No pull request is open yet |
 | 3. Glossary and ADRs | done, 12 October 2026: eight terms added to `GLOSSARY.md`, *reinforcement* kept and *recall* retired; ADR 0006 (the reset) and ADR 0007 (the reserved share); the two candidates from Tasks 5b and 9b fail the first test and get none |
 | 3a. Rewrite Tasks 5b and 9b: a first right spoken answer leaves the rung alone, and a writing exercise in the same session decides the climb | done, 13 October 2026. Decided on 12 October while defining *produced*: as first written, Task 5b let reading an item aloud take it past rung 3, so the count of items the learner can produce stopped meaning that they wrote it. See *The correction of 12 and 13 October 2026* near the end. The amendment to issue #12 was applied on 13 October 2026 |
-| 3b. One full run of the thirteen tasks in a scratch copy, before any ticket | done, 13 October 2026, in two passes. The suite passes after every task, and Tasks 5b and 9b hold where they were placed. The sources the plan produces are those of the build that was tested and measured, and the page built from them is the same page. The corrections to this plan are listed in the commit that carries this line. The flag `recall` that Task 3 gave a queue entry is now `reinforcement`; the exercise `recall` keeps its name |
-| 4. `/to-tickets` | not started |
+| 3b. One full run of the thirteen tasks in a scratch copy, before any ticket | done, 13 October 2026, in two passes, then a third after three changes the maintainer asked for the same day. The suite passes after every task, and Tasks 5b and 9b hold where they were placed. The sources the plan produces are those of the build that was tested and measured, and the page built from them is the same page. The corrections to this plan are listed in the commit that carries this line. The flag `recall` that Task 3 gave a queue entry is now `second`: Task 5b also puts it on the written exercise that follows a first spoken answer, which is not a reinforcement. The exercise `recall` keeps its name. In the French comments « rappel » is now « renforcement » |
+| 4. `/to-tickets` | done, 13 October 2026: thirteen tickets, #13 to #25, sub-issues of #12, each labelled `ready-for-agent`, with the fifteen blocking edges of step 4's table as native dependencies. Checked on GitHub against that table. In task order: 1 is #13, 2 is #14, 3 is #15, 4 is #16, 5 is #17, 5b is #18, 6 is #19, 7 is #20, 8 is #21, 9 is #22, 9b is #23, 10 is #24, 11 is #25 |
 | 5. Guardrail hook, then the run of the thirteen tasks | not started |
 | 6. `/code-review main`, PR body, PR out of draft | not started |
 | 7. The two-day check | not started |
@@ -190,7 +190,7 @@ Three things live outside the repository on purpose. The verified end state of t
 
    Commit the two files on the branch (`chore: a hook that stops pushes to main and other git commands that cannot be taken back`). A session reads its hooks when it starts, which is one more reason the run gets a session of its own.
 
-   **Then start a fresh session** and paste this, with the ticket numbers GitHub gave:
+   **Then start a fresh session** and paste this. It carries the ticket numbers GitHub gave on 13 October 2026:
 
    ```text
    Use superpowers:subagent-driven-development to execute
@@ -204,8 +204,10 @@ Three things live outside the repository on purpose. The verified end state of t
    yourself and have one subagent run it too. Both must be blocked. If either is
    not, stop and tell me.
 
-   Each task has a ticket with the same title. End each task's commit message with
-   "Refs #<its ticket>", and list "Closes #<ticket>" for all thirteen in the PR body.
+   Each task has a ticket with the same title: Task 1 is #13, 2 is #14, 3 is #15,
+   4 is #16, 5 is #17, 5b is #18, 6 is #19, 7 is #20, 8 is #21, 9 is #22, 9b is #23,
+   10 is #24, 11 is #25. End each task's commit message with "Refs #<its ticket>",
+   and list "Closes #<ticket>" for all thirteen in the PR body.
    ```
 
    From there the thirteen tasks run without stopping. **Between tasks you type nothing.** A fresh reviewer checks each task before the next one starts, and a review of the whole branch closes the run. That is the review between tickets, and it is part of the skill.
@@ -241,7 +243,7 @@ Two more skills are held for later phases, so that they are not forgotten: `wayf
 - Progress is reported as **counts, never percentages**. No mastery metric and no placement test come back.
 - Tiers stay unpopulated. The comment at `TIER_MAX` in `src/core/srs.js` says why; leave it.
 - The repository is public. No personal data in tracked files, issues or commit messages.
-- The suite takes about six minutes on this machine, most of it `test/pace.js` and the eight journeys. Run the one test you are working on while iterating, and the whole suite before each commit.
+- The suite takes three to six minutes on this machine, most of it `test/pace.js` and the eight journeys. Run the one test you are working on while iterating, and the whole suite before each commit.
 - **Name the root `.`, never `"$(pwd)"`.** A Claude Code shell on this machine sets `MSYS_NO_PATHCONV=1`, so Git Bash hands node `/c/Users/…` unconverted and a suite dies on its first file with `ENOENT … C:\c\Users\…`. Every suite takes the repository root as its first argument and accepts `.` when run from the root. The commands of this plan are written that way, and Task 1 makes `test/run-all.sh` do the same. `README.md` keeps `"$(pwd)"`: it is right on Linux and in an ordinary Git Bash.
 - On Windows the working tree has CRLF sources and the commit has LF. `git diff` hides the difference; an exact-string search in an editor may not. Match on content, not on line endings.
 
@@ -493,7 +495,7 @@ Create `test/lib/answer.js`:
 /* Répondre à l'exercice en cours comme le ferait une personne : par les clics
    et la saisie que l'écran attend, jamais en appelant le planificateur dans son
    dos. Une suite qui note elle-même les réponses ne traverse pas la séance — et
-   c'est dans la séance que vivent les reprises et le rappel des rencontres.
+   c'est dans la séance que vivent les reprises et le renforcement des rencontres.
 
      const answer = require('./lib/answer')(B);
      answer.right();   répond juste, puis laisse l'écran sur le verdict
@@ -1196,7 +1198,7 @@ function play(right) {
   while (S.peek() && guard++ < 120) {
     const c = S.peek();
     const wasMatch = c.ex === 'match';
-    served.push({ ex: c.ex, id: c.items[0].id, item: c.items[0], unmet: !wasMatch && !met(c.items[0]), reinforcement: !!c.reinforcement, retry: !!c.retry });
+    served.push({ ex: c.ex, id: c.items[0].id, item: c.items[0], unmet: !wasMatch && !met(c.items[0]), second: !!c.second, retry: !!c.retry });
     B.clock.advance(20000);
     if (wasMatch || !right || right(c)) answer.right(); else answer.wrong();
     answer.next(wasMatch);
@@ -1479,7 +1481,7 @@ A session has 22 places, one per item. With reviews waiting it holds 15 reviews 
 **Interfaces:**
 - Consumes: the gate from Task 2.
 - Produces: `NL.srs.compose(source, now)` → `{ due: Item[], fresh: Item[], left }`, `source` being `'vandaag'` or a unit id. `NL.srs.plan()` → `{ due, fresh, total, tasks, left, mins, units }` where `total` counts items, `tasks` counts exercises, and `units` is `{ from, to }` unit numbers or `null`. `NL.srs.unitSpan(items)`. Constants `NEW_SHARE`, `NEW_MIN`, `NEW_MAX`. `NL.srs.freshItems(n, uid)`.
-- Produces: a session queue entry may carry `reinforcement: true`; its `task` is built when its turn comes. `NL.screens.sessie.peek()` always returns a built entry.
+- Produces: a session queue entry may carry `second: true`; its `task` is built when its turn comes. `NL.screens.sessie.peek()` always returns a built entry.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1502,7 +1504,7 @@ In `test/engine.js`, insert these six blocks between the block *La panne réelle
   }
 
   /* ------------------------------------------------------------------ */
-  console.log('\nLE RAPPEL VIT DANS LA SÉANCE, PAS DANS LE CALENDRIER');
+  console.log('\nLE RENFORCEMENT VIT DANS LA SÉANCE, PAS DANS LE CALENDRIER');
   {
     fresh();
     const served = play();
@@ -1578,7 +1580,7 @@ In `test/engine.js`, insert these six blocks between the block *La panne réelle
     all.slice(0, 200).forEach(it => put(it, 3, T0 - DAY));
     const served = play();
     const news = served.filter(x => x.unmet).length;
-    const reviews = served.filter(x => !x.unmet && !x.reinforcement && !x.retry && x.ex !== 'match').length;
+    const reviews = served.filter(x => !x.unmet && !x.second && !x.retry && x.ex !== 'match').length;
     console.log('  200 éléments dus : ' + reviews + ' révisions, ' + news + ' rencontres');
     ok(news >= RESERVED, 'with 200 items due, a session met only ' + news + ' new item(s)');
     ok(reviews + news <= NL.srs.MAX_TASKS, 'the session holds ' + (reviews + news) + ' items, more than its ' + NL.srs.MAX_TASKS + ' places');
@@ -1622,13 +1624,13 @@ In `test/engine.js`, insert these six blocks between the block *La panne réelle
       let guard = 0;
       while (S.peek() && guard++ < 120) {
         const c = S.peek(), wasMatch = c.ex === 'match';
-        q.push({ unmet: !wasMatch && !met(c.items[0]), match: wasMatch, reinforcement: !!c.reinforcement });
+        q.push({ unmet: !wasMatch && !met(c.items[0]), match: wasMatch, second: !!c.second });
         answer.right(); answer.next(wasMatch);
         if (B.app.innerHTML.indexOf('done-stage') >= 0) break;
       }
       S.abandon();
       const news = q.filter(x => x.unmet).length;
-      const reviews = q.filter(x => !x.unmet && !x.match && !x.reinforcement).length;
+      const reviews = q.filter(x => !x.unmet && !x.match && !x.second).length;
       const tasks = q.filter(x => !x.match).length;
       console.log('  ' + name.padEnd(26) + 'annoncé ' + p.due + ' + ' + p.fresh + ' (' + p.tasks + ' exercices) — servi ' + reviews + ' + ' + news + ' (' + tasks + ')');
       ok(news === p.fresh, name + ': home announced ' + p.fresh + ' new, the session met ' + news);
@@ -1642,7 +1644,7 @@ In `test/engine.js`, insert these six blocks between the block *La panne réelle
   /* ------------------------------------------------------------------ */
   console.log('\nCE QUE LA SPÉCIFICATION NE DIT PAS, ET QUI ARRIVE');
   {
-    /* Séance quittée en route, avant le rappel des rencontres : rien n'est perdu,
+    /* Séance quittée en route, avant le renforcement des rencontres : rien n'est perdu,
        tout revient demain, et rien ne retombe dû aujourd'hui. */
     fresh();
     ok(S.begin('vandaag'), 'the session did not start');
@@ -1705,7 +1707,7 @@ LA PANNE RÉELLE — une unité entièrement rencontrée, la suivante fermée
 DEUX JOURS DE SUITE — un compte neuf
   jour 1 : 22, 17, 20 rencontres par séance — jour 2, première séance : 11
 
-LE RAPPEL VIT DANS LA SÉANCE, PAS DANS LE CALENDRIER
+LE RENFORCEMENT VIT DANS LA SÉANCE, PAS DANS LE CALENDRIER
   FAIL: 22 item(s) met in the session never came back in it
   FAIL: 22 item(s) are scheduled to return in less than a day (soonest: 5 min)
   FAIL: thirteen minutes after a session, 22 items are due again
@@ -1766,7 +1768,7 @@ In `src/core/srs.js`:
  
 -  /* Sous la journée, l'élément reste dans la même séance ; au-dessus, SM-2 prend le relais. */
 -  const STEP = [2 * MIN, 12 * MIN, 1 * DAY, 3 * DAY, 8 * DAY, 21 * DAY];
-+  /* Aucun intervalle enregistré ne descend sous un jour. Le rappel quelques
++  /* Aucun intervalle enregistré ne descend sous un jour. Le renforcement quelques
 +     minutes après la rencontre existe toujours, mais c'est la séance en cours
 +     qui le fait (src/ui/session.js) : enregistré comme une échéance, il
 +     disputait les places de la séance à tout le reste. Voir docs/adr/0001. */
@@ -1989,8 +1991,8 @@ In `src/ui/session.js`:
 +    return out;
 +  }
 +
-+  /* Trois temps : les rencontres, les révisions, puis le rappel de chaque
-+     rencontre. C'est ce rappel qui remplace l'ancien retour à douze minutes :
++  /* Trois temps : les rencontres, les révisions, puis le renforcement de chaque
++     rencontre. C'est ce renforcement qui remplace l'ancien retour à douze minutes :
 +     l'élément revient quelques minutes plus tard, dans la même séance, sans
 +     jamais devenir une échéance. Sa place est réservée dès le départ, pour que
 +     le compteur de la séance ne s'allonge pas en cours de route. */
@@ -2013,7 +2015,7 @@ In `src/ui/session.js`:
 +    const meetings = spread(build(c.fresh, recent), queue.length ? 'match' : NL.state.meta().lastEx || null);
 +    const reviews = spread(build(U.shuffle(c.due), recent), meetings.length ? meetings[meetings.length - 1].ex : NL.state.meta().lastEx || null);
 +    queue.push.apply(queue, lace(meetings, reviews));
-+    queue.forEach((x, i) => { if (x.reinforcement) x.metAt = queue.findIndex(y => !y.reinforcement && y.ex !== 'match' && y.items[0] === x.items[0]); });
++    queue.forEach((x, i) => { if (x.second) x.metAt = queue.findIndex(y => !y.second && y.ex !== 'match' && y.items[0] === x.items[0]); });
  
      if (queue.length === 0) { L = null; return false; }
 +    const built = meetings.concat(reviews);
@@ -2030,11 +2032,11 @@ In `src/ui/session.js`:
 +    return !!L.queue.length;
 +  }
 +
-+  /* Un rappel ne revient jamais à moins de trois exercices de sa rencontre. */
-+  const REINFORCEMENT_GAP = 3;
++  /* Un renforcement ne revient jamais à moins de trois exercices de sa rencontre. */
++  const SECOND_GAP = 3;
 +
-+  /* Tresse les rencontres, les révisions et le rappel de chaque rencontre. Les
-+     rappels se glissent à intervalles réguliers dans ce qui suit leur rencontre :
++  /* Tresse les rencontres, les révisions et le renforcement de chaque rencontre. Les
++     renforcements se glissent à intervalles réguliers dans ce qui suit leur rencontre :
 +     groupés en fin de séance, ils formeraient une longue file du même exercice. */
 +  function lace(meetings, reviews) {
 +    const base = meetings.concat(reviews);
@@ -2042,12 +2044,12 @@ In `src/ui/session.js`:
 +    const out = [], waiting = [];
 +    let i = 0, since = 0;
 +    while (i < base.length || waiting.length) {
-+      const ripe = waiting.length && out.length - waiting[0].after > REINFORCEMENT_GAP;
++      const ripe = waiting.length && out.length - waiting[0].after > SECOND_GAP;
 +      if (waiting.length && (i >= base.length || (ripe && since >= every))) {
 +        out.push(waiting.shift().slot); since = 0;
 +        continue;
 +      }
-+      if (i < meetings.length) waiting.push({ after: out.length, slot: { ex: null, task: null, items: base[i].items, reinforcement: true } });
++      if (i < meetings.length) waiting.push({ after: out.length, slot: { ex: null, task: null, items: base[i].items, second: true } });
 +      out.push(base[i++]); since++;
 +    }
 +    return out;
@@ -2056,11 +2058,11 @@ In `src/ui/session.js`:
 -    return true;
 -  }
  
-+  /* Le rappel d'une rencontre se construit quand son tour arrive : son exercice
++  /* Le renforcement d'une rencontre se construit quand son tour arrive : son exercice
 +     dépend de l'échelon que l'élément vient d'atteindre. Raté à la rencontre, il
 +     est redemandé au même échelon ; réussi, à l'échelon suivant.
-+     Quand plusieurs rappels se suivent, on sert d'abord celui dont l'exercice
-+     diffère du précédent — sans jamais rapprocher un rappel de sa rencontre. */
++     Quand plusieurs renforcements se suivent, on sert d'abord celui dont l'exercice
++     diffère du précédent — sans jamais rapprocher un renforcement de sa rencontre. */
 +  function arm() {
 +    while (L && L.at < L.queue.length && !L.queue[L.at].task) {
 +      const prev = L.at > 0 ? L.queue[L.at - 1].ex : null;
@@ -2068,7 +2070,7 @@ In `src/ui/session.js`:
 +      const avoid = new Set([prev, after].filter(Boolean));
 +      let at = L.at, name = NL.srs.exerciseFor(L.queue[L.at].items[0], avoid);
 +      for (let j = L.at + 1; name === prev && j < L.queue.length && !L.queue[j].task; j++) {
-+        if (L.at - L.queue[j].metAt < REINFORCEMENT_GAP) continue;
++        if (L.at - L.queue[j].metAt < SECOND_GAP) continue;
 +        const n = NL.srs.exerciseFor(L.queue[j].items[0], avoid);
 +        if (n !== prev) { at = j; name = n; }
 +      }
@@ -2082,10 +2084,10 @@ In `src/ui/session.js`:
 +    }
 +  }
 +
-+  /* Une faute sur un élément dont le rappel attend plus loin n'ajoute pas de
-+     reprise : le rappel EST sa seconde chance. */
++  /* Une faute sur un élément dont le renforcement attend plus loin n'ajoute pas de
++     reprise : le renforcement EST sa seconde chance. */
 +  function again(c) {
-+    const waiting = L.queue.slice(L.at + 1).some(x => x.reinforcement && !x.task && x.items[0] === c.items[0]);
++    const waiting = L.queue.slice(L.at + 1).some(x => x.second && !x.task && x.items[0] === c.items[0]);
 +    if (!waiting && L.queue.length < L.cap) L.queue.push(retryOf(c));
 +  }
 +
@@ -2129,7 +2131,7 @@ and the label that says an exercise is a second look. Replace:
 with:
 
 ````js
-      (c.retry || c.reinforcement ? ' · ' + NL.t.again2 : '') +
+      (c.retry || c.second ? ' · ' + NL.t.again2 : '') +
 ````
 
 - [ ] **Step 5: The journey test compared the promise with the delivery to within one; make it exact**
@@ -2347,7 +2349,7 @@ In `test/pace.js`:
 +           pendant que le deuxième jour réel ne servait rien de neuf. */
 +        B.clock.advance((SECS[c.ex] || 15) * 1000);
 +        /* Et la réponse passe par l'écran, pas par le planificateur : c'est la
-+           séance qui porte les reprises et le rappel des rencontres. */
++           séance qui porte les reprises et le renforcement des rencontres. */
 +        if (wasMatch || RAND() < 0.85) answer.right(); else answer.wrong();
 +        answer.next(wasMatch);
 +        if (B.app.innerHTML.indexOf('done-stage') >= 0) break;
@@ -2492,7 +2494,7 @@ Measured on the end state of this plan, over six draws, with one session a day a
 - Consumes: the engine and the session of Tasks 2–4, in particular `NL.srs.compose`, the second exercise `lace()` keeps for a newly met item, and `again()`; the simulation of Task 5.
 - Produces: `RUNGS.word[3]`, `RUNGS.phrase[3]` and `RUNGS.chunk[3]` include `'speak'`. For an item whose record has `said: false`, `NL.srs.exerciseFor(item)` returns `'speak'` whenever its rung offers it.
 - Produces: `NL.srs.firstAloud(item)`, true when the item has never been said and its rung offers `speak` beside another exercise. On such an item, `NL.srs.grade(item, true, { ex: 'speak', spoken: true })` sets `said`, keeps `stage` and `ease`, and schedules it one day out; `NL.srs.grade(item, false, { ex: 'speak' })` keeps `stage` and `ease` and schedules it one day out as well. `NL.srs.plan().tasks` and the trim in `compose()` count two exercises for it.
-- Produces: in the session, one more queue entry with `reinforcement: true` for every review that is `firstAloud`, placed after everything else; `again()` inserts a spoken retry before it. Task 9b builds on all of this.
+- Produces: in the session, one more queue entry with `second: true` for every review that is `firstAloud`, placed after everything else; `again()` inserts a spoken retry before it. Task 9b builds on all of this.
 - Produces: `test/pace.js` prints `première demande à voix haute` and `échelon de l’écrit passé par écrit`, and makes three more checks, nine in all.
 
 From this task on a session holds spoken exercises from the first week. Every suite answers them through `test/lib/answer.js`, which has known how since Task 1.
@@ -2964,8 +2966,8 @@ with:
      gardées pour la fin, afin qu'il ne suive jamais aussitôt. */
   const toSay = x => x.ex === 'speak' && NL.srs.firstAloud(x.items[0]);
   function lace(meetings, reviews) {
-    const plain = reviews.filter(x => !toSay(x)).slice(-REINFORCEMENT_GAP);
-    const last = reviews.filter(toSay).map(x => ({ ex: null, task: null, items: x.items, reinforcement: true }));
+    const plain = reviews.filter(x => !toSay(x)).slice(-SECOND_GAP);
+    const last = reviews.filter(toSay).map(x => ({ ex: null, task: null, items: x.items, second: true }));
     const base = meetings.concat(reviews.filter(x => plain.indexOf(x) < 0), plain);
 ````
 
@@ -2990,10 +2992,10 @@ with:
 In `src/ui/session.js`, replace:
 
 ````js
-  /* Une faute sur un élément dont le rappel attend plus loin n'ajoute pas de
-     reprise : le rappel EST sa seconde chance. */
+  /* Une faute sur un élément dont le renforcement attend plus loin n'ajoute pas de
+     reprise : le renforcement EST sa seconde chance. */
   function again(c) {
-    const waiting = L.queue.slice(L.at + 1).some(x => x.reinforcement && !x.task && x.items[0] === c.items[0]);
+    const waiting = L.queue.slice(L.at + 1).some(x => x.second && !x.task && x.items[0] === c.items[0]);
     if (!waiting && L.queue.length < L.cap) L.queue.push(retryOf(c));
   }
 ````
@@ -3001,8 +3003,8 @@ In `src/ui/session.js`, replace:
 with:
 
 ````js
-  /* Une faute sur un élément dont le rappel attend plus loin n'ajoute pas de
-     reprise : le rappel EST sa seconde chance.
+  /* Une faute sur un élément dont le renforcement attend plus loin n'ajoute pas de
+     reprise : le renforcement EST sa seconde chance.
 
      Sauf à voix haute, tant que l'élément n'a jamais été dit : son second
      exercice doit rester libre pour l'écrire. On le redemande donc à voix haute
@@ -3010,11 +3012,11 @@ with:
      dans la séance ; sinon c'est ce second exercice qui le redemande à voix
      haute, et l'écrit attend le lendemain. */
   function again(c) {
-    const at = L.queue.findIndex((x, i) => i > L.at && x.reinforcement && !x.task && x.items[0] === c.items[0]);
+    const at = L.queue.findIndex((x, i) => i > L.at && x.second && !x.task && x.items[0] === c.items[0]);
     if (at < 0) { if (L.queue.length < L.cap) L.queue.push(retryOf(c)); return; }
     if (c.ex !== 'speak' || c.retry || L.queue.length >= L.cap || !NL.srs.firstAloud(c.items[0])) return;
-    const pos = Math.max(L.at + 1, Math.min(L.at + 1 + REINFORCEMENT_GAP, at - REINFORCEMENT_GAP));
-    L.queue.forEach(x => { if (x.reinforcement && x.metAt >= pos) x.metAt++; });
+    const pos = Math.max(L.at + 1, Math.min(L.at + 1 + SECOND_GAP, at - SECOND_GAP));
+    L.queue.forEach(x => { if (x.second && x.metAt >= pos) x.metAt++; });
     L.queue.splice(pos, 0, retryOf(c));
     L.queue[at + 1].metAt = pos;
   }
@@ -4805,7 +4807,7 @@ with:
 In `src/ui/session.js`, replace:
 
 ````js
-  /* Le rappel d'une rencontre se construit quand son tour arrive
+  /* Le renforcement d'une rencontre se construit quand son tour arrive
 ````
 
 with:
@@ -4826,7 +4828,7 @@ with:
     return true;
   }
 
-  /* Le rappel d'une rencontre se construit quand son tour arrive
+  /* Le renforcement d'une rencontre se construit quand son tour arrive
 ````
 
 In `src/ui/shell.js`, add `'fouten'` to `UNDER_MEER`:
@@ -5006,7 +5008,7 @@ In `test/engine.js`, insert before the final `console.log`:
     B.clock.advance(DAY);
     NL.state.touchDay();
     const next = play().filter(x => !x.retry && voice.some(it => it.id === x.id));
-    const back = next.filter(x => !x.reinforcement), written = next.filter(x => x.reinforcement);
+    const back = next.filter(x => !x.second), written = next.filter(x => x.second);
     ok(back.length === voice.length, 'of ' + voice.length + ' items put off, ' + back.length + ' came back in the next session');
     ok(back.every(x => x.ex === 'speak'), back.filter(x => x.ex !== 'speak').length + ' item(s) put off came back as something other than a spoken exercise');
     ok(written.length === voice.length && written.every(x => x.ex !== 'speak'), 'of ' + voice.length + ' items said at last, ' + written.filter(x => x.ex !== 'speak').length + ' were then asked in writing');
@@ -5378,7 +5380,7 @@ In `src/ui/session.js`, insert before the line that begins `const cur = () => L 
       more = NL.srs.compose(L.source, undefined, { quiet: true, without: here }).due.slice(0, spoken);
     }
     L.queue = head.concat(kept, spread(build(more, [], true), kept.length ? kept[kept.length - 1].ex : null));
-    L.queue.forEach(x => { if (x.reinforcement) x.metAt = L.queue.findIndex(y => !y.reinforcement && y.ex !== 'match' && y.items[0] === x.items[0]); });
+    L.queue.forEach(x => { if (x.second) x.metAt = L.queue.findIndex(y => !y.second && y.ex !== 'match' && y.items[0] === x.items[0]); });
     Object.assign(L, blankTurn());
     L.phase = 'ask';
     /* Il ne restait que du parlé, et rien n'a encore été répondu : il n'y a pas
@@ -5839,7 +5841,7 @@ In `TESTING.md`, in the table, after the `dehet.js` row, add:
 
 ````md
 | `content.js` | L'orthographe contre 410 000 formes néerlandaises, que chaque exercice promis se construise vraiment, qu'une phrase d'exemple n'emprunte pas de vocabulaire à une unité ultérieure, et les éléments enseignés deux fois |
-| `engine.js` | Ce qu'une séance contient et quand un élément revient, horloge en marche : la panne d'octobre, deux jours de suite, le rappel dans la séance, la réserve de nouveautés, le seuil des unités, la première demande à voix haute et l'exercice écrit qui la suit, « je ne peux pas parler » |
+| `engine.js` | Ce qu'une séance contient et quand un élément revient, horloge en marche : la panne d'octobre, deux jours de suite, le renforcement dans la séance, la réserve de nouveautés, le seuil des unités, la première demande à voix haute et l'exercice écrit qui la suit, « je ne peux pas parler » |
 | `screens.js` | Chaque écran dans quatre états, relu comme du texte : ni pourcentage, ni maîtrise ; les comptes, le nom de l'unité, ce qui résiste, le bouton « je ne peux pas parler », le journal d'erreurs |
 ````
 
@@ -6127,7 +6129,7 @@ sur l'appareil, à copier et à envoyer.
 In `CLAUDE.md`, under **Tests**, after the sentence about `TESTING.md`, add:
 
 ```md
-The suite takes about six minutes. While working, run the one file you are changing, for
+The suite takes three to six minutes. While working, run the one file you are changing, for
 example `node test/engine.js .`. A new suite loads the app through
 `test/lib/browser.js` and answers exercises through `test/lib/answer.js`, never by calling
 the scheduler itself.
