@@ -1326,12 +1326,16 @@ NL.srs = (function () {
      chose qui rend 26 000 exercices supportables. */
   /* Un cran plus exigeant : la découverte alterne les deux sens, et l'oreille
      (la dictée) arrive dès le deuxième barreau au lieu d'attendre le troisième. */
+  /* « Dis-le » dès l'échelon 3 pour les mots, les phrases et les expressions :
+     au seul échelon 5, la première demande à voix haute tombait cinq semaines
+     après la rencontre. Voir exerciseFor() pour qui y a droit d'office, et
+     firstAloud() pour ce que vaut cette première fois. */
   const RUNGS = {
     word: [
       ['pick', 'recall'],
       ['article', 'intrus', 'dictation'],
       ['dictation', 'type'],
-      ['type', 'cloze'],
+      ['type', 'cloze', 'speak'],
       ['type', 'cloze', 'dictation'],
       ['speak'],
       ['speak', 'type', 'dictation', 'cloze']
@@ -1340,7 +1344,7 @@ NL.srs = (function () {
       ['pick', 'recall'],
       ['bank', 'vlaams', 'cloze'],
       ['cloze', 'corrige', 'dictation'],
-      ['dictation', 'corrige'],
+      ['dictation', 'corrige', 'speak'],
       ['type', 'cloze', 'corrige'],
       ['speak'],
       ['speak', 'type', 'open', 'corrige', 'dictation']
@@ -1349,7 +1353,7 @@ NL.srs = (function () {
       ['pick', 'recall'],
       ['bank', 'vlaams'],
       ['cloze'],
-      ['type', 'dictation'],
+      ['type', 'dictation', 'speak'],
       ['type', 'dictation', 'cloze'],
       ['speak'],
       ['speak', 'type', 'cloze']
@@ -1389,6 +1393,10 @@ NL.srs = (function () {
     const set = (RUNGS[item.kind] || RUNGS.word)[rung] || ['pick'];
     let usable = set.filter(n => supports(item, n));
     if (!usable.length) usable = [fallback(item)];
+    /* Un élément jamais dit à voix haute l'est dès que son échelon le propose.
+       Tiré au sort parmi les exercices de l'échelon, « dis-le » ne tombait qu'une
+       fois sur deux ou trois, et le reste attendait l'échelon 5. */
+    if (!r.said && usable.indexOf('speak') >= 0) return 'speak';
 
     let pick = usable.filter(n => n !== r.lastEx);
     if (!pick.length) pick = usable;
@@ -1416,6 +1424,17 @@ NL.srs = (function () {
   }
   const fallback = item => (NL.util.tiles(item.nl || '').length >= 3 ? 'type' : 'pick');
 
+  /* Vrai quand l'élément n'a jamais été dit et que son échelon propose de le
+     dire à côté d'un autre exercice. Le dire ne déplace alors rien : réussi, il
+     est dit et garde son échelon, et c'est l'exercice écrit qui suit, dans la
+     même séance, qui le fait monter. Sans cela, lire un mot à voix haute
+     suffirait à le compter parmi ceux que l'on sait produire. */
+  function firstAloud(item) {
+    const r = recOf(item);
+    const usable = ((RUNGS[item.kind] || RUNGS.word)[clamp(r.stage, 0, 6)] || []).filter(n => supports(item, n));
+    return !r.said && usable.length > 1 && usable.indexOf('speak') >= 0;
+  }
+
   /* ---------------- notation ---------------- */
   function grade(item, ok, opts) {
     const r = recOf(item);
@@ -1425,7 +1444,15 @@ NL.srs = (function () {
     r.reps++; r.last = now;
     if (opts && opts.ex) r.lastEx = opts.ex;
 
-    if (ok) {
+    /* Dit pour la première fois, là où l'échelon propose aussi autre chose :
+       l'élément est dit, et rien d'autre ne bouge. Un second exercice, en fin de
+       séance, le redemande par écrit, et c'est cette réponse-là qui le fait
+       monter. Si la séance s'arrête avant, il revient demain, par écrit. */
+    const first = !!opts && opts.ex === 'speak' && firstAloud(item);
+    if (ok && first && opts.spoken) {
+      r.said = true;
+      r.interval = STEP[0];
+    } else if (ok) {
       if (opts && opts.spoken) r.said = true;
       /* Un transparent (de tram, de garage, direct) a été rencontré à l'échelon 1 :
          sa première réussite le mène donc à l'échelon 2. Un seul échelon sauté,
@@ -1446,9 +1473,16 @@ NL.srs = (function () {
          plafond sans jamais en sortir. */
       /* Jamais en dessous de l'échelon 1 : on ne te REPRÉSENTE pas un mot que tu
          connais depuis des mois, on te le redemande autrement. */
-      r.stage = clamp(r.stage - 2, r.reps > 1 ? 1 : 0, top);
-      r.ease = clamp(r.ease - 0.2, 1.3, 2.9);
-      r.interval = STEP[Math.min(r.stage, STEP.length - 1)];
+      /* Un exercice parlé raté tant que l'élément n'a jamais été dit ne coûte
+         aucun échelon. La phrase est à l'écran : ce n'est pas un oubli, c'est la
+         prononciation ou le micro, et redescendre de deux échelons renverrait
+         l'élément se faire reconnaître. Il garde sa place et revient demain. */
+      const unsaid = !r.said && !!opts && opts.ex === 'speak';
+      if (!unsaid) {
+        r.stage = clamp(r.stage - 2, r.reps > 1 ? 1 : 0, top);
+        r.ease = clamp(r.ease - 0.2, 1.3, 2.9);
+      }
+      r.interval = unsaid ? STEP[0] : STEP[Math.min(r.stage, STEP.length - 1)];
       r.retired = false;
     }
     r.due = now + r.interval;
@@ -1558,23 +1592,30 @@ NL.srs = (function () {
     const reserve = Math.min(unmet.length, places, Math.max(NEW_MIN, Math.ceil(places * NEW_SHARE)));
     let nDue = Math.min(due.length, places - reserve);
     let nNew = Math.min(unmet.length, Math.max(reserve, Math.min(NEW_MAX, Math.floor((places + reserve - nDue) / 2))));
-    /* Budget presque épuisé : on rabote les révisions d'abord. La réserve survit
-       au rabotage — c'est précisément ce qu'elle doit faire. */
-    while (nDue + 2 * nNew > left && nDue > 0) nDue--;
-    while (nDue + 2 * nNew > left && nNew > 1) nNew--;
-
     /* Les règles de grammaire sont neuf parmi quatre cents : sans siège garanti,
        une semaine entière peut passer sans en revoir une. */
-    const pats = due.filter(it => it.kind === 'pattern').slice(0, Math.min(2, nDue));
-    const rest = due.filter(it => pats.indexOf(it) < 0).slice(0, nDue - pats.length);
-    return { due: pats.concat(rest), fresh: unmet.slice(0, nNew), left };
+    const pick = n => {
+      const pats = due.filter(it => it.kind === 'pattern').slice(0, Math.min(2, n));
+      return pats.concat(due.filter(it => pats.indexOf(it) < 0).slice(0, n - pats.length));
+    };
+    /* Budget presque épuisé : on rabote les révisions d'abord. La réserve survit
+       au rabotage — c'est précisément ce qu'elle doit faire. Le coût se compte
+       sur les éléments réellement retenus : ceux qu'on dit pour la première
+       fois en valent deux. */
+    while (exercises(pick(nDue), nNew) > left && nDue > 0) nDue--;
+    while (exercises(pick(nDue), nNew) > left && nNew > 1) nNew--;
+    return { due: pick(nDue), fresh: unmet.slice(0, nNew), left };
   }
 
+  /* Ce qu'une séance coûte en exercices. Une rencontre en coûte deux, et un
+     élément dit pour la première fois aussi : chacun y revient une seconde fois. */
+  const exercises = (due, nNew) => due.reduce((n, it) => n + (firstAloud(it) ? 2 : 1), 0) + 2 * nNew;
+
   /* Ce que l'écran d'accueil annonce : les comptes de compose(), rien d'autre.
-       total = éléments ; tasks = exercices (un nouveau en coûte deux) */
+       total = éléments ; tasks = exercices, comptés par exercises() */
   function plan() {
     const c = compose('vandaag');
-    const tasks = c.due.length + 2 * c.fresh.length;
+    const tasks = exercises(c.due, c.fresh.length);
     return {
       due: c.due.length, fresh: c.fresh.length, total: c.due.length + c.fresh.length,
       tasks, left: c.left, mins: Math.max(1, Math.round(tasks * 0.22)),
@@ -1591,7 +1632,7 @@ NL.srs = (function () {
 
   return {
     RUNGS, STEP, PACE, MAX_STAGE, MAX_TASKS, GRADUATED, NEW_SHARE, NEW_MIN, NEW_MAX, TIER_MAX, RETIRE_AT,
-    maxRung, pace, exerciseFor, supports, grade, seed, isSeen, stageOf, atTop,
+    maxRung, pace, exerciseFor, firstAloud, supports, grade, seed, isSeen, stageOf, atTop,
     dueItems, counts, freshItems, compose, plan, unitSpan, recOf, budgetLeft, spend
   };
 })();
@@ -5247,9 +5288,19 @@ NL.screens.sessie = (function () {
 
   /* Tresse les rencontres, les révisions et le renforcement de chaque rencontre. Les
      renforcements se glissent à intervalles réguliers dans ce qui suit leur rencontre :
-     groupés en fin de séance, ils formeraient une longue file du même exercice. */
+     groupés en fin de séance, ils formeraient une longue file du même exercice.
+
+     Un élément qu'on dit à voix haute pour la première fois revient lui aussi
+     une seconde fois, et c'est ce second exercice qui décide de son échelon :
+     par écrit s'il vient d'être dit, de nouveau à voix haute sinon. Celui-là
+     ferme la séance, le plus loin possible du premier : écrire un mot qu'on
+     vient de lire à l'écran ne prouve rien. Trois révisions ordinaires sont
+     gardées pour la fin, afin qu'il ne suive jamais aussitôt. */
+  const toSay = x => x.ex === 'speak' && NL.srs.firstAloud(x.items[0]);
   function lace(meetings, reviews) {
-    const base = meetings.concat(reviews);
+    const plain = reviews.filter(x => !toSay(x)).slice(-SECOND_GAP);
+    const last = reviews.filter(toSay).map(x => ({ ex: null, task: null, items: x.items, second: true }));
+    const base = meetings.concat(reviews.filter(x => plain.indexOf(x) < 0), plain);
     const every = Math.max(1, Math.floor(base.length / Math.max(1, meetings.length)));
     const out = [], waiting = [];
     let i = 0, since = 0;
@@ -5262,7 +5313,7 @@ NL.screens.sessie = (function () {
       if (i < meetings.length) waiting.push({ after: out.length, slot: { ex: null, task: null, items: base[i].items, second: true } });
       out.push(base[i++]); since++;
     }
-    return out;
+    return out.concat(last);
   }
 
   /* Le renforcement d'une rencontre se construit quand son tour arrive : son exercice
@@ -5292,10 +5343,21 @@ NL.screens.sessie = (function () {
   }
 
   /* Une faute sur un élément dont le renforcement attend plus loin n'ajoute pas de
-     reprise : le renforcement EST sa seconde chance. */
+     reprise : le renforcement EST sa seconde chance.
+
+     Sauf à voix haute, tant que l'élément n'a jamais été dit : son second
+     exercice doit rester libre pour l'écrire. On le redemande donc à voix haute
+     sans l'attendre, quelques exercices plus loin. Dit cette fois, il est écrit
+     dans la séance ; sinon c'est ce second exercice qui le redemande à voix
+     haute, et l'écrit attend le lendemain. */
   function again(c) {
-    const waiting = L.queue.slice(L.at + 1).some(x => x.second && !x.task && x.items[0] === c.items[0]);
-    if (!waiting && L.queue.length < L.cap) L.queue.push(retryOf(c));
+    const at = L.queue.findIndex((x, i) => i > L.at && x.second && !x.task && x.items[0] === c.items[0]);
+    if (at < 0) { if (L.queue.length < L.cap) L.queue.push(retryOf(c)); return; }
+    if (c.ex !== 'speak' || c.retry || L.queue.length >= L.cap || !NL.srs.firstAloud(c.items[0])) return;
+    const pos = Math.max(L.at + 1, Math.min(L.at + 1 + SECOND_GAP, at - SECOND_GAP));
+    L.queue.forEach(x => { if (x.second && x.metAt >= pos) x.metAt++; });
+    L.queue.splice(pos, 0, retryOf(c));
+    L.queue[at + 1].metAt = pos;
   }
 
   const cur = () => L && L.queue[L.at];

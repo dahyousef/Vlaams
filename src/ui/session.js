@@ -123,9 +123,19 @@ NL.screens.sessie = (function () {
 
   /* Tresse les rencontres, les révisions et le renforcement de chaque rencontre. Les
      renforcements se glissent à intervalles réguliers dans ce qui suit leur rencontre :
-     groupés en fin de séance, ils formeraient une longue file du même exercice. */
+     groupés en fin de séance, ils formeraient une longue file du même exercice.
+
+     Un élément qu'on dit à voix haute pour la première fois revient lui aussi
+     une seconde fois, et c'est ce second exercice qui décide de son échelon :
+     par écrit s'il vient d'être dit, de nouveau à voix haute sinon. Celui-là
+     ferme la séance, le plus loin possible du premier : écrire un mot qu'on
+     vient de lire à l'écran ne prouve rien. Trois révisions ordinaires sont
+     gardées pour la fin, afin qu'il ne suive jamais aussitôt. */
+  const toSay = x => x.ex === 'speak' && NL.srs.firstAloud(x.items[0]);
   function lace(meetings, reviews) {
-    const base = meetings.concat(reviews);
+    const plain = reviews.filter(x => !toSay(x)).slice(-SECOND_GAP);
+    const last = reviews.filter(toSay).map(x => ({ ex: null, task: null, items: x.items, second: true }));
+    const base = meetings.concat(reviews.filter(x => plain.indexOf(x) < 0), plain);
     const every = Math.max(1, Math.floor(base.length / Math.max(1, meetings.length)));
     const out = [], waiting = [];
     let i = 0, since = 0;
@@ -138,7 +148,7 @@ NL.screens.sessie = (function () {
       if (i < meetings.length) waiting.push({ after: out.length, slot: { ex: null, task: null, items: base[i].items, second: true } });
       out.push(base[i++]); since++;
     }
-    return out;
+    return out.concat(last);
   }
 
   /* Le renforcement d'une rencontre se construit quand son tour arrive : son exercice
@@ -168,10 +178,21 @@ NL.screens.sessie = (function () {
   }
 
   /* Une faute sur un élément dont le renforcement attend plus loin n'ajoute pas de
-     reprise : le renforcement EST sa seconde chance. */
+     reprise : le renforcement EST sa seconde chance.
+
+     Sauf à voix haute, tant que l'élément n'a jamais été dit : son second
+     exercice doit rester libre pour l'écrire. On le redemande donc à voix haute
+     sans l'attendre, quelques exercices plus loin. Dit cette fois, il est écrit
+     dans la séance ; sinon c'est ce second exercice qui le redemande à voix
+     haute, et l'écrit attend le lendemain. */
   function again(c) {
-    const waiting = L.queue.slice(L.at + 1).some(x => x.second && !x.task && x.items[0] === c.items[0]);
-    if (!waiting && L.queue.length < L.cap) L.queue.push(retryOf(c));
+    const at = L.queue.findIndex((x, i) => i > L.at && x.second && !x.task && x.items[0] === c.items[0]);
+    if (at < 0) { if (L.queue.length < L.cap) L.queue.push(retryOf(c)); return; }
+    if (c.ex !== 'speak' || c.retry || L.queue.length >= L.cap || !NL.srs.firstAloud(c.items[0])) return;
+    const pos = Math.max(L.at + 1, Math.min(L.at + 1 + SECOND_GAP, at - SECOND_GAP));
+    L.queue.forEach(x => { if (x.second && x.metAt >= pos) x.metAt++; });
+    L.queue.splice(pos, 0, retryOf(c));
+    L.queue[at + 1].metAt = pos;
   }
 
   const cur = () => L && L.queue[L.at];

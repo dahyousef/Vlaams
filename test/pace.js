@@ -30,7 +30,9 @@ NL.state.open().then(() => {
   const total = NL.content.allItems().length;
   NL.ui.go('sessie');
 
-  const perDay = [], mix = {}, seenOnDay = {}, dry = [];
+  const perDay = [], mix = {}, seenOnDay = {}, dry = [], aloud = {}, passedOn = {};
+  /* Passé l'échelon 3, un élément compte parmi ceux que l'on sait produire. */
+  const PAST = 4;
   let backToBack = 0, prevEx = null, exhausted = null, maxBacklog = 0, tasks = 0, lateRecog = 0;
 
   for (let day = 1; day <= DAYS; day++) {
@@ -53,6 +55,8 @@ NL.state.open().then(() => {
         if (wasAt >= 1 && (c.ex === 'pick' || c.ex === 'recall' || c.ex === 'match')) lateRecog++;
         if (c.ex === prevEx && c.ex !== 'match' && !c.retry) backToBack++;
         prevEx = c.ex;
+        /* Le jour où chaque élément est demandé à voix haute pour la première fois. */
+        if (c.ex === 'speak' && !aloud[c.items[0].id]) aloud[c.items[0].id] = day;
         c.items.forEach(it => {
           seenOnDay[it.id] = seenOnDay[it.id] || new Set();
           seenOnDay[it.id].add(day);
@@ -65,6 +69,8 @@ NL.state.open().then(() => {
         /* Et la réponse passe par l'écran, pas par le planificateur : c'est la
            séance qui porte les reprises et le renforcement des rencontres. */
         if (wasMatch || RAND() < 0.85) answer.right(); else answer.wrong();
+        /* L'exercice sur lequel chaque élément passe l'échelon de l'écrit. */
+        if (!wasMatch && wasAt < PAST && NL.srs.stageOf(c.items[0]) >= PAST && !passedOn[c.items[0].id]) passedOn[c.items[0].id] = c.ex;
         answer.next(wasMatch);
         if (B.app.innerHTML.indexOf('done-stage') >= 0) break;
       }
@@ -102,6 +108,23 @@ NL.state.open().then(() => {
      qu'il reste du cours à rencontrer. */
   ok(dry.length === 0, dry.length + ' jour(s) sans aucun élément nouveau alors qu’il en restait à rencontrer — le premier : jour ' + dry[0]);
   P('jours sans rien de neuf', dry.length === 0 ? 'aucun' : dry.length + ' (jours ' + dry.slice(0, 8).join(', ') + '…)');
+  /* Dire tôt : un mot ou une phrase rencontré le premier jour est demandé à voix
+     haute en une dizaine de jours, et jamais après trois semaines. Avec « dis-le »
+     au seul échelon 5, c'était cinq semaines. */
+  const firstDay = Object.keys(seenOnDay).filter(id => seenOnDay[id].has(1) && NL.content.byId(id).kind !== 'pattern');
+  const waits = firstDay.map(id => aloud[id] || Infinity).sort((a, b) => a - b);
+  const typical = waits[Math.floor(waits.length / 2)], latest = waits[waits.length - 1];
+  ok(typical <= 10, 'un élément du premier jour est typiquement demandé à voix haute le jour ' + typical + ' : plus de dix jours');
+  ok(latest <= 21, 'un élément du premier jour attend le jour ' + latest + ' pour être demandé à voix haute : plus de trois semaines');
+  P('première demande à voix haute', 'jours ' + waits[0] + ' à ' + latest + ', pour les ' + waits.length + ' éléments du premier jour');
+  /* Et dire tôt ne doit pas se payer sur le sens du second compte : un élément
+     que l'on « sait produire » a passé l'échelon de l'écrit en étant écrit. Lu à
+     voix haute, il a le mot sous les yeux. Quand la première réponse parlée
+     faisait monter, c'était 97 éléments sur 100 ; il en reste quelques-uns, ceux
+     qui, déjà dits, retombent puis tirent « dis-le » en revenant à l'échelon 3. */
+  const passed = Object.keys(passedOn), read = passed.filter(id => passedOn[id] === 'speak');
+  ok(read.length <= passed.length / 5, read.length + ' des ' + passed.length + ' éléments qui ont passé l’échelon de l’écrit l’ont passé en étant lus à voix haute');
+  P('échelon de l’écrit passé par écrit', (passed.length - read.length) + ' sur ' + passed.length);
   ok(over.length === 0, over.length + ' jours dépassent le plafond quotidien — la dette explose');
   P('plafond quotidien respecté', over.length === 0 ? 'oui, ' + busiest + ' au maximum' : 'NON');
   P('pic de charge', peak + ' min');

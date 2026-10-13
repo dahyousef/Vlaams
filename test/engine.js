@@ -332,6 +332,139 @@ NL.state.open().then(() => {
     console.log('  mot ajouté à la main servi d’abord ; unité vide et budget épuisé : pas de séance, pas d’erreur');
   }
 
+  /* ------------------------------------------------------------------ */
+  console.log('\nÀ VOIX HAUTE — dès le troisième échelon, et la première fois ne déplace rien');
+  {
+    fresh();
+    const words = NL.content.allItems().filter(isWord);
+    const it = words.find(i => !i.cognate);
+    const draw = n => { const seen = {}; for (let k = 0; k < n; k++) seen[NL.srs.exerciseFor(it)] = 1; return Object.keys(seen); };
+    const inDays = r => Math.round((r.due - B.clock.now()) / DAY * 10) / 10;
+
+    /* Jamais dit : dès que l'échelon le propose, c'est ce qui est demandé. */
+    const mute = words.filter(w => { put(w, 3, T0); return NL.srs.exerciseFor(w) !== 'speak'; });
+    ok(mute.length === 0, mute.length + ' of ' + words.length + ' never-said items on rung 3 are not asked aloud, e.g. « ' + (mute[0] && mute[0].nl) + ' »');
+    put(it, 2, T0);
+    ok(draw(30).indexOf('speak') < 0, 'an item is asked aloud on rung 2, before its rung offers it');
+
+    /* Raté sans avoir jamais été dit : l'échelon est gardé, et il revient demain, à voix haute. */
+    put(it, 3, T0);
+    let r = NL.srs.grade(it, false, { ex: 'speak' });
+    ok(r.stage === 3, 'a wrong first spoken answer sends the item from rung 3 to rung ' + r.stage);
+    ok(r.due - B.clock.now() === DAY, 'after a wrong first spoken answer the item is due in ' + inDays(r) + ' day(s), not 1');
+    ok(draw(20).join() === 'speak', 'after a wrong first spoken answer the item is asked: ' + draw(20).join(', '));
+    /* Une faute à l'écrit, elle, coûte toujours deux échelons. */
+    put(it, 3, T0);
+    ok(NL.srs.grade(it, false, { ex: 'type' }).stage === 1, 'a wrong written answer on rung 3 no longer drops two rungs');
+
+    /* Dit pour la première fois : il est dit, et il ne monte pas. Lire un mot à
+       voix haute ne dit pas qu'on sait l'écrire : c'est l'exercice suivant qui
+       en décide, et celui-là n'est pas parlé. */
+    put(it, 3, T0);
+    r = NL.srs.grade(it, true, { ex: 'speak', spoken: true });
+    ok(r.said === true && r.stage === 3, 'a first right spoken answer should leave the item said and on rung 3: it is on rung ' + r.stage + ', said ' + r.said);
+    ok(r.due - B.clock.now() === DAY, 'after a first right spoken answer the item is due in ' + inDays(r) + ' day(s), not 1');
+    const then = draw(30);
+    ok(then.indexOf('speak') < 0, 'an item that has just been said for the first time is asked: ' + then.join(', '));
+    r = NL.srs.grade(it, true, { ex: then[0] });
+    ok(r.stage === 4, 'the written answer that follows should take the item to rung 4: it is on rung ' + r.stage);
+
+    /* Une fois dit, l'échelon tire au sort comme avant, et une réponse à voix
+       haute compte comme une autre, juste ou fausse. */
+    r.stage = 3; r.lastEx = null; NL.state.setRec(r);
+    const after = draw(60);
+    ok(after.length > 1 && after.indexOf('speak') >= 0, 'once said, rung 3 offers only: ' + after.join(', '));
+    ok(NL.srs.grade(it, true, { ex: 'speak', spoken: true }).stage === 4, 'once said, a right spoken answer no longer climbs a rung');
+    r = NL.state.rec(it.id); r.stage = 3; NL.state.setRec(r);
+    ok(NL.srs.grade(it, false, { ex: 'speak' }).stage === 1, 'once said, a wrong spoken answer no longer drops two rungs');
+    console.log('  ' + words.length + ' mots et phrases dits dès l’échelon 3 ; raté la première fois : échelon gardé, retour le lendemain ; dit la première fois : échelon gardé, puis ' + then.sort().join(' ou ') + ' ; une fois dit : ' + after.sort().join(', '));
+  }
+
+  /* ------------------------------------------------------------------ */
+  console.log('\nDIT POUR LA PREMIÈRE FOIS — un second exercice dans la séance, et c’est l’écrit qui fait monter');
+  {
+    const words = NL.content.allItems().filter(i => isWord(i) && !i.cognate);
+    /* Six éléments jamais dits, à l'échelon qui demande de les dire, et une
+       trentaine d'autres qui n'ont rien à dire. Tous dus. */
+    const voice = words.slice(0, 6), other = words.slice(6, 40);
+    const set = () => { fresh(); voice.forEach(it => put(it, 3, T0 - 2 * DAY)); other.forEach(it => put(it, 2, T0 - DAY)); };
+    const of = (served, it) => served.filter(x => x.id === it.id && x.ex !== 'match');
+    const toSay = it => voice.some(v => v.id === it.id);
+    const cost = c => c.due.length + c.due.filter(it => NL.srs.firstAloud(it)).length + 2 * c.fresh.length;
+
+    /* L'annonce compte ce second exercice, comme elle compte celui d'une rencontre. */
+    set();
+    const c = NL.srs.compose('vandaag'), p = NL.srs.plan();
+    ok(c.due.filter(toSay).length === voice.length, 'the fixture is wrong: the session should hold the six items to be said');
+    ok(p.tasks === cost(c), 'the home screen announces ' + p.tasks + ' exercises for a session that costs ' + cost(c));
+
+    /* Tout juste : chacun est dit, puis écrit plus loin, et c'est l'écrit qui le fait monter. */
+    const served = play();
+    const held = served.filter(x => x.ex !== 'match').length;
+    ok(held === p.tasks, 'home announced ' + p.tasks + ' exercises, the session held ' + held);
+    const gaps = [];
+    voice.forEach(it => {
+      const s = of(served, it), rec = NL.state.rec(it.id);
+      ok(s.length === 2 && s[0].ex === 'speak' && s[1].ex !== 'speak', '« ' + it.nl + ' » was asked: ' + s.map(x => x.ex).join(', ') + ' — it should be said, then written');
+      ok(rec.said === true && rec.stage === 4, '« ' + it.nl + ' », said then written, is said ' + rec.said + ' and on rung ' + rec.stage + ', not 4');
+      if (s.length === 2) gaps.push(served.indexOf(s[1]) - served.indexOf(s[0]));
+    });
+    ok(gaps.length > 0 && Math.min.apply(null, gaps) > 3, 'an item was written only ' + Math.min.apply(null, gaps) + ' exercise(s) after it was read aloud');
+    console.log('  ' + voice.length + ' éléments dits puis écrits dans la séance, ' + Math.min.apply(null, gaps) + ' exercices plus tard au minimum : ' + held + ' exercices annoncés et servis');
+
+    /* Raté à voix haute : redemandé à voix haute avant son second exercice, qui
+       reste ainsi libre pour l'écrire. Dit cette fois, il est écrit le jour même. */
+    set();
+    const tries = {};
+    const missing = n => x => !(x.ex === 'speak' && toSay(x.items[0]) && (tries[x.items[0].id] = (tries[x.items[0].id] || 0) + 1) <= n);
+    const once = play(missing(1)), regaps = [];
+    voice.forEach(it => {
+      const s = of(once, it), rec = NL.state.rec(it.id);
+      ok(s.length === 3 && s[0].ex === 'speak' && s[1].ex === 'speak' && s[2].ex !== 'speak', '« ' + it.nl + ' », missed aloud, was then asked: ' + s.slice(1).map(x => x.ex).join(', ') + ' — it should be said again, then written');
+      ok(rec.said === true && rec.stage === 4, '« ' + it.nl + ' », missed, said, then written, is said ' + rec.said + ' and on rung ' + rec.stage + ', not 4');
+      if (s.length === 3) regaps.push(once.indexOf(s[2]) - once.indexOf(s[1]));
+    });
+    ok(regaps.length > 0 && Math.min.apply(null, regaps) > 3, 'an item said at the second try was written only ' + Math.min.apply(null, regaps) + ' exercise(s) later');
+
+    /* Raté deux fois : son second exercice le redemande à voix haute. Dit enfin,
+       il garde son échelon, et l'écrit attend le lendemain. */
+    set();
+    Object.keys(tries).forEach(id => { delete tries[id]; });
+    const twice = play(missing(2));
+    voice.forEach(it => {
+      const s = of(twice, it), rec = NL.state.rec(it.id);
+      ok(s.length === 3 && s.every(x => x.ex === 'speak'), '« ' + it.nl + ' », missed aloud twice, was asked: ' + s.map(x => x.ex).join(', '));
+      ok(rec.said === true && rec.stage === 3, '« ' + it.nl + ' », said at the third try, is said ' + rec.said + ' and on rung ' + rec.stage + ', not 3');
+    });
+    B.clock.advance(DAY);
+    NL.state.touchDay();
+    const morrow = voice.filter(it => NL.srs.exerciseFor(it) === 'speak');
+    ok(morrow.length === 0, morrow.length + ' item(s) said yesterday are asked aloud again today instead of being written');
+
+    /* Séance quittée entre les deux exercices : dit, pas monté, et demain c'est l'écrit. */
+    set();
+    ok(S.begin('vandaag'), 'the session did not start');
+    let guard = 0;
+    while (S.peek() && S.peek().ex !== 'speak' && guard++ < 60) { const m = S.peek().ex === 'match'; B.clock.advance(20000); answer.right(); answer.next(m); }
+    const left = S.peek() && S.peek().items[0];
+    ok(left && toSay(left), 'the fixture is wrong: the session holds no spoken exercise');
+    answer.right(); answer.next(false);
+    S.abandon();
+    const half = NL.state.rec(left.id);
+    ok(half.said === true && half.stage === 3 && half.due - B.clock.now() >= DAY - 30 * MIN, 'an item said in a session left before its second exercise is said ' + half.said + ', on rung ' + half.stage + ', due in ' + Math.round((half.due - B.clock.now()) / 3600000) + ' h');
+    B.clock.advance(DAY);
+    NL.state.touchDay();
+    ok(NL.srs.exerciseFor(left) !== 'speak', 'the day after it was said, the item is asked aloud again');
+
+    /* Budget presque épuisé : le second exercice compte dans ce qu'il reste. */
+    set();
+    NL.srs.spend(NL.srs.pace().cap - 7);
+    const tight = NL.srs.compose('vandaag');
+    ok(cost(tight) <= 7, 'with seven exercises left in the day, the session costs ' + cost(tight));
+    ok(tight.fresh.length >= 1, 'a nearly spent day budget squeezed out every new item');
+    console.log('  raté une fois : redit ' + Math.min.apply(null, regaps) + ' exercices au moins avant d’être écrit ; raté deux fois : dit à la troisième, écrit le lendemain ; séance quittée : dit, échelon gardé ; sept exercices de budget : ' + tight.due.length + ' révision(s), ' + tight.fresh.length + ' rencontre(s), ' + cost(tight) + ' exercices');
+  }
+
   console.log('\n' + checks + ' checks, ' + (fails ? fails + ' FAILED' : 'ENGINE OK'));
   process.exit(fails ? 1 : 0);
 }).catch(e => { console.log('CRASH ' + (e && e.stack || e)); process.exit(1); });
