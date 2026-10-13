@@ -217,7 +217,7 @@ NL.srs = (function () {
     return r;
   }
 
-  /* Place un élément directement sur un échelon — test de placement, mots transparents. */
+  /* Place un élément directement sur un échelon : c'est ainsi que les tests posent un état. */
   function seed(item, stage) {
     const r = blank(item.id, item.kind);
     r.stage = clamp(stage, 0, maxRung(item));

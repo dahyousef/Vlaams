@@ -19,16 +19,6 @@
 
       let html = '<div class="wrap">';
 
-      if (!m.placed && c.seen === 0) {
-        html += '<section class="card lead">' +
-          '<h1>' + t.firstTitle + '</h1>' +
-          '<p>' + t.firstBody + '</p>' +
-          '<div class="lead-actions">' +
-          '<button class="btn btn-primary" data-go="placement">' + t.firstDoTest + '</button>' +
-          '<button class="btn btn-ghost" data-act="skip-place">' + t.firstSkip + '</button>' +
-          '</div></section>';
-      }
-
       /* The one thing this screen is for. */
       html += '<section class="card session-card">' +
         '<span class="eyebrow">' + t.todayEyebrow + '</span>' +
@@ -65,7 +55,6 @@
     click(el, d) {
       if (d.act === 'start') { NL.screens.sessie.begin('vandaag'); NL.ui.go('sessie'); return; }
       if (d.act === 'defi') return openDefi();
-      if (d.act === 'skip-place') { NL.state.setMeta({ placed: true }); NL.ui.render(); return; }
       if (d.scn) { NL.ui.go('scenario', d.scn); return; }
       if (d.sheetid) { NL.ui.go('spiek', d.sheetid); return; }
     }
@@ -168,7 +157,6 @@
         tile('\u{1F444}', t.soundsEyebrow, t.soundsTitle, 'go', 'klanken') +
         tile('\u{1F517}', 'de / het', t.dehetTitle, 'go', 'dehet') +
         tile('\u{1F50A}', t.docEyebrow, t.docTitle, 'go', 'doctor') +
-        tile('\u{1F4CF}', 'Test de niveau', m.placed ? 'Le refaire' : 'Pas encore fait', 'go', 'placement') +
         '</div>' +
 
         '<h3 class="sec">' + t.weekTitle + '</h3>' +

@@ -37,19 +37,6 @@ NL.state.open().then(() => {
   });
   NL.ui.closeSheet();
 
-  console.log('\nPLACEMENT');
-  try {
-    NL.ui.go('placement');
-    let guard = 0;
-    while (app.innerHTML.indexOf('done-stage') < 0 && guard++ < 40) {
-      NL.screens.placement.click({ dataset: {} }, { opt: '0' });
-      NL.screens.placement.click({ dataset: {} }, { act: 'dunno' });   // the typed question has no options
-      NL.screens.placement.click({ dataset: {} }, { act: 'next' });
-    }
-    console.log('  ran ' + guard + ' questions, summary rendered: ' + (app.innerHTML.indexOf('done-stage') >= 0));
-    if (guard >= 40) fail('placement never finished');
-  } catch (e) { fail('placement threw: ' + e.message); }
-
   console.log('\nSESSION');
   try {
     NL.state.clearAll();

@@ -90,7 +90,7 @@ hébergé, et **copier/coller** qui marche partout.
 | **Parcours** | Douze unités A1 avec les explications de grammaire. Alimente le planificateur. |
 | **Parler** | Six jeux de rôle. Tu choisis ta réplique puis tu la dis. |
 | **Écouter** | Du flamand à vitesse réelle sans texte, plus du shadowing. |
-| **Plus** | Tes mots, les antisèches, standard/flamand, le français caché, les sons, les familles de de/het, le docteur audio, le test de niveau. |
+| **Plus** | Tes mots, les antisèches, standard/flamand, le français caché, les sons, les familles de de/het, le docteur audio. |
 
 ## Le budget quotidien
 
@@ -238,7 +238,7 @@ SUPABASE_URL=https://xxxx.supabase.co SUPABASE_ANON_KEY=... sh build.sh
 src/core/     util  fr (toute l'interface)  state (IndexedDB)  srs  speech  audio  sync (Supabase)
 src/content/  lexicon.a1  lexicon.a1b  grammar  reference  scenarios  index
 src/ex/       les types d'exercices, derrière une seule interface
-src/ui/       shell  session  home  scenario  listen  library  placement  doctor  account
+src/ui/       shell  session  home  scenario  listen  library  doctor  account
 styles.css    le système de design
 build.sh      concatène le tout en index.html + artifact.html, et prépare dist/
 vendor/       supabase-js (UMD, version dans SUPABASE_VERSION), seulement dans index.html
@@ -298,9 +298,7 @@ prénom/commune/employeur.
 
 **Moteur, refait après simulation** : budget quotidien borné, paliers par
 élément, les deux correctifs d'intervalle, gouverneur de variété et étalement,
-déverrouillage par frontière contiguë, pourcentage de maîtrise seule, test de
-placement en échelle (4 questions dont une à taper, 3 bonnes, arrêt à la
-première échouée),
+déverrouillage par frontière contiguë, pourcentage de maîtrise seule,
 quatre nouveaux types d'exercice — l'intrus, corrige l'erreur, standaard of
 Vlaams, réponse libre notée sur rubrique.
 

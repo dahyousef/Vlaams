@@ -20,10 +20,10 @@ NL.state.open().then(() => {
   console.log('COLD START (Opera, artifact-like)');
   NL.ui.go('vandaag');
   const home = app.innerHTML;
-  ok(home.includes('test de niveau') || home.includes('Test de niveau'), 'no placement offer on a blank account');
+  ok(!/test de niveau/i.test(home) && home.indexOf('placement') < 0, 'a blank account is still offered the placement test');
   ok(home.includes('Démarrer la session'), 'no session button on a blank account');
   ok(!/[^a-z]the [a-z]/.test(home), 'English leaked onto the home screen');
-  console.log('  home screen     ' + home.length + ' chars, placement offered, session offered');
+  console.log('  home screen     ' + home.length + ' chars, session offered');
   console.log('  voice report    ' + NL.speech.voiceInfo().note.slice(0, 60) + '…');
   console.log('  mic verdict     listenBlocked=' + NL.speech.listenBlocked() + ', tier=' + NL.speech.tier().id);
   ok(NL.speech.listenBlocked() === 'browser', 'Opera should report no recogniser');

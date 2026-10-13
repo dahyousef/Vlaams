@@ -35,7 +35,6 @@ src/ui/home.js
 src/ui/scenario.js
 src/ui/listen.js
 src/ui/library.js
-src/ui/placement.js
 src/ui/doctor.js
 src/ui/account.js
 src/app.js"

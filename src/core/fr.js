@@ -34,12 +34,6 @@ NL.t = {
   statCourse: 'du cours',
   morepractice: 'Continuer autrement',
 
-  /* --- accueil, premier lancement --- */
-  firstTitle: 'Ce que tu entends déjà compte.',
-  firstBody: 'Tu entends du néerlandais depuis des années. Commencer à « de man eet brood » gaspillerait des semaines. Un test de cinq minutes te place là où tu es vraiment.',
-  firstDoTest: 'Faire le test de niveau',
-  firstSkip: 'Commencer de zéro',
-
   /* --- parcours --- */
   pathEyebrow: 'Parcours',
   pathTitle: 'Le niveau A1, en douze unités',
@@ -208,26 +202,6 @@ NL.t = {
   dehetBody: 'Environ 70% des mots het suivent une règle. Apprends les familles au lieu des 425 articles un par un — et ne traduis jamais depuis le français : het huis est neutre, la maison est féminine.',
   dehetHet: 'Prennent het', dehetDe: 'Prennent de',
   dehetSure: 'sans exception',
-
-  /* --- test de niveau --- */
-  placeEyebrow: 'Test de niveau · aucune pénalité',
-  placeQ: 'Qu’est-ce que ça veut dire ?',
-  placeHigh: 'Tu comprends déjà bien plus que tu ne crois.',
-  placeMid: 'Il y a déjà une base, surtout passive.',
-  placeLow: 'On commence au début — et c’est très bien.',
-  placeSeeded: n => n === 0
-    ? 'Tout ce que ces unités contiennent était déjà en cours d’apprentissage : le test ne change rien à ta progression.'
-    : 'Reconnaître un mot n’est pas savoir le dire, donc rien n’a été marqué comme acquis : ' + n + ' éléments ont simplement été placés plus haut dans l’échelle, en sautant les présentations dont tu n’as clairement pas besoin. Ils doivent encore atteindre l’étape orale.',
-  placeNone: 'Rien n’a été avancé, donc tu pars propre. C’est le point de départ honnête.',
-  placeRecognised: 'Reconnus', placeAdvanced: 'Avancés',
-  placeUnits: 'Unités', placeAsked: 'Questions',
-  placeRule: (a, b) => a + ' bonnes réponses sur ' + b + ', dont une à écrire, pour créditer l’unité et passer à la suivante.',
-  placeTypeQ: 'Écris-le en néerlandais',
-  placeSubmit: 'Valider',
-  placeStops: n => 'Le test s’arrête à « ' + n + ' » : c’est de là que tu pars.',
-  placeAll: n => 'Les ' + n + ' unités sont passées : tout le niveau A1 est avancé. Il reste à faire monter chaque élément jusqu’à l’oral.',
-  placeFirst: 'Commence ta première session',
-  placeLater: 'Plus tard',
 
   /* --- réglages --- */
   setTitle: 'Réglages',

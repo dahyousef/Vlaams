@@ -23,7 +23,7 @@ NL.ui = (function () {
     meer: '<circle cx="6" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="18" cy="12" r="1.4"/>'
   };
   const UNDER_MEER = ['woorden', 'spiek', 'register', 'klanken', 'doctor', 'dehet'];
-  const FULLSCREEN = { sessie: 1, scenario: 1, placement: 1, doctor: 1, compte: 1 };
+  const FULLSCREEN = { sessie: 1, scenario: 1, doctor: 1, compte: 1 };
 
   function go(to, a) {
     if (route === 'sessie' && to !== 'sessie' && NL.screens.sessie.active()) { sheet = 'quit-session'; return render(); }
