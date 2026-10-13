@@ -16,9 +16,9 @@ Every change below was built and run in a scratch copy of the repository before 
 
 Task 2 was also applied alone, exactly as written here, and its tests pass on that tree. The failing output quoted in Tasks 2, 3 and 4 was measured on the tree each of those tasks starts from.
 
-What was **not** run is each later intermediate commit on its own. Tasks 3, 6, 7, 9 and 11 touch the same files, and a note in each says which lines belong to a later task. If the suite is red after a task, the cause is almost certainly one of those boundaries: fix it in the task you are in, and keep one commit per task.
+Until 13 October 2026 the later intermediate commits had not been run on their own. The full run of step 3b did that: the thirteen tasks in order on a fresh copy, each step as written, the whole suite after every task. It was done twice. The first pass found what did not apply and what printed something else, and this plan was corrected; the second followed the corrected plan with no diff touched by hand, and the suite passed after every task. Tasks 2, 3, 6 and 9 used to carry diffs cut from the end state, with a note saying which of their lines belonged to a later task. Each of those diffs is now exactly what its task writes, and the notes are gone. Tasks 3, 6, 7, 9 and 11 still touch the same files: if the suite is red after a task all the same, look there first, fix it in the task you are in, and keep one commit per task.
 
-Tasks 5b and 9b were added on 12 October 2026, when the open question was settled, and rewritten on 13 October 2026, when defining *produced* for the glossary showed what the first version did to the second count. They were built on the end state of the other eleven, and the whole suite passes there with them. They were then placed where their dependencies put them: 5b after the simulation of Task 5, 9b after the mistakes session of Task 9. So the trees they start from here are not the tree they were measured on, and the failing output each quotes was measured on that end state with the task's own change left out. The full run of step 3b exists to check all of this before any ticket is written.
+Tasks 5b and 9b were added on 12 October 2026, when the open question was settled, and rewritten on 13 October 2026, when defining *produced* for the glossary showed what the first version did to the second count. They were built on the end state of the other eleven, and the whole suite passes there with them. They were then placed where their dependencies put them: 5b after the simulation of Task 5, 9b after the mistakes session of Task 9. So the trees they start from here are not the tree they were measured on, and the failing output each quotes was measured on that end state with the task's own change left out. The full run of step 3b checked all of this on 13 October 2026, before any ticket was written: in their own place every edit of the two tasks applied, and every line they quote was printed.
 
 Eight points were decided while writing this plan or found to differ from the spec. The maintainer reviewed them on 12 October 2026; they are recorded at the end, under **Decisions, as settled on 12 October 2026**. The first of them corrects what the spec says stopped the new words.
 
@@ -34,8 +34,8 @@ An agent runs this plan, but these moments are yours. Each step waits for the on
 | 1. Settle the open question, with a prototype | done, 12 October 2026: five weeks is too late, and Tasks 5b and 9b change it. See *The open question, as settled on 12 October 2026*. The addition to issue #12 was applied the same day |
 | 2. Commit the plan, with its pointer in `CLAUDE.md` | done, 12 October 2026: committed and pushed on `phase-1-engine`, ahead of step 1 at the maintainer's request. No pull request is open yet |
 | 3. Glossary and ADRs | done, 12 October 2026: eight terms added to `GLOSSARY.md`, *reinforcement* kept and *recall* retired; ADR 0006 (the reset) and ADR 0007 (the reserved share); the two candidates from Tasks 5b and 9b fail the first test and get none |
-| 3a. Rewrite Tasks 5b and 9b: a first right spoken answer leaves the rung alone, and a writing exercise in the same session decides the climb | done, 13 October 2026. Decided on 12 October while defining *produced*: as first written, Task 5b let reading an item aloud take it past rung 3, so the count of items the learner can produce stopped meaning that they wrote it. See *The correction of 12 and 13 October 2026* near the end. The amendment to issue #12 is drafted and is applied on the maintainer's word |
-| 3b. One full run of the thirteen tasks in a scratch copy, before any ticket | not started. It also renames the flag `recall` that Task 3 gives a queue entry, which the glossary now retires |
+| 3a. Rewrite Tasks 5b and 9b: a first right spoken answer leaves the rung alone, and a writing exercise in the same session decides the climb | done, 13 October 2026. Decided on 12 October while defining *produced*: as first written, Task 5b let reading an item aloud take it past rung 3, so the count of items the learner can produce stopped meaning that they wrote it. See *The correction of 12 and 13 October 2026* near the end. The amendment to issue #12 was applied on 13 October 2026 |
+| 3b. One full run of the thirteen tasks in a scratch copy, before any ticket | done, 13 October 2026, in two passes. The suite passes after every task, and Tasks 5b and 9b hold where they were placed. The sources the plan produces are those of the build that was tested and measured, and the page built from them is the same page. The corrections to this plan are listed in the commit that carries this line. The flag `recall` that Task 3 gave a queue entry is now `reinforcement`; the exercise `recall` keeps its name |
 | 4. `/to-tickets` | not started |
 | 5. Guardrail hook, then the run of the thirteen tasks | not started |
 | 6. `/code-review main`, PR body, PR out of draft | not started |
@@ -43,7 +43,7 @@ An agent runs this plan, but these moments are yours. Each step waits for the on
 | 8. Merge | not started |
 | 9. `/retro`, then `/improve-codebase-architecture` | not started |
 
-Three things live outside the repository on purpose. The verified end state of the eleven original tasks is one patch, at `../vlaams-phase-1-prototype.patch`. What Tasks 5b and 9b add to it is a second patch, `../vlaams-phase-1-5b-9b.patch`, applied after the first. Each header says how to use it and why it is not the way to implement. And `../vlaams-PROTOTYPE-when-first-spoken/` holds the prototype that settled the open question, with the scripts and the raw output behind every figure quoted for it.
+Three things live outside the repository on purpose. The verified end state of the eleven original tasks is one patch, at `../vlaams-phase-1-prototype.patch`. What Tasks 5b and 9b add to it is a second patch, `../vlaams-phase-1-5b-9b.patch`, applied after the first. Each header says how to use it and why it is not the way to implement. Both were made again on 13 October 2026, after step 3b, so that they build what this plan builds; the earlier ones are kept beside them. And `../vlaams-PROTOTYPE-when-first-spoken/` holds the prototype that settled the open question, with the scripts and the raw output behind every figure quoted for it.
 
 1. **Review this plan, and settle the open question.** The eight points at the end were settled on 12 October 2026, and issue #12 was corrected the same day. The open question, on when a session first asks you to speak, was settled later that day: five weeks is too late, and Tasks 5b and 9b change it.
 
@@ -242,6 +242,7 @@ Two more skills are held for later phases, so that they are not forgotten: `wayf
 - Tiers stay unpopulated. The comment at `TIER_MAX` in `src/core/srs.js` says why; leave it.
 - The repository is public. No personal data in tracked files, issues or commit messages.
 - The suite takes about six minutes on this machine, most of it `test/pace.js` and the eight journeys. Run the one test you are working on while iterating, and the whole suite before each commit.
+- **Name the root `.`, never `"$(pwd)"`.** A Claude Code shell on this machine sets `MSYS_NO_PATHCONV=1`, so Git Bash hands node `/c/Users/…` unconverted and a suite dies on its first file with `ENOENT … C:\c\Users\…`. Every suite takes the repository root as its first argument and accepts `.` when run from the root. The commands of this plan are written that way, and Task 1 makes `test/run-all.sh` do the same. `README.md` keeps `"$(pwd)"`: it is right on Linux and in an ordinary Git Bash.
 - On Windows the working tree has CRLF sources and the commit has LF. `git diff` hides the difference; an exact-string search in an editor may not. Match on content, not on line endings.
 
 ## Review Focus
@@ -264,13 +265,32 @@ Six test files each carry their own stub of the browser, and they have diverged:
 
 **Files:**
 - Create: `test/lib/browser.js`, `test/lib/answer.js`
-- Modify: `test/smoke.js`, `test/sim.js`, `test/firstrun.js`, `test/sync.js`, `test/journey.js`, `test/pace.js`
+- Modify: `test/run-all.sh`, `test/smoke.js`, `test/sim.js`, `test/firstrun.js`, `test/sync.js`, `test/journey.js`, `test/pace.js`
 
 **Interfaces:**
 - Produces: `require('./lib/browser').open(opts)` → `{ ctx, NL, app, store, listeners, spoken, clock, mkEl, random }`; also `rng`, `sources`, `UA`, `SEED`. Options are documented at the top of the file. `clock` has `now()`, `set(ms)`, `advance(ms)` and only fakes `Date` when `opts.now` is given.
 - Produces: `require('./lib/answer')(B)` → `{ right(), wrong(), next(wasMatch), click(d), type(value) }`, driving `NL.screens.sessie` by clicks and typing.
 
-- [ ] **Step 1: Record what the suites report today**
+- [ ] **Step 1: Make the suite start from an agent's shell, and record what it reports today**
+
+As it stands, `sh test/run-all.sh` passes `"$(pwd)"` to node, and in an agent's shell on this machine that arrives as `/c/Users/…`: the first suite stops with `LOAD FAIL src/core/util.js: ENOENT`. See *Global Constraints*. One line changes.
+
+In `test/run-all.sh`, replace:
+
+````sh
+cd "$(dirname "$0")/.."
+ROOT="$(pwd)"
+````
+
+with:
+
+````sh
+cd "$(dirname "$0")/.."
+# « . » et non « $(pwd) » : sous Git Bash, node veut C:/… et le shell ne
+# convertit /c/… pour lui que si rien ne le lui interdit. Une session d'agent
+# le lui interdit (MSYS_NO_PATHCONV). Toutes les suites acceptent « . ».
+ROOT=.
+````
 
 Run: `sh test/run-all.sh > /tmp/before.txt 2>&1; echo $?`
 Expected: `0`. Keep the file: it is the reference for Step 5.
@@ -1112,7 +1132,7 @@ Expected: `0`, and a diff confined to the `SCREENS`…`OWN WORDS` section of `si
 - [ ] **Step 6: Commit, and open the draft PR**
 
 ````bash
-git add test/lib test/smoke.js test/sim.js test/firstrun.js test/sync.js test/journey.js test/pace.js
+git add test/lib test/run-all.sh test/smoke.js test/sim.js test/firstrun.js test/sync.js test/journey.js test/pace.js
 git commit -m "test: one fake browser for every suite, and a helper that answers through the screen"
 git push -u origin phase-1-engine
 gh pr create --draft --title "Phase 1: engine, screens and guards" --body "Implements phase 1 of #12. Draft: opened early so CI runs on every push."
@@ -1176,7 +1196,7 @@ function play(right) {
   while (S.peek() && guard++ < 120) {
     const c = S.peek();
     const wasMatch = c.ex === 'match';
-    served.push({ ex: c.ex, id: c.items[0].id, item: c.items[0], unmet: !wasMatch && !met(c.items[0]), recall: !!c.recall, retry: !!c.retry });
+    served.push({ ex: c.ex, id: c.items[0].id, item: c.items[0], unmet: !wasMatch && !met(c.items[0]), reinforcement: !!c.reinforcement, retry: !!c.retry });
     B.clock.advance(20000);
     if (wasMatch || !right || right(c)) answer.right(); else answer.wrong();
     answer.next(wasMatch);
@@ -1217,6 +1237,7 @@ NL.state.open().then(() => {
       'a session served ' + newWords.length + ' never-met words while ' + waiting + ' wait in the next unit');
     ok(newWords.some(x => x.item.unit === units[5].id), 'none of the new words comes from the next unit');
   }
+
   /* ------------------------------------------------------------------ */
   console.log('\nLE SEUIL — trois quarts RENCONTRÉS ouvrent l’unité suivante');
   {
@@ -1250,7 +1271,7 @@ The figure of 430 credited items quoted in `docs/CONSTATS-2026-10-06.md` came fr
 
 - [ ] **Step 2: Run it and watch it fail**
 
-Run: `node test/engine.js "$(pwd)"`
+Run: `node test/engine.js .`
 Expected, as measured on `main`, with the home screen quoted exactly as the learner saw it:
 
 ```
@@ -1361,10 +1382,8 @@ In `test/smoke.js`:
 @@ -186,12 +147,13 @@ NL.state.open().then(() => {
      NL.state.setRec({ id: cog.id, kind: 'word', stage: 0, due: 0, interval: 0, ease: 2.5, reps: 0, lapses: 0, last: 0, said: false, retired: false, lastEx: null });
      NL.srs.grade(cog, true);
--    ok(NL.srs.stageOf(cog) >= 3, 'un mot transparent devrait sauter les premiers échelons');
--    console.log('  transparent     « ' + cog.nl + ' » démarre à l’échelon ' + NL.srs.stageOf(cog));
-+    ok(NL.srs.stageOf(cog) === 2, 'a cognate skips one rung, the meaning drill, and no more — it sits on rung ' + NL.srs.stageOf(cog));
-+    console.log('  transparent     « ' + cog.nl + ' » saute le sens, et rien d’autre : échelon ' + NL.srs.stageOf(cog));
+     ok(NL.srs.stageOf(cog) >= 3, 'un mot transparent devrait sauter les premiers échelons');
+     console.log('  transparent     « ' + cog.nl + ' » démarre à l’échelon ' + NL.srs.stageOf(cog));
    }
  
 -  /* La frontière est contiguë : impossible d'ouvrir une unité par-dessus un trou. */
@@ -1401,8 +1420,6 @@ In `test/smoke.js`:
    }
 ````
 
-The first hunk also changes the two lines about the cognate. **Leave those two lines as they are**: they belong to Task 4.
-
 - [ ] **Step 5: List the test**
 
 In `test/run-all.sh`, after the `dehet.js` line, add:
@@ -1413,7 +1430,7 @@ node test/engine.js   "$ROOT"
 
 - [ ] **Step 6: Run and commit**
 
-Run: `node test/engine.js "$(pwd)" && sh test/run-all.sh`
+Run: `node test/engine.js . && sh test/run-all.sh`
 Expected: `11 checks, ENGINE OK`, then `TOUTE LA SUITE EST PASSÉE`. The first line of the engine test now reads:
 
 ```
@@ -1462,7 +1479,7 @@ A session has 22 places, one per item. With reviews waiting it holds 15 reviews 
 **Interfaces:**
 - Consumes: the gate from Task 2.
 - Produces: `NL.srs.compose(source, now)` → `{ due: Item[], fresh: Item[], left }`, `source` being `'vandaag'` or a unit id. `NL.srs.plan()` → `{ due, fresh, total, tasks, left, mins, units }` where `total` counts items, `tasks` counts exercises, and `units` is `{ from, to }` unit numbers or `null`. `NL.srs.unitSpan(items)`. Constants `NEW_SHARE`, `NEW_MIN`, `NEW_MAX`. `NL.srs.freshItems(n, uid)`.
-- Produces: a session queue entry may carry `recall: true`; its `task` is built when its turn comes. `NL.screens.sessie.peek()` always returns a built entry.
+- Produces: a session queue entry may carry `reinforcement: true`; its `task` is built when its turn comes. `NL.screens.sessie.peek()` always returns a built entry.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1561,7 +1578,7 @@ In `test/engine.js`, insert these six blocks between the block *La panne réelle
     all.slice(0, 200).forEach(it => put(it, 3, T0 - DAY));
     const served = play();
     const news = served.filter(x => x.unmet).length;
-    const reviews = served.filter(x => !x.unmet && !x.recall && !x.retry && x.ex !== 'match').length;
+    const reviews = served.filter(x => !x.unmet && !x.reinforcement && !x.retry && x.ex !== 'match').length;
     console.log('  200 éléments dus : ' + reviews + ' révisions, ' + news + ' rencontres');
     ok(news >= RESERVED, 'with 200 items due, a session met only ' + news + ' new item(s)');
     ok(reviews + news <= NL.srs.MAX_TASKS, 'the session holds ' + (reviews + news) + ' items, more than its ' + NL.srs.MAX_TASKS + ' places');
@@ -1605,13 +1622,13 @@ In `test/engine.js`, insert these six blocks between the block *La panne réelle
       let guard = 0;
       while (S.peek() && guard++ < 120) {
         const c = S.peek(), wasMatch = c.ex === 'match';
-        q.push({ unmet: !wasMatch && !met(c.items[0]), match: wasMatch, recall: !!c.recall });
+        q.push({ unmet: !wasMatch && !met(c.items[0]), match: wasMatch, reinforcement: !!c.reinforcement });
         answer.right(); answer.next(wasMatch);
         if (B.app.innerHTML.indexOf('done-stage') >= 0) break;
       }
       S.abandon();
       const news = q.filter(x => x.unmet).length;
-      const reviews = q.filter(x => !x.unmet && !x.match && !x.recall).length;
+      const reviews = q.filter(x => !x.unmet && !x.match && !x.reinforcement).length;
       const tasks = q.filter(x => !x.match).length;
       console.log('  ' + name.padEnd(26) + 'annoncé ' + p.due + ' + ' + p.fresh + ' (' + p.tasks + ' exercices) — servi ' + reviews + ' + ' + news + ' (' + tasks + ')');
       ok(news === p.fresh, name + ': home announced ' + p.fresh + ' new, the session met ' + news);
@@ -1678,7 +1695,7 @@ In `test/engine.js`, insert these six blocks between the block *La panne réelle
 
 - [ ] **Step 2: Run them and watch them fail**
 
-Run: `node test/engine.js "$(pwd)"`
+Run: `node test/engine.js .`
 Expected, as measured on the tree Task 2 leaves:
 
 ```
@@ -1733,29 +1750,7 @@ In `src/core/srs.js`:
 -  const MAX_TASKS = 22;
 +  const MAX_TASKS = 22;             // les places d'une séance : un élément par place
    const MAX_STAGE = 6;
--  const GRADUATED = 5;              // atteint uniquement en disant l'élément à voix haute
-+  const PRODUCE = 4;                // l'échelon de l'écrit est passé : l'élément se produit
-+  /* La part de chaque séance réservée à ce qui n'a jamais été rencontré. Sans
-+     elle, les révisions finissent par occuper toutes les places et plus rien de
-+     neuf n'arrive. Elle se calcule sur la SÉANCE, jamais sur le budget du jour :
-+     le budget vaut plusieurs séances, et en réserver 30 % dépasserait la séance. */
-+  const NEW_SHARE = 0.3, NEW_MIN = 4;
-+  /* Un élément rencontré revient une fois dans la même séance : il coûte donc
-+     deux exercices. Au-delà de la moitié des places, la séance doublerait. */
-+  const NEW_MAX = MAX_TASKS / 2;
-   const RETIRE_AT = 200 * DAY;
-   const MAX_INTERVAL = 365 * DAY;   // au-delà, l'élément est acquis, pas oublié      // au-delà, l'élément sort du paquet quotidien
-@@ -5,9 +5,17 @@
- NL.srs = (function () {
-   'use strict';
--  const { clamp, MIN, DAY } = NL.util;
-+  const { clamp, DAY } = NL.util;
- 
--  const MAX_TASKS = 22;
-+  const MAX_TASKS = 22;             // les places d'une séance : un élément par place
-   const MAX_STAGE = 6;
--  const GRADUATED = 5;              // atteint uniquement en disant l'élément à voix haute
-+  const PRODUCE = 4;                // l'échelon de l'écrit est passé : l'élément se produit
+   const GRADUATED = 5;              // atteint uniquement en disant l'élément à voix haute
 +  /* La part de chaque séance réservée à ce qui n'a jamais été rencontré. Sans
 +     elle, les révisions finissent par occuper toutes les places et plus rien de
 +     neuf n'arrive. Elle se calcule sur la SÉANCE, jamais sur le budget du jour :
@@ -1898,22 +1893,12 @@ In `src/core/srs.js`:
  
    return {
 -    RUNGS, STEP, PACE, MAX_STAGE, MAX_TASKS, GRADUATED, TIER_MAX, RETIRE_AT,
-+    RUNGS, STEP, PACE, MAX_STAGE, MAX_TASKS, PRODUCE, NEW_SHARE, NEW_MIN, NEW_MAX, TIER_MAX, RETIRE_AT,
++    RUNGS, STEP, PACE, MAX_STAGE, MAX_TASKS, GRADUATED, NEW_SHARE, NEW_MIN, NEW_MAX, TIER_MAX, RETIRE_AT,
      maxRung, pace, exerciseFor, supports, grade, seed, isSeen, stageOf, atTop,
 -    dueItems, counts, freshItems, plan, recOf, budgetLeft, spend
-+    dueItems, counts, freshItems, compose, plan, unitSpan, mistakes, recOf, budgetLeft, spend
++    dueItems, counts, freshItems, compose, plan, unitSpan, recOf, budgetLeft, spend
    };
  })();
-````
-
-Three lines in those hunks belong to later tasks. For this task:
-
-- keep `const GRADUATED = 5;` and do **not** add `const PRODUCE = 4;` (Task 7);
-- in the export list at the bottom, keep `GRADUATED`, leave out `PRODUCE` and `mistakes` (Tasks 7 and 9). The list for this task is:
-````js
-    RUNGS, STEP, PACE, MAX_STAGE, MAX_TASKS, GRADUATED, NEW_SHARE, NEW_MIN, NEW_MAX, TIER_MAX, RETIRE_AT,
-    maxRung, pace, exerciseFor, supports, grade, seed, isSeen, stageOf, atTop,
-    dueItems, counts, freshItems, compose, plan, unitSpan, recOf, budgetLeft, spend
 ````
 
 - [ ] **Step 4: The session: three strands laced together**
@@ -1921,7 +1906,7 @@ Three lines in those hunks belong to later tasks. For this task:
 In `src/ui/session.js`:
 
 ````diff
-@@ -47,76 +47,152 @@ NL.screens.sessie = (function () {
+@@ -47,76 +47,132 @@ NL.screens.sessie = (function () {
    }
  
 -  function start(source) {
@@ -1968,12 +1953,7 @@ In `src/ui/session.js`:
 +        out.push({ ex: name, task: EX.get(name).build(it), items: [it] });
          recent.push(name);
          if (recent.length > 2) recent.shift();
--      } catch (e) { /* un élément mal formé est simplement sauté */ }
-+      } catch (e) {
-+        /* Un élément mal formé est sauté — mais plus en silence : sans trace,
-+           il pouvait n'être jamais drillé sans que personne le sache. */
-+        NL.errlog.note(e, 'exercice ' + name + ' · ' + it.id);
-+      }
+       } catch (e) { /* un élément mal formé est simplement sauté */ }
      });
 +    return out;
 +  }
@@ -2017,7 +1997,6 @@ In `src/ui/session.js`:
 +  function start(source) {
 +    NL.state.touchDay();
 +    if (source === 'defi') return startDefi();
-+    if (source === 'fouten') return startMistakes();
 +    /* Ce que la séance contient, c'est compose() qui le décide — le même appel
 +       que l'écran d'accueil. */
 +    const c = NL.srs.compose(source);
@@ -2034,7 +2013,7 @@ In `src/ui/session.js`:
 +    const meetings = spread(build(c.fresh, recent), queue.length ? 'match' : NL.state.meta().lastEx || null);
 +    const reviews = spread(build(U.shuffle(c.due), recent), meetings.length ? meetings[meetings.length - 1].ex : NL.state.meta().lastEx || null);
 +    queue.push.apply(queue, lace(meetings, reviews));
-+    queue.forEach((x, i) => { if (x.recall) x.metAt = queue.findIndex(y => !y.recall && y.ex !== 'match' && y.items[0] === x.items[0]); });
++    queue.forEach((x, i) => { if (x.reinforcement) x.metAt = queue.findIndex(y => !y.reinforcement && y.ex !== 'match' && y.items[0] === x.items[0]); });
  
      if (queue.length === 0) { L = null; return false; }
 +    const built = meetings.concat(reviews);
@@ -2052,7 +2031,7 @@ In `src/ui/session.js`:
 +  }
 +
 +  /* Un rappel ne revient jamais à moins de trois exercices de sa rencontre. */
-+  const RECALL_GAP = 3;
++  const REINFORCEMENT_GAP = 3;
 +
 +  /* Tresse les rencontres, les révisions et le rappel de chaque rencontre. Les
 +     rappels se glissent à intervalles réguliers dans ce qui suit leur rencontre :
@@ -2063,31 +2042,19 @@ In `src/ui/session.js`:
 +    const out = [], waiting = [];
 +    let i = 0, since = 0;
 +    while (i < base.length || waiting.length) {
-+      const ripe = waiting.length && out.length - waiting[0].after > RECALL_GAP;
++      const ripe = waiting.length && out.length - waiting[0].after > REINFORCEMENT_GAP;
 +      if (waiting.length && (i >= base.length || (ripe && since >= every))) {
 +        out.push(waiting.shift().slot); since = 0;
 +        continue;
 +      }
-+      if (i < meetings.length) waiting.push({ after: out.length, slot: { ex: null, task: null, items: base[i].items, recall: true } });
++      if (i < meetings.length) waiting.push({ after: out.length, slot: { ex: null, task: null, items: base[i].items, reinforcement: true } });
 +      out.push(base[i++]); since++;
 +    }
 +    return out;
 +  }
-+
-+  /* Une séance sur ce qui résiste : les éléments le plus souvent ratés, chacun à
-+     l'échelon où il se trouve. Comme le défi, elle ne compte pas dans le budget
-+     du jour qu'elle n'a pas à attendre, et ses réponses sont de vraies révisions. */
-+  function startMistakes() {
-+    const items = NL.srs.mistakes().slice(0, MAX_TASKS).map(x => x.item);
-+    const queue = spread(build(items, []), NL.state.meta().lastEx || null);
-+    if (!queue.length) { L = null; return false; }
-+    L = Object.assign(blankTurn(), {
-+      source: 'fouten', queue, at: 0, cap: queue.length + 6,
-+      phase: 'ask', right: 0, wrong: 0, spoken: 0, xp: 0, started: Date.now(), finished: false,
-+      newCount: 0, combo: 0, bestCombo: 0, lives: null
-     });
-     return true;
-   }
+-    });
+-    return true;
+-  }
  
 +  /* Le rappel d'une rencontre se construit quand son tour arrive : son exercice
 +     dépend de l'échelon que l'élément vient d'atteindre. Raté à la rencontre, il
@@ -2101,7 +2068,7 @@ In `src/ui/session.js`:
 +      const avoid = new Set([prev, after].filter(Boolean));
 +      let at = L.at, name = NL.srs.exerciseFor(L.queue[L.at].items[0], avoid);
 +      for (let j = L.at + 1; name === prev && j < L.queue.length && !L.queue[j].task; j++) {
-+        if (L.at - L.queue[j].metAt < RECALL_GAP) continue;
++        if (L.at - L.queue[j].metAt < REINFORCEMENT_GAP) continue;
 +        const n = NL.srs.exerciseFor(L.queue[j].items[0], avoid);
 +        if (n !== prev) { at = j; name = n; }
 +      }
@@ -2118,18 +2085,13 @@ In `src/ui/session.js`:
 +  /* Une faute sur un élément dont le rappel attend plus loin n'ajoute pas de
 +     reprise : le rappel EST sa seconde chance. */
 +  function again(c) {
-+    const waiting = L.queue.slice(L.at + 1).some(x => x.recall && !x.task && x.items[0] === c.items[0]);
++    const waiting = L.queue.slice(L.at + 1).some(x => x.reinforcement && !x.task && x.items[0] === c.items[0]);
 +    if (!waiting && L.queue.length < L.cap) L.queue.push(retryOf(c));
 +  }
 +
    const cur = () => L && L.queue[L.at];
    const active = () => !!(L && !L.finished);
 ````
-
-Three things in that hunk belong to later tasks. For this task:
-
-- leave out the line `if (source === 'fouten') return startMistakes();` and the whole function `startMistakes` (Task 9);
-- in `build()`, keep the original one-line `catch (e) { /* un élément mal formé est simplement sauté */ }` instead of the `NL.errlog.note` version (Task 11).
 
 Then the three places that queued a retry or advanced the queue:
 In `src/ui/session.js`:
@@ -2149,12 +2111,12 @@ In `src/ui/session.js`:
 +    if (L.at >= L.queue.length) return finish();
      NL.ui.render();
      autoplay();
-@@ -154,5 +230,5 @@ NL.screens.sessie = (function () {
-       NL.audio.no();
-       if (L.source === 'defi') L.lives--;
--      else if (L.queue.length < MAX_TASKS + 6) L.queue.push(retryOf(c));
-+      else again(c);
-     }
+@@ -195,5 +273,5 @@ NL.screens.sessie = (function () {
+     L.phase = 'no';
+     if (L.source === 'defi') L.lives--;
+-    else if (L.queue.length < MAX_TASKS + 6) L.queue.push(retryOf(c));
++    else again(c);
+     NL.audio.no();
      NL.ui.render();
 ````
 
@@ -2167,7 +2129,7 @@ and the label that says an exercise is a second look. Replace:
 with:
 
 ````js
-      (c.retry || c.recall ? ' · ' + NL.t.again2 : '') +
+      (c.retry || c.reinforcement ? ' · ' + NL.t.again2 : '') +
 ````
 
 - [ ] **Step 5: The journey test compared the promise with the delivery to within one; make it exact**
@@ -2191,7 +2153,7 @@ In `test/journey.js`:
 
 - [ ] **Step 6: Run and commit**
 
-Run: `node test/engine.js "$(pwd)" && sh test/run-all.sh`
+Run: `node test/engine.js . && sh test/run-all.sh`
 Expected: `ENGINE OK`, with lines such as `compte neuf  annoncé 0 + 11 (22 exercices) — servi 0 + 11 (22)` and `200 éléments dus : 15 révisions, 7 rencontres`; then the whole suite passes. `test/pace.js` still drives the session the old way and Task 5 rewrites that loop: if one of its figures has moved, do Task 5 next and keep the two commits in order.
 
 ````bash
@@ -2240,7 +2202,7 @@ In `test/engine.js`, insert before the block *Ce que la spécification ne dit pa
 
 - [ ] **Step 2: Run it and watch it fail**
 
-Run: `node test/engine.js "$(pwd)"`
+Run: `node test/engine.js .`
 Expected, as measured on the tree Task 3 leaves:
 
 ```
@@ -2299,8 +2261,8 @@ with:
 
 - [ ] **Step 5: Run and commit**
 
-Run: `node test/engine.js "$(pwd)" && sh test/run-all.sh`
-Expected: `31 transparents : première rencontre par intrus, dictation, article — puis type, dictation`, and the suite passes.
+Run: `node test/engine.js . && sh test/run-all.sh`
+Expected: `72 checks, ENGINE OK`, with the line `31 transparents : première rencontre par intrus, dictation, article — puis type, dictation`, and the suite passes. The exercises on that line come in the order they happen to be drawn: the same names in another order mean the same thing.
 
 ````bash
 sh build.sh
@@ -2323,6 +2285,10 @@ git commit -m "fix: a cognate skips the meaning drill and nothing else"
 
 - [ ] **Step 1: Rewrite the loop and add the check**
 
+All three hunks are in `test/pace.js`.
+
+In `test/pace.js`:
+
 ````diff
 @@ -79,25 +30,28 @@ NL.state.open().then(() => {
    const S = NL.screens.sessie;
@@ -2334,7 +2300,7 @@ git commit -m "fix: a cognate skips the meaning drill and nothing else"
    let backToBack = 0, prevEx = null, exhausted = null, maxBacklog = 0, tasks = 0, lateRecog = 0;
  
    for (let day = 1; day <= DAYS; day++) {
--    NOW = Date.parse('2026-01-05T08:00:00Z') + (day - 1) * 86400000;
+-    B.clock.set(T0 + (day - 1) * 86400000);
 +    B.clock.set(T0 + (day - 1) * DAY);
      NL.state.touchDay();
      maxBacklog = Math.max(maxBacklog, NL.srs.dueItems().length);
@@ -2362,6 +2328,8 @@ git commit -m "fix: a cognate skips the meaning drill and nothing else"
          prevEx = c.ex;
          c.items.forEach(it => {
 ````
+
+In `test/pace.js`:
 
 ````diff
 @@ -105,36 +59,49 @@ NL.state.open().then(() => {
@@ -2394,7 +2362,7 @@ git commit -m "fix: a cognate skips the meaning drill and nothing else"
 -    perDay.push({ day, tasks: dayTasks, mins: Math.round(daySecs / 60), met,
 -      mastered: NL.content.courseProgress().mastered });
 +    perDay.push({ day, tasks: dayTasks, spent, mins: Math.round(daySecs / 60), met,
-+      produce: NL.content.courseProgress().produce });
++      produce: NL.content.courseProgress().mastered });
    }
  
    const cap = NL.srs.pace().cap;
@@ -2428,6 +2396,8 @@ git commit -m "fix: a cognate skips the meaning drill and nothing else"
    P('plafond quotidien respecté', over.length === 0 ? 'oui, ' + busiest + ' au maximum' : 'NON');
 ````
 
+In `test/pace.js`:
+
 ````diff
 @@ -180,7 +147,7 @@ NL.state.open().then(() => {
    P('éléments au catalogue', total);
@@ -2441,7 +2411,7 @@ git commit -m "fix: a cognate skips the meaning drill and nothing else"
  
 ````
 
-`NL.content.courseProgress().produce` arrives in Task 7. Until then keep `.mastered` in the three lines of this file that read it; Task 7 switches them.
+`NL.content.courseProgress().produce` arrives in Task 7. Until then the one line that reads it reads `.mastered`, as the diff above writes it; Task 7 switches it. The column of the simulation's own table is already called `produce`.
 
 The last hunk also corrects a message that named the wrong phase: it printed that phase 2 fixes the content running out, and in issue #12 that is phase 4.
 
@@ -2453,8 +2423,7 @@ The check was written after the fix, so it has to be shown failing some other wa
 BASE=$(git log --format=%H --grep="one fake browser for every suite" -1)
 git worktree add ../vlaams-before "$BASE"
 cp test/pace.js ../vlaams-before/test/pace.js
-sed -i "s/courseProgress().produce/courseProgress().mastered/" ../vlaams-before/test/pace.js
-(cd ../vlaams-before && sh build.sh > /dev/null && node test/pace.js "$(pwd)" 60)
+(cd ../vlaams-before && sh build.sh > /dev/null && node test/pace.js . 60)
 git worktree remove --force ../vlaams-before
 ````
 
@@ -2462,7 +2431,7 @@ Expected, as measured while writing this plan: `✗ 12 jour(s) sans aucun élém
 
 - [ ] **Step 3: Run both learners**
 
-Run: `node test/pace.js "$(pwd)" 200 && node test/pace.js "$(pwd)" 200 one`
+Run: `node test/pace.js . 200 && node test/pace.js . 200 one`
 Expected: both end `6 vérifications, AUCUN PROBLÈME`, with `jours sans rien de neuf  aucun`. The eager learner meets everything around day 15 and the daily cap holds at about 126 exercises; the one-session learner meets everything around day 61.
 
 - [ ] **Step 4: List the second learner**
@@ -2523,7 +2492,7 @@ Measured on the end state of this plan, over six draws, with one session a day a
 - Consumes: the engine and the session of Tasks 2–4, in particular `NL.srs.compose`, the second exercise `lace()` keeps for a newly met item, and `again()`; the simulation of Task 5.
 - Produces: `RUNGS.word[3]`, `RUNGS.phrase[3]` and `RUNGS.chunk[3]` include `'speak'`. For an item whose record has `said: false`, `NL.srs.exerciseFor(item)` returns `'speak'` whenever its rung offers it.
 - Produces: `NL.srs.firstAloud(item)`, true when the item has never been said and its rung offers `speak` beside another exercise. On such an item, `NL.srs.grade(item, true, { ex: 'speak', spoken: true })` sets `said`, keeps `stage` and `ease`, and schedules it one day out; `NL.srs.grade(item, false, { ex: 'speak' })` keeps `stage` and `ease` and schedules it one day out as well. `NL.srs.plan().tasks` and the trim in `compose()` count two exercises for it.
-- Produces: in the session, one more queue entry with `recall: true` for every review that is `firstAloud`, placed after everything else; `again()` inserts a spoken retry before it. Task 9b builds on all of this.
+- Produces: in the session, one more queue entry with `reinforcement: true` for every review that is `firstAloud`, placed after everything else; `again()` inserts a spoken retry before it. Task 9b builds on all of this.
 - Produces: `test/pace.js` prints `première demande à voix haute` and `échelon de l’écrit passé par écrit`, and makes three more checks, nine in all.
 
 From this task on a session holds spoken exercises from the first week. Every suite answers them through `test/lib/answer.js`, which has known how since Task 1.
@@ -2733,7 +2702,7 @@ In `test/pace.js`, insert before the line that begins `ok(over.length === 0, `:
 
 - [ ] **Step 2: Run them and watch them fail**
 
-Run: `node test/engine.js "$(pwd)"; node test/pace.js "$(pwd)" 200; node test/pace.js "$(pwd)" 200 one`
+Run: `node test/engine.js .; node test/pace.js . 200; node test/pace.js . 200 one`
 
 Expected from `test/engine.js`, among its last lines:
 
@@ -2763,7 +2732,7 @@ Expected from the simulation, for the learner who takes every session:
 
 and for one session a day the same two lines with day 50 and day 83. The third new check, on what takes an item past the writing rung, passes here and prints `439 sur 439`: nothing is asked aloud before rung 5 yet. It is there for what Step 3 would otherwise break, and it failed on the first version of this task with 226 items in 233.
 
-These were measured on the end state of the other eleven tasks, with this task's tests added and its changes under `src/` left out. The tree Task 5 leaves has the same `test/engine.js` and the same functions in `src/core/srs.js` and `src/ui/session.js`, so the lines should be the same there; the full run of step 3b checks it.
+These were measured on the end state of the other eleven tasks, with this task's tests added and its changes under `src/` left out. The tree Task 5 leaves has the same `test/engine.js` and the same functions in `src/core/srs.js` and `src/ui/session.js`, so the lines are the same there: the full run of step 3b printed them on the tree Task 5 leaves.
 
 - [ ] **Step 3: The engine: who is asked aloud, what a first spoken answer does, and what a session costs**
 
@@ -2995,8 +2964,8 @@ with:
      gardées pour la fin, afin qu'il ne suive jamais aussitôt. */
   const toSay = x => x.ex === 'speak' && NL.srs.firstAloud(x.items[0]);
   function lace(meetings, reviews) {
-    const plain = reviews.filter(x => !toSay(x)).slice(-RECALL_GAP);
-    const last = reviews.filter(toSay).map(x => ({ ex: null, task: null, items: x.items, recall: true }));
+    const plain = reviews.filter(x => !toSay(x)).slice(-REINFORCEMENT_GAP);
+    const last = reviews.filter(toSay).map(x => ({ ex: null, task: null, items: x.items, reinforcement: true }));
     const base = meetings.concat(reviews.filter(x => plain.indexOf(x) < 0), plain);
 ````
 
@@ -3024,7 +2993,7 @@ In `src/ui/session.js`, replace:
   /* Une faute sur un élément dont le rappel attend plus loin n'ajoute pas de
      reprise : le rappel EST sa seconde chance. */
   function again(c) {
-    const waiting = L.queue.slice(L.at + 1).some(x => x.recall && !x.task && x.items[0] === c.items[0]);
+    const waiting = L.queue.slice(L.at + 1).some(x => x.reinforcement && !x.task && x.items[0] === c.items[0]);
     if (!waiting && L.queue.length < L.cap) L.queue.push(retryOf(c));
   }
 ````
@@ -3041,11 +3010,11 @@ with:
      dans la séance ; sinon c'est ce second exercice qui le redemande à voix
      haute, et l'écrit attend le lendemain. */
   function again(c) {
-    const at = L.queue.findIndex((x, i) => i > L.at && x.recall && !x.task && x.items[0] === c.items[0]);
+    const at = L.queue.findIndex((x, i) => i > L.at && x.reinforcement && !x.task && x.items[0] === c.items[0]);
     if (at < 0) { if (L.queue.length < L.cap) L.queue.push(retryOf(c)); return; }
     if (c.ex !== 'speak' || c.retry || L.queue.length >= L.cap || !NL.srs.firstAloud(c.items[0])) return;
-    const pos = Math.max(L.at + 1, Math.min(L.at + 1 + RECALL_GAP, at - RECALL_GAP));
-    L.queue.forEach(x => { if (x.recall && x.metAt >= pos) x.metAt++; });
+    const pos = Math.max(L.at + 1, Math.min(L.at + 1 + REINFORCEMENT_GAP, at - REINFORCEMENT_GAP));
+    L.queue.forEach(x => { if (x.reinforcement && x.metAt >= pos) x.metAt++; });
     L.queue.splice(pos, 0, retryOf(c));
     L.queue[at + 1].metAt = pos;
   }
@@ -3063,7 +3032,7 @@ In `TESTING.md`, in the table, replace the `pace.js` row with:
 
 - [ ] **Step 6: Run and commit**
 
-Run: `node test/engine.js "$(pwd)" && sh test/run-all.sh`
+Run: `node test/engine.js . && sh test/run-all.sh`
 
 Expected from `test/engine.js`, ending `133 checks, ENGINE OK`:
 
@@ -3147,11 +3116,9 @@ In `test/journey.js`:
 @@ -183,53 +84,13 @@ function view(screen, arg) {
    head('2. Every screen renders');
    ['vandaag', 'leerpad', 'praten', 'luisteren', 'meer', 'woorden', 'spiek',
--   'register', 'klanken', 'dehet', 'doctor'].forEach(s => view(s));
-+   'register', 'klanken', 'dehet', 'doctor', 'fouten'].forEach(s => view(s));
+    'register', 'klanken', 'dehet', 'doctor'].forEach(s => view(s));
    NL.content.sheets.forEach(sh => view('spiek', sh.id));
--  console.log('   ' + (11 + NL.content.sheets.length) + ' screens drawn');
-+  console.log('   ' + (12 + NL.content.sheets.length) + ' screens drawn');
+   console.log('   ' + (11 + NL.content.sheets.length) + ' screens drawn');
  
 -  /* ---------------------------------------------------------- 3. placement */
 -  head('3. Placement test, answered honestly');
@@ -3207,12 +3174,10 @@ In `test/journey.js`:
    /* ---------------------------------------------------------- 4. every exercise */
 ````
 
-That last hunk also adds `'fouten'` to the list of screens and changes 11 to 12 in the count. **Leave both as they were** until Task 9 creates that screen.
-
 - [ ] **Step 2: Run them and watch them fail**
 
-Run: `node test/firstrun.js "$(pwd)"; node test/journey.js "$(pwd)" nl-BE EDG | grep "✗"`
-Expected: `FAIL: a blank account is still offered the placement test`, and `✗ the placement screen still exists`.
+Run: `node test/firstrun.js .; node test/journey.js . nl-BE EDG | grep "✗"`
+Expected: `FAIL: a blank account is still offered the placement test`, then `✗ the placement screen still exists` and `✗ a screen still leads to the placement test`.
 
 - [ ] **Step 3: Delete the screen and everything that leads to it**
 
@@ -3332,12 +3297,12 @@ In `src/core/srs.js`:
 
 - [ ] **Step 4: Bring `README.md` up to date**
 
-Four places mention the test. In the table of screens, the **Plus** row ends "le docteur audio, le test de niveau.": end it at "le docteur audio." In the file tree, remove `placement` from the `src/ui/` line. In the closing paragraph that lists what the engine does, remove "test de placement en échelle (4 questions dont une à taper, 3 bonnes, arrêt à la première échouée)" and the clause around it. Leave the rung table for Task 7.
+Three places mention the test. In the table of screens, the **Plus** row ends "le docteur audio, le test de niveau.": end it at "le docteur audio." In the file tree, remove `placement` from the `src/ui/` line. In the closing paragraph that lists what the engine does, remove "test de placement en échelle (4 questions dont une à taper, 3 bonnes, arrêt à la première échouée)" and the clause around it. Leave the rung table for Task 7.
 
 - [ ] **Step 5: Run and commit**
 
 Run: `sh test/run-all.sh`
-Expected: passes. `grep -c placement index.html` prints `0`.
+Expected: passes. `grep -c placement index.html` prints `1`. The line that is left is not the screen: it is the comment above the older migration in `src/core/state.js`, "la progression fabriquée par l'ancien test de placement". Task 8 rewrites that migration, and from then on the command prints `0`.
 
 ````bash
 sh build.sh
@@ -3408,7 +3373,7 @@ NL.state.open().then(() => {
   const units = NL.content.units, all = NL.content.allItems();
 
   /* ------------------------------------------------------------------ */
-  console.log('CHAQUE ÉCRAN, TROIS ÉTATS');
+  console.log('CHAQUE ÉCRAN, QUATRE ÉTATS');
   fresh(); sweep('compte neuf');
   /* À mi-parcours : trois unités entamées, tous les échelons, une part due. */
   fresh();
@@ -3424,6 +3389,7 @@ NL.state.open().then(() => {
   NL.ui.closeSheet();
   ok(!NL.screens.placement, 'the placement screen still exists');
   console.log('  ' + SCREENS.length + ' écrans × 4 états, ' + NL.content.sheets.length + ' fiches, 2 panneaux : ni pourcentage, ni maîtrise, ni test de niveau');
+
   /* ------------------------------------------------------------------ */
   console.log('\nDES COMPTES, ET LE NOM DE L’UNITÉ');
   {
@@ -3452,6 +3418,7 @@ NL.state.open().then(() => {
     ok(text(NL.screens.leerpad.render()).indexOf(t.unitGate(3)) >= 0, 'meeting one more item did not move the countdown');
     console.log('  accueil : « ' + t.unitsRange(1, 2) + ' » ; parcours : « ' + t.unitGate(3) + ' »');
   }
+
   /* ------------------------------------------------------------------ */
   console.log('\nLA SÉANCE — plus de rangée de repères, et un score qui se compte');
   {
@@ -3491,8 +3458,8 @@ node test/screens.js  "$ROOT"
 
 - [ ] **Step 2: Run it and watch it fail**
 
-Run: `node test/screens.js "$(pwd)" | head -30`
-Expected: dozens of failures of the form `vandaag (compte neuf) shows a percentage: « … 0% du cours »`, `leerpad (…) still speaks of mastery`, and `the session card does not name unit 1`.
+Run: `node test/screens.js . | head -30`
+Expected: eighteen failures of the form `vandaag (compte neuf) shows a percentage: « … 0% du cours … »` and `leerpad (…) still speaks of mastery`, then `CRASH TypeError: t.unitOne is not a function` under the heading `DES COMPTES, ET LE NOM DE L’UNITÉ`. The second block stops there because the strings it reads arrive in Step 7.
 
 - [ ] **Step 3: The two counts**
 
@@ -3522,39 +3489,26 @@ In `src/core/srs.js`:
      });
 ````
 
-In `src/content/index.js`, the two predicates and the two progress functions. Task 2 already changed the gate inside the first hunk; what this task adds there is the `PRODUCED` line and the removal of `READY` and `MASTERED`.
+The two predicates and the two progress functions. `MET`, the gate and `toOpen` are Task 2's and stay as they are. What goes is `READY`, `MASTERED`, the percentage and the level; what arrives is `PRODUCED`.
 
 In `src/content/index.js`:
 
 ````diff
-@@ -74,13 +74,20 @@ NL.content = NL.content || {};
+@@ -74,9 +74,9 @@ NL.content = NL.content || {};
    const itemsOf = uid => allItems().filter(it => it.unit === uid);
  
 -  /* Deux seuils, tenant compte du palier de chaque élément : un mot du palier
 -     « reconnaître » plafonne à l'échelon 2 et ne peut pas atteindre l'échelon 5. */
 -  const READY = it => NL.srs.stageOf(it) >= Math.min(3, NL.srs.maxRung(it));
 -  const MASTERED = it => NL.srs.stageOf(it) >= Math.min(NL.srs.GRADUATED, NL.srs.maxRung(it));
--  const GATE = 0.8;
 +  /* Deux comptes, et pas de troisième. Rencontré : l'élément a été vu au moins
 +     une fois. Produit : il a passé l'échelon de l'écrit — en tenant compte du
 +     palier, puisqu'un mot du palier « reconnaître » plafonne à l'échelon 2. */
-+  const MET = it => NL.srs.stageOf(it) >= 0;
+   const MET = it => NL.srs.stageOf(it) >= 0;
 +  const PRODUCED = it => NL.srs.stageOf(it) >= Math.min(NL.srs.PRODUCE, NL.srs.maxRung(it));
-+
-+  /* Une unité ouvre la suivante quand les trois quarts de ses éléments ont été
-+     RENCONTRÉS. Le seuil portait sur un échelon qui demande au moins deux jours
-+     de bonnes réponses : une unité entièrement rencontrée n'ouvrait pas la
-+     suivante, et il ne restait alors rien de neuf à servir. */
-+  const GATE = 0.75;
-+  const gateSize = n => Math.ceil(n * GATE);
  
-   const unitComplete = uid => {
-     const items = itemsOf(uid);
--    return !items.length || items.filter(READY).length / items.length >= GATE;
-+    return items.filter(MET).length >= gateSize(items.length);
-   };
- 
-@@ -113,18 +113,13 @@ NL.content = NL.content || {};
+   /* Une unité ouvre la suivante quand les trois quarts de ses éléments ont été
+@@ -113,18 +113,12 @@ NL.content = NL.content || {};
    }
  
 -  /* Le pourcentage ne compte QUE la maîtrise : ce que tu as dit à voix haute et
@@ -3565,7 +3519,7 @@ In `src/content/index.js`:
 +       toOpen = combien d'éléments restent à rencontrer avant l'unité suivante */
    function unitProgress(uid) {
      const items = itemsOf(uid);
--    if (!items.length) return { pct: 0, met: 0, ready: 0, mastered: 0, total: 0, gate: 0, level: 0 };
+-    if (!items.length) return { pct: 0, met: 0, ready: 0, mastered: 0, total: 0, gate: 0, level: 0, toOpen: 0 };
 -    const met = items.filter(it => NL.srs.stageOf(it) >= 0).length;
 -    const ready = items.filter(READY).length;
 -    const mastered = items.filter(MASTERED).length;
@@ -3574,12 +3528,11 @@ In `src/content/index.js`:
      return {
 -      pct, met, ready, mastered, total: items.length,
 -      gate: Math.round(ready / items.length * 100),
--      level: Math.min(5, Math.floor(pct / 20))
+-      level: Math.min(5, Math.floor(pct / 20)),
 +      met, produce: items.filter(PRODUCED).length, total: items.length,
-+      toOpen: Math.max(0, gateSize(items.length) - met)
+       toOpen: Math.max(0, gateSize(items.length) - met)
      };
-   }
-@@ -132,10 +127,6 @@ NL.content = NL.content || {};
+@@ -133,10 +127,6 @@ NL.content = NL.content || {};
    function courseProgress() {
      const items = allItems().filter(it => it.unit !== 'eigen');
 -    const mastered = items.filter(MASTERED).length;
@@ -3711,7 +3664,6 @@ In `src/ui/session.js`, replace:
 
 ````js
     const stage = NL.srs.stageOf(it);
-
 ````
 
 with nothing (delete it).
@@ -4035,15 +3987,25 @@ In `test/journey.js`:
      }
 ````
 
-In `test/pace.js`, switch the three `.mastered` kept in Task 5 to `.produce`.
+In `test/pace.js`, replace:
+
+````js
+      produce: NL.content.courseProgress().mastered });
+````
+
+with:
+
+````js
+      produce: NL.content.courseProgress().produce });
+````
 
 - [ ] **Step 9: Bring `README.md` up to date**
 
-In the rung table, the row for rung 5 is labelled "maîtrisé": rename the label to "consolidé". In the closing paragraph, replace "pourcentage de maîtrise seule" with "deux comptes, rencontrés et produits, sans pourcentage". Where the unit card is described, say it counts down the items left before the next unit opens.
+In the rung table, the row for rung 5 is labelled "maîtrisé": rename the label to "consolidé". In the closing paragraph, replace "pourcentage de maîtrise seule" with "deux comptes, rencontrés et produits, sans pourcentage". In the table of screens, the **Parcours** row reads "Douze unités A1 avec les explications de grammaire. Alimente le planificateur.": between its two sentences, add "Chaque carte d'unité dit combien d'éléments il reste à rencontrer avant que la suivante s'ouvre."
 
 - [ ] **Step 10: Run and commit**
 
-Run: `node test/screens.js "$(pwd)" && sh test/run-all.sh`
+Run: `node test/screens.js . && sh test/run-all.sh`
 Expected: `SCREENS OK` with `accueil : « Unités 1–2 » ; parcours : « Encore 3 éléments à rencontrer avant l’unité suivante. »` and a summary in `23/23`; then the suite passes.
 
 ````bash
@@ -4230,7 +4192,7 @@ In `test/sync.js`:
 
 - [ ] **Step 2: Run them and watch them fail**
 
-Run: `node test/sync.js "$(pwd)" | tail -5`
+Run: `node test/sync.js . | tail -5`
 Expected: `CRASH TypeError: R1.NL.state.resetProgress is not a function`. The existing 71 checks before it still pass.
 
 - [ ] **Step 3: The device: `resetProgress`, the migration, the longer answer history**
@@ -4651,7 +4613,7 @@ with:
 
 - [ ] **Step 6: Run, then break it on purpose**
 
-Run: `node test/sync.js "$(pwd)" | tail -3`
+Run: `node test/sync.js . | tail -3`
 Expected: `106 checks, SYNC OK`.
 
 Then check the tests would notice. In `doFlush`, change `remoteMeta = await settleResets();` to `remoteMeta = null;` and run again.
@@ -4738,7 +4700,7 @@ In `test/screens.js`, add `'fouten'` to the end of the `SCREENS` list, and inser
 
 - [ ] **Step 2: Run it and watch it fail**
 
-Run: `node test/screens.js "$(pwd)" | grep -m3 "FAIL\|CRASH"`
+Run: `node test/screens.js . | grep -m3 "FAIL\|CRASH"`
 Expected: `fouten (compte neuf) threw: Cannot read properties of undefined (reading 'render')`.
 
 - [ ] **Step 3: The ranking**
@@ -4890,18 +4852,16 @@ In `src/ui/library.js`:
 +      const missed = new Set(NL.srs.mistakes().map(x => x.item.id));
        let list = (filter === 'eigen' ? all.filter(it => it.unit === 'eigen')
 -        : filter === 'zwak' ? seen.filter(it => NL.srs.stageOf(it) < 3)
--          : filter === 'sterk' ? seen.filter(it => NL.srs.stageOf(it) >= NL.srs.GRADUATED)
 +        : filter === 'zwak' ? seen.filter(it => missed.has(it.id))
-+          : filter === 'sterk' ? seen.filter(it => NL.srs.stageOf(it) >= NL.srs.PRODUCE)
+           : filter === 'sterk' ? seen.filter(it => NL.srs.stageOf(it) >= NL.srs.PRODUCE)
              : seen);
        if (q) list = all.filter(it => U.norm(it.nl).indexOf(q) >= 0 || U.norm(it.fr).indexOf(q) >= 0 || (it.be && U.norm(it.be).indexOf(q) >= 0));
 ````
 
-(the `PRODUCE` line in that hunk was already changed in Task 7).
-
-In `src/core/fr.js`, after the `wordsTile` line:
+In `src/core/fr.js`, after the `wordsTile` line, add this block, its first blank line included:
 
 ````js
+
   /* --- ce qui résiste --- */
   missEyebrow: 'Ce qui résiste',
   missTitle: n => n === 1 ? 'Un élément te résiste' : n + ' éléments te résistent',
@@ -4930,7 +4890,7 @@ and in `test/journey.js`, add `'fouten'` to the list in section 2 and change the
 
 - [ ] **Step 7: Run and commit**
 
-Run: `node test/screens.js "$(pwd)" && sh test/run-all.sh`
+Run: `node test/screens.js . && sh test/run-all.sh`
 Expected: `classés du plus raté au moins raté, séance sur ces éléments, filtre « fragiles » aligné`, and the suite passes.
 
 ````bash
@@ -5046,7 +5006,7 @@ In `test/engine.js`, insert before the final `console.log`:
     B.clock.advance(DAY);
     NL.state.touchDay();
     const next = play().filter(x => !x.retry && voice.some(it => it.id === x.id));
-    const back = next.filter(x => !x.recall), written = next.filter(x => x.recall);
+    const back = next.filter(x => !x.reinforcement), written = next.filter(x => x.reinforcement);
     ok(back.length === voice.length, 'of ' + voice.length + ' items put off, ' + back.length + ' came back in the next session');
     ok(back.every(x => x.ex === 'speak'), back.filter(x => x.ex !== 'speak').length + ' item(s) put off came back as something other than a spoken exercise');
     ok(written.length === voice.length && written.every(x => x.ex !== 'speak'), 'of ' + voice.length + ' items said at last, ' + written.filter(x => x.ex !== 'speak').length + ' were then asked in writing');
@@ -5235,7 +5195,7 @@ In `test/pace.js`, insert before the line that begins `ok(over.length === 0, `:
 
 - [ ] **Step 2: Run them and watch them fail**
 
-Run: `node test/engine.js "$(pwd)"; node test/screens.js "$(pwd)"; node test/journey.js "$(pwd)" nl-BE EDG; node test/pace.js "$(pwd)" 200 one quiet`
+Run: `node test/engine.js .; node test/screens.js .; node test/journey.js . nl-BE EDG; node test/pace.js . 200 one quiet`
 
 Expected, as measured on the end state of this plan with this task's tests added and its changes under `src/` left out:
 
@@ -5418,7 +5378,7 @@ In `src/ui/session.js`, insert before the line that begins `const cur = () => L 
       more = NL.srs.compose(L.source, undefined, { quiet: true, without: here }).due.slice(0, spoken);
     }
     L.queue = head.concat(kept, spread(build(more, [], true), kept.length ? kept[kept.length - 1].ex : null));
-    L.queue.forEach(x => { if (x.recall) x.metAt = L.queue.findIndex(y => !y.recall && y.ex !== 'match' && y.items[0] === x.items[0]); });
+    L.queue.forEach(x => { if (x.reinforcement) x.metAt = L.queue.findIndex(y => !y.reinforcement && y.ex !== 'match' && y.items[0] === x.items[0]); });
     Object.assign(L, blankTurn());
     L.phase = 'ask';
     /* Il ne restait que du parlé, et rien n'a encore été répondu : il n'y a pas
@@ -5542,7 +5502,7 @@ In `TESTING.md`, in the table, replace the `pace.js` row with:
 
 - [ ] **Step 7: Run and commit**
 
-Run: `node test/engine.js "$(pwd)" && node test/screens.js "$(pwd)" && node test/journey.js "$(pwd)" nl-BE EDG && sh test/run-all.sh`
+Run: `node test/engine.js . && node test/screens.js . && node test/journey.js . nl-BE EDG && sh test/run-all.sh`
 
 Expected:
 
@@ -5771,7 +5731,7 @@ NL.state.open().then(() => {
 
 - [ ] **Step 3: Run them and watch the spelling guard fail**
 
-Run: `node test/content.js "$(pwd)"`
+Run: `node test/content.js .`
 Expected: one failure, `« tweeenveertig » n’est pas une forme néerlandaise connue   [g-getallen phrase 2]`, and otherwise `séquence 62 / 414` and `doublons 9`.
 
 - [ ] **Step 4: Fix the word**
@@ -5804,7 +5764,10 @@ Replace `test/run-all.sh` with:
 #   PACE_DAYS=400 sh test/run-all.sh   simulation de charge plus longue
 set -e
 cd "$(dirname "$0")/.."
-ROOT="$(pwd)"
+# « . » et non « $(pwd) » : sous Git Bash, node veut C:/… et le shell ne
+# convertit /c/… pour lui que si rien ne le lui interdit. Une session d'agent
+# le lui interdit (MSYS_NO_PATHCONV). Toutes les suites acceptent « . ».
+ROOT=.
 
 sh build.sh
 
@@ -5851,7 +5814,7 @@ GitHub Actions sets `CI`, so the last block fails there and only informs locally
 
 - [ ] **Step 7: Say where the data comes from, and what the guards cannot see**
 
-In `ATTRIBUTION.md`, add a section:
+At the end of `ATTRIBUTION.md`, after the section on the Wiktionnaire, add a section:
 
 ````md
 ## OpenTaal — formes de mots
@@ -5872,7 +5835,7 @@ La liste est publiée sous licence BSD révisée et CC BY 3.0, au choix. Le cré
 est donné ici pour la même raison que ci-dessus.
 ````
 
-In `TESTING.md`, add three rows to the table:
+In `TESTING.md`, in the table, after the `dehet.js` row, add:
 
 ````md
 | `content.js` | L'orthographe contre 410 000 formes néerlandaises, que chaque exercice promis se construise vraiment, qu'une phrase d'exemple n'emprunte pas de vocabulaire à une unité ultérieure, et les éléments enseignés deux fois |
@@ -5880,7 +5843,7 @@ In `TESTING.md`, add three rows to the table:
 | `screens.js` | Chaque écran dans quatre états, relu comme du texte : ni pourcentage, ni maîtrise ; les comptes, le nom de l'unité, ce qui résiste, le bouton « je ne peux pas parler », le journal d'erreurs |
 ````
 
-and under **Ce que les tests ne voient pas**, add:
+At the end of the section **Ce que les tests ne voient pas**, after the paragraph on the limit of the `de`/`het` test, add:
 
 ````md
 Trois de ces contrôles portent un budget plutôt qu'une exigence de zéro, parce
@@ -5893,7 +5856,20 @@ phrase vaut la peine d'être apprise. Les scénarios et les antisèches ne passe
 pas par le contrôle d'orthographe.
 ````
 
-Also replace the sentence "Ils tournent sans navigateur." paragraph's third bullet, "la **série de jours**, sur plusieurs jours réels", with "**deux séances, deux jours de suite**, sur un vrai appareil : la simulation avance son horloge, mais elle ne remplace pas ça".
+The same section lists three things that can only be checked for real. The third is no longer the streak.
+
+In `TESTING.md`, replace:
+
+````md
+- la **série de jours**, sur plusieurs jours réels.
+````
+
+with:
+
+````md
+- **deux séances, deux jours de suite**, sur un vrai appareil : la simulation
+  avance son horloge, mais elle ne remplace pas ça.
+````
 
 - [ ] **Step 8: Run and commit**
 
@@ -5951,7 +5927,7 @@ In `test/screens.js`, insert before the final `console.log`:
 
 - [ ] **Step 2: Run it and watch it fail**
 
-Run: `node test/screens.js "$(pwd)" | tail -3`
+Run: `node test/screens.js . | tail -3`
 Expected: `CRASH TypeError: Cannot read properties of undefined (reading 'clear')`.
 
 - [ ] **Step 3: The log**
@@ -6120,7 +6096,7 @@ with:
 
 - [ ] **Step 5: Run and commit**
 
-Run: `node test/screens.js "$(pwd)" && sh test/run-all.sh`
+Run: `node test/screens.js . && sh test/run-all.sh`
 Expected: `erreur de fenêtre et promesse rejetée enregistrées avec leur écran, vingt au plus, vidables`, and the suite passes.
 
 ````bash
@@ -6133,18 +6109,31 @@ git commit -m "feat: a local error log in the doctor screen"
 
 `CLAUDE.md` is read by every agent that opens the repository, so it changes last, when the phase is real. Write it with the **`writing-for-agents`** skill: keep only what an agent cannot find by looking, one line each, and nothing the code or a config already says.
 
-In `README.md`, add one sentence to the description of the doctor screen: it also lists the last errors seen on the device, to copy and send.
+The doctor screen is described in `README.md` under *Son et micro*, in one sentence. It gains a second.
+
+In `README.md`, replace:
+
+````md
+dit dans quel niveau tu es.
+````
+
+with:
+
+````md
+dit dans quel niveau tu es. Cet écran liste aussi les dernières erreurs vues
+sur l'appareil, à copier et à envoyer.
+````
 
 In `CLAUDE.md`, under **Tests**, after the sentence about `TESTING.md`, add:
 
 ```md
 The suite takes about six minutes. While working, run the one file you are changing, for
-example `node test/engine.js "$(pwd)"`. A new suite loads the app through
+example `node test/engine.js .`. A new suite loads the app through
 `test/lib/browser.js` and answers exercises through `test/lib/answer.js`, never by calling
 the scheduler itself.
 ```
 
-Under **Conventions you can't infer from the code**, add three bullets:
+Under **Conventions you can't infer from the code**, add three bullets at the end of the list:
 
 ```md
 - One function decides what a session contains, `NL.srs.compose()`, and it takes new items
@@ -6154,7 +6143,8 @@ Under **Conventions you can't infer from the code**, add three bullets:
   against it. It only ever grows. `ENGINE_EPOCH` in `src/core/state.js` is a fixed date and
   must stay one: changing it wipes progress again, or stops wiping it.
 - `said` on a stored record is what makes an item's first spoken exercise certain. That
-  exercise never moves the item's rung: a written one, later in the same session, decides. « Je ne peux pas parler » lives in the running session and is deliberately not a
+  exercise never moves the item's rung: a written one, later in the same session, decides.
+  « Je ne peux pas parler » lives in the running session and is deliberately not a
   setting. Issue #12 says why, for all three.
 ```
 
