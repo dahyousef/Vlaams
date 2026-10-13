@@ -18,7 +18,7 @@ Task 2 was also applied alone, exactly as written here, and its tests pass on th
 
 What was **not** run is each later intermediate commit on its own. Tasks 3, 6, 7, 9 and 11 touch the same files, and a note in each says which lines belong to a later task. If the suite is red after a task, the cause is almost certainly one of those boundaries: fix it in the task you are in, and keep one commit per task.
 
-Tasks 5b and 9b were added on 12 October 2026, when the open question was settled. They were built on the end state of the other eleven, and the whole suite passes there with them. They were then placed where their dependencies put them: 5b after the simulation of Task 5, 9b after the mistakes session of Task 9. So the trees they start from here are not the tree they were measured on, and the failing output each quotes was measured on that end state with the task's own change left out. The full run of step 3b exists to check all of this before any ticket is written.
+Tasks 5b and 9b were added on 12 October 2026, when the open question was settled, and rewritten on 13 October 2026, when defining *produced* for the glossary showed what the first version did to the second count. They were built on the end state of the other eleven, and the whole suite passes there with them. They were then placed where their dependencies put them: 5b after the simulation of Task 5, 9b after the mistakes session of Task 9. So the trees they start from here are not the tree they were measured on, and the failing output each quotes was measured on that end state with the task's own change left out. The full run of step 3b exists to check all of this before any ticket is written.
 
 Eight points were decided while writing this plan or found to differ from the spec. The maintainer reviewed them on 12 October 2026; they are recorded at the end, under **Decisions, as settled on 12 October 2026**. The first of them corrects what the spec says stopped the new words.
 
@@ -34,7 +34,7 @@ An agent runs this plan, but these moments are yours. Each step waits for the on
 | 1. Settle the open question, with a prototype | done, 12 October 2026: five weeks is too late, and Tasks 5b and 9b change it. See *The open question, as settled on 12 October 2026*. The addition to issue #12 was applied the same day |
 | 2. Commit the plan, with its pointer in `CLAUDE.md` | done, 12 October 2026: committed and pushed on `phase-1-engine`, ahead of step 1 at the maintainer's request. No pull request is open yet |
 | 3. Glossary and ADRs | done, 12 October 2026: eight terms added to `GLOSSARY.md`, *reinforcement* kept and *recall* retired; ADR 0006 (the reset) and ADR 0007 (the reserved share); the two candidates from Tasks 5b and 9b fail the first test and get none |
-| 3a. Rewrite Tasks 5b and 9b: a first right spoken answer leaves the rung alone, and a writing exercise in the same session decides the climb | in progress. Decided on 12 October 2026, while defining *produced*: as written below, Task 5b lets reading an item aloud take it past rung 3, so the count of items the learner can produce stops meaning that they wrote it. **Until this line says done, Tasks 5b and 9b below describe the earlier design** |
+| 3a. Rewrite Tasks 5b and 9b: a first right spoken answer leaves the rung alone, and a writing exercise in the same session decides the climb | done, 13 October 2026. Decided on 12 October while defining *produced*: as first written, Task 5b let reading an item aloud take it past rung 3, so the count of items the learner can produce stopped meaning that they wrote it. See *The correction of 12 and 13 October 2026* near the end. The amendment to issue #12 is drafted and is applied on the maintainer's word |
 | 3b. One full run of the thirteen tasks in a scratch copy, before any ticket | not started. It also renames the flag `recall` that Task 3 gives a queue entry, which the glossary now retires |
 | 4. `/to-tickets` | not started |
 | 5. Guardrail hook, then the run of the thirteen tasks | not started |
@@ -246,7 +246,7 @@ Two more skills are held for later phases, so that they are not forgotten: `wayf
 
 ## Review Focus
 
-Five things the spec does not mention and a learner will meet, and a sixth that it mentions since 12 October 2026. Each has a test in the task that owns the code.
+Five things the spec does not mention and a learner will meet, a sixth that it mentions since 12 October 2026, and a seventh that came with the rewrite of Task 5b. Each has a test in the task that owns the code.
 
 1. **A session abandoned before its reinforcements.** Items met and then left must come back the next day, and must not fall due again the same day. → Task 3, block *Ce que la spécification ne dit pas*.
 2. **Midnight passes during a session.** The session finishes and the new day's budget opens. → Task 3, same block.
@@ -254,6 +254,7 @@ Five things the spec does not mention and a learner will meet, and a sixth that 
 4. **A second device that is signed in, offline and stale when the reset happens.** Its queued answers must not put deleted progress back on the server. → Task 8, block *Remise à zéro*.
 5. **Nothing left to do**: a unit with nothing new and nothing due, or a day budget already spent (including after the pace is lowered mid-day). No session, no error, and the home screen promises nothing. → Task 3, same block; Task 7 renders every screen in that state.
 6. **A place where the learner cannot talk.** A spoken exercise put off must cost nothing, must not come back in the same session, and must come back as a spoken exercise in the next one. → Task 9b, block *Je ne peux pas parler*, and the third learner of `test/pace.js`.
+7. **An item said and not yet written.** A session left between the two exercises of an item, or an item only said at the third try, must leave it said, on its rung, and asked in writing the next day, never aloud again. And the second exercise must be counted in what the home screen announces and in what is left of the day's budget. → Task 5b, block *Dit pour la première fois*.
 
 ---
 
@@ -2490,23 +2491,40 @@ git commit -m "test: the long-run simulation moves its clock and fails on a day 
 
 ---
 
-### Task 5b: An item is said aloud from rung 3, and its first spoken answer costs no rung
+### Task 5b: An item is said aloud from rung 3, and saying it for the first time never moves its rung
 
-Added on 12 October 2026, when the open question at the end of this plan was settled. Until this task a session first asks for an item aloud once the item stands on rung 5, after that rung's 21-day wait: day 35 for a learner who takes every session, day 48 to 51 for one who takes one session a day. Three changes to one file bring it into the second week.
+Added on 12 October 2026, when the open question at the end of this plan was settled, and rewritten on 13 October 2026, when defining *produced* for the glossary showed what its first version did to the second count. Both are recorded in *The open question, as settled on 12 October 2026*.
 
-Rung 3 offers `speak` for words, phrases and chunks, beside its writing exercises. That alone is not enough: the engine draws one exercise among those a rung offers, so the spoken one would come up for about half the items and the others would still wait for rung 5. So an item that has never been said aloud gets `speak` whenever its rung offers it. `said` is a field every stored record already has; nothing new is stored. For a grammar rule the same rule acts one rung higher, where `speak` already was beside `open`.
+Until this task a session first asks for an item aloud once the item stands on rung 5, after that rung's 21-day wait: about day 35 for a learner who takes every session, day 47 or later for one who takes one session a day. This task brings it into the second week.
 
-And a wrong spoken answer on an item never yet said costs no rung. The spoken exercise shows the Dutch on the screen, so failing it says something about pronunciation or about the recogniser and nothing about memory. Dropping two rungs would send the item back to be recognised again, which is the wrong remedy. The item keeps its rung, is asked again before the session ends like any wrong answer, and is due the next day. Once an item has been said, a wrong spoken answer drops two rungs like any other.
+**Rung 3 offers `speak`** for words, phrases and chunks, beside its writing exercises. That alone is not enough: the engine draws one exercise among those a rung offers, so the spoken one would come up for about half the items and the others would still wait for rung 5. So **an item that has never been said aloud gets `speak` whenever its rung offers it**. `said` is a field every stored record already has; nothing new is stored. For a grammar rule the same rule acts one rung higher, where `speak` already was beside `open`.
 
-Measured with one session a day and 85 answers right in 100, on the end state of this plan: an item met on day 1 is first asked aloud between day 7 and day 13, and the learner can produce 233 items at day 60, against 201 on the ladder Task 4 leaves. The answer that costs no rung is what keeps that count from depending on the recogniser: with spoken answers right only 60 times in 100 it reads 212 with the rule and 160 without.
+**Saying an item for the first time never moves its rung, in either direction.** The spoken exercise shows the Dutch on the screen. Whichever way it goes, it says something about pronunciation or about the recogniser, and nothing about memory.
+
+- A *wrong* answer costs no rung. Dropping two would send the item back to be recognised again, which is the wrong remedy. The item is asked aloud again a few exercises later, and is due the next day.
+- A *right* answer marks the item said, and that is all: the item does not climb. A second exercise, kept for it at the end of the same session, asks for it in writing, and that answer moves it up one rung or down two like any other. If the session ends first, the written exercise comes the next day.
+
+The first version of this task let the right answer climb. Rung 3 is the rung that makes an item count as one the learner can produce, so reading an item aloud was enough to count it. Measured on that version at day 60, 226 of the 233 items counted had passed rung 3 on the spoken exercise, and the count had become a second copy of « dits à voix haute », which the home screen already shows.
+
+**That second exercise** is built like the reinforcement a newly met item has had since Task 3, with three differences.
+
+- It closes the session, as far from the spoken exercise as the session allows: writing a word just read on the screen proves little. Three ordinary reviews are held back for the end, so that it does not follow at once.
+- `NL.srs.compose()` counts it, in what the home screen announces and in what is left of the day's budget. The announcement and the session still cannot disagree.
+- A first spoken answer that goes wrong is retried aloud a few exercises later instead of waiting for it: it has to stay free for the writing. Measured over six draws, that retry is worth eight to fifteen items produced at day 60.
+
+Once an item has been said, its rung draws among its exercises as before, and a spoken answer counts like any other.
+
+Measured on the end state of this plan, over six draws, with one session a day and 85 answers right in 100: an item met on day 1 is first asked aloud between day 7 and day 14, where the ladder Task 4 leaves gave day 47 or later, and the typical item on day 28 against day 73. The learner can produce 204 items at day 60 against 207, and 3 of them have no right answer in which the Dutch was not given, as before. The written exercise comes typically 14 exercises and four and a half minutes after the spoken one. A day costs about four exercises and two minutes more than on the ladder Task 4 leaves: 38 exercises against 33, and a session of up to 46 against 36.
 
 **Files:**
-- Modify: `src/core/srs.js`, `test/engine.js`, `test/pace.js`, `TESTING.md`
+- Modify: `src/core/srs.js`, `src/ui/session.js`, `test/engine.js`, `test/pace.js`, `TESTING.md`
 
 **Interfaces:**
-- Consumes: the engine of Tasks 2–4; the simulation of Task 5.
-- Produces: `RUNGS.word[3]`, `RUNGS.phrase[3]` and `RUNGS.chunk[3]` include `'speak'`. For an item whose record has `said: false`, `NL.srs.exerciseFor(item)` returns `'speak'` whenever its rung offers it. `NL.srs.grade(item, false, { ex: 'speak' })` on such an item keeps `stage` and `ease` and schedules it one day out. Task 9b builds on both.
-- Produces: `test/pace.js` prints `première demande à voix haute` and makes two more checks, eight in all.
+- Consumes: the engine and the session of Tasks 2–4, in particular `NL.srs.compose`, the second exercise `lace()` keeps for a newly met item, and `again()`; the simulation of Task 5.
+- Produces: `RUNGS.word[3]`, `RUNGS.phrase[3]` and `RUNGS.chunk[3]` include `'speak'`. For an item whose record has `said: false`, `NL.srs.exerciseFor(item)` returns `'speak'` whenever its rung offers it.
+- Produces: `NL.srs.firstAloud(item)`, true when the item has never been said and its rung offers `speak` beside another exercise. On such an item, `NL.srs.grade(item, true, { ex: 'speak', spoken: true })` sets `said`, keeps `stage` and `ease`, and schedules it one day out; `NL.srs.grade(item, false, { ex: 'speak' })` keeps `stage` and `ease` and schedules it one day out as well. `NL.srs.plan().tasks` and the trim in `compose()` count two exercises for it.
+- Produces: in the session, one more queue entry with `recall: true` for every review that is `firstAloud`, placed after everything else; `again()` inserts a spoken retry before it. Task 9b builds on all of this.
+- Produces: `test/pace.js` prints `première demande à voix haute` and `échelon de l’écrit passé par écrit`, and makes three more checks, nine in all.
 
 From this task on a session holds spoken exercises from the first week. Every suite answers them through `test/lib/answer.js`, which has known how since Task 1.
 
@@ -2516,12 +2534,13 @@ In `test/engine.js`, insert before the final `console.log`:
 
 ````js
   /* ------------------------------------------------------------------ */
-  console.log('\nÀ VOIX HAUTE — dès le troisième échelon, et la première fois ne coûte rien');
+  console.log('\nÀ VOIX HAUTE — dès le troisième échelon, et la première fois ne déplace rien');
   {
     fresh();
     const words = NL.content.allItems().filter(isWord);
     const it = words.find(i => !i.cognate);
     const draw = n => { const seen = {}; for (let k = 0; k < n; k++) seen[NL.srs.exerciseFor(it)] = 1; return Object.keys(seen); };
+    const inDays = r => Math.round((r.due - B.clock.now()) / DAY * 10) / 10;
 
     /* Jamais dit : dès que l'échelon le propose, c'est ce qui est demandé. */
     const mute = words.filter(w => { put(w, 3, T0); return NL.srs.exerciseFor(w) !== 'speak'; });
@@ -2533,22 +2552,118 @@ In `test/engine.js`, insert before the final `console.log`:
     put(it, 3, T0);
     let r = NL.srs.grade(it, false, { ex: 'speak' });
     ok(r.stage === 3, 'a wrong first spoken answer sends the item from rung 3 to rung ' + r.stage);
-    ok(r.due - B.clock.now() === DAY, 'after a wrong first spoken answer the item is due in ' + Math.round((r.due - B.clock.now()) / DAY * 10) / 10 + ' day(s), not 1');
+    ok(r.due - B.clock.now() === DAY, 'after a wrong first spoken answer the item is due in ' + inDays(r) + ' day(s), not 1');
     ok(draw(20).join() === 'speak', 'after a wrong first spoken answer the item is asked: ' + draw(20).join(', '));
     /* Une faute à l'écrit, elle, coûte toujours deux échelons. */
     put(it, 3, T0);
     ok(NL.srs.grade(it, false, { ex: 'type' }).stage === 1, 'a wrong written answer on rung 3 no longer drops two rungs');
 
-    /* Dit : il monte. Ensuite l'échelon tire au sort comme avant, et une faute à
-       voix haute coûte comme une autre. */
+    /* Dit pour la première fois : il est dit, et il ne monte pas. Lire un mot à
+       voix haute ne dit pas qu'on sait l'écrire : c'est l'exercice suivant qui
+       en décide, et celui-là n'est pas parlé. */
     put(it, 3, T0);
     r = NL.srs.grade(it, true, { ex: 'speak', spoken: true });
-    ok(r.stage === 4 && r.said === true, 'a right spoken answer should leave the item said and on rung 4: it is on rung ' + r.stage + ', said ' + r.said);
+    ok(r.said === true && r.stage === 3, 'a first right spoken answer should leave the item said and on rung 3: it is on rung ' + r.stage + ', said ' + r.said);
+    ok(r.due - B.clock.now() === DAY, 'after a first right spoken answer the item is due in ' + inDays(r) + ' day(s), not 1');
+    const then = draw(30);
+    ok(then.indexOf('speak') < 0, 'an item that has just been said for the first time is asked: ' + then.join(', '));
+    r = NL.srs.grade(it, true, { ex: then[0] });
+    ok(r.stage === 4, 'the written answer that follows should take the item to rung 4: it is on rung ' + r.stage);
+
+    /* Une fois dit, l'échelon tire au sort comme avant, et une réponse à voix
+       haute compte comme une autre, juste ou fausse. */
     r.stage = 3; r.lastEx = null; NL.state.setRec(r);
     const after = draw(60);
     ok(after.length > 1 && after.indexOf('speak') >= 0, 'once said, rung 3 offers only: ' + after.join(', '));
+    ok(NL.srs.grade(it, true, { ex: 'speak', spoken: true }).stage === 4, 'once said, a right spoken answer no longer climbs a rung');
+    r = NL.state.rec(it.id); r.stage = 3; NL.state.setRec(r);
     ok(NL.srs.grade(it, false, { ex: 'speak' }).stage === 1, 'once said, a wrong spoken answer no longer drops two rungs');
-    console.log('  ' + words.length + ' mots et phrases dits dès l’échelon 3 ; raté la première fois : échelon gardé, retour le lendemain ; une fois dit : ' + after.sort().join(', '));
+    console.log('  ' + words.length + ' mots et phrases dits dès l’échelon 3 ; raté la première fois : échelon gardé, retour le lendemain ; dit la première fois : échelon gardé, puis ' + then.sort().join(' ou ') + ' ; une fois dit : ' + after.sort().join(', '));
+  }
+
+  /* ------------------------------------------------------------------ */
+  console.log('\nDIT POUR LA PREMIÈRE FOIS — un second exercice dans la séance, et c’est l’écrit qui fait monter');
+  {
+    const words = NL.content.allItems().filter(i => isWord(i) && !i.cognate);
+    /* Six éléments jamais dits, à l'échelon qui demande de les dire, et une
+       trentaine d'autres qui n'ont rien à dire. Tous dus. */
+    const voice = words.slice(0, 6), other = words.slice(6, 40);
+    const set = () => { fresh(); voice.forEach(it => put(it, 3, T0 - 2 * DAY)); other.forEach(it => put(it, 2, T0 - DAY)); };
+    const of = (served, it) => served.filter(x => x.id === it.id && x.ex !== 'match');
+    const toSay = it => voice.some(v => v.id === it.id);
+    const cost = c => c.due.length + c.due.filter(it => NL.srs.firstAloud(it)).length + 2 * c.fresh.length;
+
+    /* L'annonce compte ce second exercice, comme elle compte celui d'une rencontre. */
+    set();
+    const c = NL.srs.compose('vandaag'), p = NL.srs.plan();
+    ok(c.due.filter(toSay).length === voice.length, 'the fixture is wrong: the session should hold the six items to be said');
+    ok(p.tasks === cost(c), 'the home screen announces ' + p.tasks + ' exercises for a session that costs ' + cost(c));
+
+    /* Tout juste : chacun est dit, puis écrit plus loin, et c'est l'écrit qui le fait monter. */
+    const served = play();
+    const held = served.filter(x => x.ex !== 'match').length;
+    ok(held === p.tasks, 'home announced ' + p.tasks + ' exercises, the session held ' + held);
+    const gaps = [];
+    voice.forEach(it => {
+      const s = of(served, it), rec = NL.state.rec(it.id);
+      ok(s.length === 2 && s[0].ex === 'speak' && s[1].ex !== 'speak', '« ' + it.nl + ' » was asked: ' + s.map(x => x.ex).join(', ') + ' — it should be said, then written');
+      ok(rec.said === true && rec.stage === 4, '« ' + it.nl + ' », said then written, is said ' + rec.said + ' and on rung ' + rec.stage + ', not 4');
+      if (s.length === 2) gaps.push(served.indexOf(s[1]) - served.indexOf(s[0]));
+    });
+    ok(gaps.length > 0 && Math.min.apply(null, gaps) > 3, 'an item was written only ' + Math.min.apply(null, gaps) + ' exercise(s) after it was read aloud');
+    console.log('  ' + voice.length + ' éléments dits puis écrits dans la séance, ' + Math.min.apply(null, gaps) + ' exercices plus tard au minimum : ' + held + ' exercices annoncés et servis');
+
+    /* Raté à voix haute : redemandé à voix haute avant son second exercice, qui
+       reste ainsi libre pour l'écrire. Dit cette fois, il est écrit le jour même. */
+    set();
+    const tries = {};
+    const missing = n => x => !(x.ex === 'speak' && toSay(x.items[0]) && (tries[x.items[0].id] = (tries[x.items[0].id] || 0) + 1) <= n);
+    const once = play(missing(1)), regaps = [];
+    voice.forEach(it => {
+      const s = of(once, it), rec = NL.state.rec(it.id);
+      ok(s.length === 3 && s[0].ex === 'speak' && s[1].ex === 'speak' && s[2].ex !== 'speak', '« ' + it.nl + ' », missed aloud, was then asked: ' + s.slice(1).map(x => x.ex).join(', ') + ' — it should be said again, then written');
+      ok(rec.said === true && rec.stage === 4, '« ' + it.nl + ' », missed, said, then written, is said ' + rec.said + ' and on rung ' + rec.stage + ', not 4');
+      if (s.length === 3) regaps.push(once.indexOf(s[2]) - once.indexOf(s[1]));
+    });
+    ok(regaps.length > 0 && Math.min.apply(null, regaps) > 3, 'an item said at the second try was written only ' + Math.min.apply(null, regaps) + ' exercise(s) later');
+
+    /* Raté deux fois : son second exercice le redemande à voix haute. Dit enfin,
+       il garde son échelon, et l'écrit attend le lendemain. */
+    set();
+    Object.keys(tries).forEach(id => { delete tries[id]; });
+    const twice = play(missing(2));
+    voice.forEach(it => {
+      const s = of(twice, it), rec = NL.state.rec(it.id);
+      ok(s.length === 3 && s.every(x => x.ex === 'speak'), '« ' + it.nl + ' », missed aloud twice, was asked: ' + s.map(x => x.ex).join(', '));
+      ok(rec.said === true && rec.stage === 3, '« ' + it.nl + ' », said at the third try, is said ' + rec.said + ' and on rung ' + rec.stage + ', not 3');
+    });
+    B.clock.advance(DAY);
+    NL.state.touchDay();
+    const morrow = voice.filter(it => NL.srs.exerciseFor(it) === 'speak');
+    ok(morrow.length === 0, morrow.length + ' item(s) said yesterday are asked aloud again today instead of being written');
+
+    /* Séance quittée entre les deux exercices : dit, pas monté, et demain c'est l'écrit. */
+    set();
+    ok(S.begin('vandaag'), 'the session did not start');
+    let guard = 0;
+    while (S.peek() && S.peek().ex !== 'speak' && guard++ < 60) { const m = S.peek().ex === 'match'; B.clock.advance(20000); answer.right(); answer.next(m); }
+    const left = S.peek() && S.peek().items[0];
+    ok(left && toSay(left), 'the fixture is wrong: the session holds no spoken exercise');
+    answer.right(); answer.next(false);
+    S.abandon();
+    const half = NL.state.rec(left.id);
+    ok(half.said === true && half.stage === 3 && half.due - B.clock.now() >= DAY - 30 * MIN, 'an item said in a session left before its second exercise is said ' + half.said + ', on rung ' + half.stage + ', due in ' + Math.round((half.due - B.clock.now()) / 3600000) + ' h');
+    B.clock.advance(DAY);
+    NL.state.touchDay();
+    ok(NL.srs.exerciseFor(left) !== 'speak', 'the day after it was said, the item is asked aloud again');
+
+    /* Budget presque épuisé : le second exercice compte dans ce qu'il reste. */
+    set();
+    NL.srs.spend(NL.srs.pace().cap - 7);
+    const tight = NL.srs.compose('vandaag');
+    ok(cost(tight) <= 7, 'with seven exercises left in the day, the session costs ' + cost(tight));
+    ok(tight.fresh.length >= 1, 'a nearly spent day budget squeezed out every new item');
+    console.log('  raté une fois : redit ' + Math.min.apply(null, regaps) + ' exercices au moins avant d’être écrit ; raté deux fois : dit à la troisième, écrit le lendemain ; séance quittée : dit, échelon gardé ; sept exercices de budget : ' + tight.due.length + ' révision(s), ' + tight.fresh.length + ' rencontre(s), ' + cost(tight) + ' exercices');
   }
 ````
 
@@ -2561,7 +2676,9 @@ In `test/pace.js`, replace:
 with:
 
 ````js
-  const perDay = [], mix = {}, seenOnDay = {}, dry = [], aloud = {};
+  const perDay = [], mix = {}, seenOnDay = {}, dry = [], aloud = {}, passedOn = {};
+  /* Passé l'échelon 3, un élément compte parmi ceux que l'on sait produire. */
+  const PAST = 4;
 ````
 
 In `test/pace.js`, replace:
@@ -2578,6 +2695,20 @@ with:
         if (c.ex === 'speak' && !aloud[c.items[0].id]) aloud[c.items[0].id] = day;
 ````
 
+In `test/pace.js`, replace:
+
+````js
+        if (wasMatch || RAND() < 0.85) answer.right(); else answer.wrong();
+````
+
+with:
+
+````js
+        if (wasMatch || RAND() < 0.85) answer.right(); else answer.wrong();
+        /* L'exercice sur lequel chaque élément passe l'échelon de l'écrit. */
+        if (!wasMatch && wasAt < PAST && NL.srs.stageOf(c.items[0]) >= PAST && !passedOn[c.items[0].id]) passedOn[c.items[0].id] = c.ex;
+````
+
 In `test/pace.js`, insert before the line that begins `ok(over.length === 0, `:
 
 ````js
@@ -2590,37 +2721,51 @@ In `test/pace.js`, insert before the line that begins `ok(over.length === 0, `:
   ok(typical <= 10, 'un élément du premier jour est typiquement demandé à voix haute le jour ' + typical + ' : plus de dix jours');
   ok(latest <= 21, 'un élément du premier jour attend le jour ' + latest + ' pour être demandé à voix haute : plus de trois semaines');
   P('première demande à voix haute', 'jours ' + waits[0] + ' à ' + latest + ', pour les ' + waits.length + ' éléments du premier jour');
+  /* Et dire tôt ne doit pas se payer sur le sens du second compte : un élément
+     que l'on « sait produire » a passé l'échelon de l'écrit en étant écrit. Lu à
+     voix haute, il a le mot sous les yeux. Quand la première réponse parlée
+     faisait monter, c'était 97 éléments sur 100 ; il en reste quelques-uns, ceux
+     qui, déjà dits, retombent puis tirent « dis-le » en revenant à l'échelon 3. */
+  const passed = Object.keys(passedOn), read = passed.filter(id => passedOn[id] === 'speak');
+  ok(read.length <= passed.length / 5, read.length + ' des ' + passed.length + ' éléments qui ont passé l’échelon de l’écrit l’ont passé en étant lus à voix haute');
+  P('échelon de l’écrit passé par écrit', (passed.length - read.length) + ' sur ' + passed.length);
 ````
 
 - [ ] **Step 2: Run them and watch them fail**
 
 Run: `node test/engine.js "$(pwd)"; node test/pace.js "$(pwd)" 200; node test/pace.js "$(pwd)" 200 one`
 
-Expected from `test/engine.js`:
+Expected from `test/engine.js`, among its last lines:
 
 ```
-À VOIX HAUTE — dès le troisième échelon, et la première fois ne coûte rien
+À VOIX HAUTE — dès le troisième échelon, et la première fois ne déplace rien
   FAIL: 430 of 430 never-said items on rung 3 are not asked aloud, e.g. « hallo »
   FAIL: a wrong first spoken answer sends the item from rung 3 to rung 1
   FAIL: after a wrong first spoken answer the item is asked: dictation
+  FAIL: a first right spoken answer should leave the item said and on rung 3: it is on rung 4, said true
+  FAIL: after a first right spoken answer the item is due in 8 day(s), not 1
+  FAIL: the written answer that follows should take the item to rung 4: it is on rung 5
   FAIL: once said, rung 3 offers only: type
 
-81 checks, 4 FAILED
+DIT POUR LA PREMIÈRE FOIS — un second exercice dans la séance, et c’est l’écrit qui fait monter
+CRASH TypeError: NL.srs.firstAloud is not a function
 ```
+
+The second block stops at its first line because the function it asks does not exist yet. The exercise named in the third `FAIL` is a draw: `type` in its place means the same thing.
 
 Expected from the simulation, for the learner who takes every session:
 
 ```
    ✗ un élément du premier jour est typiquement demandé à voix haute le jour 38 : plus de dix jours
    ✗ un élément du premier jour attend le jour 74 pour être demandé à voix haute : plus de trois semaines
-8 vérifications, 2 PROBLÈME(S)
+9 vérifications, 2 PROBLÈME(S)
 ```
 
-and for one session a day the same two lines with day 50 and day 83.
+and for one session a day the same two lines with day 50 and day 83. The third new check, on what takes an item past the writing rung, passes here and prints `439 sur 439`: nothing is asked aloud before rung 5 yet. It is there for what Step 3 would otherwise break, and it failed on the first version of this task with 226 items in 233.
 
-These were measured on the end state of the other eleven tasks, with this task's tests added and its change to `src/core/srs.js` left out. The tree Task 5 leaves has the same `test/engine.js` and the same functions in `src/core/srs.js`, so the lines should be the same there; the full run of step 3b checks it. The exercise named in the third line is a draw: `type` in its place means the same thing.
+These were measured on the end state of the other eleven tasks, with this task's tests added and its changes under `src/` left out. The tree Task 5 leaves has the same `test/engine.js` and the same functions in `src/core/srs.js` and `src/ui/session.js`, so the lines should be the same there; the full run of step 3b checks it.
 
-- [ ] **Step 3: Offer the spoken exercise on rung 3, make the first one certain, and make it cost nothing**
+- [ ] **Step 3: The engine: who is asked aloud, what a first spoken answer does, and what a session costs**
 
 In `src/core/srs.js`, replace:
 
@@ -2635,7 +2780,8 @@ with:
      (la dictée) arrive dès le deuxième barreau au lieu d'attendre le troisième. */
   /* « Dis-le » dès l'échelon 3 pour les mots, les phrases et les expressions :
      au seul échelon 5, la première demande à voix haute tombait cinq semaines
-     après la rencontre. Voir exerciseFor() pour qui y a droit d'office. */
+     après la rencontre. Voir exerciseFor() pour qui y a droit d'office, et
+     firstAloud() pour ce que vaut cette première fois. */
   const RUNGS = {
 ````
 
@@ -2695,6 +2841,43 @@ with:
     if (!r.said && usable.indexOf('speak') >= 0) return 'speak';
 ````
 
+In `src/core/srs.js`, insert before the line that begins `/* ---------------- no`:
+
+````js
+  /* Vrai quand l'élément n'a jamais été dit et que son échelon propose de le
+     dire à côté d'un autre exercice. Le dire ne déplace alors rien : réussi, il
+     est dit et garde son échelon, et c'est l'exercice écrit qui suit, dans la
+     même séance, qui le fait monter. Sans cela, lire un mot à voix haute
+     suffirait à le compter parmi ceux que l'on sait produire. */
+  function firstAloud(item) {
+    const r = recOf(item);
+    const usable = ((RUNGS[item.kind] || RUNGS.word)[clamp(r.stage, 0, 6)] || []).filter(n => supports(item, n));
+    return !r.said && usable.length > 1 && usable.indexOf('speak') >= 0;
+  }
+````
+
+In `src/core/srs.js`, replace:
+
+````js
+    if (ok) {
+      if (opts && opts.spoken) r.said = true;
+````
+
+with:
+
+````js
+    /* Dit pour la première fois, là où l'échelon propose aussi autre chose :
+       l'élément est dit, et rien d'autre ne bouge. Un second exercice, en fin de
+       séance, le redemande par écrit, et c'est cette réponse-là qui le fait
+       monter. Si la séance s'arrête avant, il revient demain, par écrit. */
+    const first = !!opts && opts.ex === 'speak' && firstAloud(item);
+    if (ok && first && opts.spoken) {
+      r.said = true;
+      r.interval = STEP[0];
+    } else if (ok) {
+      if (opts && opts.spoken) r.said = true;
+````
+
 In `src/core/srs.js`, replace:
 
 ````js
@@ -2720,24 +2903,187 @@ with:
       r.retired = false;
 ````
 
-- [ ] **Step 4: Say what the simulation now holds**
+In `src/core/srs.js`, replace:
+
+````js
+    /* Budget presque épuisé : on rabote les révisions d'abord. La réserve survit
+       au rabotage — c'est précisément ce qu'elle doit faire. */
+    while (nDue + 2 * nNew > left && nDue > 0) nDue--;
+    while (nDue + 2 * nNew > left && nNew > 1) nNew--;
+
+    /* Les règles de grammaire sont neuf parmi quatre cents : sans siège garanti,
+       une semaine entière peut passer sans en revoir une. */
+    const pats = due.filter(it => it.kind === 'pattern').slice(0, Math.min(2, nDue));
+    const rest = due.filter(it => pats.indexOf(it) < 0).slice(0, nDue - pats.length);
+    return { due: pats.concat(rest), fresh: unmet.slice(0, nNew), left };
+  }
+````
+
+with:
+
+````js
+    /* Les règles de grammaire sont neuf parmi quatre cents : sans siège garanti,
+       une semaine entière peut passer sans en revoir une. */
+    const pick = n => {
+      const pats = due.filter(it => it.kind === 'pattern').slice(0, Math.min(2, n));
+      return pats.concat(due.filter(it => pats.indexOf(it) < 0).slice(0, n - pats.length));
+    };
+    /* Budget presque épuisé : on rabote les révisions d'abord. La réserve survit
+       au rabotage — c'est précisément ce qu'elle doit faire. Le coût se compte
+       sur les éléments réellement retenus : ceux qu'on dit pour la première
+       fois en valent deux. */
+    while (exercises(pick(nDue), nNew) > left && nDue > 0) nDue--;
+    while (exercises(pick(nDue), nNew) > left && nNew > 1) nNew--;
+    return { due: pick(nDue), fresh: unmet.slice(0, nNew), left };
+  }
+
+  /* Ce qu'une séance coûte en exercices. Une rencontre en coûte deux, et un
+     élément dit pour la première fois aussi : chacun y revient une seconde fois. */
+  const exercises = (due, nNew) => due.reduce((n, it) => n + (firstAloud(it) ? 2 : 1), 0) + 2 * nNew;
+````
+
+In `src/core/srs.js`, replace:
+
+````js
+       total = éléments ; tasks = exercices (un nouveau en coûte deux) */
+  function plan() {
+    const c = compose('vandaag');
+    const tasks = c.due.length + 2 * c.fresh.length;
+````
+
+with:
+
+````js
+       total = éléments ; tasks = exercices, comptés par exercises() */
+  function plan() {
+    const c = compose('vandaag');
+    const tasks = exercises(c.due, c.fresh.length);
+````
+
+In `src/core/srs.js`, replace:
+
+````js
+maxRung, pace, exerciseFor, supports,
+````
+
+with:
+
+````js
+maxRung, pace, exerciseFor, firstAloud, supports,
+````
+
+- [ ] **Step 4: The session: the second exercise, and the retry that keeps it free**
+
+In `src/ui/session.js`, replace:
+
+````js
+     groupés en fin de séance, ils formeraient une longue file du même exercice. */
+  function lace(meetings, reviews) {
+    const base = meetings.concat(reviews);
+````
+
+with:
+
+````js
+     groupés en fin de séance, ils formeraient une longue file du même exercice.
+
+     Un élément qu'on dit à voix haute pour la première fois revient lui aussi
+     une seconde fois, et c'est ce second exercice qui décide de son échelon :
+     par écrit s'il vient d'être dit, de nouveau à voix haute sinon. Celui-là
+     ferme la séance, le plus loin possible du premier : écrire un mot qu'on
+     vient de lire à l'écran ne prouve rien. Trois révisions ordinaires sont
+     gardées pour la fin, afin qu'il ne suive jamais aussitôt. */
+  const toSay = x => x.ex === 'speak' && NL.srs.firstAloud(x.items[0]);
+  function lace(meetings, reviews) {
+    const plain = reviews.filter(x => !toSay(x)).slice(-RECALL_GAP);
+    const last = reviews.filter(toSay).map(x => ({ ex: null, task: null, items: x.items, recall: true }));
+    const base = meetings.concat(reviews.filter(x => plain.indexOf(x) < 0), plain);
+````
+
+In `src/ui/session.js`, replace:
+
+````js
+      out.push(base[i++]); since++;
+    }
+    return out;
+  }
+````
+
+with:
+
+````js
+      out.push(base[i++]); since++;
+    }
+    return out.concat(last);
+  }
+````
+
+In `src/ui/session.js`, replace:
+
+````js
+  /* Une faute sur un élément dont le rappel attend plus loin n'ajoute pas de
+     reprise : le rappel EST sa seconde chance. */
+  function again(c) {
+    const waiting = L.queue.slice(L.at + 1).some(x => x.recall && !x.task && x.items[0] === c.items[0]);
+    if (!waiting && L.queue.length < L.cap) L.queue.push(retryOf(c));
+  }
+````
+
+with:
+
+````js
+  /* Une faute sur un élément dont le rappel attend plus loin n'ajoute pas de
+     reprise : le rappel EST sa seconde chance.
+
+     Sauf à voix haute, tant que l'élément n'a jamais été dit : son second
+     exercice doit rester libre pour l'écrire. On le redemande donc à voix haute
+     sans l'attendre, quelques exercices plus loin. Dit cette fois, il est écrit
+     dans la séance ; sinon c'est ce second exercice qui le redemande à voix
+     haute, et l'écrit attend le lendemain. */
+  function again(c) {
+    const at = L.queue.findIndex((x, i) => i > L.at && x.recall && !x.task && x.items[0] === c.items[0]);
+    if (at < 0) { if (L.queue.length < L.cap) L.queue.push(retryOf(c)); return; }
+    if (c.ex !== 'speak' || c.retry || L.queue.length >= L.cap || !NL.srs.firstAloud(c.items[0])) return;
+    const pos = Math.max(L.at + 1, Math.min(L.at + 1 + RECALL_GAP, at - RECALL_GAP));
+    L.queue.forEach(x => { if (x.recall && x.metAt >= pos) x.metAt++; });
+    L.queue.splice(pos, 0, retryOf(c));
+    L.queue[at + 1].metAt = pos;
+  }
+````
+
+The mistakes session of Task 9 is a fixed list and adds no second exercise. An item said for the first time there keeps its rung and is asked in writing the next day.
+
+- [ ] **Step 5: Say what the simulation now holds**
 
 In `TESTING.md`, in the table, replace the `pace.js` row with:
 
 ````md
-| `pace.js` | 200 jours simulés, pour deux apprenants (budget épuisé chaque jour ; une seule séance par jour) : charge quotidienne, variété, exigence — aucune journée sans élément nouveau tant qu’il en reste, et un élément du premier jour demandé à voix haute en dix jours, jamais après trois semaines. L’horloge avance pendant la journée |
+| `pace.js` | 200 jours simulés, pour deux apprenants (budget épuisé chaque jour ; une seule séance par jour) : charge quotidienne, variété, exigence — aucune journée sans élément nouveau tant qu’il en reste, un élément du premier jour demandé à voix haute en dix jours et jamais après trois semaines, et l’échelon de l’écrit passé en écrivant, pas en lisant à voix haute. L’horloge avance pendant la journée |
 ````
 
-- [ ] **Step 5: Run and commit**
+- [ ] **Step 6: Run and commit**
 
 Run: `node test/engine.js "$(pwd)" && sh test/run-all.sh`
 
-Expected: `430 mots et phrases dits dès l’échelon 3 ; raté la première fois : échelon gardé, retour le lendemain ; une fois dit : speak, type`. In the simulation, `première demande à voix haute  jours 5 à 11, pour les 56 éléments du premier jour` for the learner who takes every session and `jours 7 à 13, pour les 11 éléments du premier jour` for one session a day, each ending `8 vérifications, AUCUN PROBLÈME`. Then the suite passes.
+Expected from `test/engine.js`, ending `133 checks, ENGINE OK`:
+
+```
+À VOIX HAUTE — dès le troisième échelon, et la première fois ne déplace rien
+  430 mots et phrases dits dès l’échelon 3 ; raté la première fois : échelon gardé, retour le lendemain ; dit la première fois : échelon gardé, puis type ; une fois dit : speak, type
+
+DIT POUR LA PREMIÈRE FOIS — un second exercice dans la séance, et c’est l’écrit qui fait monter
+  6 éléments dits puis écrits dans la séance, 11 exercices plus tard au minimum : 35 exercices annoncés et servis
+  raté une fois : redit 9 exercices au moins avant d’être écrit ; raté deux fois : dit à la troisième, écrit le lendemain ; séance quittée : dit, échelon gardé ; sept exercices de budget : 0 révision(s), 3 rencontre(s), 6 exercices
+```
+
+In the simulation, for the learner who takes every session, `première demande à voix haute  jours 5 à 14, pour les 56 éléments du premier jour` and `échelon de l’écrit passé par écrit  406 sur 439`; for one session a day, `jours 7 à 14, pour les 11 éléments du premier jour` and `414 sur 439`. Each ends `9 vérifications, AUCUN PROBLÈME`. Then the suite passes.
+
+The thirty-odd items that still pass the writing rung on a spoken exercise are items already said: they failed the written exercise, fell two rungs, and drew `speak` on their way back through rung 3.
 
 ````bash
 sh build.sh
-git add src/core/srs.js test/engine.js test/pace.js TESTING.md index.html artifact.html
-git commit -m "feat: an item is said aloud from rung 3, and its first spoken answer costs no rung"
+git add src/core/srs.js src/ui/session.js test/engine.js test/pace.js TESTING.md index.html artifact.html
+git commit -m "feat: an item is said aloud from rung 3, and the first time never moves its rung"
 ````
 
 ---
@@ -4597,21 +4943,23 @@ git commit -m "feat: a screen for what you keep getting wrong, and a session on 
 
 ### Task 9b: « Je ne peux pas parler »: a session without its spoken exercises, and a way past a recogniser that will not hear
 
-Added on 12 October 2026 with Task 5b. Since that task a session holds spoken exercises from the first week, and the learner cannot always talk where he studies. Until now there were two ways past a spoken exercise: answer it, or skip it, and skipping is a wrong answer.
+Added on 12 October 2026 with Task 5b, and adjusted on 13 October 2026 when that task was rewritten. Since Task 5b a session holds spoken exercises from the first week, and the learner cannot always talk where the session happens. Until now there were two ways past a spoken exercise: answer it, or skip it, and skipping is a wrong answer.
 
-This task puts one button on the spoken exercise. One tap takes every spoken exercise still to come out of that session. The items concerned are not graded and use none of the day's budget. They stay due and come back as spoken exercises in the next session, and in the one after, until they have been said: Task 5b's rule sees to that, because they still have never been said. `NL.srs.compose()` fills their places with other due items, leaving out those whose next exercise can only be spoken, so a session without speaking is not a shorter one. Nothing is stored: the next session asks again.
+This task puts one button on the spoken exercise. One tap takes every spoken exercise still to come out of that session. The items concerned are not graded and use none of the day's budget. They stay due and come back as spoken exercises in the next session, and in the one after, until they have been said: Task 5b's rule sees to that, because they still have never been said. `NL.srs.compose()` fills their places with other due items, leaving out those whose next exercise can only be spoken. Nothing is stored: the next session asks again.
+
+The written exercise Task 5b keeps for an item to be said leaves with its spoken exercise. Served without speaking, it would ask for the item in writing and take it up a rung without its ever having been said. So a session with a tap holds as many items as any other, and one exercise fewer for each item put off.
 
 It is not a setting, for two reasons. Settings travel between devices, and the phone on a train is not the desktop at home. And a setting left off would bring back, without a word, the fault Task 5b removes.
 
 The same task gives a way past a recogniser that will not hear. After three refused tries the exercise offers the two buttons it already shows where there is no recogniser: said it, or not yet. Without that, an item the recogniser cannot hear would be asked aloud every day and never climb.
 
-Measured with one session a day, 85 answers right in 100, and one session in five in a place where the learner cannot talk: the typical item is first asked aloud on day 28, against day 25 when he can always talk; an exercise put off waits one day, two at most; a session with a tap holds as many exercises as any other. Two limits were measured and accepted. A full week without talking leaves the count of items the learner can produce standing still for that week, because items never yet said wait on rung 3, and is absorbed in about five sessions. Two full weeks, at the moment the backlog is highest, are followed by six sessions that are entirely spoken.
+Measured with one session a day, 85 answers right in 100, and one session in five in a place where the learner cannot talk: the typical item is first asked aloud no later than when the learner can always talk, day 28 against day 30 on the same draw; an exercise put off waits one day, four at most; a session with a tap holds 32 exercises where the others hold 39. Two limits were measured and accepted. A full week without talking leaves the count of items the learner can produce standing still for that week, because items never yet said wait on rung 3. The four sessions that follow hold 42 to 51 exercises, and by day 30 nothing is lost. Two full weeks, at the moment the backlog is highest, are followed by six sessions of about forty exercises in which nearly every item is said and then written.
 
 **Files:**
 - Modify: `src/core/srs.js`, `src/ui/session.js`, `src/ex/index.js`, `src/core/fr.js`, `test/lib/answer.js`, `test/engine.js`, `test/screens.js`, `test/journey.js`, `test/pace.js`, `test/run-all.sh`, `TESTING.md`
 
 **Interfaces:**
-- Consumes: Task 5b's rule that an item never said is asked aloud; `NL.srs.compose` (Task 3); the mistakes session (Task 9).
+- Consumes: Task 5b's rule that an item never said is asked aloud, and the written exercise it keeps for that item; `NL.srs.compose` (Task 3); the mistakes session (Task 9).
 - Produces: `NL.srs.needsVoice(item)`, true when the item's next exercise can only be spoken. `NL.srs.exerciseFor(item, avoid, quiet)`. `NL.srs.compose(source, now, { quiet, without })`, where `without` is a `Set` of item ids. In the session, a click that carries `data-quiet`; the flag `quiet` lives in the running session and nowhere else.
 - Produces: `require('./lib/answer')(B).cantSpeak()`; `node test/pace.js <root> <days> one quiet`, a third learner; the strings `cantSpeak` and `quietOnly`.
 
@@ -4676,7 +5024,9 @@ In `test/engine.js`, insert before the final `console.log`:
     ok(answer.cantSpeak(), 'a spoken exercise cannot be put off');
     ok(kept() === before, 'putting a spoken exercise off changed a stored record');
     ok(NL.srs.budgetLeft() === left, 'putting a spoken exercise off spent ' + (left - NL.srs.budgetLeft()) + ' of the day budget');
-    ok(size() === held, 'the session went from ' + held + ' exercises to ' + size() + ' although other items were due');
+    /* Les places sont reprises par d'autres éléments dus ; seul part le second
+       exercice de chacun de ceux qu'on a mis de côté. */
+    ok(size() === held - voice.length, 'the session went from ' + held + ' exercises to ' + size() + ': it should lose the second exercise of each of the ' + voice.length + ' items put off, and nothing else');
 
     /* La suite de la séance : rien à voix haute, et aucun des éléments mis de côté. */
     const rest = [];
@@ -4692,13 +5042,15 @@ In `test/engine.js`, insert before the final `console.log`:
     ok(!rest.some(x => voice.some(it => it.id === x.id)), 'an item put off came back in the same session');
     ok(kept() === before, 'an item put off was graded before the session ended');
 
-    /* La séance suivante : ils reviennent, et à voix haute. */
+    /* La séance suivante : ils reviennent, à voix haute d'abord, puis par écrit. */
     B.clock.advance(DAY);
     NL.state.touchDay();
-    const back = play().filter(x => !x.retry && voice.some(it => it.id === x.id));
+    const next = play().filter(x => !x.retry && voice.some(it => it.id === x.id));
+    const back = next.filter(x => !x.recall), written = next.filter(x => x.recall);
     ok(back.length === voice.length, 'of ' + voice.length + ' items put off, ' + back.length + ' came back in the next session');
     ok(back.every(x => x.ex === 'speak'), back.filter(x => x.ex !== 'speak').length + ' item(s) put off came back as something other than a spoken exercise');
-    console.log('  ' + voice.length + ' exercices parlés mis de côté : rien de noté, budget intact, séance toujours de ' + held + ' exercices ; le lendemain les ' + back.length + ' reviennent à voix haute');
+    ok(written.length === voice.length && written.every(x => x.ex !== 'speak'), 'of ' + voice.length + ' items said at last, ' + written.filter(x => x.ex !== 'speak').length + ' were then asked in writing');
+    console.log('  ' + voice.length + ' exercices parlés mis de côté : rien de noté, budget intact, séance de ' + held + ' exercices ramenée à ' + (held - voice.length) + ' ; le lendemain les ' + back.length + ' reviennent à voix haute, puis par écrit');
 
     /* Il ne reste que du parlé : la séance s'arrête là, sans bilan et sans journée comptée. */
     fresh();
@@ -4799,7 +5151,10 @@ In `test/journey.js`, insert before the final `console.log`:
     tap('sessie', { check: '1' });
     ok(S.render().indexOf('foot ok') >= 0, 'rating yourself right after three refusals is counted as wrong');
     const now = NL.state.rec(word.id);
-    ok(now.said === true && now.stage === 4, 'the item should be said and on rung 4: it is said ' + now.said + ', on rung ' + now.stage);
+    ok(now.said === true && now.stage === 3, 'the item should be said and still on rung 3: it is said ' + now.said + ', on rung ' + now.stage);
+    /* Dit, il lui reste à être écrit : c'est son second exercice dans la séance. */
+    tap('sessie', { next: '1' });
+    ok(S.peek() && S.peek().items[0].id === word.id && S.peek().ex !== 'speak', 'once said, the item is not asked in writing before the session ends');
     S.abandon();
     console.log('   three refusals, then « ' + NL.t.micSaidIt + ' » is offered and counts');
   }
@@ -4980,13 +5335,13 @@ with:
 In `src/core/srs.js`, replace:
 
 ````js
-maxRung, pace, exerciseFor, supports,
+maxRung, pace, exerciseFor, firstAloud, supports,
 ````
 
 with:
 
 ````js
-maxRung, pace, exerciseFor, needsVoice, supports,
+maxRung, pace, exerciseFor, firstAloud, needsVoice, supports,
 ````
 
 - [ ] **Step 4: The tap, in the session**
@@ -5049,13 +5404,18 @@ In `src/ui/session.js`, insert before the line that begins `const cur = () => L 
     NL.speech.abort(); NL.speech.clearRecording();
     L.quiet = true;
     const head = L.queue.slice(0, L.at), rest = L.queue.slice(L.at);
-    const kept = rest.filter(x => x.ex !== 'speak');
+    const spoken = rest.filter(x => x.ex === 'speak').length;
+    /* Le second exercice d'un élément qui ne peut être que dit part avec son
+       exercice parlé : servi sans parler, il le ferait monter par écrit sans
+       qu'il ait jamais été dit. Sa place, elle, est reprise ; la séance
+       raccourcit donc d'un exercice par élément mis de côté. */
+    const kept = rest.filter(x => x.ex !== 'speak' && !(!x.task && NL.srs.needsVoice(x.items[0])));
     /* Les séances à liste fixe, les fautes et le défi, ne se complètent pas. */
     let more = [];
     if (L.source !== 'fouten' && L.source !== 'defi') {
       const here = new Set();
       L.queue.forEach(x => x.items.forEach(it => here.add(it.id)));
-      more = NL.srs.compose(L.source, undefined, { quiet: true, without: here }).due.slice(0, rest.length - kept.length);
+      more = NL.srs.compose(L.source, undefined, { quiet: true, without: here }).due.slice(0, spoken);
     }
     L.queue = head.concat(kept, spread(build(more, [], true), kept.length ? kept[kept.length - 1].ex : null));
     L.queue.forEach(x => { if (x.recall) x.metAt = L.queue.findIndex(y => !y.recall && y.ex !== 'match' && y.items[0] === x.items[0]); });
@@ -5177,7 +5537,7 @@ node test/pace.js "$ROOT" "${PACE_DAYS:-200}" one quiet
 In `TESTING.md`, in the table, replace the `pace.js` row with:
 
 ````md
-| `pace.js` | 200 jours simulés, pour trois apprenants (budget épuisé chaque jour ; une seule séance par jour ; une seule séance, dont une sur cinq là où l’on ne peut pas parler) : charge quotidienne, variété, exigence — aucune journée sans élément nouveau tant qu’il en reste, un élément du premier jour demandé à voix haute en dix jours et jamais après trois semaines, et « je ne peux pas parler » qui ne note rien, ne coûte rien et ne fait rien sauter. L’horloge avance pendant la journée |
+| `pace.js` | 200 jours simulés, pour trois apprenants (budget épuisé chaque jour ; une seule séance par jour ; une seule séance, dont une sur cinq là où l’on ne peut pas parler) : charge quotidienne, variété, exigence — aucune journée sans élément nouveau tant qu’il en reste, un élément du premier jour demandé à voix haute en dix jours et jamais après trois semaines, l’échelon de l’écrit passé en écrivant, et « je ne peux pas parler » qui ne note rien, ne coûte rien et ne fait rien sauter. L’horloge avance pendant la journée |
 ````
 
 - [ ] **Step 7: Run and commit**
@@ -5186,10 +5546,10 @@ Run: `node test/engine.js "$(pwd)" && node test/screens.js "$(pwd)" && node test
 
 Expected:
 
-- `test/engine.js`: `8 exercices parlés mis de côté : rien de noté, budget intact, séance toujours de 30 exercices ; le lendemain les 8 reviennent à voix haute`, then `rien que du parlé : retour à l’accueil sans bilan ; séance sur les fautes : le parlé en sort, rien n’y entre`.
+- `test/engine.js`: `8 exercices parlés mis de côté : rien de noté, budget intact, séance de 38 exercices ramenée à 30 ; le lendemain les 8 reviennent à voix haute, puis par écrit`, then `rien que du parlé : retour à l’accueil sans bilan ; séance sur les fautes : le parlé en sort, rien n’y entre`, ending `152 checks, ENGINE OK`.
 - `test/screens.js`: `présent sur l’exercice parlé, absent des 11 autres, retiré une fois la réponse donnée ; appuyé : plus rien à voix haute`.
 - `test/journey.js`: `three refusals, then « Je l’ai dit » is offered and counts`. Under Opera and on the iPhone outside Safari it prints `skipped: no recogniser here, a spoken exercise is already self-rated`.
-- the third learner of the simulation: `séances sans parler  37 : rien de noté, rien à voix haute ensuite, tout revient à voix haute`, ending `12 vérifications, AUCUN PROBLÈME`.
+- the third learner of the simulation: `séances sans parler  38 : rien de noté, rien à voix haute ensuite, tout revient à voix haute`, ending `13 vérifications, AUCUN PROBLÈME`.
 
 Then the suite passes.
 
@@ -5516,7 +5876,7 @@ In `TESTING.md`, add three rows to the table:
 
 ````md
 | `content.js` | L'orthographe contre 410 000 formes néerlandaises, que chaque exercice promis se construise vraiment, qu'une phrase d'exemple n'emprunte pas de vocabulaire à une unité ultérieure, et les éléments enseignés deux fois |
-| `engine.js` | Ce qu'une séance contient et quand un élément revient, horloge en marche : la panne d'octobre, deux jours de suite, le rappel dans la séance, la réserve de nouveautés, le seuil des unités, la première demande à voix haute, « je ne peux pas parler » |
+| `engine.js` | Ce qu'une séance contient et quand un élément revient, horloge en marche : la panne d'octobre, deux jours de suite, le rappel dans la séance, la réserve de nouveautés, le seuil des unités, la première demande à voix haute et l'exercice écrit qui la suit, « je ne peux pas parler » |
 | `screens.js` | Chaque écran dans quatre états, relu comme du texte : ni pourcentage, ni maîtrise ; les comptes, le nom de l'unité, ce qui résiste, le bouton « je ne peux pas parler », le journal d'erreurs |
 ````
 
@@ -5793,9 +6153,9 @@ Under **Conventions you can't infer from the code**, add three bullets:
 - `resetAt` in the stored settings is the moment of the last reset, and other devices compare
   against it. It only ever grows. `ENGINE_EPOCH` in `src/core/state.js` is a fixed date and
   must stay one: changing it wipes progress again, or stops wiping it.
-- `said` on a stored record is what makes an item's first spoken exercise certain and free of
-  a rung. « Je ne peux pas parler » lives in the running session and is deliberately not a
-  setting; issue #12 says why.
+- `said` on a stored record is what makes an item's first spoken exercise certain. That
+  exercise never moves the item's rung: a written one, later in the same session, decides. « Je ne peux pas parler » lives in the running session and is deliberately not a
+  setting. Issue #12 says why, for all three.
 ```
 
 Under **Where the thinking is written down**, change the line added before Task 1 so that it reads as history:
@@ -5859,11 +6219,11 @@ Phases 3 and 4, content repair and then expansion to B1, follow in that order, e
 - **`wayfinder`**, for planning phase 4, and perhaps phase 2. It charts work too big for one session as a map of decision tickets on the tracker and resolves them one at a time. Phase 4 has that shape: the content factory, audio hosting, the choice of sources, the backlog risk below. Phase 1 does not: nothing here is still foggy. Two things to know before using it. Its tickets are decisions and never carry `ready-for-agent`, so its map is a separate issue, not #12. And its five labels (`wayfinder:map`, `wayfinder:research`, `wayfinder:prototype`, `wayfinder:grilling`, `wayfinder:task`) do not exist on the repository yet.
 - **`wizard`**, for the steps only the maintainer can take. It writes a bash script that opens each page, says what to click, and stores each value where it belongs. Phase 4 will have such steps (audio hosting, keys for the content factory), and so will Sandcastle if it is adopted for phase 2 (Docker, a token, a label). Phase 1 has none: the migration runs in the app, Vercel deploys by itself, and no schema changes.
 
-**A named risk for phase 4: the review backlog has no ceiling.** This phase reserves a share of every session for new items and never lets it yield, against a daily budget that is fixed. With 439 items the backlog peaks at 172 for a learner who spends the whole budget, or 309 for one session a day, and then drains. With the several thousand items of B1 it will not drain. Before that content lands, either the reservation has to shrink as the backlog grows or the budget has to follow it. See decision 7.
+**A named risk for phase 4: the review backlog has no ceiling.** This phase reserves a share of every session for new items and never lets it yield, against a daily budget that is fixed. With 439 items the backlog peaks at about 210 for a learner who spends the whole budget, or about 310 for one session a day, and then drains. With the several thousand items of B1 it will not drain. Before that content lands, either the reservation has to shrink as the backlog grows or the budget has to follow it. See decision 7.
 
 ## The open question, as settled on 12 October 2026
 
-**When does a session first ask him to say a Dutch word aloud?** On the ladder as it stood, about five weeks after the word is met. He works surrounded by Dutch speakers. *Decided on 12 October 2026:* five weeks is too late. Tasks 5b and 9b change it, and issue #12 carries the decisions.
+**When does a session first ask him to say a Dutch word aloud?** On the ladder as it stood, about five weeks after the word is met. He works surrounded by Dutch speakers. *Decided on 12 October 2026:* five weeks is too late. Tasks 5b and 9b change it, and issue #12 carries the decisions. *Corrected the same evening, and rewritten on 13 October 2026:* as first written, Task 5b paid for the earlier speaking with the meaning of the second count. See *The correction of 12 and 13 October 2026* below.
 
 **What the ladder gave.** Measured on both engines, with a learner who answers everything right and takes every session the day offers. Each cell is the first day a word met on day one gets there:
 
@@ -5874,37 +6234,67 @@ Phases 3 and 4, content repair and then expansion to B1, follow in that order, e
 
 `speak` was the exercise an item got once it stood **on** rung 5, and the wait before that exercise is the longest of the ladder, 21 days. This was never a side effect of the interval decision: the ladder of this plan is no slower at any rung than the one on `main`, because the reinforcement inside the session climbs the rung the twelve-minute return used to climb.
 
-**Two corrections to that table, found by running the engine.** For a grammar rule, rung 4 offers `speak` beside `open` and the engine draws one, so about half the rules were first spoken around day 14 and the rest around day 35. And "five weeks" is the figure for a learner who takes every session. The maintainer takes one session a day, two at most. With one, an item met on day 1 was first asked aloud on day 48 to 51, and the typical item on day 74, because an item also has to wait for a place in a session.
+**Two corrections to that table, found by running the engine.** For a grammar rule, rung 4 offers `speak` beside `open` and the engine draws one, so about half the rules were first spoken around day 14 and the rest around day 35. And "five weeks" is the figure for a learner who takes every session. The maintainer takes one session a day, two at most. With one, an item met on day 1 was first asked aloud on day 47 at the earliest, and the typical item on day 73, because an item also has to wait for a place in a session.
 
-**What was compared.** One session a day, 85 answers right in 100, 200 simulated days, the whole course of 439 items. Days are counted from the day an item is met; the typical item is the median one.
+**What was compared on 12 October.** One session a day, 85 answers right in 100, 200 simulated days, the whole course of 439 items, one draw. Days are counted from the day an item is met; the typical item is the median one.
 
 | Ladder | An item met on day 1 is first asked aloud | The typical item |
 | --- | --- | --- |
-| As it stood | day 48 to 51 | day 74 |
+| As it stood | day 48 to 51 for most | day 74 |
 | `speak` added to rung 4, drawn like any exercise | day 17 to 19 for about half, day 29 or later for the rest | day 67 |
 | `speak` added to rung 3, drawn like any exercise | day 7 or 8 for most, day 52 or later for the rest | day 42 |
 | Shorter middle waits, 2, 5 and 13 days | day 34 to 39 | day 71 |
 | `speak` on rung 4 and certain the first time, waits of 2, 4 and 21 days | day 12 to 14 | day 46 |
-| **`speak` on rung 3, certain the first time and free the first time (Tasks 5b and 9b)** | **day 7 to 13** | **day 26** |
+| `speak` on rung 3, certain the first time, a wrong answer free (Task 5b as first written) | day 7 to 13 | day 26 |
 
 **What was decided, and why.**
 
 1. *Rung 3 offers the spoken exercise, and an item never yet said gets it.* Adding `speak` to a rung only puts it beside that rung's other exercises, and the engine draws one: it reached about a third of the items on rung 4 and a bit over half on rung 3, and the others waited for rung 5 as before. Shorter waits moved every item, but hardly the learner who takes one session a day: there an item is held back by the queue for a place, not by its wait.
-2. *A wrong spoken answer costs no rung while the item has never been said.* Without this, bringing the spoken exercise forward made progress depend on the recogniser. Items the learner can produce at day 60, with spoken answers right 85, 60 and 40 times in 100: 201, 209 and 201 on the ladder as it stood; 200, 160 and 93 with the first two decisions alone; 230, 212 and 180 with this one. The maintainer expects to be right about 75 times in 100.
-3. *« Je ne peux pas parler » belongs to the session, not to the settings.* He cannot always talk where he studies. With one session in five in such a place, the typical item is first asked aloud on day 28 against day 25, an exercise put off waits one day and two at most, and a session with a tap is as long as any other. A tap changes no stored record and spends none of the day's budget.
-4. *After three refusals the learner rates himself*, so that an item the recogniser cannot hear does not stay on rung 3 and get asked aloud every day.
+2. *Saying an item for the first time never moves its rung.* The wrong answer was settled on 12 October: it costs no rung, because failing an exercise that shows the Dutch says nothing about memory, and because without that rule progress depended on the recogniser. The right answer was settled that same evening, as the correction below records: it earns no rung either, for the same reason seen from the other side.
+3. *« Je ne peux pas parler » belongs to the session, not to the settings.* The learner cannot always talk where the session happens. With one session in five in such a place, the typical item is first asked aloud no later than otherwise, an exercise put off waits one day and four at most, and a tap changes no stored record and spends none of the day's budget.
+4. *After three refusals the learner rates themselves*, so that an item the recogniser cannot hear does not stay on rung 3 and get asked aloud every day.
 
 The waits are unchanged, and so is rung 5, which still offers only the spoken exercise: every item is said a second time there.
 
-**What it costs.** About 29 exercises in 100 become spoken, where there were 14. A session takes about a minute longer a day in the first two months. The backlog does not rise: it peaks at 295 against 309.
+**The correction of 12 and 13 October 2026.** Defining *produced* for the glossary showed what the first version of Task 5b had done to the second count on the home screen, « que tu sais produire ». That count is the items past rung 3, a rung chosen because it is where the learner writes the word and no longer only recognises it (decision 3 below). With `speak` certain on rung 3 and a right answer climbing, the answer that took an item past the rung had become the spoken one, and the spoken exercise shows the Dutch. On one draw at day 60, 226 of the 233 items counted had passed the rung by being read aloud, and the count read 233 beside 240 « dits à voix haute » on the same screen: nearly the same items, counted twice.
 
-**Limits measured and accepted.** A full week without talking leaves the count of items he can produce standing still for that week, because items never yet said wait on rung 3; it is absorbed in about five sessions and nothing is lost by day 30. Two full weeks without talking, at the moment the backlog is highest, are followed by six sessions that are entirely spoken, and the count has recovered by day 100.
+So a first right spoken answer now marks the item said and leaves its rung alone, and a written exercise decides the climb, later in the same session. The maintainer chose this on the evening of 12 October; it was built, measured and written into Tasks 5b and 9b the next day. Three other remedies were measured and declined:
 
-**Declined on 12 October 2026.** A setting that turns the spoken exercises off: settings travel between devices, and one left off would bring the fault back without a word. A ceiling on spoken exercises in one session. A count of spoken exercises on the home screen or at the end of a session. Letting an item count as due a few hours early: it moves the first spoken exercises from day 7 to day 5 and nothing else that matters.
+- *Keep the engine, and let "produce" mean written or said.* The home screen would then say nearly the same thing twice.
+- *Let the writing come the next day.* The count is right again, at 128 items on day 60 and a backlog of 352: with one session a day every extra exercise takes a place in the queue.
+- *Count the items past rung 4.* Nothing else changes, but the count first moves on day 17 instead of day 7, and decision 3 had already turned down a count that sits at zero for weeks.
 
-**What already existed and still does.** The conversations (**Parler**) use speech recognition and are open from day one, and so is **Écouter → Répéter après**, which scores what is said.
+**The three engines side by side.** One session a day, 85 answers right in 100, means over six draws:
 
-**Where the evidence is.** Outside the repository, in `../vlaams-PROTOTYPE-when-first-spoken/`: the prototype that compared the first four ladders, `measure.js`, and under `option-2-measurement/` the scripts and the raw output behind every figure in this section. The figures of decisions 2 and 3 were measured on scratch builds of the design before it was written as Tasks 5b and 9b; the engine those tasks produce was then measured again and gives the last row of the table above.
+| | As it stood | Task 5b as first written | Tasks 5b and 9b as rewritten |
+| --- | --- | --- | --- |
+| Items the learner can produce, day 30 / 60 / 100 | 105 / 207 / 393 | 116 / 232 / 414 | 103 / 204 / 383 |
+| Of those at day 60, with no right answer in which the Dutch was not given | 3 | 36 | 3 |
+| The typical item is first asked aloud | day 73 | day 26 | day 28 |
+| An item met on day 1 is first asked aloud | day 47 or later | day 7 to 16 | day 7 to 14 |
+| Highest backlog | 313 | 296 | 309 |
+| Exercises a day, first 60 days | 33 | 34 | 38 |
+| Minutes a day, first 60 days | 8.3 | 9.1 | 10.3 |
+| Longest session | 36 exercises | 36 | 46 |
+| Exercises that are spoken | 15 in 100 | 29 in 100 | 25 in 100 |
+
+At 75 answers right in 100, which is what the maintainer expects, the count at day 60 reads 143, 180 and 141.
+
+**What it costs.** About two minutes a day against the ladder as it stood, and one against the first version of Task 5b. A session holds about four exercises more, and up to 46. The backlog does not rise for one session a day. For a learner who takes every session it peaks at about 210, where it peaked at 167.
+
+**Limits measured and accepted.**
+
+- *The written exercise comes minutes after the spoken one, not a day.* It closes the session: typically 14 exercises and four and a half minutes later, and in 2 cases out of 421 fewer than four exercises later. On the ladder as it stood, the writing on rung 3 came a day after the item was last seen. It is a test of memory, and a weaker one.
+- *The count leans on the recogniser more than before.* With spoken answers right 60 times in 100 it reads 179 at day 60, against 202 as it stood and 208 in the first version; with 40 in 100, 149 against 194 and 181. A first spoken answer that goes wrong is retried a few exercises later so that the written exercise can still follow in the same session, which is worth eight to fifteen items at day 60. The simulation is harsher than use will be: after three refused tries the learner can rate themselves.
+- *A full week without talking* leaves the count standing still for that week, because items never yet said wait on rung 3. The four sessions that follow hold 42 to 51 exercises, and nothing is lost by day 30.
+- *Two full weeks without talking, at the moment the backlog is highest,* are followed by six sessions of about forty exercises in which nearly every item is said and then written. The count has recovered by day 100.
+- *Some items still pass the writing rung on a spoken exercise:* about one in fifteen. They are items already said, which failed the written exercise, fell two rungs, and drew `speak` on their way back through rung 3. The simulation fails if they become more than one in five.
+
+**Declined.** On 12 October 2026: a setting that turns the spoken exercises off, because settings travel between devices and one left off would bring the fault back without a word; a ceiling on spoken exercises in one session; a count of spoken exercises on the home screen or at the end of a session; letting an item count as due a few hours early, which moves the first spoken exercises from day 7 to day 5 and nothing else that matters. With the correction: a limit on the written exercises a session may add, which would keep the longest session near 36.
+
+**What already existed and still does.** The conversations (**Parler**) use speech recognition and are open from day one, and so is **Écouter → Répéter après**, which scores what is said. Neither makes an item *said*: only a spoken exercise in a session does.
+
+**Where the evidence is.** Outside the repository, in `../vlaams-PROTOTYPE-when-first-spoken/`. For 12 October: the prototype that compared the first four ladders, `measure.js`, and under `option-2-measurement/` the scripts and the raw output of that day. For 13 October, under `tasks-5b-9b-F/`: `apply.js`, which writes both tasks onto the end state of the other eleven; `measure-F.js` and the scripts that run it; and under `out/` the raw output behind every figure of the three-engine table, the limits and the two tasks.
 
 ## Decisions, as settled on 12 October 2026
 
@@ -5929,7 +6319,7 @@ All three fixes are required, each for its own reason, and each has its own fail
 
 **2. "Places" are items, and a new item costs two exercises.** The spec reserves "30% of a session's places, never fewer than four" without saying whether the reinforcement takes a place. Here a session has 22 places for items, the reservation is 7 items, and each new item adds one reinforcement: 22 to 29 exercises a session. New items are capped at 11 a session so that a session with no reviews does not double. *Accepted.* The second exercise is the reinforcement this design adds, so a session gets longer in time as well as in count; Task 3 says so.
 
-**3. "Can produce" means the writing rung is passed** (`stage >= 4`, capped by tier). The spec uses the phrase without defining it. The alternative was the speaking rung. Writing was chosen because it is the first rung where the learner produces the word from memory instead of recognising it. An item is first asked aloud about a month after it is met (the ladder's intervals put that exercise on day 34), so a count based on speaking would read zero for the first month, which is the fault ADR 0002 exists to remove. That same figure raised a question of its own, kept apart from the count and settled on 12 October 2026: see *The open question, as settled on 12 October 2026*. Task 5b has since brought the first spoken exercise to rung 3; the count stays on the writing rung, which every item still has to pass. On the simulated one-session-a-day learner the count starts moving on day 5. *Accepted.*
+**3. "Can produce" means the writing rung is passed** (`stage >= 4`, capped by tier). The spec uses the phrase without defining it. The alternative was the speaking rung. Writing was chosen because it is the first rung where the learner produces the word from memory instead of recognising it. An item is first asked aloud about a month after it is met (the ladder's intervals put that exercise on day 34), so a count based on speaking would read zero for the first month, which is the fault ADR 0002 exists to remove. That same figure raised a question of its own, kept apart from the count and settled on 12 October 2026: see *The open question, as settled on 12 October 2026*. Task 5b has since brought the first spoken exercise to rung 3. As first written it let that exercise take an item past the rung, and the count came to mean "read aloud"; since 13 October 2026 a first spoken answer leaves the rung alone, and it is a written answer that takes the item past it. On the simulated one-session-a-day learner the count starts moving on day 7. *Accepted.*
 
 **4. The duplicates budget is 9, not 8.** Compared without case or punctuation, as the alias matching of phase 3 will compare, "Tot maandag." and "Tot maandag!" are the same phrase taught twice. An exact string comparison misses that pair, which is where 8 came from. `TESTING.md` already says nine. *Accepted: 9.*
 
@@ -5937,7 +6327,7 @@ All three fixes are required, each for its own reason, and each has its own fail
 
 **6. The reset also clears the scenario and listening checkmarks.** *Changed by the maintainer:* starting from zero while still showing six conversations completed is not starting from zero. The settings merge used to unite those lists across devices, which would have brought them straight back, so the same `resetAt` rule now governs them: across a reset they follow the side that carries it. Task 8 has the code and the tests. One limit, of the same kind as point 8: a conversation completed on a second device after the reset but before that device has heard of it is cleared with the rest, because the list carries no dates.
 
-**7. A named risk for phase 4: the review backlog has no ceiling.** A reservation that never yields, against a fixed daily budget, means the backlog grows without limit once the course is much larger than the budget can turn over. With 439 items it peaks at 172 (eager learner) or 309 (one session a day) and then drains. With several thousand items it will not drain. The engine is right for phases 1 to 3. *Accepted and deferred:* the reservation or the budget must be looked at again before B1 content lands, and *What comes after phase 1* carries it so that it is not rediscovered then.
+**7. A named risk for phase 4: the review backlog has no ceiling.** A reservation that never yields, against a fixed daily budget, means the backlog grows without limit once the course is much larger than the budget can turn over. With 439 items it peaks at about 210 (eager learner) or about 310 (one session a day) and then drains; before Tasks 5b and 9b the same six draws gave 167 and 313. With several thousand items it will not drain. The engine is right for phases 1 to 3. *Accepted and deferred:* the reservation or the budget must be looked at again before B1 content lands, and *What comes after phase 1* carries it so that it is not rediscovered then.
 
 **8. Clock skew between devices.** The reset compares timestamps written by different devices. A device whose clock runs behind could have a post-reset answer taken for a pre-reset one and dropped. Phone and desktop clocks are set by the network and agree to within seconds. *Accepted: noted, not handled.*
 
