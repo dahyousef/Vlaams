@@ -1,0 +1,782 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vlaams Speaking Ladder Prototype</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:wght@400;600;700&display=swap">
+<!--
+  THROWAWAY PROTOTYPE. Not part of the Vlaams app, not built by build.sh, not to be shipped.
+
+  It answers one question from the phase 1 plan (section "Open question for the
+  maintainer"): when does a session first ask the learner to say an item aloud,
+  and which change to the ladder, if any, is the right one?
+
+  One file, no server, no storage. Open it by double-click.
+  The logic lives in the first script block and never touches the page.
+-->
+<style>
+  /* Layout: an answer bar that stays at the top, over four ladders side by side;
+     on a phone the ladders stack and four small tiles in the bar keep them comparable.
+     Colours and faces are the Vlaams app's own tokens (styles.css). */
+  :root {
+    --stone: #F1F2EE; --card: #FFFFFF; --sunk: #E7EAE3;
+    --ink: #15211C; --ink-2: #4A5B53; --ink-3: #84958C;
+    --line: #DDE1D9; --line-2: #C4CBBE;
+    --strong: #1F4B3F; --on-strong: #FFFFFF;
+    --aloud: #A4600F; --aloud-soft: #FBEDDB;
+    --display: "Archivo", "Segoe UI", system-ui, sans-serif;
+    --body: "Public Sans", "Segoe UI", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --stone: #0E1512; --card: #17211D; --sunk: #202C26;
+      --ink: #E9EFEA; --ink-2: #A3B4AB; --ink-3: #6F837A;
+      --line: #25332C; --line-2: #35473E;
+      --strong: #54A186; --on-strong: #0E1512;
+      --aloud: #F09A3E; --aloud-soft: #2B2114;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --stone: #0E1512; --card: #17211D; --sunk: #202C26;
+    --ink: #E9EFEA; --ink-2: #A3B4AB; --ink-3: #6F837A;
+    --line: #25332C; --line-2: #35473E;
+    --strong: #54A186; --on-strong: #0E1512;
+    --aloud: #F09A3E; --aloud-soft: #2B2114;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--stone); color: var(--ink); font: 15px/1.5 var(--body); -webkit-font-smoothing: antialiased; }
+  .banner { background: var(--strong); color: var(--on-strong); padding: 7px 20px; font-size: 13px; }
+  .banner b { font-family: var(--mono); letter-spacing: .1em; }
+  main { max-width: 1320px; margin: 0 auto; padding-block: 22px 60px; padding-inline: 20px; }
+  h1, h2, h3 { font-family: var(--display); letter-spacing: -.01em; text-wrap: balance; }
+  h1 { font-size: clamp(21px, 4.6vw, 27px); line-height: 1.2; margin: 6px 0 6px; }
+  h2 { font-size: 17px; margin: 0 0 10px; }
+  h3 { font-size: 14px; margin: 0 0 6px; }
+  p { margin: 0 0 10px; }
+  a { color: var(--strong); }
+  button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid var(--aloud); outline-offset: 2px; }
+  .lede { font-size: 16px; color: var(--ink-2); max-width: 70ch; }
+  .question { max-width: 84ch; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; margin: 14px 0 22px; }
+  .question p:last-child { margin-bottom: 0; }
+  section { margin-top: 26px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; min-width: 0; }
+  .drive { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 14px; }
+  .label { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-3); margin: 0 0 6px; }
+  .row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  button { font: inherit; color: var(--ink); background: var(--card); border: 1px solid var(--line-2); border-radius: 8px; padding: 7px 12px; cursor: pointer; }
+  button:hover:not(:disabled) { border-color: var(--ink-2); }
+  button:disabled { color: var(--ink-3); background: var(--sunk); border-color: var(--line); cursor: default; }
+  button.on, button.go:not(:disabled) { background: var(--strong); border-color: var(--strong); color: var(--on-strong); }
+  button.big { padding: 10px 16px; font-weight: 600; }
+  label.opt { display: block; margin: 0 0 5px; cursor: pointer; }
+  label.opt input { margin-right: 6px; accent-color: var(--strong); }
+  .hint { font-size: 13px; color: var(--ink-2); }
+  .sample { font-size: 13px; color: var(--ink-2); margin: -6px 0 12px; }
+  .sample b { color: var(--ink); }
+
+  .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .steps { display: flex; flex-wrap: wrap; gap: 5px; margin: 10px 0 6px; padding: 0; list-style: none; }
+  .steps button { padding: 4px 9px; font-size: 13px; }
+  .steps button.done { color: var(--ink-3); background: var(--sunk); border-color: var(--line); }
+  .steps button.next { background: var(--strong); border-color: var(--strong); color: var(--on-strong); font-weight: 600; }
+  .stepnote { font-size: 13px; color: var(--ink-2); min-height: 20px; }
+
+  .bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 22px; padding: 10px 0; background: var(--stone); border-bottom: 1px solid var(--line); }
+  .bar .day { font-family: var(--display); font-size: 28px; font-weight: 700; line-height: 1; min-width: 104px; font-variant-numeric: tabular-nums; }
+  .bar .hint { flex: 1 1 260px; order: 10; }
+  .barhead { display: contents; }
+  .bar .again { order: 9; }
+  .sm { display: none; }
+  .bar button.walknext { background: var(--strong); border-color: var(--strong); color: var(--on-strong); font-weight: 600; padding: 10px 16px; }
+  /* The four ladders in brief. Shown once they no longer fit side by side. */
+  .mini { display: none; flex: 1 1 100%; order: 11; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .mini a { display: block; min-width: 0; background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 5px 6px; font-size: 11.5px; line-height: 1.3; color: var(--ink-2); text-decoration: none; overflow-wrap: anywhere; }
+  .mini a.asking { border-color: var(--ink-2); }
+  .mini b { display: block; color: var(--ink); font-size: 12.5px; }
+  .mini .al { display: block; color: var(--ink-3); }
+  .mini .al.happened { color: var(--aloud); font-weight: 700; }
+
+  .cols { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  .col { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 12px 13px 13px; min-width: 0; scroll-margin-top: 250px; }
+  .col.asking { border-color: var(--ink-2); }
+  .col h3 { font-size: 15px; margin: 0; }
+  .col .what { font-size: 13px; color: var(--ink-2); min-height: 38px; margin: 2px 0 8px; }
+  .aloud-box { border-radius: 6px; padding: 8px 10px; background: var(--stone); margin-bottom: 10px; min-height: 86px; }
+  .aloud-box.happened { background: var(--aloud-soft); }
+  .aloud-box .k { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-2); }
+  .aloud-box .v { font-family: var(--display); font-size: 24px; font-weight: 700; line-height: 1.25; font-variant-numeric: tabular-nums; }
+  .aloud-box.happened .v, .aloud-box.happened .k { color: var(--aloud); }
+  .aloud-box .s { font-size: 12.5px; color: var(--ink-2); }
+  table.rungs { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 10px; }
+  table.rungs th { text-align: left; font-family: var(--mono); font-weight: 500; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-3); padding: 0 4px 3px; }
+  table.rungs td { padding: 4px 4px; border-top: 1px solid var(--line); vertical-align: top; }
+  table.rungs td.n { width: 30px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  table.rungs td.w { width: 74px; text-align: right; color: var(--ink-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  table.rungs tr.here td { background: var(--sunk); }
+  table.rungs tr.here td.n::before { content: "\25B6 "; font-size: 9px; }
+  .ex { display: inline-block; margin: 0 5px 1px 0; white-space: nowrap; }
+  .ex.aloud { color: var(--aloud); font-weight: 700; }
+  .ex.cant { color: var(--ink-3); text-decoration: line-through; }
+  .ex.now { outline: 2px solid var(--ink); outline-offset: 1px; border-radius: 3px; padding: 0 3px; }
+  input.wait { width: 46px; font: inherit; font-size: 13px; padding: 1px 3px; text-align: right; color: var(--ink); background: var(--card); border: 1px solid var(--line-2); border-radius: 4px; }
+  .state { font-size: 13.5px; }
+  .state p { margin: 0 0 5px; }
+  .state .dim { color: var(--ink-2); }
+  .state .just { background: var(--stone); border-radius: 5px; padding: 5px 7px; }
+
+  .scroll { overflow-x: auto; }
+  table.log, table.measured { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--card); font-variant-numeric: tabular-nums; }
+  table.log { min-width: 640px; }
+  table.measured { min-width: 760px; }
+  table.log th, table.log td, table.measured th, table.measured td { border: 1px solid var(--line); padding: 5px 8px; text-align: left; vertical-align: top; }
+  table.log th, table.measured th { background: var(--sunk); font-weight: 600; }
+  table.log td.d { width: 64px; font-weight: 600; white-space: nowrap; }
+  table.log td.none { color: var(--ink-3); }
+  table.log td.said { background: var(--aloud-soft); }
+  table.log td.said b { color: var(--aloud); }
+  table.measured td.num { white-space: nowrap; }
+  table.measured tr.rule td { color: var(--ink-2); }
+  table.measured caption { caption-side: top; text-align: left; font-family: var(--display); font-weight: 700; padding: 0 0 6px; }
+  .findings { max-width: 84ch; padding-left: 20px; }
+  .findings li { margin-bottom: 7px; }
+  code { font: 12.5px var(--mono); background: var(--sunk); border-radius: 3px; padding: 0 3px; }
+  .aloud-word { color: var(--aloud); font-weight: 700; }
+
+  @media (max-width: 1100px) {
+    .cols { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .mini { display: grid; }
+    .bar .hint { display: none; }
+  }
+  @media (max-width: 900px) { .drive { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 620px) {
+    main { padding-inline: 16px; }
+    .banner { padding-inline: 16px; }
+    .cols { grid-template-columns: minmax(0, 1fr); }
+    .col .what, .aloud-box { min-height: 0; }
+    .lg { display: none; }
+    .sm { display: inline; }
+    .bar { gap: 6px; padding: 8px 0; }
+    .barhead { display: flex; flex: 1 1 100%; align-items: center; justify-content: space-between; gap: 8px; }
+    .bar .day { font-size: 22px; min-width: 0; }
+    .bar button { padding: 8px 10px; font-size: 14px; flex: 1 1 auto; }
+    .bar .again { flex: 0 0 auto; order: 0; }
+    #walkbtn { display: flex; flex: 1 1 100%; }
+    #walkbtn:empty { display: none; }
+    .bar button.walknext { padding: 8px 10px; flex: 1 1 auto; }
+  }
+</style>
+</head>
+<body>
+<div class="banner"><b>PROTOTYPE</b> &nbsp;·&nbsp; throwaway, not part of the Vlaams app. It reads nothing and saves nothing: reload the page and it starts again.</div>
+<main>
+
+<h1>When does a session first ask you to say an item aloud?</h1>
+<p class="lede">One item climbs four ladders side by side. Each column shows the rung the item is on, the exercise it gets, the day it is next due, and above all the day it is first asked <span class="aloud-word">aloud</span>.</p>
+
+<div class="question">
+  <p><b>The question.</b> Phase 1 leaves the ladder as it is. An item is asked aloud once it stands on rung 5, and the wait before that exercise is the longest of the ladder: 21 days. So a session first asks you to say a word about five weeks after you meet it. For someone who works among Dutch speakers, is that too late?</p>
+  <p>If it is, the plan names two changes: offer <span class="aloud-word">say it aloud</span> on an earlier rung (ladders B and C), or shorten the three middle waits (ladder D). Ladder A is the plan as written.</p>
+  <p class="hint">The top of this page follows <b>one item alone</b>: no session of 22 places, no backlog, no daily budget. What those add is in <a href="#measured">Measured on the real engine</a>, at the bottom, and it changes the picture.</p>
+</div>
+
+<section>
+  <div class="drive">
+    <div class="card">
+      <h2>Free play</h2>
+      <p class="label">The item</p>
+      <div class="row" id="kinds"></div>
+      <p class="sample" id="sample"></p>
+      <p class="label">When a rung offers several exercises</p>
+      <div id="draws" style="margin-bottom:12px"></div>
+      <p class="hint" style="margin:0">Changing either starts the item again from day 1. The buttons are in the bar below, which stays at the top of the window as you scroll: a right answer, a wrong answer, and a jump to the next day the item is due. One answer goes to every ladder that is asking.</p>
+    </div>
+    <div class="card">
+      <h2>Guided walkthroughs</h2>
+      <div class="tabs" id="tabs"></div>
+      <div id="walk"></div>
+    </div>
+  </div>
+</section>
+
+<div class="bar">
+  <div class="barhead">
+    <span class="day" id="day"></span>
+    <button data-act="again" class="again">Start again<span class="lg"> from day 1</span></button>
+  </div>
+  <button class="big" data-act="right">&#10003; Right<span class="lg"> answer</span></button>
+  <button class="big" data-act="wrong">&#10007; Wrong<span class="lg"> answer</span></button>
+  <button class="big" data-act="jump" id="jump">Jump to the next due day</button>
+  <span id="walkbtn"></span>
+  <span class="hint" id="todayline"></span>
+  <div class="mini" id="mini"></div>
+</div>
+
+<section style="margin-top:12px">
+  <div class="cols" id="cols"></div>
+</section>
+
+<section>
+  <h2>What happened, answer by answer</h2>
+  <div class="scroll"><table class="log" id="log"></table></div>
+</section>
+
+<section id="measured">
+  <h2>Measured on the real engine</h2>
+  <p style="max-width:96ch">The ladders above were also run on the phase 1 engine itself (the saved end state of the plan), with the whole course of 439 items and real sessions: 22 places, the reserved share for new items, the daily budget. Two learners, as in the plan's own simulation: one takes <b>every session the day offers</b>, the other <b>one session a day</b>. Each figure comes from one run of 200 days; a second run with a different draw agrees to within a few days.</p>
+
+  <ul class="findings">
+    <li><b>Ladder A is confirmed, and with one session a day it is later than five weeks.</b> A word met on day 1 is first asked aloud on day 35 by the learner who takes every session. With one session a day it is day 44 to 47. A word met later in the course also waits for a place in a session: the typical item is asked aloud 59 days after it is met, 74 if some answers are wrong. That is eight to ten weeks.</li>
+    <li><b>Ladders B and C are a draw, not a date.</b> Adding <span class="aloud-word">say it aloud</span> to a rung puts it beside that rung's other exercises, and the engine draws one. B reaches about a third of the items, C a bit over half. The rest are asked aloud on rung 5, exactly as on ladder A.</li>
+    <li><b>One rule the engine does not have would make them certain:</b> an item never yet said aloud gets <span class="aloud-word">say it aloud</span> as soon as its rung offers it. With it, and every answer right, C asks every item aloud about a week after it is met (every session) or two and a half weeks (one session a day); B about two weeks, or five.</li>
+    <li><b>Ladder D moves every item, but does little for one session a day.</b> With waits of 2, 5 and 13 days the every-session learner goes from 37 days to 26. The one-session learner goes from 59 to 54, and from 74 to 71 with 85 answers right in 100. There an item is held back by the queue for a place, not by its wait.</li>
+    <li><b>What they cost.</b> B and C serve exactly the exercises A serves when every answer is right, and take a minute or so more a day, because a spoken exercise is longer than a written one. D asks no more of an item before it is retired, eight exercises on either ladder, but brings them forward: 14 more in every 100 fall inside the first 200 days for the every-session learner, and the backlog peaks higher.</li>
+    <li><b>Grammar rules are already a draw today.</b> Their rung 4 offers <span class="aloud-word">say it aloud</span> beside “write your own”. About half of the nine rules are first asked aloud around day 13, the others around day 35. The plan's table gives day 14: that is the early half.</li>
+    <li><b>Said in the second week.</b> Learning a word first and saying it in its second week needs three things: <span class="aloud-word">say it aloud</span> on rung 4, the said-aloud-first rule, and middle waits of 2 and 4 days where the plan has 3 and 8. A word met on day 1 is then said on day 9 to 13 with every session, day 12 to 14 with one session a day. With one session a day the words met later still queue: the typical one waits 33 to 46 days. With the rule, on any ladder, spoken exercises become about a quarter of all exercises, where the plan has 15 in 100.</li>
+    <li><b>Seen along the way: spoken exercises arrive in blocks.</b> Rung 5 offers nothing but <span class="aloud-word">say it aloud</span>, on every ladder, and items met together arrive there together. The every-session learner meets the whole course in 13 days, and around day 38 gets a day of about a hundred spoken exercises and nothing else (107 on ladder A, 46 minutes). None of these ladders removes that.</li>
+  </ul>
+
+  <div class="scroll"><table class="measured" id="m1"></table></div>
+  <p class="hint" style="margin-top:6px">Days are counted from the day an item is met, which is day 1. A single figure is the typical (median) item, and its bracket holds eight items in ten. Where a ladder splits the items in two, each group is given with its own typical day. Words and phrases only, 430 items; the course has no chunk today.</p>
+  <div class="scroll" style="margin-top:14px"><table class="measured" id="m2"></table></div>
+  <p class="hint" style="margin-top:6px">Each cell: every answer right / 85 right in 100. Backlog: items due at the start of a day, at its highest. Ladder D was measured with waits of 2, 5 and 13 days, and the last row with 2, 4 and 21; other values typed in its column above are not measured.</p>
+  <p class="hint" style="max-width:96ch">The simulated learner starts at exactly the same time every day, which is the unkind case: an item is due 24 hours after its answer, a few minutes after the next day's session began, so each wait runs a day long. Starting fifteen minutes later each day brings ladder A's day-1 word from day 44–47 to day 38–40 with one session a day, and from day 35–38 to day 34–35 with every session.</p>
+</section>
+
+<section>
+  <h2>What the top of this page leaves out</h2>
+  <ul class="findings">
+    <li><b>Whole days.</b> In the engine an item is due at the time of day it was last answered. Study earlier in the day than last time and it comes a day later. That is why the engine gives day 35 where the ladder alone says day 34.</li>
+    <li><b>Other items.</b> A session avoids the two kinds of exercise it has just served, which nudges the draw. And a due item can wait for a place. Both are in the measured figures, not in the columns.</li>
+    <li><b>Cognates.</b> A word that looks like its French word skips rung 0 and runs about two days ahead.</li>
+    <li><b>Speaking outside sessions.</b> The conversations (Parler) and Écouter → Répéter après use speech from day one, on any ladder.</li>
+  </ul>
+</section>
+
+</main>
+
+<!-- =====================================================================
+     THE LADDER. Pure: no DOM, no page state. This block is the only part
+     that says anything about the engine; the page below only calls it.
+     Rules copied from src/core/srs.js and src/ui/session.js as the phase 1
+     plan leaves them. Field names are the engine's (stage, due, interval…).
+     ===================================================================== -->
+<script id="logic">
+const Ladder = (() => {
+  'use strict';
+  const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+
+  /* RUNGS, from src/core/srs.js. Phase 1 does not change it. The course has
+     no chunk today, so its ladder is left out. */
+  const RUNGS = {
+    word: [['pick', 'recall'], ['article', 'intrus', 'dictation'], ['dictation', 'type'], ['type', 'cloze'],
+      ['type', 'cloze', 'dictation'], ['speak'], ['speak', 'type', 'dictation', 'cloze']],
+    phrase: [['pick', 'recall'], ['bank', 'vlaams', 'cloze'], ['cloze', 'corrige', 'dictation'], ['dictation', 'corrige'],
+      ['type', 'cloze', 'corrige'], ['speak'], ['speak', 'type', 'open', 'corrige', 'dictation']],
+    pattern: [['order'], ['order', 'corrige'], ['cloze', 'corrige'], ['type', 'order'],
+      ['speak', 'open'], ['speak'], ['open', 'speak']]
+  };
+  /* STEP as phase 1 leaves it, in days: the wait that starts when an item
+     arrives on each rung. On main the first two are still 2 and 12 minutes. */
+  const WAITS = [1, 1, 1, 3, 8, 21];
+  const TOP = 6, RETIRE_AFTER = 200, LONGEST_WAIT = 365;
+  const RETRIES = 6;            // a session re-asks a wrong answer, six times at most
+
+  /* A ladder is the two things the open question can change:
+       speakOn  rungs that also offer `speak`, for words and phrases
+       waits    the six waits */
+  const ladder = opts => {
+    const rungs = {};
+    Object.keys(RUNGS).forEach(k => { rungs[k] = RUNGS[k].map(set => set.slice()); });
+    (opts.speakOn || []).forEach(n => ['word', 'phrase'].forEach(k => {
+      if (rungs[k][n].indexOf('speak') < 0) rungs[k][n].push('speak');
+    }));
+    return { rungs, waits: (opts.waits || WAITS).slice() };
+  };
+
+  /* An exercise is offered only if the item can carry it. */
+  const supports = (item, name) => {
+    switch (name) {
+      case 'article': case 'intrus': return !!item.article;
+      case 'vlaams': return !!item.flemish;
+      case 'bank': case 'cloze': case 'order': case 'corrige': return !!item.sentence;
+      case 'open': return !!item.open;
+      default: return true;
+    }
+  };
+
+  const offered = (lad, item, rec) => lad.rungs[item.kind][clamp(rec.stage, 0, TOP)];
+
+  /* exerciseFor(), up to its draw: never what the item had last time. */
+  const candidates = (lad, item, rec) => {
+    let usable = offered(lad, item, rec).filter(n => supports(item, n));
+    if (!usable.length) usable = [item.sentence ? 'type' : 'pick'];
+    const fresh = usable.filter(n => n !== rec.lastEx);
+    return fresh.length ? fresh : usable;
+  };
+
+  /* The draw.
+       'engine'       what the engine does: any candidate, equally likely
+       'no-luck'      the draw never lands on `speak` while another is offered
+       'speak-first'  NOT in the engine: an item never yet said aloud gets
+                      `speak` as soon as its rung offers it */
+  const options = (lad, item, rec, draw) => {
+    const c = candidates(lad, item, rec);
+    if (draw === 'speak-first' && !rec.said && offered(lad, item, rec).indexOf('speak') >= 0) return ['speak'];
+    if (draw === 'no-luck') { const rest = c.filter(n => n !== 'speak'); if (rest.length) return rest; }
+    return c;
+  };
+  const choose = (lad, item, rec, draw, rnd) => { const o = options(lad, item, rec, draw); return o[Math.floor(rnd() * o.length)]; };
+
+  const blank = () => ({ stage: 0, due: 1, interval: 0, ease: 2.5, reps: 0, lapses: 0, said: false, retired: false, lastEx: null });
+
+  /* grade(). A right answer climbs one rung; a wrong one drops two, never
+     below rung 1 once the item has been answered twice. On the top rung the
+     wait is multiplied each time, and past 200 days the item is retired. */
+  const grade = (lad, rec, ok, ex, day) => {
+    const r = Object.assign({}, rec);
+    r.reps++; r.lastEx = ex;
+    if (ok) {
+      if (ex === 'speak') r.said = true;
+      r.stage = clamp(r.stage + 1, 0, TOP);
+      r.ease = clamp(r.ease + 0.05, 1.3, 2.9);
+      r.interval = r.stage >= TOP ? Math.min(LONGEST_WAIT, (r.interval || lad.waits[5]) * r.ease) : lad.waits[r.stage];
+      if (r.stage >= TOP && r.interval > RETIRE_AFTER) r.retired = true;
+    } else {
+      r.lapses++;
+      r.stage = clamp(r.stage - 2, r.reps > 1 ? 1 : 0, TOP);
+      r.ease = clamp(r.ease - 0.2, 1.3, 2.9);
+      r.interval = lad.waits[Math.min(r.stage, 5)];
+      r.retired = false;
+    }
+    r.due = day + r.interval;
+    return r;
+  };
+
+  const dueDay = rec => Math.ceil(rec.due - 1e-9);
+
+  /* A track is one item on one ladder: its record, what is being asked now,
+     and the day it was first asked aloud. `now.kind` is
+       meet    its first exercise
+       again   the second time it is asked, in the session where it is met
+       review  it fell due
+       retry   re-asked before the session ends, after a wrong answer */
+  const serve = (track, kind, ex, day) => Object.assign({}, track, {
+    now: { kind, ex, first: ex === 'speak' && track.firstAloud == null },
+    firstAloud: track.firstAloud != null ? track.firstAloud : (ex === 'speak' ? day : null)
+  });
+
+  const begin = (lad, item, draw, rnd) =>
+    serve({ rec: blank(), now: null, retries: 0, firstAloud: null, last: null }, 'meet', choose(lad, item, blank(), draw, rnd), 1);
+
+  /* One answer to whatever is being asked now. */
+  const answer = (lad, item, track, ok, day, draw, rnd) => {
+    if (!track.now) return track;
+    const was = track.now;
+    const rec = grade(lad, track.rec, ok, was.ex, day);
+    const last = { day, kind: was.kind, ex: was.ex, first: was.first, ok, from: track.rec.stage, to: rec.stage, wait: rec.interval, retired: rec.retired, next: null, full: false };
+    let t = Object.assign({}, track, { rec, now: null, last });
+    /* Met items are asked a second time in the same session, right or wrong.
+       That second ask is the wrong answer's second chance: no retry is added. */
+    if (was.kind === 'meet') t = serve(t, 'again', choose(lad, item, rec, draw, rnd), day);
+    else if (!ok && track.retries < RETRIES) t = Object.assign(serve(t, 'retry', was.ex, day), { retries: track.retries + 1 });
+    else if (!ok) last.full = true;
+    last.next = t.now ? t.now.kind : null;
+    return t;
+  };
+
+  /* A new day: if the item is due, a session asks it. */
+  const arrive = (lad, item, track, day, draw, rnd) =>
+    (track.now || track.rec.retired || dueDay(track.rec) > day) ? track
+      : Object.assign(serve(track, 'review', choose(lad, item, track.rec, draw, rnd), day), { retries: 0 });
+
+  /* If every answer from here is right: the days on which `speak` can first
+     be served, each with its chance. → [{ day, p }], earliest first. */
+  const forecast = (lad, item, track, day, draw) => {
+    if (track.firstAloud != null) return [{ day: track.firstAloud, p: 1 }];
+    const out = {};
+    const add = (d, p) => { out[d] = (out[d] || 0) + p; };
+    const walk = (rec, now, d, p, depth) => {
+      if (now.ex === 'speak') return add(d, p);
+      const r = grade(lad, rec, true, now.ex, d);
+      if (r.retired || depth > 14) return add('never', p);
+      const same = now.kind === 'meet';
+      const opts = options(lad, item, r, draw);
+      opts.forEach(ex => walk(r, { kind: same ? 'again' : 'review', ex }, same ? d : dueDay(r), p / opts.length, depth + 1));
+    };
+    if (track.now) walk(track.rec, track.now, day, 1, 0);
+    else if (track.rec.retired) add('never', 1);
+    else {
+      const opts = options(lad, item, track.rec, draw);
+      opts.forEach(ex => walk(track.rec, { kind: 'review', ex }, Math.max(day, dueDay(track.rec)), 1 / opts.length, 0));
+    }
+    return Object.keys(out).map(k => ({ day: k === 'never' ? Infinity : Number(k), p: out[k] })).sort((a, b) => a.day - b.day);
+  };
+
+  return { RUNGS, WAITS, TOP, RETRIES, ladder, supports, offered, candidates, options, choose, blank, grade, dueDay, begin, answer, arrive, forecast };
+})();
+</script>
+
+<!-- =====================================================================
+     THE PAGE. A thin shell: it holds the day and four tracks, calls Ladder,
+     and redraws everything after every click.
+     ===================================================================== -->
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
+
+  /* Deterministic draw, so a walkthrough runs the same way every time. */
+  const rng = seed => {
+    let a = seed >>> 0;
+    return () => {
+      a = (a + 0x6D2B79F5) >>> 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  };
+
+  /* What each exercise asks, in plain words. The engine's own name is the tooltip. */
+  const EX = {
+    pick: 'which one', recall: 'what it means', article: 'de or het', intrus: 'odd article out', dictation: 'dictation',
+    type: 'write it', cloze: 'missing word', bank: 'build it from tiles', vlaams: 'the Flemish form',
+    corrige: 'find the mistake', order: 'word order', open: 'write your own', speak: 'say it aloud'
+  };
+
+  /* Three real items of the course, each a typical one of its kind. */
+  const ITEMS = {
+    word: { kind: 'word', label: 'Word', nl: 'het brood', gloss: 'bread', article: true, sentence: true, flemish: false, open: false },
+    phrase: { kind: 'phrase', label: 'Phrase', nl: 'Kunt u dat herhalen?', gloss: 'Can you repeat that?', article: false, sentence: true, flemish: true, open: false },
+    pattern: { kind: 'pattern', label: 'Grammar rule', nl: 'Morgen ga ik naar Brussel.', gloss: 'the verb comes second', article: false, sentence: true, flemish: false, open: true }
+  };
+
+  const DRAWS = [
+    { id: 'engine', text: 'The engine draws one at random, as it does today' },
+    { id: 'no-luck', text: 'The draw never lands on <span class="aloud-word">say it aloud</span> while another is offered' },
+    { id: 'speak-first', text: '<span class="aloud-word">Say it aloud</span> first: an item never yet said aloud gets it as soon as its rung offers it <span class="hint">(a rule the engine does not have)</span>' }
+  ];
+
+  /* dSpeak: a rung on which ladder D also offers `speak`, or 0. With waits of
+     2, 4 and 21 days and rung 4, D is "said in the second week". */
+  const laddersFor = (waits, dSpeak) => [
+    { id: 'A', name: 'The plan as written', what: 'Asked aloud only once the item is on rung 5.', lad: Ladder.ladder({}) },
+    { id: 'B', name: '“Say it aloud” added to rung 4', what: 'Beside the writing exercises. Words and phrases only.', lad: Ladder.ladder({ speakOn: [4] }) },
+    { id: 'C', name: '“Say it aloud” added to rung 3', what: 'One rung earlier still. Words and phrases only.', lad: Ladder.ladder({ speakOn: [3] }) },
+    { id: 'D', name: dSpeak ? 'Shorter waits, and “say it aloud” on rung ' + dSpeak : 'Shorter middle waits',
+      what: dSpeak ? 'Learn the word first, say it in the second week.' : 'Same exercises as A. Change the three waits in the table.',
+      lad: Ladder.ladder({ waits: [1, 1, 1].concat(waits), speakOn: dSpeak ? [dSpeak] : [] }), editable: true }
+  ];
+
+  /* ---------------- state: one day, four tracks ---------------- */
+  const fresh = cfg => {
+    const st = { kind: cfg.kind, draw: cfg.draw, waits: cfg.waits.slice(), dSpeak: cfg.dSpeak || 0, seed: cfg.seed, day: 1, log: [] };
+    st.ladders = laddersFor(st.waits, st.dSpeak);
+    st.rnd = rng(st.seed);
+    st.item = ITEMS[st.kind];
+    st.tracks = st.ladders.map(l => Ladder.begin(l.lad, st.item, st.draw, st.rnd));
+    return st;
+  };
+  const asking = st => st.tracks.some(t => t.now);
+  const nextDay = st => {
+    const d = st.tracks.filter(t => !t.rec.retired).map(t => Ladder.dueDay(t.rec));
+    return d.length ? Math.min.apply(null, d) : null;
+  };
+  /* → true if the action did something. */
+  const act = (st, a) => {
+    if (a === 'right' || a === 'wrong') {
+      if (!asking(st)) return false;
+      const cells = [];
+      st.tracks = st.tracks.map((t, i) => {
+        if (!t.now) { cells.push(null); return t; }
+        const n = Ladder.answer(st.ladders[i].lad, st.item, t, a === 'right', st.day, st.draw, st.rnd);
+        cells.push(n.last);
+        return n;
+      });
+      st.log.push({ day: st.day, cells });
+      return true;
+    }
+    if (a === 'jump') {
+      const d = nextDay(st);
+      if (asking(st) || d == null) return false;
+      st.day = Math.max(st.day + 1, d);
+      st.tracks = st.tracks.map((t, i) => Ladder.arrive(st.ladders[i].lad, st.item, t, st.day, st.draw, st.rnd));
+      return true;
+    }
+    return false;
+  };
+
+  /* ---------------- walkthroughs ----------------
+     steps: R right · W wrong · J jump to the next due day */
+  const WALKS = [
+    { id: 'right', tab: '1 · Every answer right', kind: 'word', draw: 'no-luck', waits: [2, 5, 13], seed: 11,
+      steps: 'RRJRJRJRJRJRJRJR',
+      text: '<p>A word, every answer right, and the draw never lands on <span class="aloud-word">say it aloud</span> while the rung offers something else. This is what each ladder <b>guarantees</b>.</p>' +
+        '<p><b>Watch for:</b> day 5 on ladder C and day 13 on ladder B. The rung offers the spoken exercise and the item gets a written one. A, B and C all end on day 34. Only D, on day 22, is sooner.</p>' },
+    { id: 'first', tab: '2 · The same, said aloud first', kind: 'word', draw: 'speak-first', waits: [2, 5, 13], seed: 11,
+      steps: 'RRJRJRJRJRJRJRJR',
+      text: '<p>The same word and the same answers, with one rule the engine does not have: an item never yet said aloud gets <span class="aloud-word">say it aloud</span> as soon as its rung offers it.</p>' +
+        '<p><b>Watch for:</b> C on day 5, B on day 13. Between this walkthrough and the first lies everything ladders B and C can give. With the engine as it is, each item lands on one side or the other by chance.</p>' },
+    { id: 'wrong', tab: '3 · Wrong the first time aloud', kind: 'word', draw: 'no-luck', waits: [2, 5, 13], seed: 11,
+      steps: 'RRJRJRJRJRJRJWRJRJWRJRJRJR',
+      text: '<p>Every answer right until the item is first asked aloud, then that one answer is wrong. It drops two rungs, is asked again before the session ends, and has to climb back.</p>' +
+        '<p><b>Watch for:</b> how long until it is asked aloud a second time. On A, B and C: day 34, then day 63. On D: day 22, then day 40. A late first try is a late second try.</p>' },
+    { id: 'rule', tab: '4 · A grammar rule', kind: 'pattern', draw: 'engine', waits: [2, 5, 13], seed: 0,
+      steps: 'RRJRJRJRJRJRJRJR',
+      text: '<p>A grammar rule, every answer right, the engine drawing as it does today. Ladders B and C only change words and phrases, so for a rule <b>A, B and C are the same ladder</b>.</p>' +
+        '<p><b>Watch for:</b> day 13. Rung 4 of a rule already offers <span class="aloud-word">say it aloud</span> beside “write your own”, and the engine draws one. Three identical ladders, and they do not all get the same exercise. Grammar rules behave today the way ladder B would make words behave.</p>' },
+    { id: 'floor', tab: '5 · Wrong, again and again', kind: 'word', draw: 'engine', waits: [2, 5, 13], seed: 11,
+      steps: 'WWWWWWWWJR',
+      text: '<p>A word answered wrong every time on the day it is met.</p>' +
+        '<p><b>Watch for:</b> three things. The first wrong answer adds no retry: the second ask of the same session is its second chance. The second wrong answer <i>lifts</i> the item from rung 0 to rung 1: once answered twice it never goes below rung 1. And after six retries the session stops asking; the item comes back the next day.</p>' },
+    { id: 'week2', tab: '6 · Said in the second week', kind: 'word', draw: 'speak-first', waits: [2, 4, 21], dSpeak: 4, seed: 11,
+      steps: 'RRJRJRJRJRJRJRJR',
+      text: '<p>Learn the word first, then say it in its second week. Here ladder D has <span class="aloud-word">say it aloud</span> on rung 4 and waits of 2, 4 and 21 days, with the said-aloud-first rule. Every answer is right.</p>' +
+        '<p><b>Watch for:</b> ladder D. The word gets its writing exercise on day 4 and is said on day 8, then said again on day 29. Ladder C says it on day 5, in place of that writing exercise. Ladder B, with the waits as planned, cannot say it before day 13: the planned ladder asks an item on days 1, 2, 5, 13 and 34, and nothing falls in between.</p>' }
+  ];
+
+  /* Dry-run a walkthrough to label its steps with what they will do. */
+  const names = (st, pred) => st.ladders.filter((l, i) => pred(st.tracks[i], i)).map(l => l.id).join(', ');
+  const describe = (st, a) => {
+    if (a === 'jump') return 'Day ' + st.day + ': due on ' + names(st, t => !!t.now) + '.';
+    const row = st.log[st.log.length - 1];
+    const by = {};
+    row.cells.forEach((c, i) => {
+      if (!c) return;
+      const k = EX[c.ex] + ', rung ' + c.from + ' → ' + c.to;
+      (by[k] = by[k] || []).push(st.ladders[i].id);
+    });
+    return 'Day ' + st.day + ' · ' + Object.keys(by).map(k => by[k].join(', ') + ': ' + k).join(' · ');
+  };
+  const plan = w => {
+    const st = fresh(w);
+    return w.steps.split('').map(ch => {
+      const a = ch === 'R' ? 'right' : ch === 'W' ? 'wrong' : 'jump';
+      act(st, a);
+      return { a, label: a === 'right' ? '✓ Right' : a === 'wrong' ? '✗ Wrong' : '→ day ' + st.day, note: describe(st, a) };
+    });
+  };
+  /* The grammar-rule walkthrough needs a draw in which the three identical
+     ladders disagree on day 13: take the first seed that gives one. */
+  const mixed = w => {
+    for (let seed = 1; seed < 200; seed++) {
+      const st = fresh(Object.assign({}, w, { seed }));
+      w.steps.split('').forEach(ch => act(st, ch === 'R' ? 'right' : ch === 'W' ? 'wrong' : 'jump'));
+      const first = st.tracks.slice(0, 3).map(t => t.firstAloud);
+      if (first.indexOf(13) >= 0 && first.indexOf(34) >= 0) return seed;
+    }
+    return 1;
+  };
+  WALKS.forEach(w => { if (w.seed === 0) w.seed = mixed(w); w.plan = plan(w); });
+
+  /* ---------------- the page's own state ---------------- */
+  const newSeed = () => 1 + Math.floor(Math.random() * 1e9);
+  let S = fresh({ kind: 'word', draw: 'engine', waits: [2, 5, 13], seed: newSeed() });
+  let walk = null, at = 0;      // the walkthrough being followed, and its next step
+
+  const restart = patch => {
+    S = fresh(Object.assign({ kind: S.kind, draw: S.draw, waits: S.waits, dSpeak: S.dSpeak, seed: newSeed() }, patch || {}));
+    walk = null; at = 0;
+  };
+  const startWalk = w => { S = fresh(w); walk = w; at = 0; };
+
+  /* ---------------- drawing ---------------- */
+  const ex = (name, cls) => '<span class="ex' + (name === 'speak' ? ' aloud' : '') + (cls ? ' ' + cls : '') + '" title="' + name + '">' + EX[name] + '</span>';
+  const days = n => { const r = Math.round(n * 10) / 10; return plural(r, 'day', 'days'); };
+  const chance = p => {
+    for (let d = 1; d <= 24; d++) {
+      const n = Math.round(p * d);
+      if (n > 0 && Math.abs(p * d - n) < 1e-6) return n === d ? 'certain' : n + (n === 1 ? ' chance in ' : ' chances in ') + d;
+    }
+    return 'about ' + Math.round(p * 10) + ' in 10';
+  };
+  const KIND = { meet: 'first meeting', again: 'asked again in the same session', review: 'due today', retry: 'asked again before the session ends' };
+
+  const aloudBox = (l, t) => {
+    if (t.firstAloud != null) {
+      const answered = !(t.now && t.now.first);
+      return '<div class="aloud-box happened"><div class="k">First asked aloud</div><div class="v">day ' + t.firstAloud + '</div>' +
+        '<div class="s">' + (answered ? 'This is the day a session first asked it.' : 'It is being asked now.') + '</div></div>';
+    }
+    const f = Ladder.forecast(l.lad, S.item, t, S.day, S.draw).filter(x => x.day !== Infinity);
+    if (!f.length) return '<div class="aloud-box"><div class="k">First asked aloud</div><div class="v">never</div><div class="s">It was retired first.</div></div>';
+    return '<div class="aloud-box"><div class="k">First asked aloud, if every answer' + (S.day > 1 || S.log.length ? ' from here' : '') + ' is right</div>' +
+      '<div class="v">' + f.map(x => 'day ' + x.day).join(' or ') + '</div>' +
+      '<div class="s">' + (f.length === 1 ? 'Certain: by then the rung offers nothing else.' : f.map(x => 'day ' + x.day + ': ' + chance(x.p)).join(' · ')) + '</div></div>';
+  };
+
+  const rungTable = (l, t, li) => {
+    const rows = [];
+    for (let n = Ladder.TOP; n >= 0; n--) {
+      const set = l.lad.rungs[S.item.kind][n];
+      const here = t.rec.stage === n;
+      const cells = set.map(name => {
+        const can = Ladder.supports(S.item, name);
+        return ex(name, (can ? '' : 'cant') + (here && t.now && t.now.ex === name ? ' now' : ''));
+      }).join('');
+      let wait;
+      if (n === 0) wait = '<span title="Asked again in the same session">same day</span>';
+      else if (n === Ladder.TOP) wait = '<span title="Multiplied after each right answer">longer each time</span>';
+      else if (l.editable && n >= 3) wait = '<input class="wait" id="wait-' + n + '" type="number" inputmode="numeric" min="1" max="90" step="1" value="' + l.lad.waits[n] + '" data-wait="' + (n - 3) + '" aria-label="Wait on rung ' + n + ', in days"> d';
+      else wait = days(l.lad.waits[n]);
+      rows.push('<tr class="' + (here ? 'here' : '') + '"><td class="n">' + n + '</td><td>' + cells + '</td><td class="w">' + wait + '</td></tr>');
+    }
+    return '<table class="rungs"><thead><tr><th>Rung</th><th>Exercises it offers</th><th style="text-align:right">Then wait</th></tr></thead><tbody>' + rows.join('') + '</tbody></table>';
+  };
+
+  const justNow = c => {
+    if (!c) return '';
+    let s = 'Day ' + c.day + ': ' + (c.ok ? 'right' : 'wrong') + ' on ' + ex(c.ex) + '. ';
+    if (c.ok) s += c.to > c.from ? 'Climbed from rung ' + c.from + ' to rung ' + c.to + '.' : 'Stays on the top rung.';
+    else if (c.to > c.from) s += 'Lifted from rung ' + c.from + ' to rung ' + c.to + ': answered twice, it never goes below rung 1.';
+    else if (c.to === c.from) s += 'Stays on rung ' + c.to + ', the floor.';
+    else s += 'Dropped from rung ' + c.from + ' to rung ' + c.to + (c.from - c.to < 2 ? ', the floor.' : '.');
+    if (c.next === 'again') s += ' It is asked again in this session.';
+    else if (c.next === 'retry') s += ' It is asked again before the session ends.';
+    else if (c.retired) s += ' Its wait has passed 200 days: retired.';
+    else s += (c.full ? ' The session has no room for another retry.' : '') + ' Next wait: ' + days(c.wait) + '.';
+    return '<p class="just">' + s + '</p>';
+  };
+
+  const column = (l, i) => {
+    const t = S.tracks[i], r = t.rec;
+    let nowLine;
+    if (t.now) nowLine = '<p><b>Asked now:</b> ' + ex(t.now.ex) + ' <span class="dim">· ' + KIND[t.now.kind] + '</span></p>';
+    else if (r.retired) nowLine = '<p><b>Retired.</b> <span class="dim">It has left the daily rotation.</span></p>';
+    else nowLine = '<p><b>Not due.</b> <span class="dim">Back on day ' + Ladder.dueDay(r) + ', in ' + days(Ladder.dueDay(r) - S.day) + '.</span></p>';
+    return '<div id="col-' + l.id + '" class="col' + (t.now ? ' asking' : '') + '">' +
+      '<h3>' + l.id + ' · ' + l.name + '</h3><p class="what">' + l.what + '</p>' +
+      aloudBox(l, t) + rungTable(l, t, i) +
+      (l.editable ? '<label class="opt hint"><input type="checkbox" id="d-speak" data-dspeak="1"' + (S.dSpeak ? ' checked' : '') + '>Also offer <span class="aloud-word">say it aloud</span> on rung 4</label>' : '') +
+      '<div class="state">' + nowLine + justNow(t.last) +
+      '<p class="dim">On rung ' + r.stage + ' · asked ' + plural(r.reps, 'time', 'times') + ' · ' + plural(r.lapses, 'wrong answer', 'wrong answers') +
+      ' · said aloud: ' + (r.said ? 'yes' : 'not yet') + ' · top-rung multiplier ×' + r.ease.toFixed(2) + '</p>' +
+      '</div></div>';
+  };
+
+  /* A ladder in three lines, for the bar: where the item stands, what it is
+     asked or when it is due, and the day it is first asked aloud. */
+  const tile = (l, i) => {
+    const t = S.tracks[i], r = t.rec;
+    const state = t.now ? 'asked: ' + EX[t.now.ex] : r.retired ? 'retired' : 'due day ' + Ladder.dueDay(r);
+    let aloud;
+    if (t.firstAloud != null) aloud = '<span class="al happened">aloud day ' + t.firstAloud + '</span>';
+    else {
+      const f = Ladder.forecast(l.lad, S.item, t, S.day, S.draw).filter(x => x.day !== Infinity);
+      aloud = '<span class="al">aloud ' + (f.length ? f.map(x => 'day ' + x.day).join(' or ') : 'never') + '</span>';
+    }
+    return '<a href="#col-' + l.id + '" class="' + (t.now ? 'asking' : '') + '"><b>' + l.id + ' · rung ' + r.stage + '</b>' + state + aloud + '</a>';
+  };
+
+  const logTable = () => {
+    const head = '<thead><tr><th>Day</th>' + S.ladders.map(l => '<th>' + l.id + ' · ' + l.name + '</th>').join('') + '</tr></thead>';
+    if (!S.log.length) return head + '<tbody><tr><td class="d">1</td><td class="none" colspan="4">Nothing answered yet. Press “Right answer” or “Wrong answer”.</td></tr></tbody>';
+    const rows = S.log.map(row => '<tr><td class="d">day ' + row.day + '</td>' + row.cells.map(c => {
+      if (!c) return '<td class="none">not due</td>';
+      const said = c.ex === 'speak';
+      return '<td class="' + (said ? 'said' : '') + '">' + (said ? '<b>' + EX.speak + '</b>' : EX[c.ex]) + ' ' + (c.ok ? '✓' : '✗') +
+        ' <span class="hint">rung ' + c.from + ' → ' + c.to + (c.kind === 'retry' ? ' · retry' : c.kind === 'again' ? ' · asked again' : '') + (c.first ? ' · <b>first time aloud</b>' : '') + '</span></td>';
+    }).join('') + '</tr>');
+    return head + '<tbody>' + rows.join('') + '</tbody>';
+  };
+
+  const draw = () => {
+    $('kinds').innerHTML = Object.keys(ITEMS).map(k => '<button data-kind="' + k + '" class="' + (S.kind === k ? 'on' : '') + '">' + ITEMS[k].label + '</button>').join('');
+    $('sample').innerHTML = 'Followed here: <b lang="nl">' + S.item.nl + '</b> · ' + S.item.gloss;
+    $('draws').innerHTML = DRAWS.map(d => '<label class="opt"><input type="radio" name="draw" id="draw-' + d.id + '" value="' + d.id + '"' + (S.draw === d.id ? ' checked' : '') + '>' + d.text + '</label>').join('');
+
+    const busy = asking(S), nd = nextDay(S);
+    const following = walk && at < walk.plan.length;
+    document.querySelectorAll('[data-act="right"], [data-act="wrong"]').forEach(b => { b.disabled = !busy; });
+    $('jump').disabled = busy || nd == null;
+    $('jump').className = 'big' + (following ? '' : ' go');
+    $('jump').innerHTML = '<span class="lg">Jump to the next due day</span><span class="sm">Next due</span>' + (busy || nd == null ? '' : ': day ' + nd);
+    $('mini').innerHTML = S.ladders.map(tile).join('');
+    $('walkbtn').innerHTML = following ? '<button class="walknext" data-step="' + at + '">Walkthrough, step ' + (at + 1) + ' of ' + walk.plan.length + ': ' + walk.plan[at].label + '</button>' : '';
+
+    $('day').textContent = 'Day ' + S.day;
+    const who = names(S, t => !!t.now);
+    $('todayline').innerHTML = busy ? 'Asked now on <b>' + who + '</b>.' + (who.length < 10 ? ' The other ladders are not due.' : '')
+      : nd == null ? 'The item is retired on every ladder. Start again.' : 'Nothing is being asked today. Jump to the next due day.';
+    $('cols').innerHTML = S.ladders.map(column).join('');
+    $('log').innerHTML = logTable();
+
+    $('tabs').innerHTML = WALKS.map(w => '<button data-walk="' + w.id + '" class="' + (walk === w ? 'on' : '') + '">' + w.tab + '</button>').join('');
+    if (!walk) {
+      $('walk').innerHTML = '<p class="hint">Pick one. Each starts the item again from day 1 and gives you the buttons to press, in order. They show the cases that are hard to see on paper.</p>';
+    } else {
+      const done = at >= walk.plan.length;
+      $('walk').innerHTML = walk.text +
+        '<ol class="steps">' + walk.plan.map((s, i) => '<li><button data-step="' + i + '" class="' + (i < at ? 'done' : i === at ? 'next' : '') + '"' + (i === at ? '' : ' disabled') + '>' + (i + 1) + '. ' + s.label + '</button></li>').join('') + '</ol>' +
+        '<p class="stepnote">' + (at === 0 ? 'Press step 1.' : walk.plan[at - 1].note) + (done ? ' <b>End of the walkthrough.</b> Carry on in free play, or pick another.' : '') + '</p>';
+    }
+  };
+
+  /* ---------------- clicks ---------------- */
+  document.addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    const d = b.dataset;
+    if (d.act === 'again') restart();
+    else if (d.act) { if (act(S, d.act)) { walk = null; at = 0; } }
+    else if (d.kind) restart({ kind: d.kind });
+    else if (d.walk) startWalk(WALKS.filter(w => w.id === d.walk)[0]);
+    else if (d.step !== undefined && walk && Number(d.step) === at) { act(S, walk.plan[at].a); at++; }
+    else return;
+    draw();
+  });
+  document.addEventListener('change', e => {
+    const el = e.target;
+    if (el.name === 'draw') restart({ draw: el.value });
+    else if (el.dataset && el.dataset.dspeak !== undefined) restart({ dSpeak: el.checked ? 4 : 0 });
+    else if (el.dataset && el.dataset.wait !== undefined) {
+      const waits = S.waits.slice();
+      waits[Number(el.dataset.wait)] = Math.max(1, Math.min(90, Math.round(Number(el.value) || 1)));
+      restart({ waits });
+    } else return;
+    draw();
+  });
+
+  /* ---------------- the measured tables ---------------- */
+  /* Static: copied from runs of the phase 1 engine, 200 days, seed 20260917.
+     Nothing on this page computes them. */
+  const one = (typical, from, to) => typical + ' <span class="hint">(' + from + '–' + to + ')</span>';
+  const two = (n1, d1, n2, d2) => n1 + ' items: day ' + d1 + '<br>' + n2 + ' items: day ' + d2;
+  const FIRST = ' <span class="hint">with “say it aloud first”</span>';
+  const M1 = [
+    { cells: ['A · the plan as written', one(37, 35, 38), one(38, 37, 50), one(59, 51, 63), one(74, 60, 102), 'none'] },
+    { cells: ['B · added to rung 4', two(154, 15, 276, 37), two(165, 17, 265, 38), two(129, 29, 301, 60), two(166, 44, 264, 72), 'about a third<br><span class="hint">129 to 182 of 430</span>'] },
+    { rule: true, cells: ['B' + FIRST, one(15, 14, 16), one(17, 15, 23), one(35, 20, 41), one(47, 24, 64), 'all 430'] },
+    { cells: ['C · added to rung 3', two(240, 6, 190, 36), two(262, 8, 168, 38), two(220, 15, 210, 60), two(250, 24, 180, 73), 'a bit over half<br><span class="hint">220 to 262 of 430</span>'] },
+    { rule: true, cells: ['C' + FIRST, one(6, 5, 7), one(8, 6, 10), one(17, 8, 28), one(29, 9, 43), 'all 430'] },
+    { cells: ['D · waits of 2, 5 and 13 days', one(26, 24, 27), one(28, 26, 37), one(54, 38, 62), one(71, 49, 94), 'none'] },
+    { cells: ['Said in the second week<br><span class="hint">rung 4, “say it aloud first”, waits of 2, 4 and 21 days</span>', one(11, 9, 12), one(13, 11, 18), one(33, 15, 41), one(46, 19, 69), 'all 430'] }
+  ];
+  const M2 = [
+    { cells: ['A · the plan as written', '102 / 172', '260 / 309', '12.7 / 17.3', '7.6 / 8.3', '3,095', '3,102'] },
+    { cells: ['B · added to rung 4', '102 / 172', '259 / 306', '13.1 / 18.0', '7.8 / 8.5', '3,095', '3,102'] },
+    { rule: true, cells: ['B' + FIRST, '102 / 172', '258 / 312', '13.6 / 19.0', '7.9 / 8.7', '3,095', '3,102'] },
+    { cells: ['C · added to rung 3', '102 / 150', '260 / 306', '13.3 / 18.6', '8.0 / 8.8', '3,095', '3,102'] },
+    { rule: true, cells: ['C' + FIRST, '102 / 148', '259 / 310', '13.7 / 18.8', '8.1 / 9.0', '3,095', '3,102'] },
+    { cells: ['D · waits of 2, 5 and 13 days', '165 / 217', '257 / 325', '12.7 / 18.6', '7.7 / 8.5', '3,536', '3,192'] },
+    { cells: ['Said in the second week', '177 / 225', '256 / 312', '13.6 / 19.1', '8.1 / 8.8', '3,097', '3,102'] }
+  ];
+  const table = (id, caption, head, rows) => {
+    $(id).innerHTML = '<caption>' + caption + '</caption><thead><tr>' + head.map(h => '<th>' + h + '</th>').join('') + '</tr></thead><tbody>' +
+      rows.map(r => '<tr class="' + (r.rule ? 'rule' : '') + '">' + r.cells.map((c, i) => '<td class="' + (i ? 'num' : '') + '">' + c + '</td>').join('') + '</tr>').join('') + '</tbody>';
+  };
+  table('m1', 'Days from meeting an item to the first time a session asks it aloud',
+    ['Ladder', 'Every session<br>all right', 'Every session<br>85 right in 100', 'One session a day<br>all right', 'One session a day<br>85 right in 100', 'Items asked aloud<br>before rung 5'], M1);
+  table('m2', 'What each ladder costs',
+    ['Ladder', 'Highest backlog<br>every session', 'Highest backlog<br>one session a day', 'Minutes a day, first 60 days<br>every session', 'Minutes a day, first 60 days<br>one session a day', 'Exercises in 200 days, all right<br>every session', 'Exercises in 200 days, all right<br>one session a day'], M2);
+
+  draw();
+})();
+</script>
+</body>
+</html>
