@@ -1553,8 +1553,8 @@ NL.srs = (function () {
       if (r.stage >= top && r.interval > RETIRE_AT) r.retired = true;
     } else {
       r.lapses++;
-      /* PIÈGE 2 — une rechute rentre dans l'échelle, elle ne repart pas de deux
-         minutes pour remonter en multipliant : sinon l'élément oscille sous son
+      /* PIÈGE 2 — une rechute rentre dans l'échelle, elle ne repart pas du bas
+         pour remonter en multipliant : sinon l'élément oscille sous son
          plafond sans jamais en sortir. */
       /* Jamais en dessous de l'échelon 1 : on ne te REPRÉSENTE pas un mot que tu
          connais depuis des mois, on te le redemande autrement. */

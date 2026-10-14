@@ -110,17 +110,18 @@ NL.state.open().then(() => {
   console.log('  phrase ladder   ' + pl.join(' -> '));
   ok(pl.includes('speak'), 'phrase ladder never reaches speak');
 
-  /* Failing must drop a stage and become due inside the session. */
-  NL.srs.seed(w, 4);
+  /* Un échec fait perdre deux échelons. */
+  NL.srs.seed(w, 5);
   NL.srs.grade(w, false);
   const r = NL.state.rec(w.id);
-  ok(r.stage === 2, 'a lapse must drop two rungs (got ' + r.stage + ')');
-  /* PIÈGE 2 : une rechute rentre dans l'échelle. Repartir de deux minutes puis
-     multiplier fait osciller l'élément sous son plafond sans fin. */
-  ok(r.interval === NL.srs.STEP[2], 'lapse must re-enter the step ladder, not restart at 2 min');
+  ok(r.stage === 3, 'a lapse must drop two rungs (got ' + r.stage + ')');
+  /* PIÈGE 2 : une rechute rentre dans l'échelle. Repartir du bas (un jour) puis
+     multiplier fait osciller l'élément sous son plafond sans fin. L'échelon 3
+     (trois jours) se distingue du bas : les trois premiers pas valent un jour. */
+  ok(r.interval === NL.srs.STEP[3], 'lapse must re-enter the step ladder at its rung, not restart at the bottom (got ' + Math.round(r.interval / 86400000) + ' days)');
   NL.srs.grade(w, true);
-  ok(NL.state.rec(w.id).stage === 3, 'pass did not advance');
-  console.log('  rechute         -2 échelons, intervalle ' + Math.round(r.interval / 60000) + ' min, puis remonte');
+  ok(NL.state.rec(w.id).stage === 4, 'pass did not advance');
+  console.log('  rechute         -2 échelons, intervalle ' + Math.round(r.interval / 86400000) + ' jours, puis remonte');
 
   /* PIÈGE 1 : au sommet de son palier, l'intervalle doit continuer de croître,
      sinon l'élément revient tous les jours à vie. */
