@@ -1646,7 +1646,9 @@ NL.srs = (function () {
          l'élément se faire reconnaître. Il garde sa place et revient demain. */
       const unsaid = !r.said && !!opts && opts.ex === 'speak';
       if (!unsaid) {
-        r.stage = clamp(r.stage - 2, r.reps > 1 ? 1 : 0, top);
+        /* Un transparent ne tombe jamais à l'échelon 0 non plus : il serait alors
+           interrogé sur le sens qu'on lui avait épargné (docs/adr/0004). */
+        r.stage = clamp(r.stage - 2, (r.reps > 1 || item.cognate) ? 1 : 0, top);
         r.ease = clamp(r.ease - 0.2, 1.3, 2.9);
       }
       r.interval = unsaid ? STEP[0] : STEP[Math.min(r.stage, STEP.length - 1)];
@@ -1715,6 +1717,8 @@ NL.srs = (function () {
       if (!l || !l.id || l.t < now - MISS_WINDOW) return;
       const item = NL.content.byId(l.id);
       if (!item) return;
+      /* Un refus de la reconnaissance vocale ne dit rien de la mémoire. */
+      if (l.ex === 'speak') return;
       const x = by.get(l.id) || { item, wrong: 0, right: 0, last: 0 };
       if (l.ok) x.right++; else { x.wrong++; x.last = Math.max(x.last, l.t); }
       by.set(l.id, x);

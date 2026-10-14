@@ -550,6 +550,47 @@ NL.state.open().then(() => {
     console.log('  rien que du parlé : retour à l’accueil sans bilan ; séance sur les fautes : le parlé en sort, rien n’y entre');
   }
 
+  /* ------------------------------------------------------------------ */
+  console.log('\nCE QUI RÉSISTE — un refus à voix haute n’est pas une faute de mémoire');
+  {
+    fresh();
+    const [spoken, written] = NL.content.allItems().filter(i => isWord(i) && !i.cognate);
+    for (let k = 0; k < 8; k++) NL.state.logReview({ id: spoken.id, t: T0 - k * MIN, ok: false, stage: 3, kind: spoken.kind, ex: 'speak' });
+    NL.state.logReview({ id: spoken.id, t: T0 - 20 * MIN, ok: true, stage: 3, kind: spoken.kind, ex: 'speak' });
+    NL.state.logReview({ id: written.id, t: T0 - MIN, ok: false, stage: 2, kind: written.kind, ex: 'type' });
+    NL.state.logReview({ id: written.id, t: T0 - 2 * MIN, ok: false, stage: 2, kind: written.kind, ex: 'type' });
+    NL.state.logReview({ id: written.id, t: T0 - 3 * MIN, ok: true, stage: 2, kind: written.kind, ex: 'speak' });
+    const m = NL.srs.mistakes(T0);
+    ok(!m.some(x => x.item.id === spoken.id), 'an item refused aloud eight times is listed among the mistakes');
+    const w = m.find(x => x.item.id === written.id);
+    ok(!!w && w.wrong === 2 && w.right === 0, 'an item missed twice in writing counts ' + (w ? w.wrong + ' wrong, ' + w.right + ' right' : 'nowhere') + ', not 2 wrong, 0 right');
+    console.log('  ' + m.length + ' élément(s) qui résistent : le refusé à voix haute n’y est pas, l’autre : raté ' + (w ? w.wrong : '?') + ' fois sur ' + (w ? w.wrong + w.right : '?'));
+  }
+
+  /* ------------------------------------------------------------------ */
+  console.log('\nUN TRANSPARENT NE DESCEND JAMAIS SOUS L’ÉCHELON 1');
+  {
+    fresh();
+    const cog = NL.content.allItems().filter(i => i.cognate);
+    const noun = cog.find(i => i.art);
+    NL.srs.grade(noun, false, { ex: 'article' });
+    ok(NL.srs.stageOf(noun) === 1, 'a never-met cognate, first answer wrong, is on rung ' + NL.srs.stageOf(noun) + ', not 1');
+    const seen = {};
+    for (let k = 0; k < 40; k++) seen[NL.srs.exerciseFor(noun)] = 1;
+    ok(!seen.pick && !seen.recall, 'after a wrong first answer a cognate is taught its meaning (' + Object.keys(seen).join(', ') + ')');
+    /* Plus tard, à l’échelon 3, une faute le ramène à 1 et non à 0. */
+    const later = cog.filter(i => i !== noun)[0];
+    put(later, 3, T0 - MIN);
+    const r = NL.state.rec(later.id); r.reps = 5; NL.state.setRec(r);
+    NL.srs.grade(later, false, { ex: 'type' });
+    ok(NL.srs.stageOf(later) === 1, 'a cognate on rung 3, wrong, lands on rung ' + NL.srs.stageOf(later));
+    /* Un mot qui n’est pas transparent garde la règle d’avant : échelon 0 possible à la première réponse. */
+    const plain = NL.content.allItems().find(i => i.kind === 'word' && !i.cognate);
+    NL.srs.grade(plain, false, { ex: 'pick' });
+    ok(NL.srs.stageOf(plain) === 0, 'a plain word wrong at its first answer is on rung ' + NL.srs.stageOf(plain) + ', not 0');
+    console.log('  transparent raté dès la première réponse : échelon ' + NL.srs.stageOf(noun) + ', ensuite ' + Object.keys(seen).join(', '));
+  }
+
   console.log('\n' + checks + ' checks, ' + (fails ? fails + ' FAILED' : 'ENGINE OK'));
   process.exit(fails ? 1 : 0);
 }).catch(e => { console.log('CRASH ' + (e && e.stack || e)); process.exit(1); });
