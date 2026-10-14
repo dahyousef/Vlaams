@@ -18,7 +18,7 @@ n'y a qu'une seule liste. Il faut Node et un `sh` (sous Windows, celui de Git).
 | `screens.js` | Chaque écran dans quatre états, relu comme du texte : ni pourcentage, ni maîtrise ; les comptes, le nom de l'unité, ce qui résiste, le bouton « je ne peux pas parler », le journal d'erreurs |
 | `sim.js` | Chaque écran, une séance, un scénario, une série d'écoute |
 | `firstrun.js` | Une base vide : premier écran, première séance, le défi, la sauvegarde |
-| `sync.js` | Deux appareils et un faux Supabase : adoption, conflits, panne, comptes |
+| `sync.js` | Deux appareils et un faux Supabase : adoption, conflits, panne, comptes, la remise à zéro sur deux appareils (dont un hors ligne qui revient) et la migration unique |
 | `journey.js` | Le parcours complet d'un utilisateur, pour une voix et un navigateur donnés |
 | `pace.js` | 200 jours simulés, pour trois apprenants (budget épuisé chaque jour ; une seule séance par jour ; une seule séance, dont une sur cinq là où l’on ne peut pas parler) : charge quotidienne, variété, exigence — aucune journée sans élément nouveau tant qu’il en reste, un élément du premier jour demandé à voix haute en dix jours et jamais après trois semaines, l’échelon de l’écrit passé en écrivant, et « je ne peux pas parler » qui ne note rien, ne coûte rien et ne fait rien sauter. L’horloge avance pendant la journée |
 
@@ -36,6 +36,13 @@ Ils tournent sans navigateur. Trois choses ne se vérifient qu'en vrai :
 - une **vraie voix** néerlandaise, et ce qu'elle donne à l'oreille ;
 - **deux séances, deux jours de suite**, sur un vrai appareil : la simulation
   avance son horloge, mais elle ne remplace pas ça.
+
+Trois autres choses, qu'aucune suite n'atteint : la **branche IndexedDB** de la
+remise à zéro et de la migration (tout vrai navigateur la prend ; les suites
+tournent sur le repli localStorage) ; les **deux suppressions contre le vrai
+serveur** (seul le faux serveur de `test/sync.js` les a exécutées) ; et un
+**appareil qui tourne encore sur la version précédente** quand la nouvelle est
+déployée.
 
 Et une limite du test `de`/`het` : il vérifie l'article du mot drillé, pas tous
 les articles d'une phrase. Un balayage large demanderait une analyse

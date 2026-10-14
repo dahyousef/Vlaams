@@ -33,7 +33,8 @@ create table if not exists public.custom_words (
   primary key (user_id, id)
 );
 
--- Historique des révisions (graphique de la semaine), en ajout seul.
+-- Historique des réponses (graphique de la semaine, ce qui résiste). Une remise
+-- à zéro supprime les lignes du compte antérieures à son instant.
 create table if not exists public.review_log (
   user_id    uuid        not null references auth.users(id) on delete cascade,
   t          bigint      not null,

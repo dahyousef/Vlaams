@@ -33,7 +33,8 @@ Every fix leaves a test that fails on the old code. Write it, watch it fail, the
 - User-facing text lives in `src/core/fr.js`. `test/smoke.js` fails the build if an
   English interface string reaches `index.html`.
 - Storage keys keep their spelling: `vlaams-onderweg`, `vlaams/fallback`,
-  `vlaams/outbox`, `vlaams/owner`. Renaming one orphans every database already on a
+  `vlaams/outbox`, `vlaams/owner`, `vlaams/errors` (the local error log) and
+  `vlaams/noaccount` (« continue without an account »). Renaming one orphans every database already on a
   device and every backup already written.
 - The same goes for **field names inside a stored record** — `stage`, `due`, `interval`,
   `ease`, `reps`, `lapses`, `said`, `retired`. Records are stored and synced whole, so a
