@@ -12,6 +12,7 @@
      B.NL            l'application chargée
      B.app           l'élément #app (lire B.app.innerHTML)
      B.store         le localStorage
+     B.idb           le contenu de l'IndexedDB — si `idb` est donné
      B.listeners     tous les écouteurs posés, par type d'événement
      B.clock         l'horloge : now(), set(ms), advance(ms) — si `now` est donné
      B.spoken        ce que la synthèse vocale a prononcé — si `voices` est donné */
@@ -39,6 +40,57 @@ const UA = {
   SAF: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1'
 };
 
+/* Un IndexedDB minimal, sur demande seulement (opts.idb). Des magasins clé →
+   valeur ; la clé est prise dans l'objet (keyPath) ou générée (autoIncrement,
+   jamais remise à zéro par clear, comme le vrai) ; getAll rend les valeurs dans
+   l'ordre des clés. Chaque requête s'applique au moment où elle est faite, donc
+   dans l'ordre, et répond plus tard ; écrire dans une transaction en lecture
+   seule ou ouvrir un magasin absent échoue. Ni curseur, ni index, ni
+   annulation de transaction : l'app ne s'en sert pas. Donner le même objet à
+   une seconde page, c'est recharger : le contenu survit. */
+function fakeIndexedDB(data) {
+  const copy = v => (v === undefined ? undefined : JSON.parse(JSON.stringify(v)));
+  const later = fn => { Promise.resolve().then(fn); };
+  const request = run => {
+    const r = { result: undefined, error: null, onsuccess: null, onerror: null };
+    try { r.result = run(); later(() => { if (r.onsuccess) r.onsuccess({ target: r }); }); }
+    catch (e) { r.error = e; later(() => { if (r.onerror) r.onerror({ target: r }); }); }
+    return r;
+  };
+  const inKeyOrder = rows => [...rows.entries()].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)).map(e => copy(e[1]));
+  return {
+    open(name, version) {
+      const base = data[name] || (data[name] = { version: 0, stores: {} });
+      const conn = {
+        objectStoreNames: { contains: n => !!base.stores[n] },
+        createObjectStore(n, o) { base.stores[n] = { keyPath: (o && o.keyPath) || null, seq: 0, rows: new Map() }; },
+        transaction(names, mode) {
+          [].concat(names).forEach(n => { if (!base.stores[n]) throw new Error('NotFoundError: ' + n); });
+          return {
+            objectStore(n) {
+              const s = base.stores[n];
+              const write = fn => () => { if (mode !== 'readwrite') throw new Error('ReadOnlyError'); return fn(); };
+              return {
+                get: k => request(() => copy(s.rows.get(k))),
+                getAll: () => request(() => inKeyOrder(s.rows)),
+                put: v => request(write(() => { const k = s.keyPath ? v[s.keyPath] : ++s.seq; s.rows.set(k, copy(v)); return k; })),
+                delete: k => request(write(() => { s.rows.delete(k); })),
+                clear: () => request(write(() => { s.rows.clear(); }))
+              };
+            }
+          };
+        }
+      };
+      const r = { result: conn, error: null, onsuccess: null, onerror: null, onupgradeneeded: null };
+      later(() => {
+        if (version > base.version) { base.version = version; if (r.onupgradeneeded) r.onupgradeneeded({ target: r }); }
+        if (r.onsuccess) r.onsuccess({ target: r });
+      });
+      return r;
+    }
+  };
+}
+
 /* L'ordre de chargement est celui de build.sh, lu dans build.sh : une seule liste. */
 const sources = root => fs.readFileSync(path.join(root, 'build.sh'), 'utf8')
   .match(/SRC="([\s\S]*?)"/)[1].split('\n').map(s => s.trim()).filter(Boolean);
@@ -60,9 +112,12 @@ const sources = root => fs.readFileSync(path.join(root, 'build.sh'), 'utf8')
      byId       'stub' : getElementById rend un élément pour tout identifiant ; défaut : null
      location   champs ajoutés à location
      store      un localStorage existant (rechargement de page)
+     idb        true → un IndexedDB vide ; un objet → celui d'une page précédente (B.idb) ;
+                absent, indexedDB n'existe pas et l'app se rabat sur localStorage
      config     window.NL_CONFIG ; supabase : window.supabase */
 function open(opts) {
   const store = opts.store || {};
+  const idb = opts.idb ? (opts.idb === true ? {} : opts.idb) : null;
   const listeners = {};
   const spoken = [];
   const listen = (t, f) => { (listeners[t] = listeners[t] || []).push(f); };
@@ -164,6 +219,7 @@ function open(opts) {
       this.abort = () => {};
     };
   }
+  if (idb) ctx.indexedDB = fakeIndexedDB(idb);
   if (opts.config) ctx.NL_CONFIG = opts.config;
   if (opts.supabase) ctx.supabase = opts.supabase;
 
@@ -177,7 +233,7 @@ function open(opts) {
     catch (e) { console.log('LOAD FAIL ' + f + ': ' + e.message); process.exit(1); }
   });
 
-  return { ctx, NL: ctx.NL, app, store, listeners, spoken, clock, mkEl, random: M.random };
+  return { ctx, NL: ctx.NL, app, store, idb, listeners, spoken, clock, mkEl, random: M.random };
 }
 
 module.exports = { open, rng, sources, UA, SEED };

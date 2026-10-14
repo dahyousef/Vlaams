@@ -15,7 +15,10 @@ const KEYS = {
   srs_records: ['user_id', 'item_id'], user_meta: ['user_id'],
   custom_words: ['user_id', 'id'], review_log: ['user_id', 't', 'item_id']
 };
-const server = { tables: {}, users: {}, down: false, requests: 0 };
+/* rls : chaque requête ne voit que les lignes de sa session. L'éteindre joue une
+   politique tombée ou assouplie : un effacement doit alors se borner lui-même.
+   failNext : le nom d'une table dont la prochaine lecture échoue, une fois. */
+const server = { tables: {}, users: {}, down: false, requests: 0, rls: true, failNext: null };
 Object.keys(KEYS).forEach(t => { server.tables[t] = new Map(); });
 const keyOf = (t, row) => KEYS[t].map(k => row[k]).join('|');
 const clone = v => JSON.parse(JSON.stringify(v));
@@ -34,8 +37,9 @@ function fakeLib(device) {
         const run = () => {
           server.requests++;
           if (server.down) return Promise.resolve({ data: null, error: { message: 'network down' } });
+          if (server.failNext === table && !q.del) { server.failNext = null; return Promise.resolve({ data: null, error: { message: 'network down' } }); }
           if (!uid()) return Promise.resolve({ data: [], error: null });     // RLS : rien sans session
-          let rows = rowsFor(table, uid());
+          let rows = server.rls ? rowsFor(table, uid()) : [...server.tables[table].values()];
           q.filters.forEach(f => { rows = rows.filter(f); });
           if (q.del) {
             rows.forEach(r => server.tables[table].delete(keyOf(table, r)));
@@ -45,6 +49,7 @@ function fakeLib(device) {
         };
         const b = {
           select() { return b; },
+          eq(col, v) { q.filters.push(r => r[col] === v); return b; },
           gte(col, v) { q.filters.push(r => r[col] >= v); return b; },
           lt(col, v) { q.filters.push(r => r[col] < v); return b; },
           delete() { q.del = true; return b; },
@@ -95,17 +100,18 @@ function fakeLib(device) {
 }
 
 /* ---------------- un appareil ---------------- */
-function device(name, withConfig, store) {
+function device(name, withConfig, store, idb) {
   const dev = { name, store: store || {} };
   /* Des minuteurs réels : la boîte d'envoi se vide après un délai, et c'est ce
-     délai que le test attend. app.js est laissé de côté, le test démarre lui-même. */
+     délai que le test attend. app.js est laissé de côté, le test démarre lui-même.
+     idb : true pour un IndexedDB neuf, ou le `idb` d'un appareil pour le recharger. */
   const B = browser.open({
-    root: ROOT, timers: 'real', skip: ['src/app.js'], store: dev.store, ua: 'Mozilla/5.0 Chrome/120',
+    root: ROOT, timers: 'real', skip: ['src/app.js'], store: dev.store, idb: idb || null, ua: 'Mozilla/5.0 Chrome/120',
     config: withConfig ? { supabaseUrl: 'https://example.supabase.co', supabaseAnonKey: 'anon' } : null,
     supabase: withConfig ? fakeLib(dev) : null
   });
   const ctx = B.ctx, root = B.app;
-  dev.ctx = ctx; dev.NL = B.NL; dev.root = root;
+  dev.ctx = ctx; dev.NL = B.NL; dev.root = root; dev.idb = B.idb;
   dev.boot = async () => {
     await dev.NL.state.open(); dev.NL.content.refresh();
     dev.NL.ui.bind(root);
@@ -118,6 +124,7 @@ function device(name, withConfig, store) {
     return r;
   };
   dev.offline = v => { ctx.navigator.onLine = !v; (B.listeners[v ? 'offline' : 'online'] || []).forEach(f => f()); };
+  dev.fire = type => (B.listeners[type] || []).forEach(f => f());
   return dev;
 }
 
@@ -218,8 +225,8 @@ const items = NL => NL.content.allItems();
 
   console.log('\nFUSION DES RÉGLAGES');
   const M = A.NL.sync.mergeMeta;
-  const m1 = M({ xp: 10, streak: 3, best: 3, lastDay: '2026-09-16', theme: 'dark', updatedAt: 5, scenariosDone: ['a'], doneDay: '2026-09-17', doneToday: 4, placed: true },
-               { xp: 40, streak: 1, best: 2, lastDay: '2026-09-17', theme: 'light', updatedAt: 9, scenariosDone: ['b'], doneDay: '2026-09-17', doneToday: 7, placed: false });
+  const m1 = M({ xp: 10, streak: 3, best: 3, lastDay: '2026-09-16', theme: 'dark', updatedAt: 5, scenariosDone: ['a'], progress: { reached: 0, scenariosDone: ['a'], listenDone: [] }, doneDay: '2026-09-17', doneToday: 4, placed: true },
+               { xp: 40, streak: 1, best: 2, lastDay: '2026-09-17', theme: 'light', updatedAt: 9, scenariosDone: ['b'], progress: { reached: 0, scenariosDone: ['b'], listenDone: [] }, doneDay: '2026-09-17', doneToday: 7, placed: false });
   ok(m1.xp === 40, 'xp should take the max');
   ok(m1.streak === 1 && m1.lastDay === '2026-09-17', 'streak should follow the latest day');
   ok(m1.best === 3, 'best should never drop');
@@ -229,8 +236,8 @@ const items = NL => NL.content.allItems();
   ok(m1.placed === true, 'placement should never be undone');
   /* Remise à zéro : ce qui relève de la progression suit le côté qui la porte,
      même si l'autre appareil a été modifié plus tard. */
-  const m4 = M({ resetAt: 500, reached: 0, scenariosDone: [], xp: 9, updatedAt: 500 },
-               { resetAt: 0, reached: 3, scenariosDone: ['a', 'b'], xp: 4, updatedAt: 900 });
+  const m4 = M({ resetAt: 500, reached: 0, scenariosDone: [], progress: { reached: 0, scenariosDone: [], listenDone: [] }, xp: 9, updatedAt: 500 },
+               { resetAt: 0, reached: 3, scenariosDone: ['a', 'b'], progress: { reached: 3, scenariosDone: ['a', 'b'], listenDone: [] }, xp: 4, updatedAt: 900 });
   ok(m4.reached === 0 && m4.scenariosDone.length === 0, 'a stale device gave back what the reset erased: ' + JSON.stringify([m4.reached, m4.scenariosDone]));
   ok(m4.resetAt === 500 && m4.xp === 9, 'the reset stamp or the score was lost in the merge');
   /* Le robot de sauvegarde écrit lastBackup sans toucher à updated_at : la
@@ -406,6 +413,444 @@ const items = NL => NL.content.allItems();
     ok(rowsFor('srs_records', mid).length === 1, 'a second device migrating later deleted what had been learned since');
     ok(M3.NL.state.seenCount() === 1, 'the second device did not receive the new progress');
     console.log('  ancienne progression effacée partout, une seule fois ; la nouvelle survit à la migration d’un second appareil');
+  }
+
+  /* Ce que la version précédente laisse derrière elle est un ÉTAT : des fiches et
+     des lignes de journal sans `base`, des réglages qui disent dataVersion 3 et
+     resetAt = ENGINE_EPOCH qu'elle a recopiés du serveur, une frontière et des
+     listes qui ne sont plus celles de `progress`, qu'elle ne connaît pas. On
+     l'écrit tel quel, sans ancienne version. */
+  const DAY = 86400000, EPOCH = A.NL.state.ENGINE_EPOCH, oi = items(A.NL);
+  const account = email => server.users[email] || (server.users[email] = { id: 'uid-' + Object.keys(server.users).length, email });
+  const putRow = (t, row) => server.tables[t].set(keyOf(t, row), clone(row));
+  const oldRec = (it, at) => ({ id: it.id, kind: it.kind, stage: 4, due: at + DAY, interval: DAY, ease: 2.5, reps: 5, lapses: 0, last: at, said: false, retired: false, lastEx: 'type', updatedAt: at });
+  const oldLog = (it, at) => ({ id: it.id, t: at, ok: false, stage: 1, kind: it.kind, ex: 'type' });
+  const zero = () => ({ reached: 0, scenariosDone: [], listenDone: [] });
+
+  console.log('\nUN APPAREIL RESTÉ SUR L’ANCIENNE VERSION');
+  {
+    /* 1. Un autre appareil a migré ; un onglet de l'ancienne version a ensuite
+       recopié les réglages du serveur sans rien effacer. */
+    const after = EPOCH + 3600000;
+    const touched = progress => ({ 'vlaams/fallback': JSON.stringify({
+      srs: oi.slice(0, 4).map(it => oldRec(it, after)).concat([Object.assign(oldRec(oi[4], after), { base: EPOCH })]),
+      custom: [],
+      meta: Object.assign({ dataVersion: 3, resetAt: EPOCH, xp: 40, reached: 5, scenariosDone: ['bakker', 'dokter', 'markt'], listenDone: ['les1'], updatedAt: after },
+        progress ? { progress } : {})
+    }) });
+    const V1 = device('V1', true, touched({ reached: 1, scenariosDone: ['bakker'], listenDone: [] }));
+    await V1.NL.state.open();
+    oi.slice(0, 2).forEach(it => V1.NL.state.logReview(oldLog(it, after), true));
+    V1.NL.state.logReview(Object.assign(oldLog(oi[4], after), { base: EPOCH }), true);
+    ok(V1.NL.state.seenCount() === 5 && V1.NL.state.logs().length === 3, 'the fixture is wrong: the touched device should hold 5 records and 3 log lines');
+    ok(V1.NL.state.migrate() === true, 'a device touched by the previous build did not migrate: its dataVersion 3 disarmed it');
+    ok(V1.NL.state.seenCount() === 1 && !!V1.NL.state.rec(oi[4].id), 'the migration kept ' + V1.NL.state.seenCount() + ' record(s), expected only the one written by this build');
+    ok(V1.NL.state.logs().length === 1, 'the migration kept ' + V1.NL.state.logs().length + ' log line(s), expected only the one written by this build');
+    const vm = V1.NL.state.meta();
+    ok(vm.reached === 1 && vm.scenariosDone.join() === 'bakker' && vm.listenDone.length === 0,
+      'the migration kept the frontier and lists the previous build wrote: ' + JSON.stringify([vm.reached, vm.scenariosDone, vm.listenDone]));
+    ok(vm.xp === 40, 'the migration took the score');
+    ok(V1.NL.state.migrate() === false, 'the migration ran twice on the touched device');
+    /* Des réglages que seule la version précédente a jamais écrits : aucune copie de confiance. */
+    const V2 = device('V2', true, touched(null));
+    await V2.NL.state.open();
+    ok(V2.NL.state.migrate() === true, 'a device whose settings only the previous build wrote did not migrate');
+    const v2 = V2.NL.state.meta();
+    ok(v2.reached === 0 && v2.scenariosDone.length === 0 && v2.listenDone.length === 0,
+      'with no trusted copy the frontier and lists should be zero: ' + JSON.stringify([v2.reached, v2.scenariosDone, v2.listenDone]));
+    ok(V2.NL.state.migrate() === false, 'the migration ran twice on a device with no trusted copy');
+    console.log('  migration malgré dataVersion 3 : fiches sans base effacées, frontière et listes reprises de progress');
+  }
+
+  console.log('\nLE SERVEUR ÉCRIT PAR L’ANCIENNE VERSION APRÈS LA MIGRATION');
+  {
+    /* 2. Les réglages et les lignes qu'un onglet de l'ancienne version a renvoyés. */
+    const after = Date.now() - 3600000;
+    ok(after > EPOCH, 'the fixture is wrong: the clock reads before ENGINE_EPOCH');
+    const sid = account('stale-tab@example.com').id;
+    putRow('user_meta', { user_id: sid, updated_at: after, data: {
+      dataVersion: 3, resetAt: EPOCH, xp: 30, reached: 5, scenariosDone: ['bakker', 'dokter', 'markt'], listenDone: [],
+      progress: zero(), updatedAt: after } });
+    oi.slice(0, 4).forEach(it => {
+      putRow('srs_records', { user_id: sid, item_id: it.id, data: oldRec(it, after), updated_at: after });
+      putRow('review_log', { user_id: sid, t: after, item_id: it.id, data: oldLog(it, after) });
+    });
+    const S1 = device('S1', true);
+    await S1.boot(); await S1.signIn('stale-tab@example.com');
+    ok(S1.NL.state.seenCount() === 0, 'a device on this build imported ' + S1.NL.state.seenCount() + ' record(s) the previous build wrote');
+    ok(S1.NL.state.meta().reached === 0, 'a device on this build took the frontier the previous build wrote: ' + S1.NL.state.meta().reached);
+    ok(S1.NL.state.meta().scenariosDone.length === 0, 'a device on this build took ' + S1.NL.state.meta().scenariosDone.length + ' conversation(s) the previous build wrote');
+    ok(S1.NL.state.logs().length === 0 && S1.NL.srs.mistakes().length === 0,
+      '« Ce qui résiste » shows ' + S1.NL.srs.mistakes().length + ' miss(es) the previous build wrote');
+    console.log('  rien de ce que l’ancienne version a renvoyé n’est importé');
+  }
+
+  console.log('\nUN COMPTE QUE PERSONNE N’A MIGRÉ');
+  {
+    /* 3. Un appareil neuf — une origine Preview — se connecte à un compte resté
+       tel que l'ancien moteur l'a laissé. */
+    const before = EPOCH - DAY;
+    const lid = account('legacy@example.com').id;
+    putRow('user_meta', { user_id: lid, updated_at: before, data: {
+      dataVersion: 2, xp: 55, reached: 3, scenariosDone: ['bakker', 'dokter'], listenDone: ['les1'], updatedAt: before } });
+    oi.slice(0, 5).forEach(it => {
+      putRow('srs_records', { user_id: lid, item_id: it.id, data: oldRec(it, before), updated_at: before });
+      putRow('review_log', { user_id: lid, t: before, item_id: it.id, data: oldLog(it, before) });
+    });
+    const L1 = device('L1', true);
+    await L1.boot(); await L1.signIn('legacy@example.com');
+    const lm = L1.NL.state.meta();
+    ok(L1.NL.state.seenCount() === 0, 'a fresh device took ' + L1.NL.state.seenCount() + ' old-engine record(s) at its first sync');
+    ok(lm.reached === 0 && lm.scenariosDone.length === 0 && lm.listenDone.length === 0,
+      'a fresh device took the old frontier and lists: ' + JSON.stringify([lm.reached, lm.scenariosDone, lm.listenDone]));
+    ok(lm.dataVersion === 3, 'a fresh device took dataVersion ' + lm.dataVersion + ' from the server');
+    ok(lm.xp === 55, 'the score did not travel');
+    ok(rowsFor('srs_records', lid).length === 0 && rowsFor('review_log', lid).length === 0,
+      'the server still holds ' + rowsFor('srs_records', lid).length + ' record(s) and ' + rowsFor('review_log', lid).length + ' log line(s) older than the epoch');
+    console.log('  première synchro : rien de l’ancien moteur, et le serveur nettoyé');
+  }
+
+  console.log('\nPROGRESSION ANONYME ET COMPTE QUI PORTE UNE REMISE À ZÉRO');
+  {
+    /* 4a. Le compte a été migré : il porte resetAt = ENGINE_EPOCH. */
+    const after = Date.now() - 3600000;
+    account('joined@example.com');
+    putRow('user_meta', { user_id: account('joined@example.com').id, updated_at: after, data: Object.assign(
+      { dataVersion: 3, resetAt: EPOCH, xp: 10, progress: zero(), updatedAt: after }, zero()) });
+    const J1 = device('J1', true), J2 = device('J2', true);
+    await J1.boot(); await J1.signIn('joined@example.com');
+    const jid = J1.NL.sync.user.id;
+    await J2.boot();
+    oi.slice(0, 5).forEach(it => J2.NL.srs.grade(it, true, { ex: 'type' }));
+    await J2.signIn('joined@example.com');
+    const onServer = id => rowsFor('srs_records', jid).some(r => r.item_id === id);
+    ok(oi.slice(0, 5).every(it => onServer(it.id)), 'anonymous progress was not uploaded to a migrated account: ' + rowsFor('srs_records', jid).length + ' record(s) on the server');
+    ok(J2.NL.sync.status().pending === 0, 'something is still pending after sign-in: ' + J2.NL.sync.status().pending);
+    await J1.NL.sync.pull();
+    ok(oi.slice(0, 5).every(it => !!J1.NL.state.rec(it.id)), 'the account’s other device did not receive the anonymous progress');
+
+    /* 4b. Le compte porte une vraie remise à zéro, postérieure à l'époque ; la
+       page est rechargée entre les réponses et la connexion. */
+    const resetAt = Date.now() - 2 * 3600000;
+    const kid = account('joined-reset@example.com').id;
+    putRow('user_meta', { user_id: kid, updated_at: after, data: Object.assign(
+      { dataVersion: 3, resetAt, xp: 10, progress: zero(), updatedAt: after }, zero()) });
+    oi.slice(10, 12).forEach(it => putRow('srs_records', { user_id: kid, item_id: it.id, updated_at: after,
+      data: Object.assign(oldRec(it, after), { stage: 1, reps: 1, base: resetAt }) }));
+    const K1 = device('K1', true), K2 = device('K2', true);
+    await K1.boot(); await K1.signIn('joined-reset@example.com');
+    ok(K1.NL.state.seenCount() === 2, 'the fixture is wrong: the other device should hold the 2 records made since the reset');
+    await K2.boot();
+    oi.slice(0, 5).forEach(it => K2.NL.srs.grade(it, true, { ex: 'type' }));
+    await wait(450);
+    const K2b = device('K2b', true, JSON.parse(JSON.stringify(K2.store)));
+    await K2b.boot(); await K2b.signIn('joined-reset@example.com');
+    const onK = id => rowsFor('srs_records', kid).some(r => r.item_id === id);
+    ok(oi.slice(0, 5).every(it => onK(it.id)), 'anonymous progress was not uploaded to an account reset after the epoch: ' + rowsFor('srs_records', kid).length + ' record(s) on the server');
+    ok(K2b.NL.sync.status().pending === 0, 'something is still pending after sign-in to a reset account: ' + K2b.NL.sync.status().pending);
+    await K1.NL.sync.pull();
+    ok(oi.slice(0, 5).every(it => !!K1.NL.state.rec(it.id)) && K1.NL.state.seenCount() === 7,
+      'the other device holds ' + K1.NL.state.seenCount() + ' record(s), expected its 2 and the 5 adopted');
+    const kLogs = new Set(K1.NL.state.logs().map(l => l.id));
+    ok(oi.slice(0, 5).every(it => kLogs.has(it.id)), 'the anonymous answers did not reach the other device’s log');
+    console.log('  la progression anonyme rejoint le compte telle quelle, migré ou remis à zéro');
+  }
+
+  console.log('\nUN APPAREIL PÉRIMÉ RÉPOND APRÈS LA REMISE À ZÉRO');
+  {
+    /* 5. Hors ligne, il n'a pas entendu la remise à zéro et répond sur des échelons effacés. */
+    const F1 = device('F1', true), F2 = device('F2', true);
+    await F1.boot(); await F1.signIn('stale-answer@example.com');
+    const fid = F1.NL.sync.user.id;
+    oi.slice(0, 6).forEach(it => F1.NL.srs.grade(it, true, { ex: 'type' }));
+    await F1.NL.sync.flush();
+    await F2.boot(); await F2.signIn('stale-answer@example.com');
+    ok(F2.NL.state.seenCount() === 6, 'the fixture is wrong: the second device should hold 6 records');
+    F2.offline(true);
+    await wait(3);
+    F1.NL.state.resetProgress();
+    await F1.NL.sync.flush();
+    await wait(3);
+    const late = [oi[0], oi[1]];
+    late.forEach(it => F2.NL.srs.grade(it, true, { ex: 'type' }));
+    F2.offline(false);
+    await F2.NL.sync.flush(); await F2.NL.sync.pull();
+    ok(late.every(it => !F2.NL.state.rec(it.id)), 'the stale device kept ' + late.filter(it => !!F2.NL.state.rec(it.id)).length + ' record(s) built on erased rungs');
+    ok(rowsFor('srs_records', fid).length === 0 && rowsFor('review_log', fid).length === 0,
+      'the stale device sent ' + rowsFor('srs_records', fid).length + ' record(s) and ' + rowsFor('review_log', fid).length + ' log line(s) built on erased progress');
+    await F1.NL.sync.pull();
+    ok(F1.NL.state.seenCount() === 0 && F1.NL.state.logs().length === 0,
+      'the device that reset received ' + F1.NL.state.seenCount() + ' record(s) and ' + F1.NL.state.logs().length + ' log line(s) from the stale one');
+    console.log('  ce qui est bâti sur une progression effacée ne voyage pas');
+  }
+
+  console.log('\nREMISE À ZÉRO SANS COMPTE');
+  {
+    /* 6a. Un appareil que personne ne possède répond, remet à zéro, puis se connecte. */
+    const E1 = device('E1', true), E2 = device('E2', true);
+    await E1.boot(); await E1.signIn('eight@example.com');
+    const eid = E1.NL.sync.user.id;
+    oi.slice(0, 8).forEach(it => E1.NL.srs.grade(it, true, { ex: 'type' }));
+    await E1.NL.sync.flush();
+    ok(rowsFor('srs_records', eid).length === 8, 'the fixture is wrong: the account should hold 8 records');
+    await E2.boot();
+    oi.slice(20, 22).forEach(it => E2.NL.srs.grade(it, true, { ex: 'type' }));
+    await wait(3);
+    E2.NL.state.resetProgress();
+    await E2.signIn('eight@example.com');
+    ok(rowsFor('srs_records', eid).length === 8, 'a reset made signed out erased the account: ' + rowsFor('srs_records', eid).length + ' record(s) left on the server');
+    await E1.NL.sync.pull();
+    ok(E1.NL.state.seenCount() === 8, 'a reset made signed out reached the account’s other device: it holds ' + E1.NL.state.seenCount() + ' record(s)');
+
+    /* 6b. Connexion, déconnexion, remise à zéro, connexion. */
+    const G1 = device('G1', true), G2 = device('G2', true);
+    await G1.boot(); await G1.signIn('eight-again@example.com');
+    const gid = G1.NL.sync.user.id;
+    oi.slice(0, 8).forEach(it => G1.NL.srs.grade(it, true, { ex: 'type' }));
+    await G1.NL.sync.flush();
+    await G2.boot(); await G2.signIn('eight-again@example.com');
+    ok(G2.NL.state.seenCount() === 8, 'the fixture is wrong: the second device should hold 8 records');
+    await G2.NL.sync.signOut();
+    await wait(3);
+    G2.NL.state.resetProgress();
+    await G2.signIn('eight-again@example.com');
+    ok(rowsFor('srs_records', gid).length === 8, 'a reset made between sign-out and sign-in erased the account: ' + rowsFor('srs_records', gid).length + ' record(s) left');
+    await G1.NL.sync.pull();
+    ok(G1.NL.state.seenCount() === 8, 'a reset made between sign-out and sign-in reached the other device: it holds ' + G1.NL.state.seenCount() + ' record(s)');
+    console.log('  une remise à zéro faite sans compte reste sur l’appareil');
+  }
+
+  console.log('\nEFFACEMENTS ET LECTURES BORNÉS AU COMPTE');
+  {
+    /* 7. Sur des tables à part : sans la politique, un effacement non borné
+       viderait aussi les autres comptes, et le reste du test en dépend. Y passe
+       d'abord : ses réglages sont la première ligne qu'une lecture non bornée
+       rendrait. */
+    const kept = server.tables;
+    server.tables = {}; Object.keys(KEYS).forEach(t => { server.tables[t] = new Map(); });
+    const X = device('X', true), Y = device('Y', true);
+    await Y.boot(); await Y.signIn('y@example.com');
+    const yid = Y.NL.sync.user.id;
+    oi.slice(10, 14).forEach(it => Y.NL.srs.grade(it, true, { ex: 'type' }));
+    Y.NL.state.setMeta({ xp: 999 });
+    await Y.NL.sync.flush();
+    await X.boot(); await X.signIn('x@example.com');
+    const xid = X.NL.sync.user.id;
+    oi.slice(0, 3).forEach(it => X.NL.srs.grade(it, true, { ex: 'type' }));
+    await X.NL.sync.flush();
+    ok(rowsFor('srs_records', yid).length === 4 && rowsFor('review_log', yid).length === 4, 'the fixture is wrong: the other account should hold 4 records and 4 log lines');
+    server.rls = false;
+    await X.NL.sync.pull();
+    ok(X.NL.state.seenCount() === 3 && X.NL.state.logs().length === 3,
+      'without row-level security a device read another account’s rows: it holds ' + X.NL.state.seenCount() + ' record(s) and ' + X.NL.state.logs().length + ' log line(s)');
+    ok(X.NL.state.meta().xp !== 999, 'without row-level security a device read another account’s settings');
+    await wait(3);
+    X.NL.state.resetProgress();
+    await X.NL.sync.flush();
+    server.rls = true;
+    ok(rowsFor('srs_records', xid).length === 0, 'the reset did not erase its own account');
+    ok(rowsFor('srs_records', yid).length === 4 && rowsFor('review_log', yid).length === 4,
+      'without row-level security a reset erased another account: ' + rowsFor('srs_records', yid).length + ' record(s) and ' + rowsFor('review_log', yid).length + ' log line(s) left');
+    server.tables = kept;
+    console.log('  sans la politique, un appareil ne lit et n’efface que son compte');
+  }
+
+  console.log('\nRATTACHEMENT RETENTÉ APRÈS UNE PANNE');
+  {
+    /* 8. La lecture des réglages du compte échoue à la connexion : l'appareil
+       est connecté mais pas rattaché, et rien ne part. La prochaine occasion de
+       synchroniser — le réseau qui revient, l'onglet qui revient au premier
+       plan — doit retenter, sans attendre un rechargement. */
+    const H1 = device('H1', true);
+    await H1.boot();
+    oi.slice(0, 3).forEach(it => H1.NL.srs.grade(it, true, { ex: 'type' }));
+    server.failNext = 'user_meta';
+    await H1.signIn('retry-online@example.com');
+    const h1 = H1.NL.sync.user.id;
+    ok(!H1.store['vlaams/owner'] && rowsFor('srs_records', h1).length === 0,
+      'the fixture is wrong: a failed adoption should leave the device unattached with nothing sent');
+    H1.offline(false);
+    await wait(50);
+    ok(H1.store['vlaams/owner'] === h1 && rowsFor('srs_records', h1).length === 3 && H1.NL.sync.status().pending === 0,
+      'the network came back and the device stayed unattached: ' + rowsFor('srs_records', h1).length + ' record(s) on the server, ' + H1.NL.sync.status().pending + ' pending');
+
+    const H2 = device('H2', true);
+    await H2.boot();
+    oi.slice(3, 5).forEach(it => H2.NL.srs.grade(it, true, { ex: 'type' }));
+    server.failNext = 'user_meta';
+    await H2.signIn('retry-tab@example.com');
+    const h2 = H2.NL.sync.user.id;
+    ok(!H2.store['vlaams/owner'], 'the fixture is wrong: the second failed adoption attached the device');
+    H2.fire('visibilitychange');
+    await wait(50);
+    ok(H2.store['vlaams/owner'] === h2 && rowsFor('srs_records', h2).length === 2,
+      'the tab came back to the front and the device stayed unattached: ' + rowsFor('srs_records', h2).length + ' record(s) on the server');
+    console.log('  une adoption échouée est retentée au retour du réseau et de l’onglet');
+  }
+
+  console.log('\nCONNECTÉ, PAS ENCORE RATTACHÉ');
+  {
+    /* 9. Entre une connexion et un rattachement réussi : « synchroniser
+       maintenant », la déconnexion et la remise à zéro doivent encore servir le
+       compte, et rien de ce qui a été fait ici ne doit se perdre. */
+    const N1 = device('N1', true);
+    await N1.boot();
+    oi.slice(0, 2).forEach(it => N1.NL.srs.grade(it, true, { ex: 'type' }));
+    server.failNext = 'user_meta';
+    await N1.signIn('unattached-sync@example.com');
+    const n1 = N1.NL.sync.user.id;
+    await N1.NL.sync.pull(); await N1.NL.sync.flush();      // ce que fait « synchroniser maintenant »
+    ok(N1.store['vlaams/owner'] === n1 && rowsFor('srs_records', n1).length === 2,
+      '« sync now » after a failed adoption left the device unattached: ' + rowsFor('srs_records', n1).length + ' record(s) on the server');
+
+    const N2 = device('N2', true);
+    await N2.boot();
+    oi.slice(0, 3).forEach(it => N2.NL.srs.grade(it, true, { ex: 'type' }));
+    server.failNext = 'user_meta';
+    await N2.signIn('unattached-signout@example.com');
+    const n2 = N2.NL.sync.user.id;
+    ok(rowsFor('srs_records', n2).length === 0, 'the fixture is wrong: the failed adoption sent something');
+    await N2.NL.sync.signOut();
+    ok(rowsFor('srs_records', n2).length === 3, 'signing out after a failed adoption lost the anonymous progress: ' + rowsFor('srs_records', n2).length + ' record(s) on the server');
+
+    /* Une remise à zéro pressée dans cet intervalle appartient au compte. */
+    const N3 = device('N3', true), N4 = device('N4', true);
+    await N3.boot(); await N3.signIn('unattached-reset@example.com');
+    const n3 = N3.NL.sync.user.id;
+    oi.slice(0, 4).forEach(it => N3.NL.srs.grade(it, true, { ex: 'type' }));
+    await N3.NL.sync.flush();
+    await N4.boot();
+    server.failNext = 'user_meta';
+    await N4.signIn('unattached-reset@example.com');
+    await wait(3);
+    N4.NL.state.resetProgress();
+    N4.offline(false);
+    await wait(50);
+    ok(N4.store['vlaams/owner'] === n3, 'the fixture is wrong: the device did not attach when the network came back');
+    ok(rowsFor('srs_records', n3).length === 0, 'a reset pressed while signed in but not attached did not reach the server: ' + rowsFor('srs_records', n3).length + ' record(s) left');
+    await N3.NL.sync.pull();
+    ok(N3.NL.state.seenCount() === 0, 'a reset pressed while signed in but not attached was undone at attachment: the other device holds ' + N3.NL.state.seenCount() + ' record(s)');
+
+    /* L'appareil n'a pas pu écrire qui le possède : il est rattaché pour cette page quand même. */
+    const N5 = device('N5', true);
+    await N5.boot();
+    const write = N5.ctx.localStorage.setItem;
+    N5.ctx.localStorage.setItem = (k, v) => { if (k === 'vlaams/owner') throw new Error('QuotaExceededError'); write(k, v); };
+    await N5.signIn('owner-unwritable@example.com');
+    const n5 = N5.NL.sync.user.id;
+    N5.NL.srs.grade(oi[0], true, { ex: 'type' });
+    await N5.NL.sync.flush();
+    ok(rowsFor('srs_records', n5).length === 1, 'when the owner could not be stored, the signed-in device stopped synchronising');
+    console.log('  synchroniser, se déconnecter, remettre à zéro : tout sert le compte, même avant le rattachement');
+  }
+
+  console.log('\nINDEXEDDB');
+  {
+    /* 10. Ce que fait un vrai navigateur : les fiches et le journal vivent dans
+       IndexedDB et sont relus au chargement suivant. */
+    const D1 = device('D1', true, null, true);
+    await D1.NL.state.open();
+    ok(D1.NL.state.storage === 'IndexedDB', 'the fixture is wrong: the fake IndexedDB was not used');
+    oi.slice(0, 5).forEach(it => D1.NL.srs.grade(it, true, { ex: 'type' }));
+    await wait(10);
+    const dump = clone(D1.NL.state.exportAll());
+    oi.slice(5, 8).forEach(it => D1.NL.srs.grade(it, true, { ex: 'type' }));
+    await wait(10);
+    ok(D1.NL.state.importAll(clone(dump)), 'import refused');
+    await wait(10);
+    const D1b = device('D1b', true, clone(D1.store), D1.idb);
+    await D1b.NL.state.open();
+    const restoredWiped = D1b.NL.state.migrate();
+    ok(!restoredWiped, 'after a restore and a reload the migration fired and showed « le moteur a changé »');
+    ok(D1b.NL.state.seenCount() === 5 && D1b.NL.state.logs().length === 5,
+      'after a restore and a reload the device holds ' + D1b.NL.state.seenCount() + ' record(s) and ' + D1b.NL.state.logs().length + ' log line(s), expected the 5 and 5 restored');
+
+    /* Ce que la version précédente laisse dans IndexedDB, écrit tel quel. */
+    const P1 = device('P1', true, null, true);
+    await P1.NL.state.open();
+    const idbPut = (dev, store, value) => new Promise(res => {
+      const r = dev.ctx.indexedDB.open('vlaams-onderweg', 1);
+      r.onsuccess = e => { const q = e.target.result.transaction(store, 'readwrite').objectStore(store).put(value); q.onsuccess = res; };
+    });
+    for (const it of oi.slice(0, 4)) {
+      await idbPut(P1, 'srs', oldRec(it, EPOCH + 3600000));
+      await idbPut(P1, 'log', oldLog(it, EPOCH + 3600000));
+    }
+    await idbPut(P1, 'meta', { k: 'meta', v: { dataVersion: 2, xp: 40, reached: 3, scenariosDone: ['bakker'], listenDone: [], updatedAt: EPOCH + 3600000 } });
+    const P2 = device('P2', true, clone(P1.store), P1.idb);
+    await P2.NL.state.open();
+    ok(P2.NL.state.seenCount() === 4 && P2.NL.state.logs().length === 4, 'the fixture is wrong: the previous build’s IndexedDB should hold 4 records and 4 log lines');
+    ok(P2.NL.state.migrate() === true, 'a device of the previous build using IndexedDB did not migrate');
+    await wait(10);
+    const P3 = device('P3', true, clone(P2.store), P2.idb);
+    await P3.NL.state.open();
+    const again = P3.NL.state.migrate();
+    ok(!again && P3.NL.state.seenCount() === 0 && P3.NL.state.logs().length === 0 && P3.NL.state.meta().reached === 0,
+      'the migration did not empty IndexedDB: after a reload migrate() is ' + again + ', with ' + P3.NL.state.seenCount() + ' record(s) and ' + P3.NL.state.logs().length + ' log line(s)');
+
+    /* Une progression anonyme, avec sa propre remise à zéro, adoptée par un
+       compte remis à zéro après l'époque, puis rechargée. */
+    const resetAt = Date.now() - 2 * 3600000;
+    const aid = account('idb-adopt@example.com').id;
+    putRow('user_meta', { user_id: aid, updated_at: resetAt, data: Object.assign(
+      { dataVersion: 3, resetAt, xp: 5, progress: zero(), updatedAt: resetAt }, zero()) });
+    const I1 = device('I1', true, null, true);
+    await I1.boot();
+    oi.slice(0, 3).forEach(it => I1.NL.srs.grade(it, true, { ex: 'type' }));
+    await wait(3);
+    I1.NL.state.resetProgress();
+    oi.slice(3, 6).forEach(it => I1.NL.srs.grade(it, true, { ex: 'type' }));
+    await I1.signIn('idb-adopt@example.com');
+    await wait(20);
+    ok(oi.slice(3, 6).every(it => rowsFor('srs_records', aid).some(r => r.item_id === it.id)), 'the fixture is wrong: the anonymous progress was not adopted');
+    const I2 = device('I2', true, clone(I1.store), I1.idb);
+    await I2.NL.state.open();
+    ok(I2.NL.state.migrate() === false && I2.NL.state.seenCount() === 3 && I2.NL.state.logs().length === 3,
+      'progress adopted and rebased did not survive a reload in IndexedDB: ' + I2.NL.state.seenCount() + ' record(s), ' + I2.NL.state.logs().length + ' log line(s)');
+    ok(I2.NL.state.meta().resetAt === resetAt, 'after a reload the device does not carry the account’s reset');
+    console.log('  restauration, migration et adoption survivent à un rechargement dans IndexedDB');
+  }
+
+  console.log('\nLA COUPE DE LA MIGRATION SUR LE SERVEUR');
+  {
+    /* 11a. Un appareil possédé, qui porte encore l'ancien moteur, migre pendant
+       que le serveur tient une fiche qu'un autre appareil de cette version a
+       écrite après l'époque : elle reste. */
+    const Q1 = device('Q1', true), Q2 = device('Q2', true);
+    await Q1.boot(); await Q1.signIn('cut-migrate@example.com');
+    const qid = Q1.NL.sync.user.id;
+    await Q2.boot(); await Q2.signIn('cut-migrate@example.com');
+    oi.slice(0, 3).forEach(it => {
+      Q2.NL.state.setRec(oldRec(it, EPOCH - DAY), true);
+      putRow('srs_records', { user_id: qid, item_id: it.id, data: oldRec(it, EPOCH - DAY), updated_at: EPOCH - DAY });
+    });
+    Q1.NL.srs.grade(oi[30], true, { ex: 'type' });
+    await Q1.NL.sync.flush();
+    await wait(450);
+    const Q2b = device('Q2b', true, clone(Q2.store));
+    await Q2b.NL.state.open();
+    ok(Q2b.NL.state.migrate() === true, 'the fixture is wrong: the owned device holding old-engine records did not migrate');
+    Q2b.NL.content.refresh(); Q2b.NL.ui.bind(Q2b.root);
+    await Q2b.NL.sync.init(); await wait(30);
+    ok(oi.slice(0, 3).every(it => !rowsFor('srs_records', qid).some(r => r.item_id === it.id)), 'the migration left old-engine rows on the server');
+    ok(rowsFor('srs_records', qid).some(r => r.item_id === oi[30].id),
+      'the migration of an owned device erased a record another device of this build wrote after the epoch');
+
+    /* 11b. Des réglages de l'ancien moteur, et une fiche de cette version écrite
+       après l'époque : le nettoyage du serveur la laisse. */
+    const after = Date.now() - 3600000;
+    const cid = account('cut-clean@example.com').id;
+    putRow('user_meta', { user_id: cid, updated_at: after, data: {
+      dataVersion: 2, xp: 12, reached: 2, scenariosDone: ['bakker'], listenDone: [], updatedAt: after } });
+    oi.slice(0, 2).forEach(it => putRow('srs_records', { user_id: cid, item_id: it.id, data: oldRec(it, EPOCH - DAY), updated_at: EPOCH - DAY }));
+    putRow('srs_records', { user_id: cid, item_id: oi[31].id, updated_at: after,
+      data: Object.assign(oldRec(oi[31], after), { stage: 1, reps: 1, base: EPOCH }) });
+    const C1 = device('Cc', true);
+    await C1.boot(); await C1.signIn('cut-clean@example.com');
+    ok(oi.slice(0, 2).every(it => !rowsFor('srs_records', cid).some(r => r.item_id === it.id)), 'the server clean-up left old-engine rows');
+    ok(rowsFor('srs_records', cid).some(r => r.item_id === oi[31].id) && !!C1.NL.state.rec(oi[31].id),
+      'the server clean-up erased a record this build wrote after the epoch');
+    console.log('  le serveur ne perd que ce qui précède l’époque');
   }
 
   console.log('\nÉCRAN COMPTE');

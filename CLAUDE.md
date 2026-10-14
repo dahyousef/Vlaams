@@ -37,7 +37,7 @@ Every fix leaves a test that fails on the old code. Write it, watch it fail, the
   `vlaams/noaccount` (« continue without an account »). Renaming one orphans every database already on a
   device and every backup already written.
 - The same goes for **field names inside a stored record** — `stage`, `due`, `interval`,
-  `ease`, `reps`, `lapses`, `said`, `retired`. Records are stored and synced whole, so a
+  `ease`, `reps`, `lapses`, `said`, `retired`, `base`. Records are stored and synced whole, so a
   rename orphans them exactly as a key rename would. `GLOSSARY.md` says to call a stage a
   **rung** in prose and in new names; it is not an instruction to rename the stored field.
 - The codebase uses `const` and arrow functions throughout and no optional chaining.
@@ -50,8 +50,10 @@ Every fix leaves a test that fails on the old code. Write it, watch it fail, the
   out before reviews. The home screen and the session both ask it. A second calculation
   anywhere is the fault phase 1 removed.
 - `resetAt` in the stored settings is the moment of the last reset, and other devices compare
-  against it. It only ever grows. `ENGINE_EPOCH` in `src/core/state.js` is a fixed date and
+  against it. It only grows, except on a device joining an account (below). `ENGINE_EPOCH` in `src/core/state.js` is a fixed date and
   must stay one: changing it wipes progress again, or stops wiping it.
+  Records and log lines carry the reset they descend from (`base`), the frontier and the done-lists
+  travel in `progress`, and a device no account owned takes the account's `resetAt` at sign-in.
 - `said` on a stored record is what makes an item's first spoken exercise certain. That
   exercise never moves the item's rung: a written one, later in the same session, decides.
   « Je ne peux pas parler » lives in the running session and is deliberately not a
