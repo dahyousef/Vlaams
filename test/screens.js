@@ -219,6 +219,58 @@ NL.state.open().then(() => {
     console.log('  erreur de fenêtre et promesse rejetée enregistrées avec leur écran, vingt au plus, vidables');
   }
 
+  /* ------------------------------------------------------------------ */
+  console.log('\nPLUS COMPTE COMME L’ACCUEIL — rencontrés, produits, et « à toi »');
+  {
+    fresh();
+    const course = all.filter(it => it.unit !== 'eigen');
+    course.slice(0, 12).forEach((it, i) => put(it, i % 7, T0 + 5 * DAY));
+    /* Un élément du palier « reconnaître » plafonne à l'échelon 2 : produit sans passer l'échelon PRODUCE. */
+    const mine = [1, 2, 3].map(i => NL.state.addCustom({ id: 'x-test' + i, nl: 'het eigen' + i, fr: 'le mien ' + i }));
+    NL.content.refresh();
+    const low = NL.content.byId(course[20].id); low.tier = 'recognise'; put(low, 2, T0 + 5 * DAY);
+    mine.forEach((w, i) => put(NL.content.byId(w.id), i === 0 ? 6 : 0, T0 + 5 * DAY));
+    const cp = NL.content.courseProgress();
+    const home = text(NL.screens.vandaag.render()), more = NL.screens.meer.render(), plus = text(more);
+    ok(plus.indexOf(t.wordsTile(cp.met, cp.produce)) >= 0, 'the Plus tile does not give the course counts « ' + t.wordsTile(cp.met, cp.produce) + ' »: « ' + (plus.match(/Mon dictionnaire.{0,80}|\d+ rencontrés,.{0,40}/) || [''])[0] + ' »');
+    const strip = (more.match(/<div class="mini-stats">[\s\S]*?<\/div>/) || [''])[0];
+    const cell = label => { const m = strip.match(new RegExp('<b>([0-9]+)</b> ' + label + '<')); return m ? +m[1] : null; };
+    ok(cell(t.statMet) === cp.met, 'the strip does not give ' + cp.met + ' « ' + t.statMet + ' », it gives ' + cell(t.statMet));
+    ok(cell(t.statProduced) === cp.produce, 'the strip does not give ' + cp.produce + ' « ' + t.statProduced + ' », it gives ' + cell(t.statProduced));
+    ok(home.indexOf(cp.met + ' ' + t.statMet) >= 0 && home.indexOf(cp.produce + ' ' + t.statProduce) >= 0, 'the home screen does not give the same two numbers');
+    ok(cell('à toi') === 3 && (plus.match(/à toi/g) || []).length === 1, 'the own words do not appear once as « 3 à toi »: ' + cell('à toi') + ' / ' + (plus.match(/à toi/g) || []).length);
+    ['vandaag', 'leerpad', 'meer', 'woorden'].forEach(n => ok(!/solides|<b>\d+<\/b> en cours</.test(NL.screens[n].render()) && !/solides/.test(text(NL.screens[n].render())), n + ' still says « solides » or « en cours »'));
+    SCREENS.forEach(n => { let h = null, err = null; try { h = text(NL.screens[n].render()); } catch (e) { err = e; } ok(!err && !/solides/.test(h), n + (err ? ' throws: ' + err.message : ' says « solides »')); });
+    NL.screens.woorden.click({ dataset: { f: 'sterk' } }, { act: 'filter' });
+    const rows = (NL.screens.woorden.render().match(/class="vrow"/g) || []).length;
+    const expect = cp.produce;
+    ok(rows === expect && expect > 0, 'the « produits » filter lists ' + rows + ' items, the count says ' + expect);
+    ok(NL.content.allItems().some(it => it.unit !== 'eigen' && NL.content.produced(it) && NL.srs.stageOf(it) < NL.srs.PRODUCE), 'the fixture is wrong: no item is produced below the PRODUCE rung');
+    NL.screens.woorden.click({ dataset: { f: 'alles' } }, { act: 'filter' });
+    delete low.tier;
+    /* Sans mot à soi, la case disparaît. */
+    fresh(); NL.content.refresh();
+    ok(!/à toi/.test(text(NL.screens.meer.render())), 'with no own words the strip still shows « à toi »');
+    console.log('  tuile et bandeau de Plus = ' + cp.met + ' rencontrés, ' + cp.produce + ' produits, 3 à toi ; filtre « produits » : ' + rows + ' lignes');
+  }
+
+  /* ------------------------------------------------------------------ */
+  console.log('\nQUOTA ATTEINT, DES RÉVISIONS DUES — l’accueil le dit');
+  {
+    fresh();
+    all.slice(0, 200).forEach(it => put(it, 3, T0 - DAY));
+    NL.srs.spend(NL.srs.pace().cap);
+    ok(NL.srs.plan().total === 0 && NL.srs.dueItems().length === 200, 'the fixture is wrong: expected nothing planned and 200 due');
+    const spent = text(NL.screens.vandaag.render());
+    ok(spent.indexOf(text(t.budgetDone)) >= 0, 'with the budget spent and 200 items due the home screen does not say « ' + t.budgetDone + ' »: « ' + spent.slice(0, 120) + ' »');
+    ok(spent.indexOf(t.todayAllDone) < 0, 'with 200 items due the home screen says « ' + t.todayAllDone + ' »');
+    /* Rien de dû : « Tout est à jour » reste. */
+    fresh(); all.slice(0, 20).forEach(it => put(it, 3, T0 + 5 * DAY)); NL.srs.spend(NL.srs.pace().cap);
+    const idle = text(NL.screens.vandaag.render());
+    ok(idle.indexOf(t.todayAllDone) >= 0 && idle.indexOf(text(t.budgetDone)) < 0, 'with nothing due the home screen no longer says « ' + t.todayAllDone + ' »');
+    console.log('  200 dus, quota atteint : « ' + t.budgetDone + ' » ; rien de dû : « ' + t.todayAllDone + ' »');
+  }
+
   console.log('\n' + checks + ' checks, ' + (fails ? fails + ' FAILED' : 'SCREENS OK'));
   process.exit(fails ? 1 : 0);
 }).catch(e => { console.log('CRASH ' + (e && e.stack || e)); process.exit(1); });

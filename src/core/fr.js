@@ -260,7 +260,7 @@ NL.t = {
 
   /* --- statistiques --- */
   weekTitle: 'Cette semaine',
-  statLearning: 'en cours', statStrong: 'solides', statSpoken: 'dits à voix haute',
+  statProduced: 'produits', statMine: 'à toi', statSpoken: 'dits à voix haute',
   statBest: 'plus longue série',
   statCombo: 'meilleure série de réponses', statDefi: 'record au défi',
   days: ['dim', 'lun', 'mar', 'mer', 'jeu', 'ven', 'sam'],

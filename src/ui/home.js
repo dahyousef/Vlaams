@@ -19,7 +19,10 @@
          la séance en couvre plusieurs : un libellé ne dit jamais une demi-vérité. */
       html += '<section class="card session-card">' +
         '<span class="eyebrow">' + t.todayEyebrow + (p.units ? ' · ' + esc(unitLabel(p.units)) : '') + '</span>' +
-        (total === 0
+        (total === 0 && p.left === 0 && NL.srs.dueItems().length > 0
+          ? '<h2>' + t.budgetDone + '</h2>' +
+          '<button class="btn btn-blue wide big" data-go="praten">' + t.todayPractise + '</button>'
+          : total === 0
           ? '<h2>' + t.todayAllDone + '</h2><p class="sc-sub">' + t.todayAllDoneSub + '</p>' +
           '<button class="btn btn-blue wide big" data-go="praten">' + t.todayPractise + '</button>'
           : '<h2>' + t.todayReady(total) + '</h2>' +
@@ -142,6 +145,8 @@
   NL.screens.meer = {
     render() {
       const c = NL.srs.counts();
+      const cp = NL.content.courseProgress();
+      const mine = NL.content.allItems().filter(it => it.unit === 'eigen').length;
       const m = NL.state.meta();
       const byDay = {};
       NL.state.logs().forEach(l => { const d = U.dayKey(l.t); byDay[d] = (byDay[d] || 0) + 1; });
@@ -155,7 +160,7 @@
       return '<div class="wrap">' +
         '<div class="cards">' +
         defiTile(m) +
-        tile('\u{1F4D2}', t.wordsEyebrow, t.wordsTile(c.seen, c.mature), 'go', 'woorden') +
+        tile('\u{1F4D2}', t.wordsEyebrow, t.wordsTile(cp.met, cp.produce), 'go', 'woorden') +
         tile('\u{1F3AF}', t.missEyebrow, t.missTile(NL.srs.mistakes().length), 'go', 'fouten') +
         tile('\u{1F4CB}', t.sheetsEyebrow, t.sheetsTitle, 'go', 'spiek') +
         tile('\u{1F1E7}\u{1F1EA}', t.regEyebrow, t.regTitle, 'go', 'register') +
@@ -171,8 +176,9 @@
           '<span>' + t.days[new Date(x.d).getDay()] + '</span></div>').join('') +
         '</div>' +
         '<div class="mini-stats">' +
-        '<span><b>' + c.learning + '</b> ' + t.statLearning + '</span>' +
-        '<span><b>' + c.mature + '</b> ' + t.statStrong + '</span>' +
+        '<span><b>' + cp.met + '</b> ' + t.statMet + '</span>' +
+        '<span><b>' + cp.produce + '</b> ' + t.statProduced + '</span>' +
+        (mine ? '<span><b>' + mine + '</b> ' + t.statMine + '</span>' : '') +
         '<span><b>' + c.said + '</b> ' + t.statSpoken + '</span>' +
         '<span><b>' + (m.best || 0) + '</b> ' + t.statBest + '</span>' +
         '<span><b>' + (m.bestCombo || 0) + '</b> ' + t.statCombo + '</span>' +

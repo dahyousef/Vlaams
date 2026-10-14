@@ -150,5 +150,5 @@ NL.content = NL.content || {};
     return out;
   }
 
-  Object.assign(NL.content, { allItems, refresh, byId, unit, itemsOf, unitOpen, unitComplete, frontier, unitProgress, courseProgress, scenario, listenClips, fill, DEFAULTS });
+  Object.assign(NL.content, { allItems, refresh, byId, unit, itemsOf, unitOpen, unitComplete, frontier, unitProgress, courseProgress, met: MET, produced: PRODUCED, scenario, listenClips, fill, DEFAULTS });
 })();

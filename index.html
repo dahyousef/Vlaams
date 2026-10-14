@@ -1031,7 +1031,7 @@ NL.t = {
 
   /* --- statistiques --- */
   weekTitle: 'Cette semaine',
-  statLearning: 'en cours', statStrong: 'solides', statSpoken: 'dits à voix haute',
+  statProduced: 'produits', statMine: 'à toi', statSpoken: 'dits à voix haute',
   statBest: 'plus longue série',
   statCombo: 'meilleure série de réponses', statDefi: 'record au défi',
   days: ['dim', 'lun', 'mar', 'mer', 'jeu', 'ven', 'sam'],
@@ -4600,7 +4600,7 @@ NL.content = NL.content || {};
     return out;
   }
 
-  Object.assign(NL.content, { allItems, refresh, byId, unit, itemsOf, unitOpen, unitComplete, frontier, unitProgress, courseProgress, scenario, listenClips, fill, DEFAULTS });
+  Object.assign(NL.content, { allItems, refresh, byId, unit, itemsOf, unitOpen, unitComplete, frontier, unitProgress, courseProgress, met: MET, produced: PRODUCED, scenario, listenClips, fill, DEFAULTS });
 })();
 </script>
 <script>
@@ -6209,7 +6209,10 @@ NL.screens.sessie = (function () {
          la séance en couvre plusieurs : un libellé ne dit jamais une demi-vérité. */
       html += '<section class="card session-card">' +
         '<span class="eyebrow">' + t.todayEyebrow + (p.units ? ' · ' + esc(unitLabel(p.units)) : '') + '</span>' +
-        (total === 0
+        (total === 0 && p.left === 0 && NL.srs.dueItems().length > 0
+          ? '<h2>' + t.budgetDone + '</h2>' +
+          '<button class="btn btn-blue wide big" data-go="praten">' + t.todayPractise + '</button>'
+          : total === 0
           ? '<h2>' + t.todayAllDone + '</h2><p class="sc-sub">' + t.todayAllDoneSub + '</p>' +
           '<button class="btn btn-blue wide big" data-go="praten">' + t.todayPractise + '</button>'
           : '<h2>' + t.todayReady(total) + '</h2>' +
@@ -6332,6 +6335,8 @@ NL.screens.sessie = (function () {
   NL.screens.meer = {
     render() {
       const c = NL.srs.counts();
+      const cp = NL.content.courseProgress();
+      const mine = NL.content.allItems().filter(it => it.unit === 'eigen').length;
       const m = NL.state.meta();
       const byDay = {};
       NL.state.logs().forEach(l => { const d = U.dayKey(l.t); byDay[d] = (byDay[d] || 0) + 1; });
@@ -6345,7 +6350,7 @@ NL.screens.sessie = (function () {
       return '<div class="wrap">' +
         '<div class="cards">' +
         defiTile(m) +
-        tile('\u{1F4D2}', t.wordsEyebrow, t.wordsTile(c.seen, c.mature), 'go', 'woorden') +
+        tile('\u{1F4D2}', t.wordsEyebrow, t.wordsTile(cp.met, cp.produce), 'go', 'woorden') +
         tile('\u{1F3AF}', t.missEyebrow, t.missTile(NL.srs.mistakes().length), 'go', 'fouten') +
         tile('\u{1F4CB}', t.sheetsEyebrow, t.sheetsTitle, 'go', 'spiek') +
         tile('\u{1F1E7}\u{1F1EA}', t.regEyebrow, t.regTitle, 'go', 'register') +
@@ -6361,8 +6366,9 @@ NL.screens.sessie = (function () {
           '<span>' + t.days[new Date(x.d).getDay()] + '</span></div>').join('') +
         '</div>' +
         '<div class="mini-stats">' +
-        '<span><b>' + c.learning + '</b> ' + t.statLearning + '</span>' +
-        '<span><b>' + c.mature + '</b> ' + t.statStrong + '</span>' +
+        '<span><b>' + cp.met + '</b> ' + t.statMet + '</span>' +
+        '<span><b>' + cp.produce + '</b> ' + t.statProduced + '</span>' +
+        (mine ? '<span><b>' + mine + '</b> ' + t.statMine + '</span>' : '') +
         '<span><b>' + c.said + '</b> ' + t.statSpoken + '</span>' +
         '<span><b>' + (m.best || 0) + '</b> ' + t.statBest + '</span>' +
         '<span><b>' + (m.bestCombo || 0) + '</b> ' + t.statCombo + '</span>' +
@@ -6848,7 +6854,7 @@ NL.screens.luisteren = (function () {
       const missed = new Set(NL.srs.mistakes().map(x => x.item.id));
       let list = (filter === 'eigen' ? all.filter(it => it.unit === 'eigen')
         : filter === 'zwak' ? seen.filter(it => missed.has(it.id))
-          : filter === 'sterk' ? seen.filter(it => NL.srs.stageOf(it) >= NL.srs.PRODUCE)
+          : filter === 'sterk' ? all.filter(it => it.unit !== 'eigen' && NL.content.produced(it))   // l'ensemble et le prédicat du compteur « produits »
             : seen);
       if (q) list = all.filter(it => U.norm(it.nl).indexOf(q) >= 0 || U.norm(it.fr).indexOf(q) >= 0 || (it.be && U.norm(it.be).indexOf(q) >= 0));
 
