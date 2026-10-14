@@ -34,5 +34,5 @@ Régénérer :
 node test/tools/build-wordlist.js
 ```
 
-La liste est publiée sous licence BSD révisée et CC BY 3.0, au choix. Le crédit
+La liste est publiée sous licence [BSD révisée](https://opensource.org/license/bsd-3-clause) et [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/), au choix ; le fichier de licence d’OpenTaal est [`LICENSE.txt`](https://github.com/OpenTaal/opentaal-wordlist/blob/master/LICENSE.txt). Le crédit
 est donné ici pour la même raison que ci-dessus.

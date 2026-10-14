@@ -37,7 +37,7 @@ An agent runs this plan, but these moments are yours. Each step waits for the on
 | 3a. Rewrite Tasks 5b and 9b: a first right spoken answer leaves the rung alone, and a writing exercise in the same session decides the climb | done, 13 October 2026. Decided on 12 October while defining *produced*: as first written, Task 5b let reading an item aloud take it past rung 3, so the count of items the learner can produce stopped meaning that they wrote it. See *The correction of 12 and 13 October 2026* near the end. The amendment to issue #12 was applied on 13 October 2026 |
 | 3b. One full run of the thirteen tasks in a scratch copy, before any ticket | done, 13 October 2026, in two passes, then a third after three changes the maintainer asked for the same day. The suite passes after every task, and Tasks 5b and 9b hold where they were placed. The sources the plan produces are those of the build that was tested and measured, and the page built from them is the same page. The corrections to this plan are listed in the commit that carries this line. The flag `recall` that Task 3 gave a queue entry is now `second`: Task 5b also puts it on the written exercise that follows a first spoken answer, which is not a reinforcement. The exercise `recall` keeps its name. In the French comments « rappel » is now « renforcement » |
 | 4. `/to-tickets` | done, 13 October 2026: thirteen tickets, #13 to #25, sub-issues of #12, each labelled `ready-for-agent`, with the fifteen blocking edges of step 4's table as native dependencies. Checked on GitHub against that table. In task order: 1 is #13, 2 is #14, 3 is #15, 4 is #16, 5 is #17, 5b is #18, 6 is #19, 7 is #20, 8 is #21, 9 is #22, 9b is #23, 10 is #24, 11 is #25 |
-| 5. Guardrail hook, then the run of the thirteen tasks | done, 14 October 2026. Before Task 1 the hook refused `git push --dry-run origin main` for the session of the run and for one subagent. The thirteen tasks are on `phase-1-engine` as fourteen commits, `6bc029a` to `9938ee6`, in draft pull request #26, followed by two from the review of the whole branch: a smoke check that bites again, and `README.md`, `TESTING.md`, `CLAUDE.md` and a comment of `supabase/schema.sql` brought in line with the code. Each task was reviewed before the next began, each ticket carries what its done-check printed, and CI is green on every push, the stale-build check on Linux included. Under `src/` and `test/` four files differ from the build this plan was verified on: `ENGINE_EPOCH` is 13 October, the day Task 8 was implemented, as that task asks; the midnight check of Task 3 crosses midnight on any host and checks the budget; `HOLLOW_BUDGET` of Task 10 fails when its count falls, like the other two; one empty line of `test/pace.js`. The listings of Tasks 3 and 10 below still show the old lines. **Before step 7: the review of Task 8 found that a device still on the previous build disarms its own migration, and four smaller faults of the reset, all reproduced and none fixed, because every remedy changes ADR 0006. The review of the whole branch found that step 7 itself, on a Preview while production serves the previous build to the same account, creates that condition. They are on #21: settle them, or run step 7 on a throwaway account.** What the reviews left for step 6, sorted, and the run's ledger are in `../vlaams-PROTOTYPE-when-first-spoken/step-5-run/` |
+| 5. Guardrail hook, then the run of the thirteen tasks | done, 14 October 2026. Before Task 1 the hook refused `git push --dry-run origin main` for the session of the run and for one subagent. The thirteen tasks are on `phase-1-engine` as fourteen commits, `6bc029a` to `9938ee6`, in draft pull request #26, followed by two from the review of the whole branch: a smoke check that bites again, and `README.md`, `TESTING.md`, `CLAUDE.md` and a comment of `supabase/schema.sql` brought in line with the code. Each task was reviewed before the next began, each ticket carries what its done-check printed, and CI is green on every push, the stale-build check on Linux included. Under `src/` and `test/` four files differ from the build this plan was verified on: `ENGINE_EPOCH` is 13 October, the day Task 8 was implemented, as that task asks; the midnight check of Task 3 crosses midnight on any host and checks the budget; `HOLLOW_BUDGET` of Task 10 fails when its count falls, like the other two; one empty line of `test/pace.js`. **Before step 7: the review of Task 8 found that a device still on the previous build disarms its own migration, and four smaller faults of the reset, all reproduced and none fixed, because every remedy changes ADR 0006. The review of the whole branch found that step 7 itself, on a Preview while production serves the previous build to the same account, creates that condition. They are on #21: settle them, or run step 7 on a throwaway account.** What the reviews left for step 6, sorted, and the run's ledger are in `../vlaams-PROTOTYPE-when-first-spoken/step-5-run/` |
 | 6. `/code-review main`, PR body, PR out of draft | not started |
 | 7. The two-day check | not started |
 | 8. Merge | not started |
@@ -1660,13 +1660,20 @@ In `test/engine.js`, insert these six blocks between the block *La panne réelle
     ok(back === half.length, 'of ' + half.length + ' items met before quitting, only ' + back + ' come back the next day');
     console.log('  séance quittée après ' + half.length + ' rencontres : toutes reviennent le lendemain');
 
-    /* Minuit passe pendant la séance : elle se termine, et le budget repart de zéro. */
+    /* Minuit passe pendant la séance : elle se termine, et le budget repart de zéro.
+       23 h 58 à l'heure de la machine, et non à celle de Bruxelles : la CI tourne
+       en UTC, où l'instant écrit en dur ne passait aucun minuit. Et le budget du
+       jour est presque dépensé avant : sinon rien ne distingue un budget qui
+       repart d'un budget qui continue. */
     fresh();
-    B.clock.set(Date.parse('2026-10-05T21:58:00Z'));      // 23 h 58 à Bruxelles
+    B.clock.set(new Date(2026, 9, 5, 23, 58).getTime());
     NL.state.touchDay();
+    NL.srs.spend(NL.srs.pace().cap - 30);
+    const eve = NL.util.dayKey();
     const before = play().length;
-    ok(before >= 20, 'a session that crosses midnight stopped after ' + before + ' exercises');
-    ok(NL.srs.plan().total > 0, 'after midnight the new day offers nothing');
+    const crossed = NL.util.dayKey() !== eve;
+    ok(crossed && before >= 20, crossed ? 'a session that crosses midnight stopped after ' + before + ' exercises' : 'the fixture is wrong: no midnight passed during the session');
+    ok(NL.srs.budgetLeft() > 30 && NL.srs.plan().total > 0, 'after midnight the new day offers nothing: ' + NL.srs.budgetLeft() + ' exercises left of the day');
     console.log('  minuit pendant la séance : ' + before + ' exercices servis, et la journée suivante s’ouvre');
 
     /* Un mot ajouté à la main est rencontré à la séance suivante, pas après tout le cours. */
@@ -5684,6 +5691,7 @@ NL.state.open().then(() => {
      mais compté, et le compte ne peut que baisser. */
   const HOLLOW_BUDGET = 4;
   ok(hollow <= HOLLOW_BUDGET, hollow + ' échelons sans aucun exercice possible, budget ' + HOLLOW_BUDGET + ' — baisser le budget, jamais le lever');
+  ok(hollow >= HOLLOW_BUDGET, 'seulement ' + hollow + ' échelons de secours : baisser HOLLOW_BUDGET à ' + hollow + ' pour verrouiller le gain');
   ok(pairs > 5000, 'only ' + pairs + ' exercises were built: the content did not load');
   console.log('  exercices       ' + pairs + ' construits, ' + broken + ' échec(s), ' + hollow + ' échelon(s) de secours');
 
