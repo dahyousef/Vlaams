@@ -69,8 +69,9 @@ NL.state = (function () {
   /* Remet la PROGRESSION à zéro : les fiches, le journal des réponses, la
      frontière, et les conversations et écoutes cochées — repartir de zéro en
      gardant « six conversations faites », ce n'est pas repartir de zéro.
-     Réglages, score et mots personnels restent.
-       before   n'efface que ce qui descend d'une remise à zéro antérieure à cet instant (défaut : tout)
+     Réglages, score et mots personnels restent, et le compteur du jour aussi :
+     une remise à zéro efface la progression, pas l'effort déjà fait aujourd'hui.
+       before  n'efface que ce qui descend d'une remise à zéro antérieure à cet instant (défaut : tout)
        silent   la remise à zéro vient du serveur : elle n'y repart pas
      L'instant est gardé dans les réglages (resetAt) : c'est lui qui dit aux
      autres appareils que leur copie est périmée. */
@@ -78,8 +79,7 @@ NL.state = (function () {
     const cut = before || Date.now();
     drop(cut);
     setMeta({
-      resetAt: Math.max(meta.resetAt || 0, cut), reached: 0, exDay: null, exToday: 0,
-      scenariosDone: [], listenDone: []
+      resetAt: Math.max(meta.resetAt || 0, cut), reached: 0, scenariosDone: [], listenDone: []
     }, silent);
     if (!silent) emit('reset', cut);
   }
@@ -94,13 +94,19 @@ NL.state = (function () {
     mem.log = mem.log.filter(l => (l.base || 0) >= cut);
     rewrite();
   }
-  function rewrite() {
+  /* withCustom : les mots personnels aussi (une restauration les remplace ; une
+     remise à zéro les garde). */
+  function rewrite(withCustom) {
     if (useIDB) {
       try {
         const s = db.transaction('srs', 'readwrite').objectStore('srs');
         s.clear(); mem.srs.forEach(r => s.put(r));
         const l = db.transaction('log', 'readwrite').objectStore('log');
         l.clear(); mem.log.forEach(e => l.put(e));
+        if (withCustom) {
+          const c = db.transaction('custom', 'readwrite').objectStore('custom');
+          c.clear(); mem.custom.forEach(r => c.put(r));
+        }
       } catch (e) {}
     }
     saveLS();
@@ -152,13 +158,19 @@ NL.state = (function () {
       (raw.srs || []).forEach(r => mem.srs.set(r.id, r));
       (raw.custom || []).forEach(r => mem.custom.set(r.id, r));
       if (raw.meta) meta = Object.assign(defaults(), raw.meta);
+      /* Le journal aussi : sans lui, « Ce qui résiste » repartait vide à chaque
+         rechargement sur le repli. */
+      mem.log = (raw.log || []).slice(-LOG_KEEP);
     } catch (e) { /* private mode: run from memory only */ }
   }
+  /* Le repli n'a que quelques Mo : il ne garde que les dernières lignes du journal. */
+  const LS_LOG_KEEP = 3000;
   const saveLS = NL.util.debounce(() => {
     if (useIDB) return;
     try {
       localStorage.setItem(LS, JSON.stringify({
-        srs: [...mem.srs.values()], custom: [...mem.custom.values()], meta
+        srs: [...mem.srs.values()], custom: [...mem.custom.values()], meta,
+        log: mem.log.slice(-LS_LOG_KEEP)
       }));
     } catch (e) {}
   }, 400);
@@ -222,6 +234,7 @@ NL.state = (function () {
     mem.log.push(entry);
     if (mem.log.length > LOG_KEEP) mem.log.shift();
     if (useIDB) { try { db.transaction('log', 'readwrite').objectStore('log').put(entry); } catch (e) {} }
+    else saveLS();
     if (!silent) emit('log', entry);
   }
   const logs = () => mem.log;
@@ -256,28 +269,36 @@ NL.state = (function () {
     return {
       app: 'vlaams-onderweg', v: 1, at: Date.now(),
       meta, srs: [...mem.srs.values()], custom: [...mem.custom.values()],
-      log: mem.log.slice(-2000)
+      log: mem.log.slice()      // tout le journal : il tient au plus LOG_KEEP lignes
     };
   }
+  /* Une sauvegarde exportée avant ENGINE_EPOCH vient de l'ancien moteur : sa
+     progression n'a plus de sens, et la migration l'effacerait au chargement. */
+  const isOldBackup = data => !!data && (data.at || 0) < ENGINE_EPOCH;
   function importAll(data) {
     if (!data || data.app !== 'vlaams-onderweg' || !Array.isArray(data.srs)) return false;
     /* Restaurer une sauvegarde est une remise à zéro suivie d'un rechargement :
        les fiches et les lignes sont datées de maintenant et descendent de cet
        instant, sinon les autres appareils et la migration les prendraient pour
-       de la progression effacée. */
+       de la progression effacée. Une sauvegarde de l'ancien moteur rend ce
+       qu'une remise à zéro garde — réglages hors progression, score, mots
+       personnels — et ni fiche ni ligne de journal. */
+    const old = isOldBackup(data);
     const stamp = Date.now();
     mem.srs.clear(); mem.custom.clear();
-    data.srs.forEach(r => { if (r && r.id) { r.updatedAt = stamp; r.base = stamp; mem.srs.set(r.id, r); } });
-    (data.custom || []).forEach(r => { if (r && r.id) { mem.custom.set(r.id, r); put('custom', r); } });
-    mem.log = Array.isArray(data.log) ? data.log : [];
+    if (!old) data.srs.forEach(r => { if (r && r.id) { r.updatedAt = stamp; r.base = stamp; mem.srs.set(r.id, r); } });
+    (data.custom || []).forEach(r => { if (r && r.id) mem.custom.set(r.id, r); });
+    mem.log = !old && Array.isArray(data.log) ? data.log : [];
     mem.log.forEach(l => { if (l && typeof l === 'object') l.base = stamp; });
-    /* Les deux magasins sont réécrits en entier : écrire les fiches restaurées
+    /* Les trois magasins sont réécrits en entier : écrire les fiches restaurées
        par-dessus laissait dans IndexedDB celles d'après la sauvegarde, et
        l'ancien journal, que la migration effaçait au chargement suivant en
-       annonçant que le moteur avait changé. */
-    rewrite();
+       annonçant que le moteur avait changé ; un mot ajouté après la sauvegarde
+       revenait de même. */
+    rewrite(true);
     if (data.meta) meta = Object.assign(defaults(), data.meta);
-    setMeta({ resetAt: stamp, updatedAt: stamp }, true);
+    setMeta(Object.assign({ resetAt: stamp, updatedAt: stamp },
+      old ? { dataVersion: 3, reached: 0, scenariosDone: [], listenDone: [] } : {}), true);
     emit('reset', stamp);
     return true;
   }
@@ -299,5 +320,5 @@ NL.state = (function () {
     setMeta(patch);
   }
 
-  return { open, migrate, resetProgress, rebase, ENGINE_EPOCH, onWrite, rec, setRec, allRecs, seenCount, meta: m, setMeta, logReview, logs, addCustom, putCustom, delCustom, customs, clearAll, touchDay, creditDay, exportAll, importAll, get storage() { return useIDB ? 'IndexedDB' : 'localStorage'; } };
+  return { open, migrate, resetProgress, rebase, ENGINE_EPOCH, onWrite, rec, setRec, allRecs, seenCount, meta: m, setMeta, logReview, logs, addCustom, putCustom, delCustom, customs, clearAll, touchDay, creditDay, exportAll, importAll, isOldBackup, get storage() { return useIDB ? 'IndexedDB' : 'localStorage'; } };
 })();

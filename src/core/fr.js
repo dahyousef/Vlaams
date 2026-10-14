@@ -253,6 +253,7 @@ NL.t = {
   quitNo: 'Continuer',
   exported: 'Sauvegarde téléchargée.',
   imported: 'Progression restaurée.',
+  importedOld: 'Sauvegarde de l’ancien moteur : réglages, score et mots restaurés, la progression repart de zéro.',
   importFailed: 'Ce fichier n’est pas une sauvegarde valable.',
   wiped: 'Progression remise à zéro.',
 

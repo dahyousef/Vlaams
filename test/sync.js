@@ -853,6 +853,141 @@ const items = NL => NL.content.allItems();
     console.log('  le serveur ne perd que ce qui précède l’époque');
   }
 
+  console.log('\nUNE REMISE À ZÉRO GARDE L’EFFORT DU JOUR');
+  {
+    /* 10. Remettre la progression à zéro n'efface pas ce qui a été dépensé aujourd'hui,
+       ni ici, ni sur le serveur, ni après la synchro suivante. */
+    const U1 = device('U1', true), U2 = device('U2', true);
+    await U1.boot(); await U1.signIn('keep-day@example.com');
+    await U2.boot(); await U2.signIn('keep-day@example.com');
+    U1.NL.srs.spend(7);
+    await U1.NL.sync.flush();
+    await U2.NL.sync.pull();
+    const day = U1.NL.state.meta().exDay, uid1 = U1.NL.sync.user.id;
+    ok(U2.NL.state.meta().exToday === 7, 'the fixture is wrong: the second device should know the 7 exercises of the day');
+    await wait(3);
+    const left = U1.NL.srs.budgetLeft();
+    U1.NL.state.resetProgress();
+    ok(U1.NL.state.meta().exToday === 7 && U1.NL.state.meta().exDay === day &&U1.NL.srs.budgetLeft() === left,
+      'right after the reset, before any synchronisation, today’s counter is ' + U1.NL.state.meta().exToday + ' on ' + U1.NL.state.meta().exDay + ', expected 7 on ' + day + ' (budget left ' + U1.NL.srs.budgetLeft() + ')');
+    await U1.NL.sync.flush();
+    ok(U1.NL.state.meta().exToday === 7 &&U1.NL.state.meta().exDay === day,
+      'the reset changed today’s counter: ' + U1.NL.state.meta().exToday + ' on ' + U1.NL.state.meta().exDay + ', expected 7 on ' + day);
+    ok(rowsFor('user_meta', uid1)[0].data.exToday === 7, 'the reset sent a different counter to the server: ' + rowsFor('user_meta', uid1)[0].data.exToday);
+    await U1.NL.sync.pull();
+    ok(U1.NL.state.meta().exToday === 7, 'the synchronisation after the reset brought back a counter of ' + U1.NL.state.meta().exToday);
+    await U2.NL.sync.pull();
+    ok(U2.NL.state.meta().exToday === 7 && U2.NL.srs.budgetLeft() === U1.NL.srs.budgetLeft(),
+      'the other device holds a counter of ' + U2.NL.state.meta().exToday + ' after the reset');
+    console.log('  le compteur du jour survit à la remise à zéro, ici, sur le serveur et sur l’autre appareil');
+  }
+
+  console.log('\nUNE SAUVEGARDE DE L’ANCIEN MOTEUR');
+  {
+    /* 11. Une sauvegarde faite avant ENGINE_EPOCH rend ce qu'une remise à zéro garde —
+       réglages sans la progression, score, mots personnels — et aucune fiche ni ligne. */
+    const own = { id: 'x-old', kind: 'word', unit: 'eigen', level: 'eigen', nl: 'de goesting', fr: 'l’envie', updatedAt: 5 };
+    const old = { app: 'vlaams-onderweg', v: 1, at: EPOCH - 1000,
+      meta: { xp: 300, theme: 'dark', pace: 'fast', reached: 4, scenariosDone: ['bakker'], listenDone: ['les1'], dataVersion: 2, resetAt: 0, updatedAt: 9 },
+      srs: oi.slice(0, 3).map(it => oldRec(it, EPOCH - DAY)), custom: [own], log: oi.slice(0, 3).map(it => oldLog(it, EPOCH - DAY)) };
+    const O1 = device('O1', false);
+    await O1.NL.state.open();
+    oi.slice(10, 12).forEach(it => O1.NL.srs.grade(it, false, { ex: 'type' }));
+    O1.NL.state.addCustom({ id: 'x-here', nl: 'de kop', fr: 'la tasse' });
+    ok(O1.NL.state.seenCount() === 2 && O1.NL.state.logs().length === 2, 'the fixture is wrong: the device should hold 2 records and 2 log lines');
+    ok(O1.NL.state.isOldBackup(old) === true, 'a backup made before the epoch was not recognised as made on the old engine');
+    ok(O1.NL.state.importAll(clone(old)), 'import refused an old-engine backup');
+    const om = O1.NL.state.meta();
+    ok(O1.NL.state.seenCount() === 0 && O1.NL.state.logs().length === 0,
+      'an old-engine backup brought back ' + O1.NL.state.seenCount() + ' record(s) and ' + O1.NL.state.logs().length + ' log line(s)');
+    ok(om.xp === 300 && om.theme === 'dark' && om.pace === 'fast', 'an old-engine backup did not restore the score or the settings: ' + JSON.stringify([om.xp, om.theme, om.pace]));
+    ok(O1.NL.state.customs().map(c => c.id).join() === 'x-old', 'an old-engine backup did not restore the own words: ' + O1.NL.state.customs().map(c => c.id));
+    ok(om.reached === 0 && om.scenariosDone.length === 0 && om.listenDone.length === 0,
+      'an old-engine backup set the progress fields: ' + JSON.stringify([om.reached, om.scenariosDone, om.listenDone]));
+    ok(om.dataVersion === 3 && om.resetAt > EPOCH, 'an old-engine backup left the data version or the reset stamp of the old engine');
+    /* Rechargé : la migration n'a plus rien à effacer, et l'écran n'annonce rien. */
+    await wait(450);
+    const O2 = device('O2', false, clone(O1.store));
+    await O2.NL.state.open();
+    ok(O2.NL.state.migrate() === false && O2.NL.state.seenCount() === 0 && O2.NL.state.meta().xp === 300 && O2.NL.state.customs().length === 1,
+      'after reloading an old-engine restore the device holds ' + O2.NL.state.seenCount() + ' record(s), xp ' + O2.NL.state.meta().xp);
+
+    /* Une sauvegarde faite depuis l'époque se restaure comme avant. */
+    const fresh = clone(O1.NL.state.exportAll());
+    ok(O1.NL.state.isOldBackup(fresh) === false, 'a backup made since the epoch was taken for an old-engine one');
+    const O3 = device('O3', false);
+    await O3.NL.state.open();
+    oi.slice(0, 4).forEach(it => O3.NL.srs.grade(it, true, { ex: 'type' }));
+    O3.NL.state.setMeta({ reached: 2, scenariosDone: ['bakker'] });
+    const mine = clone(O3.NL.state.exportAll());
+    O1.NL.state.importAll(mine);
+    ok(O1.NL.state.seenCount() === 4 && O1.NL.state.logs().length === 4 && O1.NL.state.meta().reached === 2 && O1.NL.state.meta().scenariosDone.join() === 'bakker',
+      'a backup made since the epoch no longer restores its records, log and progress: ' + O1.NL.state.seenCount() + ' / ' + O1.NL.state.logs().length);
+    ok(typeof O1.NL.t.importedOld === 'string' && O1.NL.t.importedOld.length > 0, 'missing string importedOld');
+    console.log('  ancienne : réglages, score, mots ; ni fiches ni journal. Récente : tout, comme avant');
+  }
+
+  console.log('\nUNE RESTAURATION VIDE LES MOTS PERSONNELS');
+  {
+    /* 11b. Un mot ajouté après la sauvegarde ne revient pas au chargement suivant. */
+    const W1 = device('W1', false, null, true);
+    await W1.NL.state.open();
+    W1.NL.state.addCustom({ id: 'x-keep', nl: 'de kop', fr: 'la tasse' });
+    await wait(10);
+    const dump = clone(W1.NL.state.exportAll());
+    W1.NL.state.addCustom({ id: 'x-later', nl: 'het glas', fr: 'le verre' });
+    await wait(10);
+    ok(W1.NL.state.importAll(clone(dump)), 'import refused');
+    await wait(10);
+    ok(W1.NL.state.customs().map(c => c.id).join() === 'x-keep', 'the restore kept the word added after the backup in memory');
+    const W2 = device('W2', false, clone(W1.store), W1.idb);
+    await W2.NL.state.open();
+    ok(W2.NL.state.customs().map(c => c.id).join() === 'x-keep',
+      'after a restore and a reload the words are ' + W2.NL.state.customs().map(c => c.id) + ', expected only x-keep');
+    console.log('  le mot ajouté après la sauvegarde ne revient pas');
+  }
+
+  console.log('\nLE JOURNAL SUR LE REPLI localStorage ET DANS LA SAUVEGARDE');
+  {
+    /* 13. Sur le repli, le journal survit à un rechargement : « Ce qui résiste » les relit. */
+    const F = device('Flog', false);
+    await F.NL.state.open();
+    oi.slice(0, 5).forEach(it => F.NL.srs.grade(it, false, { ex: 'type' }));
+    await wait(450);
+    const F2 = device('Flog2', false, clone(F.store));
+    await F2.NL.state.open();
+    ok(F2.NL.state.storage === 'localStorage', 'the fixture is wrong: the fallback was not used');
+    F2.NL.content.refresh();
+    ok(F2.NL.state.logs().length === 5 && F2.NL.srs.mistakes().length === 5,
+      'after a reload on the fallback « Ce qui résiste » lists ' + F2.NL.srs.mistakes().length + ' item(s), expected the 5 missed');
+    /* Au plus 3 000 lignes dans localStorage, les dernières. */
+    const big = device('Fbig', false);
+    await big.NL.state.open();
+    for (let i = 0; i < 3200; i++) big.NL.state.logReview({ id: oi[i % 50].id, t: 1e12 + i, ok: false, stage: 1, kind: 'word', ex: 'type' });
+    await wait(450);
+    const big2 = device('Fbig2', false, clone(big.store));
+    await big2.NL.state.open();
+    const bl = big2.NL.state.logs();
+    ok(bl.length === 3000 && bl[bl.length - 1].t === 1e12 + 3199 && bl[0].t === 1e12 + 200,
+      'the fallback kept ' + bl.length + ' log line(s), expected the last 3000');
+
+    /* 14. La sauvegarde garde tout le journal, pas ses 2 000 dernières lignes. */
+    const L1 = device('L1', false, null, true);
+    await L1.NL.state.open();
+    for (let i = 0; i < 2500; i++) L1.NL.state.logReview({ id: oi[i % 50].id, t: Date.now() - 2500 + i, ok: i % 2 === 0, stage: 1, kind: 'word', ex: 'type' });
+    const full = clone(L1.NL.state.exportAll());
+    ok(full.log.length === 2500, 'the backup holds ' + full.log.length + ' log line(s), expected 2500');
+    const L2 = device('L2', false, null, true);
+    await L2.NL.state.open();
+    ok(L2.NL.state.importAll(clone(full)), 'import refused');
+    ok(L2.NL.state.logs().length === 2500, 'the restore brought back ' + L2.NL.state.logs().length + ' log line(s), expected 2500');
+    await wait(20);
+    const L3 = device('L3', false, clone(L2.store), L2.idb);
+    await L3.NL.state.open();
+    ok(L3.NL.state.logs().length === 2500, 'after a restore and a reload the log holds ' + L3.NL.state.logs().length + ' line(s), expected 2500');
+    console.log('  journal relu sur le repli, 3 000 lignes au plus ; sauvegarde complète : 2 500 lignes aller-retour');
+  }
+
   console.log('\nÉCRAN COMPTE');
   {
     const t = A.NL.t;

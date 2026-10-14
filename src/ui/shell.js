@@ -252,10 +252,11 @@ NL.ui = (function () {
   function restore(raw) {
     let data = null;
     try { data = JSON.parse(raw); } catch (e) { /* reported below */ }
+    const old = NL.state.isOldBackup(data);
     if (NL.state.importAll(data)) {
       NL.content.refresh(); sheet = null;
       if (NL.sync.user) { NL.sync.queueAll(); NL.sync.flush(); }
-      render(); toast(t.imported);
+      render(); toast(old ? t.importedOld : t.imported);
     }
     else toast(t.importFailed);
   }
