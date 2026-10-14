@@ -197,9 +197,11 @@ NL.srs = (function () {
          celui du sens. Voir docs/adr/0004. */
       const jump = (r.reps === 1 && item.cognate) ? 2 : 1;
       r.stage = clamp(r.stage + jump, 0, top);
-      /* Le défi ne fait pas passer l'échelon 3 à un élément jamais dit à voix
-         haute : son premier exercice parlé vient encore à l'échelon 3. */
-      if (opts && opts.defi && !r.said && r.stage > 3) r.stage = Math.max(3, r.stage - jump);
+      /* Le défi ne fait pas passer à un élément jamais dit à voix haute le premier
+         échelon où son genre le fait dire — le 3, et le 4 pour une règle de
+         grammaire : son premier exercice parlé y vient encore. */
+      const aloudAt = (RUNGS[item.kind] || RUNGS.word).findIndex(set => set.indexOf('speak') >= 0);
+      if (opts && opts.defi && !r.said && aloudAt >= 0 && r.stage > aloudAt) r.stage = Math.max(aloudAt, r.stage - jump);
       r.ease = clamp(r.ease + 0.05, 1.3, 2.9);
       /* PIÈGE 1 — au sommet de son palier, l'intervalle doit continuer de croître.
          Figé sur STEP[rung], l'élément revient tous les jours, à vie. */
@@ -370,22 +372,75 @@ NL.srs = (function () {
     };
     /* Budget presque épuisé : on rabote les révisions d'abord. La réserve survit
        au rabotage — c'est précisément ce qu'elle doit faire. Le coût se compte
-       sur les éléments réellement retenus : ceux qu'on dit pour la première
-       fois en valent deux. */
-    while (exercises(pick(nDue), nNew) > left && nDue > 0) nDue--;
-    while (exercises(pick(nDue), nNew) > left && nNew > 1) nNew--;
+       sur la séance servie : une rencontre, ou un élément dit pour la première
+       fois, en vaut deux quand son second exercice trouve sa place (voir
+       lace()), un seul sinon. */
+    while (exercises(pick(nDue), unmet.slice(0, nNew)) > left && nDue > 0) nDue--;
+    while (exercises(pick(nDue), unmet.slice(0, nNew)) > left && nNew > 1) nNew--;
+    /* Le rabotage a pu prendre trop : les rencontres gardées, une révision de
+       plus pèse parfois moins que ce qu'elle rend possible (le renforcement de
+       chaque rencontre). On les rend une à une tant que la séance servie tient
+       dans ce qui reste du jour. La réserve n'y est pas touchée. */
+    while (nDue < due.length && nDue + nNew < places && exercises(pick(nDue + 1), unmet.slice(0, nNew)) <= left) nDue++;
     return { due: pick(nDue), fresh: unmet.slice(0, nNew), left };
   }
 
-  /* Ce qu'une séance coûte en exercices. Une rencontre en coûte deux, et un
-     élément dit pour la première fois aussi : chacun y revient une seconde fois. */
-  const exercises = (due, nNew) => due.reduce((n, it) => n + (firstAloud(it) ? 2 : 1), 0) + 2 * nNew;
+  /* ---------------- la disposition d'une séance ---------------- */
+  /* Un second exercice — le renforcement d'une rencontre, ou l'écrit qui suit une
+     première réponse à voix haute — ne vient qu'avec au moins SECOND_GAP exercices
+     entre lui et le dernier exercice de son élément : écrire un mot qu'on vient
+     de voir à l'écran ne prouve rien. Là où cet écart ne tient pas, il n'est pas
+     servi, et l'élément reste comme après une séance quittée entre les deux :
+     il revient le lendemain. Une reprise après une réponse fausse est une
+     correction, non un second exercice : cet écart ne la lie pas. */
+  const SECOND_GAP = 3;
+  const apart = (first, at) => at - first > SECOND_GAP;
+
+  /* Tresse les rencontres, les révisions et les seconds exercices. C'est LA
+     disposition d'une séance : plan() la compte sur les éléments, la séance la
+     remplit avec leurs exercices.
+       meetings, reviews  les premiers exercices, dans l'ordre
+       toSay(x)           vrai pour une première réponse à voix haute
+       second(x)          ce qui tient la place du second exercice de x
+     Les renforcements se glissent à intervalles réguliers dans ce qui suit leur
+     rencontre : groupés en fin de séance, ils formeraient une longue file du même
+     exercice. L'écrit qui suit une première réponse à voix haute ferme la séance,
+     le plus loin possible d'elle ; trois révisions ordinaires sont gardées pour la
+     fin, afin qu'il ne la suive jamais aussitôt. Ce qui n'a pas trouvé sa place à
+     la fin n'est pas servi. La longueur ne dépend que du nombre de rencontres, de
+     premières fois et de révisions ordinaires, jamais de leur ordre : l'annonce
+     et la séance comptent donc la même chose. */
+  function lace(meetings, reviews, toSay, second) {
+    const plain = reviews.filter(x => !toSay(x)).slice(-SECOND_GAP);
+    const base = meetings.concat(reviews.filter(x => plain.indexOf(x) < 0), plain);
+    const every = Math.max(1, Math.floor(base.length / Math.max(1, meetings.length)));
+    const out = [], waiting = [], aloud = [];
+    let i = 0, since = 0;
+    while (i < base.length || waiting.length) {
+      if (waiting.length && apart(waiting[0].at, out.length) && (i >= base.length || since >= every)) {
+        out.push(second(waiting.shift().x)); since = 0;
+        continue;
+      }
+      if (i >= base.length) break;
+      const x = base[i];
+      if (i < meetings.length) waiting.push({ at: out.length, x });
+      else if (toSay(x)) aloud.push({ at: out.length, x });
+      out.push(x); i++; since++;
+    }
+    aloud.forEach(a => { if (apart(a.at, out.length)) out.push(second(a.x)); });
+    return out;
+  }
+
+  /* Ce qu'une séance coûte en exercices : la longueur de sa disposition. Une
+     rencontre en coûte deux, une première fois à voix haute aussi, quand leur
+     second exercice trouve sa place ; une seule sinon. */
+  const exercises = (due, fresh) => lace(fresh, due, firstAloud, x => x).length;
 
   /* Ce que l'écran d'accueil annonce : les comptes de compose(), rien d'autre.
        total = éléments ; tasks = exercices, comptés par exercises() */
   function plan() {
     const c = compose('vandaag');
-    const tasks = exercises(c.due, c.fresh.length);
+    const tasks = exercises(c.due, c.fresh);
     return {
       due: c.due.length, fresh: c.fresh.length, total: c.due.length + c.fresh.length,
       tasks, left: c.left, mins: Math.max(1, Math.round(tasks * 0.22)),
@@ -403,6 +458,7 @@ NL.srs = (function () {
   return {
     RUNGS, STEP, PACE, MAX_STAGE, MAX_TASKS, PRODUCE, NEW_SHARE, NEW_MIN, NEW_MAX, TIER_MAX, RETIRE_AT,
     maxRung, pace, exerciseFor, firstAloud, needsVoice, supports, grade, seed, isSeen, stageOf, atTop,
-    dueItems, counts, freshItems, compose, plan, unitSpan, mistakes, recOf, budgetLeft, spend
+    dueItems, counts, freshItems, compose, plan, unitSpan, mistakes, recOf, budgetLeft, spend,
+    SECOND_GAP, apart, lace
   };
 })();

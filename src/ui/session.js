@@ -86,8 +86,9 @@ NL.screens.sessie = (function () {
   /* Trois temps : les rencontres, les révisions, puis le renforcement de chaque
      rencontre. C'est ce renforcement qui remplace l'ancien retour à douze minutes :
      l'élément revient quelques minutes plus tard, dans la même séance, sans
-     jamais devenir une échéance. Sa place est réservée dès le départ, pour que
-     le compteur de la séance ne s'allonge pas en cours de route. */
+     jamais devenir une échéance. Quand il trouve sa place, elle est réservée dès
+     le départ, pour que le compteur de la séance ne s'allonge pas en cours de
+     route ; sinon il n'est pas servi, et l'élément revient le lendemain. */
   function start(source) {
     NL.state.touchDay();
     if (source === 'defi') return startDefi();
@@ -107,7 +108,7 @@ NL.screens.sessie = (function () {
     const recent = [];
     const meetings = spread(build(c.fresh, recent), queue.length ? 'match' : NL.state.meta().lastEx || null);
     const reviews = spread(build(U.shuffle(c.due), recent), meetings.length ? meetings[meetings.length - 1].ex : NL.state.meta().lastEx || null);
-    queue.push.apply(queue, lace(meetings, reviews));
+    queue.push.apply(queue, NL.srs.lace(meetings, reviews, toSay, slot));
     queue.forEach((x, i) => { if (x.second) x.metAt = queue.findIndex(y => !y.second && y.ex !== 'match' && y.items[0] === x.items[0]); });
 
     if (queue.length === 0) { L = null; return false; }
@@ -123,38 +124,15 @@ NL.screens.sessie = (function () {
     return !!L.queue.length;
   }
 
-  /* Un renforcement ne revient jamais à moins de trois exercices de sa rencontre. */
-  const SECOND_GAP = 3;
-
-  /* Tresse les rencontres, les révisions et le renforcement de chaque rencontre. Les
-     renforcements se glissent à intervalles réguliers dans ce qui suit leur rencontre :
-     groupés en fin de séance, ils formeraient une longue file du même exercice.
+  /* Un second exercice ne revient jamais à moins de SECOND_GAP exercices de son
+     élément : la règle et la disposition de la séance sont dans NL.srs.lace().
 
      Un élément qu'on dit à voix haute pour la première fois revient lui aussi
      une seconde fois, et c'est ce second exercice qui décide de son échelon :
-     par écrit s'il vient d'être dit, de nouveau à voix haute sinon. Celui-là
-     ferme la séance, le plus loin possible du premier : écrire un mot qu'on
-     vient de lire à l'écran ne prouve rien. Trois révisions ordinaires sont
-     gardées pour la fin, afin qu'il ne suive jamais aussitôt. */
+     par écrit s'il vient d'être dit, de nouveau à voix haute sinon. */
+  const SECOND_GAP = NL.srs.SECOND_GAP;
   const toSay = x => x.ex === 'speak' && NL.srs.firstAloud(x.items[0]);
-  function lace(meetings, reviews) {
-    const plain = reviews.filter(x => !toSay(x)).slice(-SECOND_GAP);
-    const last = reviews.filter(toSay).map(x => ({ ex: null, task: null, items: x.items, second: true }));
-    const base = meetings.concat(reviews.filter(x => plain.indexOf(x) < 0), plain);
-    const every = Math.max(1, Math.floor(base.length / Math.max(1, meetings.length)));
-    const out = [], waiting = [];
-    let i = 0, since = 0;
-    while (i < base.length || waiting.length) {
-      const ripe = waiting.length && out.length - waiting[0].after > SECOND_GAP;
-      if (waiting.length && (i >= base.length || (ripe && since >= every))) {
-        out.push(waiting.shift().slot); since = 0;
-        continue;
-      }
-      if (i < meetings.length) waiting.push({ after: out.length, slot: { ex: null, task: null, items: base[i].items, second: true } });
-      out.push(base[i++]); since++;
-    }
-    return out.concat(last);
-  }
+  const slot = x => ({ ex: null, task: null, items: x.items, second: true });
 
   /* Une séance sur ce qui résiste : les éléments le plus souvent ratés, chacun à
      l'échelon où il se trouve. Comme le défi, elle ne compte pas dans le budget
@@ -183,7 +161,7 @@ NL.screens.sessie = (function () {
       const avoid = new Set([prev, after].filter(Boolean));
       let at = L.at, name = NL.srs.exerciseFor(L.queue[L.at].items[0], avoid, L.quiet);
       for (let j = L.at + 1; name === prev && j < L.queue.length && !L.queue[j].task; j++) {
-        if (L.at - L.queue[j].metAt < SECOND_GAP) continue;
+        if (!NL.srs.apart(L.queue[j].metAt, L.at)) continue;
         const n = NL.srs.exerciseFor(L.queue[j].items[0], avoid, L.quiet);
         if (n !== prev) { at = j; name = n; }
       }
@@ -243,8 +221,7 @@ NL.screens.sessie = (function () {
       L.queue.forEach(x => x.items.forEach(it => here.add(it.id)));
       more = NL.srs.compose(L.source, undefined, { quiet: true, without: here }).due.slice(0, spoken);
     }
-    L.queue = head.concat(kept, spread(build(more, [], true), kept.length ? kept[kept.length - 1].ex : null));
-    L.queue.forEach(x => { if (x.second) x.metAt = L.queue.findIndex(y => !y.second && y.ex !== 'match' && y.items[0] === x.items[0]); });
+    L.queue = settle(head.concat(kept, spread(build(more, [], true), kept.length ? kept[kept.length - 1].ex : null)), L.at);
     Object.assign(L, blankTurn());
     L.phase = 'ask';
     /* Il ne restait que du parlé, et rien n'a encore été répondu : il n'y a pas
@@ -255,6 +232,27 @@ NL.screens.sessie = (function () {
     if (L.at >= L.queue.length) return finish();
     NL.ui.render();
     autoplay();
+  }
+
+  /* Resserrée, la file peut rapprocher un second exercice de son élément : il
+     attend alors que SECOND_GAP exercices l'en séparent de nouveau, comme dans
+     NL.srs.lace(), et n'est pas servi s'il n'y arrive pas avant la fin. */
+  function settle(queue, from) {
+    const out = queue.slice(0, from), waiting = [];
+    const ripe = () => waiting.findIndex(x => NL.srs.apart(x.metAt, out.length));
+    const flush = () => { for (let k = ripe(); k >= 0; k = ripe()) out.push(waiting.splice(k, 1)[0]); };
+    queue.slice(from).forEach(x => {
+      flush();
+      if (x.second) {
+        let k = out.length - 1;
+        while (k >= 0 && (out[k].second || out[k].ex === 'match' || out[k].items[0] !== x.items[0])) k--;
+        x.metAt = k;
+        if (!NL.srs.apart(k, out.length)) { waiting.push(x); return; }
+      }
+      out.push(x);
+    });
+    flush();
+    return out;
   }
 
   const cur = () => L && L.queue[L.at];

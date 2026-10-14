@@ -179,9 +179,12 @@ NL.state.open().then(() => {
     all.slice(0, 200).forEach(it => put(it, 3, T0 - DAY));
     NL.srs.spend(NL.srs.pace().cap - 5);
     const tight = NL.srs.compose('vandaag');
-    console.log('  cinq exercices de budget : ' + tight.due.length + ' révision(s), ' + tight.fresh.length + ' rencontre(s)');
+    /* Ce qu'elle coûte, c'est ce qu'elle sert : un second exercice qui ne tient
+       pas à trois exercices du premier n'est pas servi, et ne coûte rien. */
+    const spent = play().filter(x => x.ex !== 'match').length;
+    console.log('  cinq exercices de budget : ' + tight.due.length + ' révision(s), ' + tight.fresh.length + ' rencontre(s), ' + spent + ' exercice(s) servi(s)');
     ok(tight.fresh.length >= 1, 'a nearly spent day budget squeezed out every new item');
-    ok(tight.due.length + 2 * tight.fresh.length <= 5, 'the session costs more exercises than the day has left');
+    ok(spent <= 5, 'the session served ' + spent + ' exercises, more than the 5 the day has left');
     NL.srs.spend(5);
     ok(NL.srs.plan().total === 0, 'a spent day budget still offers a session');
 
@@ -460,9 +463,10 @@ NL.state.open().then(() => {
     set();
     NL.srs.spend(NL.srs.pace().cap - 7);
     const tight = NL.srs.compose('vandaag');
-    ok(cost(tight) <= 7, 'with seven exercises left in the day, the session costs ' + cost(tight));
+    const spent = play().filter(x => x.ex !== 'match').length;
+    ok(spent <= 7, 'with seven exercises left in the day, the session served ' + spent);
     ok(tight.fresh.length >= 1, 'a nearly spent day budget squeezed out every new item');
-    console.log('  raté une fois : redit ' + Math.min.apply(null, regaps) + ' exercices au moins avant d’être écrit ; raté deux fois : dit à la troisième, écrit le lendemain ; séance quittée : dit, échelon gardé ; sept exercices de budget : ' + tight.due.length + ' révision(s), ' + tight.fresh.length + ' rencontre(s), ' + cost(tight) + ' exercices');
+    console.log('  raté une fois : redit ' + Math.min.apply(null, regaps) + ' exercices au moins avant d’être écrit ; raté deux fois : dit à la troisième, écrit le lendemain ; séance quittée : dit, échelon gardé ; sept exercices de budget : ' + tight.due.length + ' révision(s), ' + tight.fresh.length + ' rencontre(s), ' + spent + ' exercice(s) servi(s)');
   }
 
   /* ------------------------------------------------------------------ */
@@ -711,6 +715,199 @@ NL.state.open().then(() => {
     const stuck = sd.filter(it => NL.srs.stageOf(it) !== 4);
     ok(stuck.length === 0, stuck.length + ' of ' + sd.length + ' said items did not climb to rung 4 in the challenge');
     console.log('  défi : ' + nv.length + ' jamais dits restent à l’échelon 3, ' + sd.length + ' déjà dits montent à 4');
+  }
+
+  /* ------------------------------------------------------------------ */
+  console.log('\nLE DÉFI — jamais dit, un élément s’arrête à son premier échelon parlé, et pas avant');
+  /* Une règle de grammaire ne se dit qu'à l'échelon 4 : le défi la mène de 3 à 4,
+     et l'y arrête tant qu'elle n'a pas été dite. */
+  {
+    fresh();
+    const pats = NL.content.allItems().filter(i => i.kind === 'pattern');
+    const ws = NL.content.allItems().filter(i => isWord(i) && !i.cognate).slice(0, 8);
+    const p3 = pats.slice(0, 4), p4 = pats.slice(4, 7), pSaid = pats.slice(7, 9);
+    const w3 = ws.slice(0, 4), wSaid = ws.slice(4, 8);
+    ok(pats.length >= 9, 'the fixture is wrong: only ' + pats.length + ' patterns');
+    p3.concat(w3, wSaid).forEach(it => put(it, 3, T0 + 5 * DAY));
+    p4.concat(pSaid).forEach(it => put(it, 4, T0 + 5 * DAY));
+    pSaid.concat(wSaid).forEach(it => { const r = NL.state.rec(it.id); r.said = true; NL.state.setRec(r); });
+    ok(S.begin('defi'), 'the challenge did not start');
+    const seen = new Set();
+    let guard = 0;
+    while (S.peek() && guard++ < 40) {
+      seen.add(S.peek().items[0].id);
+      B.clock.advance(20000); answer.right(); answer.next(false);
+      if (B.app.innerHTML.indexOf('done-stage') >= 0) break;
+    }
+    S.abandon();
+    const all = p3.concat(p4, pSaid, w3, wSaid);
+    ok(all.every(it => seen.has(it.id)), 'the fixture is wrong: the challenge served ' + all.filter(it => seen.has(it.id)).length + ' of its ' + all.length + ' items');
+    const rungs = list => list.map(it => NL.srs.stageOf(it)).join(',');
+    ok(p3.every(it => NL.srs.stageOf(it) === 4), 'never-said patterns on rung 3, right in the challenge, are on rungs ' + rungs(p3) + ', not 4');
+    ok(p4.every(it => NL.srs.stageOf(it) === 4), 'never-said patterns on rung 4, right in the challenge, are on rungs ' + rungs(p4) + ', not 4');
+    ok(pSaid.every(it => NL.srs.stageOf(it) === 5), 'said patterns on rung 4, right in the challenge, are on rungs ' + rungs(pSaid) + ', not 5');
+    ok(w3.every(it => NL.srs.stageOf(it) === 3), 'never-said words on rung 3, right in the challenge, are on rungs ' + rungs(w3) + ', not 3');
+    ok(wSaid.every(it => NL.srs.stageOf(it) === 4), 'said words on rung 3, right in the challenge, are on rungs ' + rungs(wSaid) + ', not 4');
+    console.log('  défi : règles jamais dites ' + rungs(p3) + ' (depuis 3) et ' + rungs(p4) + ' (depuis 4), dites ' + rungs(pSaid) + ' ; mots jamais dits ' + rungs(w3) + ', dits ' + rungs(wSaid));
+  }
+
+  /* ------------------------------------------------------------------ */
+  console.log('\nUN SECOND EXERCICE SE TIENT À TROIS EXERCICES DU PRÉCÉDENT, OU N’EST PAS SERVI');
+  /* Le renforcement d'une rencontre, et l'écrit qui suit une première réponse à
+     voix haute : servis aussitôt, ils ne prouvent rien. Là où trois exercices ne
+     peuvent pas les séparer du précédent de leur élément, ils attendent le
+     lendemain, et l'annonce ne les compte pas. */
+  {
+    const words = NL.content.allItems().filter(i => isWord(i) && !i.cognate);
+    const size = () => { const m = S.render().match(/class="pill">\d+\/(\d+)</); return m ? +m[1] : 0; };
+    /* Ce qui sépare chaque second exercice de l'exercice précédent de son élément. */
+    const gaps = served => served.map((x, i) => {
+      if (!x.second) return null;
+      let j = i - 1;
+      while (j >= 0 && (served[j].id !== x.id || served[j].ex === 'match')) j--;
+      return i - j - 1;
+    }).filter(g => g !== null);
+    const shape = served => served.map(x => x.ex === 'match' ? 'B' : x.second ? '2' : x.retry ? 'x' : x.unmet ? 'M' : x.ex === 'speak' ? 'S' : 'R').join('');
+    const held = served => served.filter(x => x.ex !== 'match').length;
+    const tomorrow = r => !!r && r.due - B.clock.now() >= DAY - 30 * MIN && r.due - B.clock.now() <= DAY + 30 * MIN;
+    /* Tout est rencontré et loin, sauf `unmet` ; `say` éléments jamais dits à
+       l'échelon 3 et `plain` ordinaires à l'échelon 2 sont dus. */
+    const only = (unmet, say, plain) => {
+      fresh();
+      const keep = new Set(unmet.map(i => i.id));
+      NL.content.allItems().forEach(it => { if (!keep.has(it.id)) put(it, 2, T0 + 30 * DAY); });
+      say.forEach(it => put(it, 3, T0 - 2 * DAY));
+      plain.forEach(it => put(it, 2, T0 - DAY));
+    };
+
+    /* Le budget presque épuisé, de 1 à 30 exercices, sur le banc de « Dit pour la
+       première fois » : rien n'est servi trop près, rien n'est annoncé de trop. */
+    const close = [], differ = [], over = [];
+    for (let left = 1; left <= 30; left++) {
+      fresh();
+      words.slice(0, 6).forEach(it => put(it, 3, T0 - 2 * DAY));
+      words.slice(6, 36).forEach(it => put(it, 2, T0 - DAY));
+      NL.srs.spend(NL.srs.pace().cap - left);
+      const p = NL.srs.plan();
+      ok(S.begin('vandaag'), left + ' exercises left: the session did not start');
+      const at = size() - (S.peek() && S.peek().ex === 'match' ? 1 : 0);
+      S.abandon();
+      const s = play();
+      if (gaps(s).some(g => g < 3)) close.push(left + ' : ' + shape(s));
+      if (held(s) !== p.tasks || at !== p.tasks) differ.push(left + ' : ' + p.tasks + ' annoncés, ' + at + ' tenus, ' + held(s) + ' servis');
+      if (held(s) > left) over.push(left + ' : ' + held(s));
+    }
+    ok(close.length === 0, 'a second exercise came back fewer than 3 exercises after its item, with this budget left: ' + close.join(' ; '));
+    ok(differ.length === 0, 'home announced another session than the one held and served: ' + differ.join(' ; '));
+    ok(over.length === 0, 'a session served more exercises than the day had left: ' + over.join(' ; '));
+
+    /* Une séance de une à trois rencontres, sans rien d'autre : aucun
+       renforcement ne peut se tenir à trois exercices ; chacun attend demain. A
+       quatre, tous se tiennent. */
+    const lone = [];
+    [1, 2, 3, 4].forEach(n => {
+      const unmet = words.slice(0, n);
+      only(unmet, [], []);
+      const p = NL.srs.plan(), s = play();
+      const seconds = s.filter(x => x.second).length;
+      lone.push(n + ' : ' + shape(s));
+      ok(seconds === (n < 4 ? 0 : n), n + ' new item(s) alone: ' + seconds + ' second exercise(s) served (' + shape(s) + ')');
+      ok(gaps(s).every(g => g >= 3), n + ' new item(s) alone: a second exercise came back ' + Math.min.apply(null, gaps(s)) + ' exercise(s) later');
+      ok(p.fresh === n && held(s) === p.tasks, n + ' new item(s) alone: home announced ' + p.fresh + ' new / ' + p.tasks + ' exercises, the session served ' + held(s));
+      if (n < 4) {
+        const recs = unmet.map(it => NL.state.rec(it.id));
+        ok(recs.every(r => r && r.stage === 1 && tomorrow(r)), n + ' new item(s) met without their second exercise should be on rung 1, due tomorrow: ' + JSON.stringify(recs.map(r => r && [r.stage, Math.round((r.due - B.clock.now()) / 3600000)])));
+      }
+    });
+
+    /* Sept exercices de budget, trente révisions dues et du neuf à rencontrer :
+       la réserve donne les trois rencontres, et les révisions reprennent ce que le
+       rabotage a pris tant que la séance servie tient dans le budget. Ici une
+       révision et les trois seconds : sept exercices, pas trois. */
+    {
+      fresh();
+      words.slice(0, 30).forEach(it => put(it, 2, T0 - DAY));
+      NL.srs.spend(NL.srs.pace().cap - 7);
+      const p = NL.srs.plan(), c = NL.srs.compose('vandaag'), s = play(), unmet = s.filter(x => x.unmet).map(x => x.item);
+      const seconds = s.filter(x => x.second).length, reviews = s.filter(x => !x.unmet && !x.second && !x.retry && x.ex !== 'match').length;
+      ok(held(s) === 7, 'seven exercises left, reviews due, three new items: the session served ' + held(s) + ' exercises (' + shape(s) + '), not 7');
+      ok(reviews === 1 && c.due.length === 1, 'seven exercises left: ' + reviews + ' review(s) served and ' + c.due.length + ' composed, not 1 (' + shape(s) + ')');
+      ok(seconds === 3 && unmet.every(it => s.some(x => x.second && x.id === it.id)), 'seven exercises left: ' + seconds + ' second exercise(s) served for ' + unmet.length + ' meeting(s), every meeting should get its own (' + shape(s) + ')');
+      ok(held(s) <= 7 && p.tasks === held(s), 'seven exercises left: home announced ' + p.tasks + ' exercises, the session served ' + held(s));
+      console.log('  sept exercices de budget, des révisions dues : ' + shape(s));
+    }
+
+    /* Rien de neuf, quelques éléments à dire pour la première fois et moins de
+       trois révisions ordinaires : l'écrit ne peut pas venir trois exercices
+       après, il vient demain. Avec quatre exercices au moins, il vient. */
+    const aloud = [];
+    [[1, 0], [1, 2], [2, 1], [3, 0], [1, 3], [3, 1]].forEach(([k, n]) => {
+      const say = words.slice(0, k);
+      only([], say, words.slice(k, k + n));
+      const p = NL.srs.plan(), s = play();
+      const fits = k + n > 3, seconds = s.filter(x => x.second).length;
+      aloud.push(k + '+' + n + ' : ' + shape(s));
+      ok(seconds === (fits ? k : 0), k + ' to say + ' + n + ' plain: ' + seconds + ' second exercise(s) served (' + shape(s) + ')');
+      ok(gaps(s).every(g => g >= 3), k + ' to say + ' + n + ' plain: an item was written ' + Math.min.apply(null, gaps(s)) + ' exercise(s) after it was said');
+      ok(held(s) === p.tasks, k + ' to say + ' + n + ' plain: home announced ' + p.tasks + ' exercises, the session served ' + held(s));
+      if (!fits) {
+        const recs = say.map(it => NL.state.rec(it.id));
+        ok(recs.every(r => r.said && r.stage === 3 && tomorrow(r)), k + ' to say + ' + n + ' plain: said without its written exercise, an item should be said, on rung 3, due tomorrow: ' + JSON.stringify(recs.map(r => [r.said, r.stage])));
+        B.clock.advance(DAY);
+        NL.state.touchDay();
+        ok(say.every(it => NL.srs.exerciseFor(it) !== 'speak'), k + ' to say + ' + n + ' plain: the day after, an item said is asked aloud again');
+      }
+    });
+
+    /* Un renforcement ne passe pas devant un autre second exercice qui serait
+       alors à deux exercices du sien. Quatre mots sans article : leur
+       renforcement est forcément une dictée, et le dernier, pour ne pas suivre
+       une dictée, cherchait plus loin l'écrit d'un élément dit trois places avant. */
+    const plainWords = words.filter(i => i.kind === 'word' && !i.art);
+    only(plainWords.slice(0, 4), plainWords.slice(4, 5), []);
+    const p = NL.srs.plan(), swapped = play();
+    ok(gaps(swapped).every(g => g >= 3), 'a second exercise moved up to ' + Math.min.apply(null, gaps(swapped)) + ' exercise(s) after its item (' + shape(swapped) + ')');
+    ok(held(swapped) === p.tasks, 'home announced ' + p.tasks + ' exercises, the session served ' + held(swapped));
+
+    /* « Je ne peux pas parler » resserre la séance : l'écrit d'un élément déjà dit
+       se tient encore à trois exercices, en attendant derrière ce qui suit, ou il
+       n'est pas servi. Dire le premier, mettre de côté le suivant, tout le reste juste. */
+    const tapSecond = () => {
+      const s = [];
+      let spoken = 0, tapped = false, after = 0, guard = 0;
+      if (!S.begin('vandaag')) return { s, after, done: false };
+      while (S.peek() && guard++ < 120) {
+        const c = S.peek(), m = c.ex === 'match';
+        if (c.ex === 'speak' && !tapped && spoken === 1) { answer.cantSpeak(); tapped = true; after = size() || s.length; continue; }
+        if (c.ex === 'speak') spoken++;
+        s.push({ ex: c.ex, id: c.items[0].id, unmet: !m && !met(c.items[0]), second: !!c.second, retry: !!c.retry });
+        B.clock.advance(20000); answer.right(); answer.next(m);
+        if (B.app.innerHTML.indexOf('done-stage') >= 0) break;
+      }
+      const done = B.app.innerHTML.indexOf('done-stage') >= 0;
+      S.abandon();
+      return { s, after, done };
+    };
+    /* Rien de neuf, quatre éléments à dire et rien d'autre : l'écrit du premier
+       n'a plus rien pour le séparer de lui, il attend demain. */
+    const four = words.slice(0, 4);
+    only([], four, []);
+    const q1 = tapSecond(), first = four.find(it => q1.s.some(x => x.id === it.id && !x.second));
+    ok(gaps(q1.s).every(g => g >= 3), 'after « je ne peux pas parler » an item was written ' + Math.min.apply(null, gaps(q1.s)) + ' exercise(s) after it was said (' + shape(q1.s) + ')');
+    ok(q1.done && q1.s.length === 1, 'after « je ne peux pas parler » with nothing else to do the session should end after the one exercise said: ended ' + q1.done + ', ' + q1.s.length + ' exercise(s) served (' + shape(q1.s) + ')');
+    const r1 = first && NL.state.rec(first.id);
+    ok(r1 && r1.said && r1.stage === 3 && tomorrow(r1), 'said before « je ne peux pas parler » and not written, an item should be said, on rung 3, due tomorrow: ' + JSON.stringify(r1 && [r1.said, r1.stage]));
+    /* Du neuf et trois éléments à dire : l'écrit du premier attend derrière les
+       renforcements qui le suivaient, et vient trois exercices après lui. */
+    fresh();
+    words.slice(0, 3).forEach(it => put(it, 3, T0 - 2 * DAY));
+    const q2 = tapSecond(), said2 = words.slice(0, 3).find(it => q2.s.some(x => x.id === it.id && !x.second && x.ex === 'speak'));
+    const written = said2 && q2.s.filter(x => x.id === said2.id && x.second);
+    ok(gaps(q2.s).every(g => g >= 3), 'after « je ne peux pas parler » a second exercise came back ' + Math.min.apply(null, gaps(q2.s)) + ' exercise(s) after its item (' + shape(q2.s) + ')');
+    ok(!!written && written.length === 1 && written[0].ex !== 'speak', 'an item said before « je ne peux pas parler » was not written later in the session (' + shape(q2.s) + ')');
+    ok(q2.after === q2.s.length, 'after « je ne peux pas parler » the session said ' + q2.after + ' exercises and served ' + q2.s.length);
+    console.log('  budget de 1 à 30 : rien de trop près, annoncé = tenu = servi ; seuls : ' + lone.join(', ') + ' ; à dire + ordinaires : ' + aloud.join(', '));
+    console.log('  sans échange : ' + shape(swapped) + ' ; je ne peux pas parler : ' + shape(q1.s) + ', puis ' + shape(q2.s));
   }
 
   console.log('\n' + checks + ' checks, ' + (fails ? fails + ' FAILED' : 'ENGINE OK'));

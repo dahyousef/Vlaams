@@ -355,6 +355,11 @@ function view(screen, arg) {
     const word = NL.content.allItems().find(it => it.kind === 'word' && !it.cognate);
     NL.srs.seed(word, 3);
     const due = NL.state.rec(word.id); due.due = 0; NL.state.setRec(due);
+    /* And three plain reviews: alone in its session, its second exercise would
+       not have three exercises between it and the first, and would wait for the
+       next day (NL.srs.lace). */
+    NL.content.allItems().filter(it => it !== word && it.kind === 'word' && !it.cognate).slice(0, 3)
+      .forEach(it => { const r = NL.state.rec(it.id); r.due = 0; NL.state.setRec(r); });
     ok(S.begin('vandaag') && S.peek().ex === 'speak', 'a never-said item on rung 3 is not asked aloud');
     for (let k = 0; k < 3; k++) {
       ok(S.render().indexOf('data-self=') < 0, 'self-rating offered after ' + k + ' refusal(s), before the third');
@@ -369,6 +374,7 @@ function view(screen, arg) {
     ok(now.said === true && now.stage === 3, 'the item should be said and still on rung 3: it is said ' + now.said + ', on rung ' + now.stage);
     /* Dit, il lui reste à être écrit : c'est son second exercice dans la séance. */
     tap('sessie', { next: '1' });
+    for (let k = 0; k < 6 && S.peek() && S.peek().items[0].id !== word.id; k++) { tap('sessie', { skip: '1' }); tap('sessie', { next: '1' }); }
     ok(S.peek() && S.peek().items[0].id === word.id && S.peek().ex !== 'speak', 'once said, the item is not asked in writing before the session ends');
     S.abandon();
     console.log('   three refusals, then « ' + NL.t.micSaidIt + ' » is offered and counts');
