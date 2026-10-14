@@ -197,6 +197,9 @@ NL.srs = (function () {
          celui du sens. Voir docs/adr/0004. */
       const jump = (r.reps === 1 && item.cognate) ? 2 : 1;
       r.stage = clamp(r.stage + jump, 0, top);
+      /* Le défi ne fait pas passer l'échelon 3 à un élément jamais dit à voix
+         haute : son premier exercice parlé vient encore à l'échelon 3. */
+      if (opts && opts.defi && !r.said && r.stage > 3) r.stage = Math.max(3, r.stage - jump);
       r.ease = clamp(r.ease + 0.05, 1.3, 2.9);
       /* PIÈGE 1 — au sommet de son palier, l'intervalle doit continuer de croître.
          Figé sur STEP[rung], l'élément revient tous les jours, à vie. */

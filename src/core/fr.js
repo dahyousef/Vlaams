@@ -76,6 +76,7 @@ NL.t = {
   doneFlawless: 'Sans faute.',
   doneOk: 'Session terminée.',
   doneSpoken: n => 'Tu as dit ' + n + (n === 1 ? ' élément' : ' éléments') + ' à voix haute. Ce sont ceux qui sortiront de ta bouche dans un magasin.',
+  doneSpokenKept: n => n + (n === 1 ? ' exercice à voix haute gardé' : ' exercices à voix haute gardés') + ' pour la prochaine séance.',
   doneNoSpoken: 'Rien de dit à voix haute cette fois — les exercices de prononciation arrivent quand les éléments montent dans l’échelle.',
   tallyXp: 'XP', tallyRight: 'Juste', tallyDays: 'Jours', tallyTime: 'Durée',
   sessionMore: 'Encore une session',

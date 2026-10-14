@@ -847,6 +847,7 @@ NL.t = {
   doneFlawless: 'Sans faute.',
   doneOk: 'Session terminée.',
   doneSpoken: n => 'Tu as dit ' + n + (n === 1 ? ' élément' : ' éléments') + ' à voix haute. Ce sont ceux qui sortiront de ta bouche dans un magasin.',
+  doneSpokenKept: n => n + (n === 1 ? ' exercice à voix haute gardé' : ' exercices à voix haute gardés') + ' pour la prochaine séance.',
   doneNoSpoken: 'Rien de dit à voix haute cette fois — les exercices de prononciation arrivent quand les éléments montent dans l’échelle.',
   tallyXp: 'XP', tallyRight: 'Juste', tallyDays: 'Jours', tallyTime: 'Durée',
   sessionMore: 'Encore une session',
@@ -1626,6 +1627,9 @@ NL.srs = (function () {
          celui du sens. Voir docs/adr/0004. */
       const jump = (r.reps === 1 && item.cognate) ? 2 : 1;
       r.stage = clamp(r.stage + jump, 0, top);
+      /* Le défi ne fait pas passer l'échelon 3 à un élément jamais dit à voix
+         haute : son premier exercice parlé vient encore à l'échelon 3. */
+      if (opts && opts.defi && !r.said && r.stage > 3) r.stage = Math.max(3, r.stage - jump);
       r.ease = clamp(r.ease + 0.05, 1.3, 2.9);
       /* PIÈGE 1 — au sommet de son palier, l'intervalle doit continuer de croître.
          Figé sur STEP[rung], l'élément revient tous les jours, à vie. */
@@ -5716,6 +5720,8 @@ NL.screens.sessie = (function () {
     if (!c || c.ex !== 'speak' || L.phase !== 'ask') return;
     NL.speech.abort(); NL.speech.clearRecording();
     L.quiet = true;
+    /* Le bilan dira combien d'exercices parlés sont gardés pour la séance suivante. */
+    L.putOff = (L.putOff || 0) + L.queue.slice(L.at).filter(x => x.ex === 'speak').length;
     const head = L.queue.slice(0, L.at), rest = L.queue.slice(L.at);
     const spoken = rest.filter(x => x.ex === 'speak').length;
     /* Le second exercice d'un élément qui ne peut être que dit part avec son
@@ -5765,8 +5771,9 @@ NL.screens.sessie = (function () {
     L.lastSpoken = !!v.spoken;
     L.close = !!v.close;
 
-    c.items.forEach(it => NL.srs.grade(it, v.ok, { spoken: v.spoken, ex: c.ex }));
-    NL.srs.spend(1);
+    c.items.forEach(it => NL.srs.grade(it, v.ok, { spoken: v.spoken, ex: c.ex, defi: L.source === 'defi' }));
+    /* La séance sur les fautes est hors du budget du jour. */
+    if (L.source !== 'fouten') NL.srs.spend(1);
 
     if (v.ok) {
       L.right++;
@@ -5815,14 +5822,19 @@ NL.screens.sessie = (function () {
 
   function skip() {
     const c = cur(); if (!c) return;
-    c.items.forEach(it => NL.srs.grade(it, false, { ex: c.ex }));
-    NL.srs.spend(1);
-    L.wrong++;
+    /* Passer le plateau de paires n'enregistre rien : ses éléments ne sont ni
+       notés, ni comptés, et la rencontre se fait dans leurs propres exercices. */
+    const board = c.ex === 'match';
+    if (!board) {
+      c.items.forEach(it => NL.srs.grade(it, false, { ex: c.ex }));
+      if (L.source !== 'fouten') NL.srs.spend(1);
+      L.wrong++;
+    }
     L.combo = 0;
     L.close = false;
     L.phase = 'no';
-    if (L.source === 'defi') L.lives--;
-    else again(c);
+    /* Un plateau passé n'est ni une faute ni une reprise : on le laisse. */
+    if (!board) { if (L.source === 'defi') L.lives--; else again(c); }
     NL.audio.no();
     NL.ui.render();
   }
@@ -5929,8 +5941,8 @@ NL.screens.sessie = (function () {
       '<div class="done-mark">' + (L.wrong === 0 ? '\u{1F3AF}' : '\u{2713}') + '</div>' +
       '<h2>' + (L.wrong === 0 ? NL.t.doneFlawless : NL.t.doneOk) + '</h2>' +
       '<p class="done-sub">' + (L.spoken > 0
-        ? NL.t.doneSpoken(L.spoken)
-        : NL.t.doneNoSpoken) + '</p>' +
+        ? NL.t.doneSpoken(L.spoken) + (L.putOff > 0 ? ' ' + NL.t.doneSpokenKept(L.putOff) : '')
+        : L.putOff > 0 ? NL.t.doneSpokenKept(L.putOff) : NL.t.doneNoSpoken) + '</p>' +
       '<div class="tally">' +
       box('+' + L.xp, NL.t.tallyXp, 'gold') + box(L.right + '/' + (L.right + L.wrong), NL.t.tallyRight, 'blue') +
       box(m.streak, NL.t.tallyDays, 'green') + box(mins + 'm', NL.t.tallyTime, '') +

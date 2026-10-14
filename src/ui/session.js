@@ -227,6 +227,8 @@ NL.screens.sessie = (function () {
     if (!c || c.ex !== 'speak' || L.phase !== 'ask') return;
     NL.speech.abort(); NL.speech.clearRecording();
     L.quiet = true;
+    /* Le bilan dira combien d'exercices parlés sont gardés pour la séance suivante. */
+    L.putOff = (L.putOff || 0) + L.queue.slice(L.at).filter(x => x.ex === 'speak').length;
     const head = L.queue.slice(0, L.at), rest = L.queue.slice(L.at);
     const spoken = rest.filter(x => x.ex === 'speak').length;
     /* Le second exercice d'un élément qui ne peut être que dit part avec son
@@ -276,8 +278,9 @@ NL.screens.sessie = (function () {
     L.lastSpoken = !!v.spoken;
     L.close = !!v.close;
 
-    c.items.forEach(it => NL.srs.grade(it, v.ok, { spoken: v.spoken, ex: c.ex }));
-    NL.srs.spend(1);
+    c.items.forEach(it => NL.srs.grade(it, v.ok, { spoken: v.spoken, ex: c.ex, defi: L.source === 'defi' }));
+    /* La séance sur les fautes est hors du budget du jour. */
+    if (L.source !== 'fouten') NL.srs.spend(1);
 
     if (v.ok) {
       L.right++;
@@ -326,14 +329,19 @@ NL.screens.sessie = (function () {
 
   function skip() {
     const c = cur(); if (!c) return;
-    c.items.forEach(it => NL.srs.grade(it, false, { ex: c.ex }));
-    NL.srs.spend(1);
-    L.wrong++;
+    /* Passer le plateau de paires n'enregistre rien : ses éléments ne sont ni
+       notés, ni comptés, et la rencontre se fait dans leurs propres exercices. */
+    const board = c.ex === 'match';
+    if (!board) {
+      c.items.forEach(it => NL.srs.grade(it, false, { ex: c.ex }));
+      if (L.source !== 'fouten') NL.srs.spend(1);
+      L.wrong++;
+    }
     L.combo = 0;
     L.close = false;
     L.phase = 'no';
-    if (L.source === 'defi') L.lives--;
-    else again(c);
+    /* Un plateau passé n'est ni une faute ni une reprise : on le laisse. */
+    if (!board) { if (L.source === 'defi') L.lives--; else again(c); }
     NL.audio.no();
     NL.ui.render();
   }
@@ -440,8 +448,8 @@ NL.screens.sessie = (function () {
       '<div class="done-mark">' + (L.wrong === 0 ? '\u{1F3AF}' : '\u{2713}') + '</div>' +
       '<h2>' + (L.wrong === 0 ? NL.t.doneFlawless : NL.t.doneOk) + '</h2>' +
       '<p class="done-sub">' + (L.spoken > 0
-        ? NL.t.doneSpoken(L.spoken)
-        : NL.t.doneNoSpoken) + '</p>' +
+        ? NL.t.doneSpoken(L.spoken) + (L.putOff > 0 ? ' ' + NL.t.doneSpokenKept(L.putOff) : '')
+        : L.putOff > 0 ? NL.t.doneSpokenKept(L.putOff) : NL.t.doneNoSpoken) + '</p>' +
       '<div class="tally">' +
       box('+' + L.xp, NL.t.tallyXp, 'gold') + box(L.right + '/' + (L.right + L.wrong), NL.t.tallyRight, 'blue') +
       box(m.streak, NL.t.tallyDays, 'green') + box(mins + 'm', NL.t.tallyTime, '') +

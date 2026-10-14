@@ -591,6 +591,128 @@ NL.state.open().then(() => {
     console.log('  transparent raté dès la première réponse : échelon ' + NL.srs.stageOf(noun) + ', ensuite ' + Object.keys(seen).join(', '));
   }
 
+  /* ------------------------------------------------------------------ */
+  console.log('\nLE BILAN APRÈS « JE NE PEUX PAS PARLER » — il dit ce qui est gardé');
+  {
+    const words = NL.content.allItems().filter(i => isWord(i) && !i.cognate);
+    const run = n => {
+      fresh();
+      words.slice(0, n).forEach(it => put(it, 3, T0 - 2 * DAY));
+      words.slice(n, n + 30).forEach(it => put(it, 2, T0 - DAY));
+      S.begin('vandaag');
+      let guard = 0;
+      while (S.peek() && S.peek().ex !== 'speak' && guard++ < 60) { const m = S.peek().ex === 'match'; B.clock.advance(20000); answer.right(); answer.next(m); }
+      answer.cantSpeak();
+      guard = 0;
+      while (S.peek() && guard++ < 80) {
+        const m = S.peek().ex === 'match'; B.clock.advance(20000); answer.right(); answer.next(m);
+        if (B.app.innerHTML.indexOf('done-stage') >= 0) break;
+      }
+      const html = B.app.innerHTML;
+      S.abandon();
+      return html;
+    };
+    const many = run(3), one = run(1);
+    ok(/3 exercices à voix haute gardés pour la prochaine séance/.test(many), 'after putting 3 spoken exercises off the summary does not say they were kept: « ' + (many.match(/done-sub">[^<]*/) || [''])[0] + ' »');
+    ok(/\b1 exercice à voix haute gardé pour la prochaine séance/.test(one), 'after putting 1 spoken exercise off the summary does not say so in the singular: « ' + (one.match(/done-sub">[^<]*/) || [''])[0] + ' »');
+    ok(many.indexOf('arrivent quand les') < 0 && one.indexOf('arrivent quand les') < 0, 'the summary still says pronunciation exercises are yet to come');
+    /* Mixte : un élément dit, puis le bouton sur le suivant. */
+    {
+      fresh();
+      words.slice(0, 3).forEach(it => put(it, 3, T0 - 2 * DAY));
+      words.slice(3, 33).forEach(it => put(it, 2, T0 - DAY));
+      S.begin('vandaag');
+      let guard = 0;
+      const toSpeak = () => { while (S.peek() && S.peek().ex !== 'speak' && guard++ < 80) { const m = S.peek().ex === 'match'; B.clock.advance(20000); answer.right(); answer.next(m); } };
+      toSpeak(); answer.right(); answer.next(false);
+      toSpeak();
+      ok(S.peek() && S.peek().ex === 'speak', 'the fixture is wrong: no second spoken exercise');
+      answer.cantSpeak();
+      while (S.peek() && guard++ < 160) {
+        const m = S.peek().ex === 'match'; B.clock.advance(20000); answer.right(); answer.next(m);
+        if (B.app.innerHTML.indexOf('done-stage') >= 0) break;
+      }
+      const mixed = (B.app.innerHTML.match(/done-sub">[^<]*/) || [''])[0];
+      S.abandon();
+      ok(/Tu as dit 1 élément/.test(mixed), 'the mixed summary does not say what was said: « ' + mixed + ' »');
+      ok(/\d+ exercices? à voix haute gardés? pour la prochaine séance/.test(mixed), 'the mixed summary does not say what was kept: « ' + mixed + ' »');
+      console.log('  dit puis mis de côté : « ' + mixed.slice(10) + ' »');
+    }
+    console.log('  3 mis de côté : « ' + (many.match(/done-sub">([^<]*)/) || ['', '?'])[1] + ' »');
+  }
+
+  /* ------------------------------------------------------------------ */
+  console.log('\nLA SÉANCE SUR LES FAUTES — des révisions réelles, hors du budget du jour');
+  {
+    fresh();
+    const [a, b] = NL.content.allItems().filter(i => isWord(i) && !i.cognate);
+    [a, b].forEach(it => { put(it, 2, T0 + 5 * DAY); [1, 2].forEach(k => NL.state.logReview({ id: it.id, t: T0 - k * DAY, ok: false, stage: 1, kind: it.kind, ex: 'type' })); });
+    const left = NL.srs.budgetLeft(), reps = [a, b].map(it => NL.state.rec(it.id).reps), logged = NL.state.logs().length;
+    ok(S.begin('fouten'), 'the mistakes session did not start');
+    let guard = 0, n = 0;
+    while (S.peek() && guard++ < 20) { n++; B.clock.advance(20000); answer.right(); answer.next(false); if (B.app.innerHTML.indexOf('done-stage') >= 0) break; }
+    S.abandon();
+    ok(n === 2, 'the mistakes session served ' + n + ' exercises instead of 2');
+    ok(NL.srs.budgetLeft() === left, 'a mistakes session spent ' + (left - NL.srs.budgetLeft()) + ' of the day budget');
+    ok([a, b].every((it, i) => NL.state.rec(it.id).reps === reps[i] + 1), 'the answers of a mistakes session did not reach the records');
+    ok(NL.state.logs().length === logged + 2, 'the answers of a mistakes session were not logged');
+    console.log('  budget du jour ' + left + ' avant, ' + NL.srs.budgetLeft() + ' après ; ' + n + ' réponses notées et journalisées');
+  }
+
+  /* ------------------------------------------------------------------ */
+  console.log('\nPASSER SUR LES PAIRES — rien n’est noté, les éléments sont rencontrés plus loin');
+  {
+    fresh();
+    const p = NL.srs.plan();
+    ok(S.begin('vandaag') && S.peek().ex === 'match', 'the fixture is wrong: the session should open on the pairs board');
+    const board = S.peek(), ids = board.items.map(it => it.id);
+    B.clock.advance(20000);
+    answer.wrong();
+    ok(NL.state.logs().length === 0, 'skipping the pairs board logged ' + NL.state.logs().length + ' answer(s)');
+    ok(!ids.some(id => NL.state.rec(id)), 'skipping the pairs board made ' + ids.filter(id => NL.state.rec(id)).length + ' of its ' + ids.length + ' items met');
+    ok(NL.srs.budgetLeft() === NL.srs.pace().cap, 'skipping the pairs board spent ' + (NL.srs.pace().cap - NL.srs.budgetLeft()) + ' of the day budget');
+    if (S.peek() === board) answer.next(false);
+    const served = [];
+    let guard = 0;
+    while (S.peek() && guard++ < 120) {
+      const c = S.peek(), m = c.ex === 'match';
+      served.push({ id: c.items[0].id, ex: c.ex, unmet: !m && !met(c.items[0]), second: !!c.second });
+      B.clock.advance(20000); answer.right(); answer.next(m);
+      if (B.app.innerHTML.indexOf('done-stage') >= 0) break;
+    }
+    S.abandon();
+    ok(ids.every(id => served.some(x => x.id === id && x.unmet)), 'of the ' + ids.length + ' items of the skipped board, ' + ids.filter(id => served.some(x => x.id === id && x.unmet)).length + ' were met in their own first exercise');
+    const tasks = served.filter(x => x.ex !== 'match').length, news = served.filter(x => x.unmet).length;
+    ok(news === p.fresh && tasks === p.tasks, 'home announced ' + p.fresh + ' new / ' + p.tasks + ' exercises, the session after the skip held ' + news + ' / ' + tasks);
+    console.log('  paires passées : rien noté, ' + ids.length + ' éléments rencontrés ensuite ; annoncé ' + p.tasks + ' exercices, servi ' + tasks);
+  }
+
+  /* ------------------------------------------------------------------ */
+  console.log('\nLE DÉFI — un élément jamais dit s’arrête à l’échelon 3');
+  {
+    fresh();
+    const words = NL.content.allItems().filter(i => isWord(i) && !i.cognate).slice(0, 24);
+    const never = words.slice(0, 12), said = words.slice(12);
+    words.forEach(it => put(it, 3, T0 + 5 * DAY));
+    said.forEach(it => { const r = NL.state.rec(it.id); r.said = true; NL.state.setRec(r); });
+    ok(S.begin('defi'), 'the challenge did not start');
+    const seen = new Set();
+    let guard = 0;
+    while (S.peek() && guard++ < 40) {
+      const c = S.peek(); seen.add(c.items[0].id);
+      B.clock.advance(20000); answer.right(); answer.next(false);
+      if (B.app.innerHTML.indexOf('done-stage') >= 0) break;
+    }
+    S.abandon();
+    const nv = never.filter(it => seen.has(it.id)), sd = said.filter(it => seen.has(it.id));
+    ok(nv.length > 0 && sd.length > 0, 'the fixture is wrong: the challenge served ' + nv.length + ' never-said and ' + sd.length + ' said items');
+    const up = nv.filter(it => NL.srs.stageOf(it) !== 3);
+    ok(up.length === 0, up.length + ' of ' + nv.length + ' never-said items left rung 3 in the challenge');
+    const stuck = sd.filter(it => NL.srs.stageOf(it) !== 4);
+    ok(stuck.length === 0, stuck.length + ' of ' + sd.length + ' said items did not climb to rung 4 in the challenge');
+    console.log('  défi : ' + nv.length + ' jamais dits restent à l’échelon 3, ' + sd.length + ' déjà dits montent à 4');
+  }
+
   console.log('\n' + checks + ' checks, ' + (fails ? fails + ' FAILED' : 'ENGINE OK'));
   process.exit(fails ? 1 : 0);
 }).catch(e => { console.log('CRASH ' + (e && e.stack || e)); process.exit(1); });
