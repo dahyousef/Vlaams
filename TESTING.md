@@ -14,7 +14,7 @@ n'y a qu'une seule liste. Il faut Node et un `sh` (sous Windows, celui de Git).
 | `smoke.js` | Le contenu, l'échelle, chaque type d'exercice, la notation, la qualité des leurres, l'orthographe, et qu'aucune chaîne anglaise ne survit dans le build |
 | `dehet.js` | Chaque nom du cours confronté au Wiktionnaire : `de` ou `het`, sur la fiche **et** dans ses phrases d'exemple |
 | `content.js` | L'orthographe contre 410 000 formes néerlandaises, que chaque exercice promis se construise vraiment, qu'une phrase d'exemple n'emprunte pas de vocabulaire à une unité ultérieure, et les éléments enseignés deux fois |
-| `engine.js` | Ce qu'une séance contient et quand un élément revient, horloge en marche : la panne d'octobre, deux jours de suite, le renforcement dans la séance, la réserve de nouveautés, le seuil des unités, la première demande à voix haute et l'exercice écrit qui la suit, « je ne peux pas parler » |
+| `engine.js` | Ce qu'une séance contient et quand un élément revient, horloge en marche : la panne d'octobre, deux jours de suite, le renforcement dans la séance, la réserve de nouveautés, le seuil des unités, la première demande à voix haute et l'exercice écrit qui la suit, l'écrit de l'échelon 3 toujours tapé, « je ne peux pas parler » |
 | `screens.js` | Chaque écran dans quatre états, relu comme du texte : ni pourcentage, ni maîtrise ; les comptes, le nom de l'unité, ce qui résiste, le bouton « je ne peux pas parler », le journal d'erreurs |
 | `sim.js` | Chaque écran, une séance, un scénario, une série d'écoute |
 | `firstrun.js` | Une base vide : premier écran, première séance, le défi, la sauvegarde |

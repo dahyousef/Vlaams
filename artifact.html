@@ -1473,12 +1473,20 @@ NL.srs = (function () {
      au seul échelon 5, la première demande à voix haute tombait cinq semaines
      après la rencontre. Voir exerciseFor() pour qui y a droit d'office, et
      firstAloud() pour ce que vaut cette première fois. */
+  /* À l'échelon 3, l'exercice écrit se tape. C'est lui qui mène à l'échelon 4,
+     où l'élément compte parmi ceux que l'on sait produire : choisir un trou,
+     toucher la faute ou ranger des tuiles ne le prouve pas. La dictée d'un mot
+     se tape, et le mot la garde à côté d'« écrire » : avec « écrire » seul, les
+     exercices se suivaient pareils et l'étalement ne faisait plus mieux que le
+     hasard (test/pace.js). Celle d'une phrase ou d'une expression se range en
+     tuiles : les phrases empruntent donc « écrire » à l'échelon 4, et une
+     règle de grammaire n'y garde qu'« écrire ». « Dis-le » reste où il était. */
   const RUNGS = {
     word: [
       ['pick', 'recall'],
       ['article', 'intrus', 'dictation'],
       ['dictation', 'type'],
-      ['type', 'cloze', 'speak'],
+      ['type', 'dictation', 'speak'],
       ['type', 'cloze', 'dictation'],
       ['speak'],
       ['speak', 'type', 'dictation', 'cloze']
@@ -1487,7 +1495,7 @@ NL.srs = (function () {
       ['pick', 'recall'],
       ['bank', 'vlaams', 'cloze'],
       ['cloze', 'corrige', 'dictation'],
-      ['dictation', 'corrige', 'speak'],
+      ['speak', 'type'],
       ['type', 'cloze', 'corrige'],
       ['speak'],
       ['speak', 'type', 'open', 'corrige', 'dictation']
@@ -1496,7 +1504,7 @@ NL.srs = (function () {
       ['pick', 'recall'],
       ['bank', 'vlaams'],
       ['cloze'],
-      ['type', 'dictation', 'speak'],
+      ['type', 'speak'],
       ['type', 'dictation', 'cloze'],
       ['speak'],
       ['speak', 'type', 'cloze']
@@ -1505,7 +1513,7 @@ NL.srs = (function () {
       ['order'],
       ['order', 'corrige'],
       ['cloze', 'corrige'],
-      ['type', 'order'],
+      ['type'],
       ['speak', 'open'],
       ['speak'],
       ['open', 'speak']

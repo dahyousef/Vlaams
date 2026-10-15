@@ -384,6 +384,37 @@ NL.state.open().then(() => {
   }
 
   /* ------------------------------------------------------------------ */
+  console.log('\nL’ÉCHELON 3, UNE FOIS DIT — ce qui fait monter par écrit se tape');
+  /* Passer l'échelon 3, c'est compter parmi les éléments que l'on sait
+     produire. Choisir un trou, toucher la faute ou ranger des tuiles ne le
+     prouve pas : à cet échelon, tout exercice qui n'est pas parlé se tape. La
+     dictée d'un mot se tape, celle d'une phrase se range en tuiles. */
+  {
+    fresh();
+    const typed = (n, it) => n === 'type' || n === 'open' || (n === 'dictation' && it.kind === 'word');
+    const label = { word: 'mots', phrase: 'phrases', chunk: 'expressions', pattern: 'règles' };
+    const byKind = {};
+    NL.content.allItems().forEach(it => {
+      put(it, 3, T0);
+      const r = NL.state.rec(it.id); r.said = true; r.lastEx = null; NL.state.setRec(r);
+      const k = byKind[it.kind] = byKind[it.kind] || { n: 0, untyped: 0, wrong: {}, offered: {} };
+      k.n++;
+      let untyped = false;
+      for (let j = 0; j < 40; j++) {
+        const n = NL.srs.exerciseFor(it);
+        k.offered[n] = 1;
+        if (n !== 'speak' && !typed(n, it)) { untyped = true; k.wrong[n] = 1; }
+      }
+      if (untyped) k.untyped++;
+    });
+    Object.keys(byKind).forEach(kind => {
+      const k = byKind[kind];
+      ok(k.untyped === 0, 'on rung 3, ' + k.untyped + ' of ' + k.n + ' ' + kind + ' items already said can climb to rung 4 on an exercise not typed: ' + Object.keys(k.wrong).join(', '));
+    });
+    console.log('  une fois dits, à l’échelon 3 : ' + Object.keys(byKind).map(kind => label[kind] + ' ' + Object.keys(byKind[kind].offered).sort().join(' ou ')).join(' ; '));
+  }
+
+  /* ------------------------------------------------------------------ */
   console.log('\nDIT POUR LA PREMIÈRE FOIS — un second exercice dans la séance, et c’est l’écrit qui fait monter');
   {
     const words = NL.content.allItems().filter(i => isWord(i) && !i.cognate);

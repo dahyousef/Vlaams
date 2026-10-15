@@ -129,15 +129,17 @@ réordonne ensuite la file pour qu'aucun type ne colle à lui-même.
 | 0 | découverte | pick · recall | pick · recall |
 | 1 | reconnaissance | article · l'intrus · dictée | assemblage · standaard/Vlaams · trou |
 | 2 | à l'oreille | dictée · écrire | trou · corrige l'erreur · dictée |
-| 3 | à l'écrit | écrire · trou · parler | dictée · corrige · parler |
-| 4 | à voix haute | écrire · dictée | écrire · trou |
+| 3 | à l'écrit | écrire · dictée · parler | parler · écrire |
+| 4 | à voix haute | écrire · trou · dictée | écrire · trou · corrige l'erreur |
 | 5 | consolidé | **parler** | **parler** |
 | 6 | ancré | alterné | alterné, dont réponse libre |
 
 L'échelon 5 est **parler** et rien d'autre : c'est ce qui garantit que rien n'est
 acquis sans être sorti de ta bouche. Un élément jamais dit se voit proposer
 **parler** en premier dès l'échelon 3 ; il garde alors son échelon, et c'est
-l'exercice écrit qui suit, dans la même séance, qui le fait monter.
+l'exercice écrit qui suit, dans la même séance, qui le fait monter. Cet exercice
+écrit se **tape** au clavier : un trou à choisir ou des tuiles à ranger ne
+montrent pas que tu sais l'écrire.
 
 Les QCM proposent **quatre** options, et les leurres sont choisis de même nature
 (nom contre nom, verbe contre verbe) et du même genre : on ne les élimine pas
