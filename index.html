@@ -5664,7 +5664,7 @@ NL.screens.sessie = (function () {
     const recent = [];
     const meetings = spread(build(c.fresh, recent), queue.length ? 'match' : NL.state.meta().lastEx || null);
     const reviews = spread(build(U.shuffle(c.due), recent), meetings.length ? meetings[meetings.length - 1].ex : NL.state.meta().lastEx || null);
-    queue.push.apply(queue, NL.srs.lace(meetings, reviews, toSay, slot));
+    queue.push.apply(queue, NL.srs.lace(meetings, reviews, toSay, secondOf));
     queue.forEach((x, i) => { if (x.second) x.metAt = queue.findIndex(y => !y.second && y.ex !== 'match' && y.items[0] === x.items[0]); });
 
     if (queue.length === 0) { L = null; return false; }
@@ -5688,7 +5688,7 @@ NL.screens.sessie = (function () {
      par écrit s'il vient d'être dit, de nouveau à voix haute sinon. */
   const SECOND_GAP = NL.srs.SECOND_GAP;
   const toSay = x => x.ex === 'speak' && NL.srs.firstAloud(x.items[0]);
-  const slot = x => ({ ex: null, task: null, items: x.items, second: true });
+  const secondOf = x => ({ ex: null, task: null, items: x.items, second: true });
 
   /* Une séance sur ce qui résiste : les éléments le plus souvent ratés, chacun à
      l'échelon où il se trouve. Comme le défi, elle ne compte pas dans le budget

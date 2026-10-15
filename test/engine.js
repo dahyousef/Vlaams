@@ -23,7 +23,7 @@ const answer = require('./lib/answer')(B);
 const met = it => !!NL.state.rec(it.id);
 const isWord = it => it.kind !== 'pattern';
 /* Place un élément sur un échelon, dû à l'instant donné. */
-const put = (it, stage, due) => { NL.srs.seed(it, stage); const r = NL.state.rec(it.id); r.due = due; NL.state.setRec(r); };
+const put = (it, rung, due) => { NL.srs.seed(it, rung); const r = NL.state.rec(it.id); r.due = due; NL.state.setRec(r); };
 const fresh = () => { NL.state.clearAll(); NL.content.refresh(); B.clock.set(T0); };
 
 /* Joue une séance entière, vingt secondes par exercice. `right(c)` dit si la
@@ -123,11 +123,11 @@ NL.state.open().then(() => {
     fresh();
     const it = NL.content.allItems().find(i => i.kind === 'word' && !i.cognate);
     let shortest = Infinity, where = '';
-    for (let stage = 0; stage <= NL.srs.MAX_STAGE; stage++) {
+    for (let rung = 0; rung <= NL.srs.MAX_STAGE; rung++) {
       [true, false].forEach(right => {
-        put(it, stage, T0);
+        put(it, rung, T0);
         const r = NL.srs.grade(it, right, { ex: 'type' });
-        if (r.due - B.clock.now() < shortest) { shortest = r.due - B.clock.now(); where = 'rung ' + stage + (right ? ', right' : ', wrong'); }
+        if (r.due - B.clock.now() < shortest) { shortest = r.due - B.clock.now(); where = 'rung ' + rung + (right ? ', right' : ', wrong'); }
       });
     }
     /* Une toute première réponse fausse aussi. */
