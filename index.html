@@ -1471,9 +1471,9 @@ NL.srs = (function () {
 
   /* Un rythme, et le prix honnête qui va avec. */
   const PACE = {
-    calme:     { cap: 70,  fresh: 15, mins: 15 },
-    normal:    { cap: 120, fresh: 25, mins: 25 },
-    intensif:  { cap: 200, fresh: 40, mins: 45 }
+    calme:     { cap: 70,  mins: 15 },
+    normal:    { cap: 120, mins: 25 },
+    intensif:  { cap: 200, mins: 45 }
   };
   const pace = () => PACE[NL.state.meta().pace || 'normal'] || PACE.normal;
 
@@ -1699,14 +1699,13 @@ NL.srs = (function () {
 
   function counts() {
     const now = Date.now();
-    let due = 0, learning = 0, mature = 0, said = 0, retired = 0;
+    let due = 0, said = 0, retired = 0;
     NL.state.allRecs().forEach(r => {
-      if (r.retired) { retired++; mature++; return; }
+      if (r.retired) { retired++; return; }
       if (r.due <= now) due++;
-      if (r.stage >= PRODUCE) mature++; else learning++;
       if (r.said) said++;
     });
-    return { due, learning, mature, said, retired, seen: NL.state.seenCount() };
+    return { due, said, retired, seen: NL.state.seenCount() };
   }
 
   /* ---------------- ce qui résiste ---------------- */
