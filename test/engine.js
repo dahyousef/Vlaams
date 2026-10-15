@@ -609,7 +609,7 @@ NL.state.open().then(() => {
     const cog = NL.content.allItems().filter(i => i.cognate);
     const noun = cog.find(i => i.art);
     NL.srs.grade(noun, false, { ex: 'article' });
-    ok(NL.srs.stageOf(noun) === 1, 'a never-met cognate, first answer wrong, is on rung ' + NL.srs.stageOf(noun) + ', not 1');
+    ok(NL.srs.stageOf(noun) === 1, 'a never-met cognate, first answer wrong, is on rung ' + NL.srs.stageOf(noun) + ' when it should be on rung 1');
     const seen = {};
     for (let k = 0; k < 40; k++) seen[NL.srs.exerciseFor(noun)] = 1;
     ok(!seen.pick && !seen.recall, 'after a wrong first answer a cognate is taught its meaning (' + Object.keys(seen).join(', ') + ')');
@@ -692,6 +692,37 @@ NL.state.open().then(() => {
     ok([a, b].every((it, i) => NL.state.rec(it.id).reps === reps[i] + 1), 'the answers of a mistakes session did not reach the records');
     ok(NL.state.logs().length === logged + 2, 'the answers of a mistakes session were not logged');
     console.log('  budget du jour ' + left + ' avant, ' + NL.srs.budgetLeft() + ' après ; ' + n + ' réponses notées et journalisées');
+  }
+
+  /* ------------------------------------------------------------------ */
+  console.log('\nDIT POUR LA PREMIÈRE FOIS DANS LA SÉANCE SUR LES FAUTES — l’écrit attend le lendemain');
+  /* La séance sur les fautes est une liste fixe : elle n'ajoute pas de second
+     exercice. Un élément qui y est dit pour la première fois garde son échelon,
+     et c'est le lendemain qu'il est demandé par écrit. */
+  {
+    fresh();
+    const it = NL.content.allItems().find(i => isWord(i) && !i.cognate);
+    put(it, 3, T0 + 5 * DAY);
+    [1, 2].forEach(k => NL.state.logReview({ id: it.id, t: T0 - k * DAY, ok: false, stage: 3, kind: it.kind, ex: 'type' }));
+    ok(S.begin('fouten') && S.peek().ex === 'speak', 'the fixture is wrong: the mistakes session should open on a spoken exercise');
+    const served = [];
+    let guard = 0;
+    while (S.peek() && guard++ < 20) {
+      served.push(S.peek().ex);
+      B.clock.advance(20000);
+      answer.right();
+      answer.next(false);
+      if (B.app.innerHTML.indexOf('done-stage') >= 0) break;
+    }
+    S.abandon();
+    const r = NL.state.rec(it.id);
+    ok(served.join(', ') === 'speak', 'an item said for the first time in the mistakes session was asked: ' + served.join(', ') + ' when it should be said once and nothing more');
+    ok(r.said === true && r.stage === 3, 'an item said for the first time in the mistakes session is said ' + r.said + ' and on rung ' + r.stage + ' when it should be said and on rung 3');
+    B.clock.set(T0 + DAY + MIN);
+    NL.state.touchDay();
+    const due = NL.srs.compose('vandaag').due.some(x => x.id === it.id), next = NL.srs.exerciseFor(it);
+    ok(due && next !== 'speak', 'the next day, an item said for the first time in the mistakes session is ' + (due ? 'asked ' + next : 'not due') + ' when it should be asked in writing');
+    console.log('  dit dans la séance sur les fautes : ' + served.join(', ') + ', échelon ' + r.stage + ' ; le lendemain : ' + next);
   }
 
   /* ------------------------------------------------------------------ */
