@@ -37,7 +37,7 @@ NL.state.open().then(() => {
   const PAST = 4;
   let backToBack = 0, prevEx = null, exhausted = null, maxBacklog = 0, tasks = 0, lateRecog = 0;
   const owed = {};
-  let sessions = 0, taps = 0, touched = 0, spokeAfter = 0, detour = 0;
+  let sessions = 0, taps = 0, touched = 0, spokeAfter = 0, detour = 0, putOff = 0;
 
   for (let day = 1; day <= DAYS; day++) {
     B.clock.set(T0 + (day - 1) * DAY);
@@ -47,21 +47,29 @@ NL.state.open().then(() => {
 
     let dayTasks = 0, daySecs = 0, dayNew = 0, guard = 0;
     /* Autant de séances que le budget du jour l'autorise — ou une seule. */
-    while (NL.srs.budgetLeft() > 0 && guard++ < (ONE_A_DAY ? 1 : 12) && S.begin('vandaag')) {
+    while (NL.srs.budgetLeft() > 0 && guard++ < (ONE_A_DAY ? 1 : 12)) {
+      /* Ce que la séance contient, demandé à compose() avant qu'elle commence :
+         c'est parmi ces éléments qu'un « je ne peux pas parler » met de côté. */
+      const planned = NL.srs.compose('vandaag');
+      if (!S.begin('vandaag')) break;
       let n = 0;
       const cantTalk = QUIET && ++sessions % 5 === 0;
       let tapped = false;
       while (S.peek() && n++ < 80) {
         const c = S.peek(), wasMatch = c.ex === 'match';
         /* Là où l'on ne peut pas parler : « je ne peux pas parler » au premier
-           exercice à voix haute, et la séance continue sans. */
+           exercice à voix haute, et la séance continue sans. Ce seul geste met
+           de côté tous les exercices parlés qui restaient, pas seulement celui
+           qui est à l'écran : chaque élément de la séance qui ne peut être que
+           dit doit revenir à voix haute, et le geste ne doit rien toucher, ni
+           un enregistrement, ni le journal, ni le budget du jour. */
         if (c.ex === 'speak' && tapped) spokeAfter++;
         if (c.ex === 'speak' && cantTalk && !tapped) {
-          const it = c.items[0], before = JSON.stringify(NL.state.rec(it.id)), left = NL.srs.budgetLeft();
-          if (NL.srs.needsVoice(it)) owed[it.id] = true;
+          planned.due.concat(planned.fresh).forEach(it => { if (NL.srs.needsVoice(it) && !owed[it.id]) { owed[it.id] = true; putOff++; } });
+          const before = JSON.stringify(NL.state.allRecs()), logged = NL.state.logs().length, left = NL.srs.budgetLeft();
           answer.cantSpeak();
           tapped = true; taps++;
-          if (JSON.stringify(NL.state.rec(it.id)) !== before || NL.srs.budgetLeft() !== left) touched++;
+          if (JSON.stringify(NL.state.allRecs()) !== before || NL.state.logs().length !== logged || NL.srs.budgetLeft() !== left) touched++;
           continue;
         }
         /* Ce qui a été mis de côté revient à voix haute, pas autrement. */
@@ -148,10 +156,10 @@ NL.state.open().then(() => {
      ne laisse rien passer à voix haute, et ne fait rien sauter. */
   if (QUIET) {
     ok(taps > 0, 'aucune séance sans parler n’a rencontré d’exercice à voix haute : la simulation ne vérifie rien');
-    ok(touched === 0, touched + ' « je ne peux pas parler » ont modifié un enregistrement ou entamé le budget du jour');
+    ok(touched === 0, touched + ' « je ne peux pas parler » ont modifié un enregistrement, écrit au journal ou entamé le budget du jour');
     ok(spokeAfter === 0, spokeAfter + ' exercice(s) à voix haute servis après « je ne peux pas parler »');
     ok(detour === 0, detour + ' élément(s) mis de côté sont revenus autrement qu’à voix haute');
-    P('séances sans parler', taps + ' : rien de noté, rien à voix haute ensuite, tout revient à voix haute');
+    P('séances sans parler', taps + ', ' + putOff + ' éléments mis de côté : rien de noté, rien à voix haute ensuite, tout revient à voix haute');
   }
   ok(over.length === 0, over.length + ' jours dépassent le plafond quotidien — la dette explose');
   P('plafond quotidien respecté', over.length === 0 ? 'oui, ' + busiest + ' au maximum' : 'NON');

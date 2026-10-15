@@ -5759,8 +5759,10 @@ NL.screens.sessie = (function () {
 
   /* « Je ne peux pas parler » : plus rien à voix haute jusqu'à la fin de la
      séance. Les exercices parlés qui restaient sont retirés sans être notés et
-     sans rien prendre au budget du jour : leurs éléments restent dus, et
-     reviendront à voix haute à la séance suivante. D'autres éléments dus
+     sans rien prendre au budget du jour : leurs éléments restent dus. Ceux que
+     needsVoice() désigne, dont le prochain exercice ne peut être que parlé,
+     reviendront à voix haute ; pour les autres, l'exercice sera tiré de
+     nouveau, et ils pourront être demandés par écrit. D'autres éléments dus
      prennent leur place, choisis par compose() comme pour toute séance. Rien
      n'est retenu au-delà : la séance suivante redemande. Ce n'est pas un
      réglage, parce qu'un réglage suit l'appareil et s'oublie éteint. */
