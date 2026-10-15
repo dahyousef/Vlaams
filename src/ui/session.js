@@ -365,8 +365,10 @@ NL.screens.sessie = (function () {
     const c = cur();
     const ex = EX.get(c.ex);
     const pct = Math.round(L.at / L.queue.length * 100);
-    const it = c.items[0];
-    const unit = NL.content.unit(it.unit);
+    /* Les unités de toute la séance, lues dans sa file, et non celle de
+       l'exercice en cours : à cheval sur deux unités, elle les nomme toutes
+       les deux, comme la carte de l'accueil. */
+    const span = NL.srs.unitSpan([].concat.apply([], L.queue.map(x => x.items)));
 
     return '<div class="lesson">' +
       '<div class="lesson-head">' +
@@ -380,7 +382,7 @@ NL.screens.sessie = (function () {
 
       '<div class="lesson-body"><div class="stage">' +
       '<div class="kicker"><span class="sub">' +
-      esc(unit ? unit.name : 'Mes mots') +
+      esc(span ? NL.ui.unitLabel(span) : NL.t.wordsEyebrow) +
       (c.retry || c.second ? ' · ' + NL.t.again2 : '') +
       '</span>' + esc(ex.kicker) + '</div>' +
       ex.view(c.task, L, L.phase) +

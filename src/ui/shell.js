@@ -89,6 +89,14 @@ NL.ui = (function () {
       '<h3>' + title + '</h3>' + (body || '') + '<div class="sheet-actions">' + actions + '</div></div></div>';
   }
 
+  /* « Unité 5 · Chez le boulanger », ou « Unités 4–5 » : le même libellé sur la
+     carte de l'accueil et sur l'écran de la séance. */
+  function unitLabel(span) {
+    if (span.from !== span.to) return t.unitsRange(span.from, span.to);
+    const u = NL.content.units.find(x => x.n === span.from);
+    return t.unitOne(span.from) + (u ? ' · ' + u.name : '');
+  }
+
   function sheetHtml() {
     const m = NL.state.meta();
     if (sheet === 'quit-session') {
@@ -371,7 +379,7 @@ NL.ui = (function () {
   function onAuth() { if (route === 'compte') go('vandaag'); else render(); }
 
   return {
-    bind, render, go, toast, openSheet, closeSheet, I, card, onAuth,
+    bind, render, go, toast, openSheet, closeSheet, I, card, unitLabel, onAuth,
     get route() { return route; },
     boot() { const h = fromHash(); if (h) { route = h.r; arg = h.a; } render(); }
   };

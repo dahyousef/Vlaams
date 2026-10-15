@@ -5251,6 +5251,14 @@ NL.ui = (function () {
       '<h3>' + title + '</h3>' + (body || '') + '<div class="sheet-actions">' + actions + '</div></div></div>';
   }
 
+  /* « Unité 5 · Chez le boulanger », ou « Unités 4–5 » : le même libellé sur la
+     carte de l'accueil et sur l'écran de la séance. */
+  function unitLabel(span) {
+    if (span.from !== span.to) return t.unitsRange(span.from, span.to);
+    const u = NL.content.units.find(x => x.n === span.from);
+    return t.unitOne(span.from) + (u ? ' · ' + u.name : '');
+  }
+
   function sheetHtml() {
     const m = NL.state.meta();
     if (sheet === 'quit-session') {
@@ -5533,7 +5541,7 @@ NL.ui = (function () {
   function onAuth() { if (route === 'compte') go('vandaag'); else render(); }
 
   return {
-    bind, render, go, toast, openSheet, closeSheet, I, card, onAuth,
+    bind, render, go, toast, openSheet, closeSheet, I, card, unitLabel, onAuth,
     get route() { return route; },
     boot() { const h = fromHash(); if (h) { route = h.r; arg = h.a; } render(); }
   };
@@ -5908,8 +5916,10 @@ NL.screens.sessie = (function () {
     const c = cur();
     const ex = EX.get(c.ex);
     const pct = Math.round(L.at / L.queue.length * 100);
-    const it = c.items[0];
-    const unit = NL.content.unit(it.unit);
+    /* Les unités de toute la séance, lues dans sa file, et non celle de
+       l'exercice en cours : à cheval sur deux unités, elle les nomme toutes
+       les deux, comme la carte de l'accueil. */
+    const span = NL.srs.unitSpan([].concat.apply([], L.queue.map(x => x.items)));
 
     return '<div class="lesson">' +
       '<div class="lesson-head">' +
@@ -5923,7 +5933,7 @@ NL.screens.sessie = (function () {
 
       '<div class="lesson-body"><div class="stage">' +
       '<div class="kicker"><span class="sub">' +
-      esc(unit ? unit.name : 'Mes mots') +
+      esc(span ? NL.ui.unitLabel(span) : NL.t.wordsEyebrow) +
       (c.retry || c.second ? ' · ' + NL.t.again2 : '') +
       '</span>' + esc(ex.kicker) + '</div>' +
       ex.view(c.task, L, L.phase) +
@@ -6202,7 +6212,7 @@ NL.screens.sessie = (function () {
       /* The one thing this screen is for. Elle nomme l'unité — ou les deux, quand
          la séance en couvre plusieurs : un libellé ne dit jamais une demi-vérité. */
       html += '<section class="card session-card">' +
-        '<span class="eyebrow">' + t.todayEyebrow + (p.units ? ' · ' + esc(unitLabel(p.units)) : '') + '</span>' +
+        '<span class="eyebrow">' + t.todayEyebrow + (p.units ? ' · ' + esc(NL.ui.unitLabel(p.units)) : '') + '</span>' +
         (total === 0 && p.left === 0 && NL.srs.dueItems().length > 0
           ? '<h2>' + t.budgetDone + '</h2>' +
           '<button class="btn btn-blue wide big" data-go="praten">' + t.todayPractise + '</button>'
@@ -6256,13 +6266,6 @@ NL.screens.sessie = (function () {
   function openDefi() {
     if (!NL.screens.sessie.defiReady()) { NL.ui.toast(t.defiLocked(NL.screens.sessie.DEFI_MIN)); return; }
     NL.screens.sessie.begin('defi'); NL.ui.go('sessie');
-  }
-
-  /* « Unité 5 · Chez le boulanger », ou « Unités 4–5 ». */
-  function unitLabel(span) {
-    if (span.from !== span.to) return t.unitsRange(span.from, span.to);
-    const u = NL.content.units.find(x => x.n === span.from);
-    return t.unitOne(span.from) + (u ? ' · ' + u.name : '');
   }
 
   const stat = (n, l) => '<div class="stat-box"><div class="s-n">' + n + '</div><div class="s-l">' + esc(l) + '</div></div>';

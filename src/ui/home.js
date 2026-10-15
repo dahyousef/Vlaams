@@ -18,7 +18,7 @@
       /* The one thing this screen is for. Elle nomme l'unité — ou les deux, quand
          la séance en couvre plusieurs : un libellé ne dit jamais une demi-vérité. */
       html += '<section class="card session-card">' +
-        '<span class="eyebrow">' + t.todayEyebrow + (p.units ? ' · ' + esc(unitLabel(p.units)) : '') + '</span>' +
+        '<span class="eyebrow">' + t.todayEyebrow + (p.units ? ' · ' + esc(NL.ui.unitLabel(p.units)) : '') + '</span>' +
         (total === 0 && p.left === 0 && NL.srs.dueItems().length > 0
           ? '<h2>' + t.budgetDone + '</h2>' +
           '<button class="btn btn-blue wide big" data-go="praten">' + t.todayPractise + '</button>'
@@ -72,13 +72,6 @@
   function openDefi() {
     if (!NL.screens.sessie.defiReady()) { NL.ui.toast(t.defiLocked(NL.screens.sessie.DEFI_MIN)); return; }
     NL.screens.sessie.begin('defi'); NL.ui.go('sessie');
-  }
-
-  /* « Unité 5 · Chez le boulanger », ou « Unités 4–5 ». */
-  function unitLabel(span) {
-    if (span.from !== span.to) return t.unitsRange(span.from, span.to);
-    const u = NL.content.units.find(x => x.n === span.from);
-    return t.unitOne(span.from) + (u ? ' · ' + u.name : '');
   }
 
   const stat = (n, l) => '<div class="stat-box"><div class="s-n">' + n + '</div><div class="s-l">' + esc(l) + '</div></div>';

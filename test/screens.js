@@ -66,6 +66,13 @@ NL.state.open().then(() => {
     const home = text(NL.screens.vandaag.render());
     ok(home.indexOf(t.unitOne(1)) >= 0, 'on a blank account the session card does not name unit 1: « ' + home.slice(0, 90) + ' »');
     ok(home.indexOf(units[0].name) >= 0, 'the session card gives the unit number without its name');
+    /* L'écran de la séance dit la même chose que la carte. */
+    const label = t.unitOne(1) + ' · ' + units[0].name;
+    ok(S.begin('vandaag'), 'the session did not start');
+    NL.ui.go('sessie');
+    const first = text(B.app.innerHTML);
+    S.abandon();
+    ok(first.indexOf(label) >= 0, 'on a blank account the session screen does not say « ' + label + ' »: « ' + first.slice(0, 90) + ' »');
 
     /* Une séance à cheval sur deux unités les nomme toutes les deux. */
     const u1 = NL.content.itemsOf(units[0].id);
@@ -74,6 +81,20 @@ NL.state.open().then(() => {
     ok(span && span.from === 1 && span.to === 2, 'the fixture is wrong: the plan should span units 1–2, spans ' + JSON.stringify(span));
     const two = text(NL.screens.vandaag.render());
     ok(two.indexOf(t.unitsRange(1, 2)) >= 0, 'a session spanning two units names only one: « ' + two.slice(0, 90) + ' »');
+    /* Et l'écran de la séance aussi, à chaque exercice, pas seulement la carte. */
+    ok(S.begin('vandaag'), 'the session did not start');
+    NL.ui.go('sessie');
+    let asked = 0, named = 0;
+    while (S.peek() && asked < 80) {
+      const wasMatch = S.peek().ex === 'match';
+      asked++;
+      if (text(B.app.innerHTML).indexOf(t.unitsRange(1, 2)) >= 0) named++;
+      answer.right();
+      answer.next(wasMatch);
+      if (B.app.innerHTML.indexOf('done-stage') >= 0) break;
+    }
+    S.abandon();
+    ok(asked > 0 && named === asked, 'the session screen leaves out « ' + t.unitsRange(1, 2) + ' » on ' + (asked - named) + ' of ' + asked + ' exercises');
 
     /* Le parcours : des comptes, et un compte à rebours vers l'unité suivante. */
     fresh();
@@ -85,7 +106,7 @@ NL.state.open().then(() => {
     ok(path.indexOf(t.courseCounts(need - 4, need - 4, all.length)) >= 0, 'the course header does not report its two counts');
     put(NL.content.itemsOf(units[0].id)[need - 4], 0, T0 + DAY);
     ok(text(NL.screens.leerpad.render()).indexOf(t.unitGate(3)) >= 0, 'meeting one more item did not move the countdown');
-    console.log('  accueil : « ' + t.unitsRange(1, 2) + ' » ; parcours : « ' + t.unitGate(3) + ' »');
+    console.log('  accueil et séance : « ' + t.unitsRange(1, 2) + ' » ; parcours : « ' + t.unitGate(3) + ' »');
   }
 
   /* ------------------------------------------------------------------ */
