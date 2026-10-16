@@ -55,7 +55,10 @@ Every fix leaves a test that fails on the old code. Write it, watch it fail, the
   out before reviews. The home screen and the session both ask it. A second calculation
   anywhere is the fault phase 1 removed.
 - `resetAt` in the stored settings is the moment of the last reset, and other devices compare
-  against it. It only grows, except on a device joining an account (below). `ENGINE_EPOCH` in `src/core/state.js` is a fixed date and
+  against it. It only grows, except on a device joining an account (below). The server enforces it: the
+  `keep_reset` trigger on `user_meta` keeps the stored `resetAt` and `progress` when a write would
+  lower `resetAt`, so lowering it by hand means disabling that trigger first. `supabase/schema.sql`
+  is kept in step with the live project by hand. `ENGINE_EPOCH` in `src/core/state.js` is a fixed date and
   must stay one: changing it wipes progress again, or stops wiping it.
   Records and log lines carry the reset they descend from (`base`), the frontier and the done-lists
   travel in `progress`, and a device no account owned takes the account's `resetAt` at sign-in.

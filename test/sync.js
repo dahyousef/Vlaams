@@ -67,7 +67,17 @@ function fakeLib(device) {
               const old = server.tables[table].get(k);
               if (o && o.ignoreDuplicates && old) return;
               if (old && r.updated_at != null && r.updated_at < old.updated_at) return;   // déclencheur keep_newer
-              server.tables[table].set(k, clone(r));
+              const row = clone(r);
+              /* déclencheur keep_reset, qui part après keep_newer : une écriture qui ferait reculer resetAt
+                 garde le resetAt et le progress du serveur, et prend le reste. */
+              if (old && table === 'user_meta') {
+                const num = v => (typeof v === 'number' ? v : 0);
+                if (num(row.data.resetAt) < num(old.data.resetAt)) {
+                  row.data.resetAt = old.data.resetAt;
+                  if ('progress' in old.data) row.data.progress = clone(old.data.progress); else delete row.data.progress;
+                }
+              }
+              server.tables[table].set(k, row);
             });
             return Promise.resolve({ error: null });
           }
@@ -582,6 +592,42 @@ const items = NL => NL.content.allItems();
     ok(F1.NL.state.seenCount() === 0 && F1.NL.state.logs().length === 0,
       'the device that reset received ' + F1.NL.state.seenCount() + ' record(s) and ' + F1.NL.state.logs().length + ' log line(s) from the stale one');
     console.log('  ce qui est bâti sur une progression effacée ne voyage pas');
+  }
+
+  console.log('\nL’ANCIENNE VERSION RENVOIE DES RÉGLAGES D’AVANT LA REMISE À ZÉRO');
+  {
+    /* 5b. La limite 3 de l'ADR 0006 : un onglet de l'ancienne version recopie les
+       réglages entiers, et s'ils sont plus récents, renvoie le resetAt et le
+       progress d'avant. Il passe par l'upsert du faux serveur, celui qui reflète
+       les déclencheurs : keep_newer, puis keep_reset. */
+    const P1 = device('P1', true);
+    await P1.boot(); await P1.signIn('stale-settings@example.com');
+    const pid = P1.NL.sync.user.id;
+    P1.NL.state.setMeta({ reached: 2, scenariosDone: ['bakker'] });
+    await P1.NL.sync.flush();
+    const before = clone(rowsFor('user_meta', pid)[0].data);
+    ok(before.progress && before.progress.reached === 2, 'the fixture is wrong: the account should hold a frontier of 2 before the reset: ' + JSON.stringify(before.progress));
+    await wait(3);
+    P1.NL.state.resetProgress();
+    await P1.NL.sync.flush();
+    const cut = rowsFor('user_meta', pid)[0].data.resetAt;
+    ok(cut > before.resetAt && rowsFor('user_meta', pid)[0].data.progress.reached === 0, 'the fixture is wrong: the reset did not reach the server');
+    /* Ce que mergeMeta de l'ancienne version envoie : ses réglages, plus récents,
+       avec le resetAt et le progress qu'elle a vus en dernier. */
+    const stale = Object.assign(clone(before), { theme: 'dark', updatedAt: Date.now() + 1000 });
+    const { error } = await fakeLib(P1).createClient().from('user_meta').upsert(
+      { user_id: pid, data: stale, updated_at: stale.updatedAt }, { onConflict: 'user_id' });
+    ok(!error, 'the previous build’s settings write was refused: ' + (error && error.message));
+    const row = rowsFor('user_meta', pid)[0].data;
+    ok(row.resetAt === cut, 'the server took the older resetAt: ' + row.resetAt + ', expected ' + cut);
+    ok(row.progress.reached === 0 && row.progress.scenariosDone.length === 0,
+      'the server took the older progress: ' + JSON.stringify(row.progress));
+    ok(row.theme === 'dark', 'the rest of the write did not land: theme ' + row.theme);
+    await P1.NL.sync.pull();
+    const pm = P1.NL.state.meta();
+    ok(pm.resetAt === cut && pm.reached === 0 && pm.progress.reached === 0,
+      'the device that reset took the older reset or frontier at its next pull: ' + JSON.stringify([pm.resetAt, pm.reached, pm.progress]));
+    console.log('  le serveur garde la remise à zéro et sa progression ; le reste de l’écriture passe');
   }
 
   console.log('\nREMISE À ZÉRO SANS COMPTE');

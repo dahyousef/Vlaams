@@ -18,7 +18,7 @@ n'y a qu'une seule liste. Il faut Node et un `sh` (sous Windows, celui de Git).
 | `screens.js` | Chaque écran dans quatre états, relu comme du texte : ni pourcentage, ni maîtrise ; les comptes, le nom de l'unité, ce qui résiste, le bouton « je ne peux pas parler », le journal d'erreurs |
 | `sim.js` | Chaque écran, une séance, un scénario, une série d'écoute |
 | `firstrun.js` | Une base vide : premier écran, première séance, le défi, la sauvegarde |
-| `sync.js` | Deux appareils et un faux Supabase : adoption, conflits, panne, comptes, la remise à zéro sur deux appareils (dont un hors ligne qui revient), la migration unique et un appareil resté sur l'ancienne version |
+| `sync.js` | Deux appareils et un faux Supabase : adoption, conflits, panne, comptes, la remise à zéro sur deux appareils (dont un hors ligne qui revient), la migration unique, un appareil resté sur l'ancienne version et un serveur qui garde la remise à zéro la plus récente |
 | `journey.js` | Le parcours complet d'un utilisateur, pour une voix et un navigateur donnés |
 | `pace.js` | 200 jours simulés, pour trois apprenants (budget épuisé chaque jour ; une seule séance par jour ; une seule séance, dont une sur cinq là où l’on ne peut pas parler) : charge quotidienne, variété, exigence — aucune journée sans élément nouveau tant qu’il en reste, un élément du premier jour demandé à voix haute en dix jours et jamais après trois semaines, l’échelon de l’écrit passé en écrivant, et « je ne peux pas parler » qui ne note rien, ne coûte rien et ne fait rien sauter. L’horloge avance pendant la journée |
 
@@ -48,6 +48,10 @@ Trois choses restent hors d'atteinte : le **vrai IndexedDB** d'un navigateur
 `test/sync.js` les a exécutées) ; et un **vrai appareil qui tourne encore sur
 la version précédente** quand la nouvelle est déployée — les suites en écrivent
 l'état, elles ne font pas tourner l'ancienne version.
+
+Les déclencheurs de `supabase/schema.sql` ne tournent que sur la vraie base :
+`test/sync.js` les reflète en JavaScript, et le SQL de `keep_reset` a été
+vérifié une fois contre un Postgres local (PGlite), hors de la suite.
 
 Et une limite du test `de`/`het` : il vérifie l'article du mot drillé, pas tous
 les articles d'une phrase. Un balayage large demanderait une analyse

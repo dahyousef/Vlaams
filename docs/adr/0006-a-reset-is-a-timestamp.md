@@ -71,12 +71,23 @@ inert: no device on this build imports them, and the next write of the same item
 replaces them. The reverse also holds: a row the previous build writes later replaces this
 build's row of the same item, since the server keeps the newer, and devices miss that item
 until it is answered again on this build. A tab of the previous build left open after the
-deploy copies the settings whole, so after a reset or a restore made on this build, its next
-settings write can put the account's `resetAt` and `progress` back to what it last saw; a
-device adopting in that window rebases on the older reset and loses its anonymous answers when
-the later one returns, and the old device, once reloaded, keeps the older reset. The remedy is
-in practice: after the deploy, reload every open tab and installed app on every device before
-any reset or restore. A reset made by hand still cuts at the clock of the device that makes it,
+deploy copies the settings whole, so its next settings write carries the `resetAt` and
+`progress` it last saw. Since 16 October 2026 the `keep_reset` trigger on `user_meta` keeps the
+account's `resetAt` and `progress` when a write would lower `resetAt` (amended below), so a
+reset or a restore made on this build survives that write, and neither a device adopting in
+that window nor the old device, once reloaded, takes the older reset. What remains: the old
+tab shows its old progress until it is reloaded, its answers reach the server inert, and under
+the same reset it can send back an older `progress`, which this build's next synchronisation
+puts right. Reloading every open tab and installed app after the deploy is advice, no longer
+protection. A reset made by hand still cuts at the clock of the device that makes it,
 so a `base` taken from a device whose clock runs ahead can outlast it; that is the clock skew
-accepted above. Data written by a Preview of this branch before this amendment carries no
-`base` and is erased by the next migration; no real account has used such a Preview.
+accepted above. Data written by a Preview of this branch before the amendment of 14 October
+carries no `base` and is erased by the next migration; no real account has used such a Preview.
+
+## Amended 16 October 2026
+
+The third limit above was the one the server could close. A `keep_reset` trigger on
+`user_meta`, run after `keep_newer`, keeps the stored `resetAt` and `progress` when an
+incoming write would lower `resetAt`, and takes the rest of the write as it arrives. It keeps
+rather than refuses: a refused settings write made the previous build's whole flush fail and be
+retried every thirty seconds. `supabase/schema.sql` holds it, and `test/sync.js` mirrors it.
