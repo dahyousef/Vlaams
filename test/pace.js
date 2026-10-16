@@ -37,7 +37,7 @@ NL.state.open().then(() => {
   const PAST = 4;
   let backToBack = 0, prevEx = null, exhausted = null, maxBacklog = 0, tasks = 0, lateRecog = 0;
   const owed = {};
-  let sessions = 0, taps = 0, touched = 0, spokeAfter = 0, detour = 0, putOff = 0;
+  let sessions = 0, taps = 0, touched = 0, spokeAfter = 0, detour = 0, putOff = 0, early = 0;
 
   for (let day = 1; day <= DAYS; day++) {
     B.clock.set(T0 + (day - 1) * DAY);
@@ -49,12 +49,17 @@ NL.state.open().then(() => {
     /* Autant de séances que le budget du jour l'autorise — ou une seule. */
     while (NL.srs.budgetLeft() > 0 && guard++ < (ONE_A_DAY ? 1 : 12)) {
       /* Ce que la séance contient, demandé à compose() avant qu'elle commence :
-         c'est parmi ces éléments qu'un « je ne peux pas parler » met de côté. */
+         c'est parmi ces éléments qu'un « je ne peux pas parler » met de côté,
+         ceux qui ne pouvaient déjà qu'être dits. Un élément qui monte à
+         l'échelon 3 pendant la séance n'avait aucun exercice parlé à perdre. */
       const planned = NL.srs.compose('vandaag');
+      const voiceAtStart = planned.due.concat(planned.fresh).filter(NL.srs.needsVoice);
       if (!S.begin('vandaag')) break;
       let n = 0;
       const cantTalk = QUIET && ++sessions % 5 === 0;
       let tapped = false;
+      /* Ce que la séance a déjà servi avant le geste : le geste ne leur retire rien. */
+      const answeredHere = new Set();
       while (S.peek() && n++ < 80) {
         const c = S.peek(), wasMatch = c.ex === 'match';
         /* Là où l'on ne peut pas parler : « je ne peux pas parler » au premier
@@ -65,7 +70,7 @@ NL.state.open().then(() => {
            un enregistrement, ni le journal, ni le budget du jour. */
         if (c.ex === 'speak' && tapped) spokeAfter++;
         if (c.ex === 'speak' && cantTalk && !tapped) {
-          planned.due.concat(planned.fresh).forEach(it => { if (NL.srs.needsVoice(it) && !owed[it.id]) { owed[it.id] = true; putOff++; } });
+          voiceAtStart.forEach(it => { if (!owed[it.id]) { owed[it.id] = true; putOff++; if (answeredHere.has(it.id)) early++; } });
           const before = JSON.stringify(NL.state.allRecs()), logged = NL.state.logs().length, left = NL.srs.budgetLeft();
           answer.cantSpeak();
           tapped = true; taps++;
@@ -74,6 +79,7 @@ NL.state.open().then(() => {
         }
         /* Ce qui a été mis de côté revient à voix haute, pas autrement. */
         if (!wasMatch && owed[c.items[0].id]) { if (c.ex !== 'speak') detour++; delete owed[c.items[0].id]; }
+        if (!wasMatch) answeredHere.add(c.items[0].id);
         tasks++; dayTasks++;
         daySecs += SECS[c.ex] || 15;
         mix[c.ex] = (mix[c.ex] || 0) + 1;
@@ -159,6 +165,7 @@ NL.state.open().then(() => {
     ok(touched === 0, touched + ' « je ne peux pas parler » ont modifié un enregistrement, écrit au journal ou entamé le budget du jour');
     ok(spokeAfter === 0, spokeAfter + ' exercice(s) à voix haute servis après « je ne peux pas parler »');
     ok(detour === 0, detour + ' élément(s) mis de côté sont revenus autrement qu’à voix haute');
+    ok(early === 0, early + ' élément(s) comptés mis de côté avaient déjà été servis plus tôt dans la séance : le geste ne leur a rien retiré');
     P('séances sans parler', taps + ', ' + putOff + ' éléments mis de côté : rien de noté, rien à voix haute ensuite, tout revient à voix haute');
   }
   ok(over.length === 0, over.length + ' jours dépassent le plafond quotidien — la dette explose');
