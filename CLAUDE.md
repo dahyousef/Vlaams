@@ -23,9 +23,10 @@ the suite cannot see.
 
 The suite takes three to six minutes. While working, run the one file you are changing, for
 example `node test/engine.js .`. A new suite loads the app through
-`test/lib/browser.js` and answers exercises through `test/lib/answer.js`, never by calling
-the scheduler itself. The exception is `test/engine.js`, the scheduler's own suite, which
-also calls `NL.srs` directly.
+`test/lib/browser.js` and answers exercises through `test/lib/answer.js`, as a learner
+would. Grading through `NL.srs.grade()` directly is for `test/engine.js`, the scheduler's
+own suite; the older `test/smoke.js` and `test/sync.js` do it too. Any suite may call
+`NL.srs` to set up or read state, as `test/pace.js` calls `compose()` and `needsVoice()`.
 
 Every fix leaves a test that fails on the old code. Write it, watch it fail, then fix it.
 
