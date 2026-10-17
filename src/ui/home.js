@@ -36,8 +36,11 @@
           '<p>' + esc(v.note) + ' Touche ici pour tester et corriger.</p></button>';
       }
 
+      /* La série enregistrée ne change qu'à la séance suivante : un jour sauté, elle est déjà coupée.
+         Même compte des jours que creditDay(), qui ne la prolonge que depuis la veille. */
+      const streak = m.lastDay && U.dayDiff(m.lastDay, U.dayKey()) <= 1 ? m.streak : 0;
       html += '<div class="tri">' +
-        stat(m.streak, t.statStreak(m.streak)) +
+        stat(streak, t.statStreak(streak)) +
         stat(cp.met, t.statMet) +
         stat(cp.produce, t.statProduce) +
         '</div>';

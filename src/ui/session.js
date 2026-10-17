@@ -454,7 +454,7 @@ NL.screens.sessie = (function () {
         : L.putOff > 0 ? NL.t.doneSpokenKept(L.putOff) : NL.t.doneNoSpoken) + '</p>' +
       '<div class="tally">' +
       box('+' + L.xp, NL.t.tallyXp, 'gold') + box(L.right + '/' + (L.right + L.wrong), NL.t.tallyRight, 'blue') +
-      box(m.streak, NL.t.tallyDays, 'green') + box(mins + 'm', NL.t.tallyTime, '') +
+      box(m.streak, NL.t.tallyDays(m.streak), 'green') + box(mins + 'm', NL.t.tallyTime, '') +
       (L.bestCombo >= 3 ? box('\u{1F525} ' + L.bestCombo, NL.t.tallyCombo, L.comboRecord ? 'gold' : '') : '') +
       '</div>' +
       (L.comboRecord ? '<p class="record">' + NL.t.comboRecord(L.bestCombo) + '</p>' : '') +

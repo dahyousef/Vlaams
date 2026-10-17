@@ -136,6 +136,46 @@ NL.state.open().then(() => {
   }
 
   /* ------------------------------------------------------------------ */
+  console.log('\nLA SÉRIE');
+  {
+    /* Jours locaux, comme NL.util.dayKey() les compte : tirés de l'horloge du test. */
+    const day = n => NL.util.dayKey(T0 + n * DAY);
+    const streakOnHome = () => {
+      const h = text(NL.screens.vandaag.render());
+      return (h.match(/(\d+)\s+jours? d.affilée/) || [])[1];
+    };
+    fresh();
+    NL.state.setMeta({ lastDay: day(-10), streak: 2 });
+    ok(streakOnHome() === '0', 'la série est coupée depuis dix jours mais l\'accueil lit « ' + streakOnHome() + ' jours d\'affilée »');
+    ok(NL.state.meta().streak === 2 && NL.state.meta().lastDay === day(-10), 'lire l\'accueil a modifié la série ou le dernier jour enregistrés');
+    NL.state.setMeta({ lastDay: day(-1), streak: 2 });
+    ok(streakOnHome() === '2', 'étudié hier : l\'accueil devrait garder la série de 2, il lit « ' + streakOnHome() + ' »');
+    NL.state.setMeta({ lastDay: day(0), streak: 2 });
+    ok(streakOnHome() === '2', 'étudié aujourd\'hui : l\'accueil devrait garder la série de 2, il lit « ' + streakOnHome() + ' »');
+    NL.state.setMeta({ lastDay: day(-2), streak: 2 });
+    ok(streakOnHome() === '0', 'avant-hier : la série est coupée, l\'accueil lit « ' + streakOnHome() + ' »');
+    NL.state.setMeta({ lastDay: null, streak: 0 });
+    ok(streakOnHome() === '0', 'jamais étudié : l\'accueil devrait lire 0');
+
+    /* Le bilan : « 1 Jour », « 2 Jours ». */
+    fresh();
+    ok(S.begin('vandaag'), 'la séance n\'a pas démarré');
+    NL.ui.go('sessie');
+    let guard = 0;
+    while (S.peek() && guard++ < 80) { const wm = S.peek().ex === 'match'; answer.right(); answer.next(wm); if (B.app.innerHTML.indexOf('done-stage') >= 0) break; }
+    ok(B.app.innerHTML.indexOf('done-stage') >= 0, 'la séance n\'est pas arrivée au bilan');
+    NL.state.setMeta({ streak: 1 });
+    NL.ui.render();
+    const one = text(B.app.innerHTML);
+    ok(/\b1 Jour\b(?!s)/.test(one) && !/\b1 Jours\b/.test(one), 'le bilan avec une série de 1 ne lit pas « 1 Jour » : « ' + (one.match(/.{0,20}Jours?.{0,10}/) || [''])[0] + ' »');
+    NL.state.setMeta({ streak: 2 });
+    NL.ui.render();
+    const two = text(B.app.innerHTML);
+    ok(/\b2 Jours\b/.test(two), 'le bilan avec une série de 2 ne lit pas « 2 Jours »');
+    S.abandon();
+  }
+
+  /* ------------------------------------------------------------------ */
   console.log('\nCE QUI RÉSISTE');
   {
     fresh();
