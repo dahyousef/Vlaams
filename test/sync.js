@@ -254,6 +254,31 @@ const items = NL => NL.content.allItems();
      fusion doit le garder même quand l'autre côté est « plus récent ». */
   const m3 = M({ xp: 5, updatedAt: 50 }, { xp: 4, lastBackup: 4242, updatedAt: 10 });
   ok(m3.lastBackup === 4242, 'merge dropped the backup stamp written by the robot');
+  /* …et quand l'appareil porte déjà une date à lui : le robot ne touche pas à
+     updatedAt, les deux côtés sont à égalité et c'est la date qui doit trancher. */
+  const m5 = M({ xp: 5, lastBackup: 1000, updatedAt: 50 }, { xp: 5, lastBackup: 4242, updatedAt: 50 });
+  ok(m5.lastBackup === 4242, 'a device kept its older backup date over the robot\'s: ' + m5.lastBackup);
+
+  /* Ce que fait le robot chaque matin, puis une séance sur un appareil qui a déjà
+     vu une sauvegarde : l'écran Réglages doit montrer la dernière, et l'envoi ne
+     doit pas rendre au serveur la date d'avant. */
+  {
+    const robot = when => {
+      const row = rowsFor('user_meta', uid)[0];
+      row.data = Object.assign({}, row.data, { lastBackup: when });
+    };
+    const first = Date.now() - 2 * 86400000, second = Date.now() - 3600000;
+    robot(first);
+    await A.NL.sync.pull();
+    ok(A.NL.state.meta().lastBackup === first, 'the fixture is wrong: A did not take its first backup date');
+    robot(second);
+    await A.NL.sync.pull();
+    ok(A.NL.state.meta().lastBackup === second, 'A shows the backup before last: ' + new Date(A.NL.state.meta().lastBackup).toISOString());
+    A.NL.state.setMeta({ xp: A.NL.state.meta().xp + 1 });
+    await A.NL.sync.flush();
+    const back = rowsFor('user_meta', uid)[0].data.lastBackup;
+    ok(back === second, 'A gave the server back an older backup date: ' + new Date(back).toISOString());
+  }
 
   const m2 = M({ doneDay: '2026-09-18', doneToday: 2, updatedAt: 1 }, { doneDay: '2026-09-17', doneToday: 50, updatedAt: 9 });
   ok(m2.doneDay === '2026-09-18' && m2.doneToday === 2, 'a later day should reset the counter');

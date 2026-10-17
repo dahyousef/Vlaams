@@ -849,7 +849,7 @@ NL.t = {
   doneSpoken: n => 'Tu as dit ' + n + (n === 1 ? ' élément' : ' éléments') + ' à voix haute. Ce sont ceux qui sortiront de ta bouche dans un magasin.',
   doneSpokenKept: n => n + (n === 1 ? ' exercice à voix haute gardé' : ' exercices à voix haute gardés') + ' pour la prochaine séance.',
   doneNoSpoken: 'Rien de dit à voix haute cette fois — les exercices de prononciation arrivent quand les éléments montent dans l’échelle.',
-  tallyXp: 'XP', tallyRight: 'Juste', tallyDays: 'Jours', tallyTime: 'Durée',
+  tallyXp: 'XP', tallyRight: 'Juste', tallyDays: n => n === 1 ? 'Jour' : 'Jours', tallyTime: 'Durée',
   sessionMore: 'Encore une session',
   sessionBack: 'Retour à Aujourd’hui',
   nothingDue: 'Rien à faire — pour l’instant.',
@@ -2610,6 +2610,9 @@ NL.sync = (function () {
       else { const w = da > db ? a : b; out[k] = w[k]; out[cnt] = w[cnt]; }
     });
     out.placed = !!(a.placed || b.placed);
+    /* Le robot de sauvegarde écrit lastBackup sans toucher à updatedAt : le côté
+       le plus récent peut porter la date d'avant. Elle ne fait que croître. */
+    if (a.lastBackup || b.lastBackup) out.lastBackup = Math.max(a.lastBackup || 0, b.lastBackup || 0);
     /* La frontière ne recule jamais et les listes de choses faites s'unissent —
        sauf remise à zéro : tout ce qui relève de la progression suit alors le
        côté qui porte la plus récente, sinon l'autre appareil rendrait ce qu'on
@@ -6018,7 +6021,7 @@ NL.screens.sessie = (function () {
         : L.putOff > 0 ? NL.t.doneSpokenKept(L.putOff) : NL.t.doneNoSpoken) + '</p>' +
       '<div class="tally">' +
       box('+' + L.xp, NL.t.tallyXp, 'gold') + box(L.right + '/' + (L.right + L.wrong), NL.t.tallyRight, 'blue') +
-      box(m.streak, NL.t.tallyDays, 'green') + box(mins + 'm', NL.t.tallyTime, '') +
+      box(m.streak, NL.t.tallyDays(m.streak), 'green') + box(mins + 'm', NL.t.tallyTime, '') +
       (L.bestCombo >= 3 ? box('\u{1F525} ' + L.bestCombo, NL.t.tallyCombo, L.comboRecord ? 'gold' : '') : '') +
       '</div>' +
       (L.comboRecord ? '<p class="record">' + NL.t.comboRecord(L.bestCombo) + '</p>' : '') +
@@ -6245,8 +6248,11 @@ NL.screens.sessie = (function () {
           '<p>' + esc(v.note) + ' Touche ici pour tester et corriger.</p></button>';
       }
 
+      /* La série enregistrée ne change qu'à la séance suivante : un jour sauté, elle est déjà coupée.
+         Même compte des jours que creditDay(), qui ne la prolonge que depuis la veille. */
+      const streak = m.lastDay && U.dayDiff(m.lastDay, U.dayKey()) <= 1 ? m.streak : 0;
       html += '<div class="tri">' +
-        stat(m.streak, t.statStreak(m.streak)) +
+        stat(streak, t.statStreak(streak)) +
         stat(cp.met, t.statMet) +
         stat(cp.produce, t.statProduce) +
         '</div>';
