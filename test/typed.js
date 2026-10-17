@@ -98,6 +98,7 @@ NL.state.open().then(() => {
   /* Les réponses justes que le contenu ne tenait pas : le champ also. */
   right('goeiedag', 'dag', 'also');
   right('dag', 'hallo', 'also');
+  right('dag', 'goeiedag', 'also: bonjour et salut, le même salut');
   right('dank u wel', 'dank u', 'also');
   right('dank u wel', 'bedankt', 'also');
   console.log('  also           « dag », « hallo », « dank u », « bedankt »');

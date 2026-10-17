@@ -3809,9 +3809,11 @@ NL.content.patterns = (function () {
 (function () {
   'use strict';
   const ALSO = {
+    /* « bonjour » et « salut », c'est le même salut : hallo, goeiedag et dag
+       s'acceptent l'un l'autre (hallo et goeiedag par leur sens commun). */
     'goeiedag': ['dag'],
     'hallo': ['dag'],
-    'dag': ['hallo'],
+    'dag': ['hallo', 'goeiedag'],
     'dank u wel': ['dank u', 'bedankt']
   };
 
