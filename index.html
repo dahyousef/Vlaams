@@ -843,6 +843,8 @@ NL.t = {
   defiToBeat: n => 'Record à battre : ' + n + '.',
   defiAgain: 'Relancer le défi',
   hereThey: 'Ici on dit :',
+  askedFor: 'On demandait :',
+  alsoSaid: 'On dit aussi :',
   matchHint: 'Touche un mot néerlandais, puis sa traduction.',
   doneFlawless: 'Sans faute.',
   doneOk: 'Session terminée.',
@@ -3795,6 +3797,36 @@ NL.content.patterns = (function () {
 })();
 </script>
 <script>
+/* D'autres façons de dire la même chose.
+
+   La table donne, pour un élément, ce que la réponse tapée accepte en plus de
+   la cible et de la variante flamande, et ce que le panneau liste après coup
+   (« On dit aussi : … »). Du néerlandais seulement, jamais stocké : l'élément
+   du contenu la porte, pas l'enregistrement de la personne.
+
+   Les éléments s'accrochent par leur forme exacte, article compris : si un mot
+   est renommé dans le lexique, sa ligne ne suit pas en silence. */
+(function () {
+  'use strict';
+  const ALSO = {
+    /* « bonjour » et « salut », c'est le même salut : hallo, goeiedag et dag
+       s'acceptent l'un l'autre (hallo et goeiedag par leur sens commun). */
+    'goeiedag': ['dag'],
+    'hallo': ['dag'],
+    'dag': ['hallo', 'goeiedag'],
+    'dank u wel': ['dank u', 'bedankt']
+  };
+
+  const missing = [];
+  const hit = new Set();
+  NL.content.units.forEach(u => (u.words || []).concat(u.phrases || []).forEach(it => {
+    if (ALSO[it.nl]) { it.also = ALSO[it.nl]; hit.add(it.nl); }
+  }));
+  Object.keys(ALSO).forEach(nl => { if (!hit.has(nl)) missing.push(nl); });
+  NL.content.alsoReport = { attached: hit.size, missing };
+})();
+</script>
+<script>
 /* Réponses libres, attachées aux règles de grammaire.
    Une consigne dit ce que la réponse doit CONTENIR, jamais comment la formuler :
    il y a donc beaucoup de bonnes réponses. La correction est une liste de cases
@@ -4686,6 +4718,21 @@ NL.ex = (function () {
     return U.norm(U.bare(a.nl)) === U.norm(U.bare(b.nl));
   }
 
+  /* Ce que la réponse tapée accepte pour un élément : la cible, ses variantes
+     flamandes (une par virgule pour un mot, la phrase entière pour une phrase) et
+     sa liste « also ». Un mot se tape avec ou sans article, comme la cible. */
+  const variants = item => !item.be ? []
+    : item.kind === 'word' ? String(item.be).split(',').map(f => f.trim()).filter(Boolean) : [item.be];
+  function accepted(item) {
+    const word = item.kind === 'word';
+    return U.uniq([item.nl].concat(variants(item), item.also || [])
+      .map(x => U.norm(word ? U.bare(x) : x)).filter(Boolean));
+  }
+  /* Les éléments qui disent la même chose : taper l'un est juste pour l'autre. */
+  const siblings = item => NL.content.allItems().filter(x => x.id !== item.id && x.nl && sameSense(x, item));
+  /* Les réponses acceptées (`list`) comprennent-elles le néerlandais de `b` ? */
+  const accepts = (list, b) => list.indexOf(U.norm(U.bare(b.nl))) >= 0;
+
   /* La nature du mot, grossièrement : « oui » face à « sorry / spreken / ja » se
      résout sans connaître le mot, parce qu'un verbe ne répond pas à « oui ». */
   function wordClass(x) {
@@ -4708,7 +4755,10 @@ NL.ex = (function () {
       pool = pool.concat(NL.content.allItems().filter(x =>
         x.kind === item.kind && x.unit !== item.unit && x.id !== item.id && NL.srs.isSeen(x)));
     }
-    pool = pool.filter(x => U.norm(label(x)) !== tn && !sameSense(x, item));
+    /* Ni un synonyme, ni une réponse que l'un des deux accepte : « dag » face à
+       « bonjour » ne doit pas offrir « hallo » comme faux. */
+    const mine = accepted(item);
+    pool = pool.filter(x => U.norm(label(x)) !== tn && !sameSense(x, item) && !accepts(mine, x) && !accepts(accepted(x), item));
 
     const score = x => {
       const s = label(x);
@@ -4903,9 +4953,16 @@ NL.ex = (function () {
         '</div>';
     },
     ready: (t, L) => L.input.trim().length > 0,
+    /* Juste si l'entrée vaut l'une des réponses de l'élément, ou de celle d'un
+       autre élément au même sens (alors `other` : le panneau nomme le mot
+       demandé). « Presque » se mesure contre toutes, à une lettre. */
     judge(t, L) {
-      const ok = U.typedOk(L.input, t.target);
-      return { ok, close: !ok && U.typedOk(L.input, t.target, 1) };
+      const own = accepted(t.item);
+      if (own.some(a => U.typedOk(L.input, a))) return { ok: true };
+      const others = [];
+      siblings(t.item).forEach(x => accepted(x).forEach(a => others.push(a)));
+      if (others.some(a => U.typedOk(L.input, a))) return { ok: true, other: true };
+      return { ok: false, close: own.concat(others).some(a => U.typedOk(L.input, a, 1)) };
     },
     answer: t => t.target
   };
@@ -5172,7 +5229,39 @@ NL.ex = (function () {
     }
   };
 
-  return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, recordPanel, selfRate, sameSense, wordScore };
+  /* La ligne « Ici on dit » : les formes flamandes de l'élément, sans celle qui
+     répète le néerlandais standard ni la réponse déjà affichée (`shown`), sauf
+     `keepSame` — dans « Comment le dit-on ici ? » la variante EST la réponse. En
+     gras, ce qui change par rapport au standard ; la ponctuation reste dehors. */
+  const PUNCT = '[.,!?;:"()…]*';
+  function boldForm(item, form) {
+    const diff = U.diffWords(item.nl, form);
+    let n = 0, out = '', open = false;
+    form.split(/\s+/).filter(Boolean).forEach(tok => {
+      const m = tok.match(new RegExp('^(' + PUNCT + ')(.*?)(' + PUNCT + ')$'));
+      const lead = m[1], core = m[2], trail = m[3];
+      const d = U.norm(core) ? diff[n++] : null;
+      const changed = !!d && (!d.ok || d.close);
+      const sep = out ? ' ' : '';
+      if (changed && open && !lead) out += ' ' + esc(core);
+      else {
+        if (open) { out += '</b>'; open = false; }
+        if (changed) { out += sep + esc(lead) + '<b>' + esc(core); open = true; }
+        else out += sep + esc(lead + core + trail);
+      }
+      if (changed && trail) { out += '</b>' + esc(trail); open = false; }
+    });
+    return out + (open ? '</b>' : '');
+  }
+  function hereLine(item, shown, keepSame) {
+    if (!item || !item.be) return '';
+    const own = U.norm(U.bare(item.nl)), seen = U.norm(shown);
+    const forms = variants(item).filter(f => keepSame || (U.norm(U.bare(f)) !== own && U.norm(U.bare(f)) !== seen));
+    if (!forms.length) return '';
+    return '<p class="v-be">' + NL.t.hereThey + ' ' + forms.map(f => boldForm(item, f)).join(', ') + '</p>';
+  }
+
+  return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, recordPanel, selfRate, sameSense, wordScore, hereLine };
 })();
 </script>
 <script>
@@ -5575,7 +5664,7 @@ NL.screens.sessie = (function () {
   const MAX_TASKS = NL.srs.MAX_TASKS;
 
   function blankTurn() {
-    return { sel: null, picked: [], input: '', close: false, matchSel: null, matchGone: [], matchBad: null, speech: { phase: 'idle', tries: 0, selfRated: null } };
+    return { sel: null, picked: [], input: '', close: false, other: false, matchSel: null, matchGone: [], matchBad: null, speech: { phase: 'idle', tries: 0, selfRated: null } };
   }
 
   /* ---------------- le défi ----------------
@@ -5844,6 +5933,7 @@ NL.screens.sessie = (function () {
     L.phase = v.ok ? 'ok' : 'no';
     L.lastSpoken = !!v.spoken;
     L.close = !!v.close;
+    L.other = !!v.other;
 
     c.items.forEach(it => NL.srs.grade(it, v.ok, { spoken: v.spoken, ex: c.ex, defi: L.source === 'defi' }));
     /* La séance sur les fautes est hors du budget du jour. */
@@ -5906,6 +5996,7 @@ NL.screens.sessie = (function () {
     }
     L.combo = 0;
     L.close = false;
+    L.other = false;
     L.phase = 'no';
     /* Un plateau passé n'est ni une faute ni une reprise : on le laisse. */
     if (!board) { if (L.source === 'defi') L.lives--; else again(c); }
@@ -5984,15 +6075,23 @@ NL.screens.sessie = (function () {
       : L.close ? NL.t.almost
         : L.source === 'defi' && L.lives <= 0 ? NL.t.defiOut
           : NL.t.wrongTitle;
-    const be = (it && it.be && NL.state.meta().showFlemish !== false) ? it.be : null;
+    /* Dans « Comment le dit-on ici ? » la variante est la réponse : elle remplace
+       la ligne de réponse, juste ou faux, que la ligne flamande soit réglée ou non.
+       Ailleurs la ligne flamande ne répète ni le standard ni la réponse. */
+    const vl = c.ex === 'vlaams' ? EX.hereLine(it, '', true) : '';
+    const be = vl || (NL.state.meta().showFlemish !== false ? EX.hereLine(it, ans, false) : '');
+    /* Un autre élément au même sens a été tapé : on dit quel mot était demandé. */
+    const asked = ok && L.other ? '<p>' + NL.t.askedFor + ' <b>' + esc(ans) + '</b></p>' : '';
+    const also = it && it.also && it.also.length
+      ? '<p class="v-also">' + NL.t.alsoSaid + ' ' + esc(it.also.join(', ')) + '</p>' : '';
     return '<div class="foot ' + (ok ? 'ok' : 'no') + '"><div class="foot-in">' +
       '<div class="verdict ' + (ok ? 'ok' : 'no') + '">' +
       '<span class="v-icon">' + (ok
         ? '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7"/></svg>'
         : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>') + '</span>' +
       '<div><h5>' + note + '</h5>' +
-      (ans ? '<p><b>' + esc(ans) + '</b></p>' : '') +
-      (be ? '<p class="v-be">' + NL.t.hereThey + ' <b>' + esc(be) + '</b></p>' : '') +
+      (vl ? '' : asked || (ans ? '<p><b>' + esc(ans) + '</b></p>' : '')) +
+      be + also +
       (it && it.note ? '<p class="v-note">' + esc(it.note) + '</p>' : '') +
       '</div></div>' +
       '<button class="btn ' + (ok ? 'btn-good' : 'btn-bad') + ' push" data-next="1">' + NL.t.next + '</button>' +
