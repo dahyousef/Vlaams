@@ -20,7 +20,7 @@ NL.sync = (function () {
   const QKEY = 'vlaams/outbox';
   const OWNER = 'vlaams/owner';
   const PAGE = 1000;
-  const LOG_DAYS = 45;
+  const LOG_DAYS = 62;            // deux mois : ce que l'écran des fautes relit
 
   let client = null, user = null;
   let state = enabled ? 'idle' : 'off';     // off | idle | syncing | error | offline
@@ -28,7 +28,7 @@ NL.sync = (function () {
   const subs = [];
 
   /* ---------------- boîte d'envoi ---------------- */
-  const empty = () => ({ recs: {}, customs: {}, meta: false, logs: [] });
+  const empty = () => ({ recs: {}, customs: {}, meta: false, logs: [], reset: 0 });
   let box = load();
   function load() {
     try { return Object.assign(empty(), JSON.parse(localStorage.getItem(QKEY) || '{}')); }
@@ -36,7 +36,7 @@ NL.sync = (function () {
   }
   function persist() { try { localStorage.setItem(QKEY, JSON.stringify(box)); } catch (e) {} }
   const pending = () => Object.keys(box.recs).length + Object.keys(box.customs).length +
-    (box.meta ? 1 : 0) + box.logs.length;
+    (box.meta ? 1 : 0) + box.logs.length + (box.reset ? 1 : 0);
 
   const owner = () => { try { return localStorage.getItem(OWNER); } catch (e) { return null; } };
   const setOwner = id => { try { id ? localStorage.setItem(OWNER, id) : localStorage.removeItem(OWNER); } catch (e) {} };
@@ -53,9 +53,26 @@ NL.sync = (function () {
     else if (type === 'custom') box.customs[v.id] = 1;
     else if (type === 'custom-del') box.customs[v] = 'deleted';
     else if (type === 'log') { box.logs.push(v); if (box.logs.length > 5000) box.logs.shift(); }
+    /* Une remise à zéro : ce qui en descendait n'est plus à envoyer, et le
+       serveur devra effacer la même chose avant d'être relu. Sans compte, elle
+       reste sur l'appareil : à la connexion suivante, elle effacerait sinon
+       tout l'historique du compte, sur le serveur et sur chacun de ses appareils.
+       Connecté mais pas encore rattaché, elle est déjà celle du compte. */
+    else if (type === 'reset') {
+      if (owner() || user) box.reset = Math.max(box.reset || 0, v);
+      prune(v); box.meta = true;
+    }
     persist();
     schedule();
   });
+
+  /* Ce qu'une remise à zéro retire de la boîte : les fiches effacées, et les
+     lignes de journal qui descendent d'avant la coupe. Ce qui a été écrit
+     depuis — une progression anonyme, par exemple — attend son envoi. */
+  function prune(cut) {
+    Object.keys(box.recs).forEach(id => { if (!NL.state.rec(id)) delete box.recs[id]; });
+    box.logs = box.logs.filter(l => ((l && l.base) || 0) >= cut);
+  }
 
   function queueAll() {
     NL.state.allRecs().forEach(r => { box.recs[r.id] = 1; });
@@ -90,14 +107,23 @@ NL.sync = (function () {
       user = data && data.session ? data.session.user : null;
     } catch (e) { user = null; }
     if (user) adopt().then(notify, notify);   // l'interface s'affiche sans attendre le réseau
-    window.addEventListener('online', () => { state = 'idle'; notify(); flush(); });
+    window.addEventListener('online', () => { state = 'idle'; notify(); if (!reattach()) flush(); });
     window.addEventListener('offline', () => { state = 'offline'; notify(); });
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') flush();
-      else if (user) pull().then(() => flush());   // retour sur l'onglet : rattraper les autres appareils
+      else if (user && !reattach()) pull().then(() => flush());   // retour sur l'onglet : rattraper les autres appareils
     });
-    setInterval(() => flush(), 60000);
+    setInterval(() => { if (!reattach()) flush(); }, 60000);
     return user;
+  }
+
+  /* Connecté mais pas rattaché : l'adoption a échoué sur le réseau. Chaque
+     occasion de synchroniser la retente ; sinon la synchro resterait éteinte
+     jusqu'au prochain chargement. Rend vrai quand une adoption est en route. */
+  function reattach() {
+    if (!user || attached()) return false;
+    adopt().then(notify, notify);
+    return true;
   }
 
   /* Rattache les données de cet appareil au compte connecté.
@@ -108,6 +134,11 @@ NL.sync = (function () {
   /* Le retour du lien magique déclenche à la fois l’événement de connexion et
      getSession : un seul rattachement par compte. */
   let adopting = null, adoptedFor = null;
+  /* Le compte auquel CETTE page a rattaché l'appareil. Distinct de vlaams/owner :
+     si l'écriture de celui-ci échoue, la page reste rattachée au lieu de refaire
+     l'adoption à chaque occasion — ou d'attendre, depuis pull(), l'adoption même
+     qui l'appelle. */
+  let attachedTo = null;
   function adopt() {
     if (adoptedFor === user.id && adopting) return adopting;
     adoptedFor = user.id;
@@ -119,13 +150,34 @@ NL.sync = (function () {
     if (prev && prev !== user.id) {
       await NL.state.clearAll();
       box = empty(); persist();
-    } else if (!prev && NL.state.seenCount() + NL.state.customs().length > 0) {
-      queueAll();
+    } else if (!prev) {
+      /* La progression anonyme rejoint le compte telle quelle : elle descend
+         désormais de la dernière remise à zéro du compte, si bien qu'une remise
+         à zéro du compte ne l'efface pas, et qu'une remise à zéro faite ici
+         sans compte ne passe pas au compte. Même sans rien à adopter : une
+         remise à zéro faite sans compte ne laisse souvent rien sur l'appareil,
+         mais son instant passerait au compte par la fusion des réglages. Les
+         lignes déjà dans la boîte sont rebasées aussi : après un rechargement,
+         ce sont d'autres objets que celles du journal. */
+      let remote;
+      try { remote = await readMeta(); }
+      catch (e) { adoptedFor = null; fail(e); return; }   // rien n'est rattaché : reattach() réessaiera
+      /* Une remise à zéro pressée connecté, avant ce rattachement, est celle du
+         compte : le rebasage ne la défait pas. */
+      const at = Math.max((remote && remote.resetAt) || 0, box.reset || 0, NL.state.ENGINE_EPOCH);
+      NL.state.rebase(at);
+      box.logs.forEach(l => { if (l && typeof l === 'object') l.base = at; });
+      if (NL.state.seenCount() + NL.state.customs().length > 0) queueAll();
     }
-    setOwner(user.id);
+    setOwner(user.id); attachedTo = user.id;
     await pull();
     await flush();
   }
+
+  /* Tant que l'appareil n'est pas rattaché au compte connecté, rien ne part ni
+     n'arrive : sa progression n'a pas encore été rebasée sur celle du compte,
+     et une remise à zéro faite sans compte partirait avec elle. */
+  const attached = () => !!user && attachedTo === user.id;
 
   async function signIn(email) {
     if (!enabled) return { error: 'off' };
@@ -146,21 +198,25 @@ NL.sync = (function () {
   }
 
   /* Déconnexion : on envoie ce qui reste, puis on efface l'appareil pour que la
-     personne suivante ne voie rien. */
+     personne suivante ne voie rien. Pas encore rattaché, ce qui a été fait ici
+     n'est pas encore au compte : on le rattache d'abord. */
   async function signOut() {
     if (!enabled || !user) return;
+    if (!attached()) { try { await adopt(); } catch (e) {} }
     try { await flush(); } catch (e) {}
     await client.auth.signOut();
     await NL.state.clearAll();
     box = empty(); persist(); setOwner(null);
-    user = null; adopting = null; adoptedFor = null; notify();
+    user = null; adopting = null; adoptedFor = null; attachedTo = null; notify();
   }
 
   /* ---------------- tirer ---------------- */
+  /* Les lectures se bornent au compte comme les effacements : la politique de
+     sécurité des lignes le fait déjà, ce filtre le fait encore si elle tombe. */
   async function selectAll(table, filter) {
     const rows = [];
     for (let from = 0; ; from += PAGE) {
-      let q = client.from(table).select('*');
+      let q = client.from(table).select('*').eq('user_id', user.id);
       if (filter) q = filter(q);
       const { data, error } = await q.range(from, from + PAGE - 1);
       if (error) throw error;
@@ -169,12 +225,62 @@ NL.sync = (function () {
     }
   }
 
+  /* Les remises à zéro passent AVANT tout le reste, dans les deux sens.
+     La nôtre d'abord : le serveur efface ce que cet appareil a effacé, sinon la
+     lecture qui suit le lui rendrait. Puis celle des autres : si le serveur
+     porte une remise à zéro plus récente, la copie locale est périmée et rien
+     d'elle ne doit repartir. Rend les réglages du serveur, déjà lus. */
+  async function settleResets() {
+    if (box.reset) {
+      await eraseBefore(box.reset);
+      box.reset = 0; box.meta = true; persist();
+    }
+    const remote = await readMeta();
+    /* Des réglages de l'ancien moteur : personne n'a encore migré ce compte. Le
+       premier appareil qui les voit efface ce que la migration aurait effacé. */
+    if (remote && attached() && (!remote.progress || (remote.dataVersion || 1) < 3)) {
+      await eraseBefore(NL.state.ENGINE_EPOCH);
+    }
+    if (remote && (remote.resetAt || 0) > (NL.state.meta().resetAt || 0)) {
+      NL.state.resetProgress(remote.resetAt, true);
+      prune(remote.resetAt); persist();
+      NL.content.refresh();
+    }
+    return remote;
+  }
+
+  /* Le filtre sur user_id double la politique de sécurité des lignes : si elle
+     tombait un jour, la remise à zéro d'une personne n'effacerait pas les autres. */
+  async function eraseBefore(at) {
+    let r = await client.from('srs_records').delete().eq('user_id', user.id).lt('updated_at', at);
+    if (r.error) throw r.error;
+    r = await client.from('review_log').delete().eq('user_id', user.id).lt('t', at);
+    if (r.error) throw r.error;
+  }
+
+  async function readMeta() {
+    const { data, error } = await client.from('user_meta').select('*').eq('user_id', user.id).range(0, 0);
+    if (error) throw error;
+    return data && data[0] ? data[0].data : null;
+  }
+
+  /* Une ligne du serveur qui descend d'une remise à zéro antérieure à la nôtre
+     est en cours d'effacement ; sans `base`, elle vient de la version
+     précédente, qui écrit encore après l'époque. Ni l'une ni l'autre n'entre. */
+  const stale = (row, cut) => ((row.data && row.data.base) || 0) < cut;
+
   async function pull() {
     if (!user) return;
+    /* « Synchroniser maintenant » après une adoption échouée : la retenter.
+       L'adoption tire elle-même une fois rattachée. */
+    if (!attached()) { try { await adopt(); } catch (e) { fail(e); } return; }
     state = 'syncing'; notify();
     try {
+      const remoteMeta = await settleResets();
+      const cut = NL.state.meta().resetAt || 0;
       const recs = await selectAll('srs_records');
       recs.forEach(row => {
+        if (stale(row, cut)) return;
         const local = NL.state.rec(row.item_id);
         if (box.recs[row.item_id] && local && (local.updatedAt || 0) >= row.updated_at) return;
         if (!local || (local.updatedAt || 0) < row.updated_at) {
@@ -190,11 +296,10 @@ NL.sync = (function () {
         else NL.state.putCustom(Object.assign({}, row.data, { id: row.id, updatedAt: row.updated_at }), true);
       });
 
-      const metaRows = await selectAll('user_meta');
-      if (metaRows[0]) {
-        const merged = mergeMeta(NL.state.meta(), metaRows[0].data);
+      if (remoteMeta) {
+        const merged = mergeMeta(NL.state.meta(), remoteMeta);
         NL.state.setMeta(merged, true);
-        if (JSON.stringify(merged) !== JSON.stringify(metaRows[0].data)) { box.meta = true; persist(); }
+        if (JSON.stringify(merged) !== JSON.stringify(remoteMeta)) { box.meta = true; persist(); }
       } else {
         box.meta = true; persist();
       }
@@ -203,7 +308,7 @@ NL.sync = (function () {
       const have = new Set(NL.state.logs().map(l => l.t + '|' + l.id));
       const logs = await selectAll('review_log', q => q.gte('t', since));
       logs.sort((a, b) => a.t - b.t).forEach(row => {
-        if (!have.has(row.t + '|' + row.item_id)) NL.state.logReview(row.data, true);
+        if (!stale(row, cut) && !have.has(row.t + '|' + row.item_id)) NL.state.logReview(row.data, true);
       });
 
       NL.content.refresh();
@@ -213,7 +318,7 @@ NL.sync = (function () {
 
   /* ---------------- pousser ---------------- */
   function flush() {
-    if (!user || !enabled) return Promise.resolve();
+    if (!enabled || !attached()) return Promise.resolve();
     if (typeof navigator !== 'undefined' && navigator.onLine === false) { state = 'offline'; notify(); return Promise.resolve(); }
     if (flushing) return flushing;
     flushing = doFlush().finally(() => { flushing = null; });
@@ -223,6 +328,10 @@ NL.sync = (function () {
   async function doFlush() {
     if (!pending()) { done(); return; }
     state = 'syncing'; notify();
+    let remoteMeta = null;
+    try { remoteMeta = await settleResets(); }
+    catch (e) { fail(e); schedule(30000); return; }
+    if (!pending()) { done(); return; }
     /* On prend un instantané et on vide la boîte : ce qui s'écrit PENDANT
        l'envoi repart dans une boîte neuve au lieu d'être effacé par erreur. */
     const snap = box; box = empty(); persist();
@@ -250,9 +359,7 @@ NL.sync = (function () {
       if (snap.meta) {
         /* Les réglages se fusionnent avec la copie du serveur AVANT l'envoi :
            l'XP gagnée ailleurs pendant que cet appareil était hors ligne reste. */
-        const { data: remote, error: readErr } = await client.from('user_meta').select('*').range(0, 0);
-        if (readErr) throw readErr;
-        if (remote && remote[0]) NL.state.setMeta(mergeMeta(NL.state.meta(), remote[0].data), true);
+        if (remoteMeta) NL.state.setMeta(mergeMeta(NL.state.meta(), remoteMeta), true);
         const m = NL.state.meta();
         const { error } = await client.from('user_meta').upsert(
           { user_id: uid, data: m, updated_at: m.updatedAt || now }, { onConflict: 'user_id' });
@@ -305,11 +412,26 @@ NL.sync = (function () {
       if (da === db) out[cnt] = Math.max(a[cnt] || 0, b[cnt] || 0);
       else { const w = da > db ? a : b; out[k] = w[k]; out[cnt] = w[cnt]; }
     });
-    ['scenariosDone', 'listenDone'].forEach(k => {
-      out[k] = Array.from(new Set([].concat(a[k] || [], b[k] || [])));
-    });
     out.placed = !!(a.placed || b.placed);
-    out.reached = Math.max(a.reached || 0, b.reached || 0);
+    /* La frontière ne recule jamais et les listes de choses faites s'unissent —
+       sauf remise à zéro : tout ce qui relève de la progression suit alors le
+       côté qui porte la plus récente, sinon l'autre appareil rendrait ce qu'on
+       vient d'effacer.
+       Elles se lisent dans `progress`, et là seulement : la version précédente
+       réécrit le premier niveau par maximum et union et recopie `progress` sans
+       le toucher. Un côté sans `progress` n'apporte rien. */
+    const pa = a.progress || {}, pb = b.progress || {};
+    const ra = a.resetAt || 0, rb = b.resetAt || 0;
+    const later = ra > rb ? pa : pb;
+    out.resetAt = Math.max(ra, rb);
+    out.reached = ra === rb ? Math.max(pa.reached || 0, pb.reached || 0) : (later.reached || 0);
+    ['scenariosDone', 'listenDone'].forEach(k => {
+      out[k] = ra === rb ? Array.from(new Set([].concat(pa[k] || [], pb[k] || []))) : (later[k] || []).slice();
+    });
+    out.progress = { reached: out.reached, scenariosDone: out.scenariosDone.slice(), listenDone: out.listenDone.slice() };
+    /* Une version de données ne redescend jamais : un appareil neuf ne reprend
+       pas le dataVersion 2 d'un compte que personne n'a encore migré. */
+    out.dataVersion = Math.max(a.dataVersion || 1, b.dataVersion || 1);
     out.updatedAt = Math.max(a.updatedAt || 0, b.updatedAt || 0);
     return out;
   }

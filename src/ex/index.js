@@ -50,6 +50,9 @@ NL.ex = (function () {
 
   const said = (task, L) => L.picked.map(i => task.bank[i]).join(' ');
 
+  /* Une note de prononciation se dit en mots reconnus, pas en pourcentage. */
+  const wordScore = parts => NL.t.wordsHeard((parts || []).filter(p => p.ok).length, (parts || []).length);
+
   /* Les mauvaises réponses décident de la difficulté d'un QCM. Tirées au hasard
      dans l'unité, elles s'éliminent sans connaître le mot : la bonne est la plus
      longue, ou la seule avec le bon article, ou la seule du bon champ lexical.
@@ -309,12 +312,15 @@ NL.ex = (function () {
           (sp.partial ? '<p class="heard">' + esc(sp.partial) + '</p>' : '') + '</div>';
       } else if (sp.phase === 'done') {
         panel = '<div class="mic-panel ' + (sp.ok ? 'good' : 'bad') + '">' +
-          '<div class="score-row"><span class="score">' + sp.pct + '%</span>' +
+          '<div class="score-row"><span class="score">' + wordScore(sp.parts) + '</span>' +
           '<span class="score-bar"><span style="width:' + sp.pct + '%"></span></span></div>' +
           '<p class="word-diff">' + sp.parts.map(p =>
             '<span class="' + (p.ok ? (p.close ? 'w-close' : 'w-ok') : 'w-no') + '">' + esc(p.word) + '</span>').join(' ') + '</p>' +
           (sp.heard ? '<p class="heard">' + NL.t.micHeard + ' &ldquo;' + esc(sp.heard) + '&rdquo;</p>' : '') +
           (!sp.ok && sp.tries < 3 ? '<div class="mic-actions"><button class="btn btn-blue" data-mic="start">' + NL.t.micRetry(3 - sp.tries) + '</button></div>' : '') +
+          /* Trois refus : le micro n'entend peut-être simplement pas ce mot-là.
+             Sans cette issue, l'élément serait redemandé chaque jour sans jamais monter. */
+          (!sp.ok && sp.tries >= 3 ? selfRate(sp) : '') +
           '</div>';
       } else {
         panel = '<div class="mic-panel"><button class="mic big" data-mic="start" aria-label="' + NL.t.speak + '">' + ICON.mic(34) + '</button>' +
@@ -322,9 +328,15 @@ NL.ex = (function () {
           (sp.error ? selfRate(sp) : '') + '</div>';
       }
 
+      /* « Je ne peux pas parler » : proposé tant que rien n'a été tenté. Une fois
+         la réponse donnée, c'est une réponse. */
+      const untried = phase === 'ask' && sp.selfRated == null && sp.phase !== 'done' && sp.phase !== 'listening' &&
+        sp.recState !== 'rec' && sp.recState !== 'done';
+      const hush = untried ? '<div class="mic-actions"><button class="btn btn-ghost" data-quiet="1">' + NL.t.cantSpeak + '</button></div>' : '';
+
       return '<div class="sentence prompt">' + esc(t.target) + flemish(t.item.be, t.target) + '</div>' +
         '<div class="gloss-line">' + esc(t.prompt) + '</div>' +
-        speakerRow(t.target, {}) + panel;
+        speakerRow(t.target, {}) + panel + hush;
     },
     ready(t, L) {
       const sp = L.speech;
@@ -544,5 +556,5 @@ NL.ex = (function () {
     }
   };
 
-  return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, recordPanel, selfRate, sameSense };
+  return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, recordPanel, selfRate, sameSense, wordScore };
 })();

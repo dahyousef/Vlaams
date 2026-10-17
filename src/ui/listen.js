@@ -113,7 +113,7 @@ NL.screens.luisteren = (function () {
     }
     if (sp.phase === 'done') {
       return '<div class="mic-panel ' + (sp.ok ? 'good' : 'bad') + '">' +
-        '<div class="score-row"><span class="score">' + sp.pct + '%</span>' +
+        '<div class="score-row"><span class="score">' + NL.ex.wordScore(sp.parts) + '</span>' +
         '<span class="score-bar"><span style="width:' + sp.pct + '%"></span></span></div>' +
         '<p class="word-diff">' + sp.parts.map(p => '<span class="' + (p.ok ? (p.close ? 'w-close' : 'w-ok') : 'w-no') + '">' + esc(p.word) + '</span>').join(' ') + '</p>' +
         '<div class="mic-actions"><button class="btn btn-blue" data-act="mic">' + NL.t.replay + '</button></div></div>';
@@ -147,7 +147,7 @@ NL.screens.luisteren = (function () {
         ? (pct >= 70 ? NL.t.listenGoodEar : NL.t.listenHardEar)
         : NL.t.listenShadowDone) + '</p>' +
       '<div class="tally">' +
-      (S.mode === 'begrijpen' ? '<div class="tally-box blue"><div class="t-n">' + pct + '%</div><div class="t-l">' + NL.t.listenUnderstood + '</div></div>' : '') +
+      (S.mode === 'begrijpen' ? '<div class="tally-box blue"><div class="t-n">' + S.right + '/' + S.clips.length + '</div><div class="t-l">' + NL.t.listenUnderstood + '</div></div>' : '') +
       '<div class="tally-box gold"><div class="t-n">+8</div><div class="t-l">XP</div></div></div>' +
       '<button class="btn btn-primary wide" data-act="menu">' + NL.t.listenMore + '</button>' +
       '<button class="btn btn-ghost wide" data-go="vandaag">' + NL.t.back + '</button>' +

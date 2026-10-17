@@ -2,73 +2,25 @@
    C'est la suite qui aurait attrapé chacun des défauts trouvés jusqu'ici :
    la dette de révisions, l'oscillation sous plafond, la monotonie des types,
    et le contenu épuisé au jour 27. */
-const fs = require('fs'), path = require('path'), vm = require('vm');
+const browser = require('./lib/browser');
 const ROOT = process.argv[2];
 const DAYS = Number(process.argv[3] || 400);
+const T0 = Date.parse('2026-01-05T08:00:00Z');
 
-let NOW = Date.parse('2026-01-05T08:00:00Z');
 let fails = 0, checks = 0;
 const ok = (c, m) => { checks++; if (!c) { console.log('   ✗ ' + m); fails++; } };
 const P = (l, v) => console.log('  ' + String(l).padEnd(38) + v);
-
-
-/* Générateur déterministe : un test qui échoue au hasard vaut moins que pas de
-   test du tout. La graine rend chaque exécution reproductible, en local comme
-   en CI, et un échec devient donc un vrai signal. */
-function rng(seed) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6D2B79F5) >>> 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-const RAND = rng(Number(process.env.SEED || 20260917));
-const SafeMath = Object.create(Math);
-SafeMath.random = RAND;
-
-const store = {};
-const mk = () => ({
-  tagName: 'DIV', innerHTML: '', value: '', dataset: {}, files: [],
-  classList: { contains: () => false, add() {}, remove() {} },
-  addEventListener() {}, setSelectionRange() {}, focus() {}, click() {}, select() {},
-  querySelector: () => null, querySelectorAll: () => [], closest: () => null,
-  matches: () => false, remove() {}, appendChild() {}, setAttribute() {}, removeAttribute() {},
-  getBoundingClientRect: () => ({ width: 400, height: 600, top: 0, left: 0 })
+const B = browser.open({
+  root: ROOT, seed: browser.SEED, now: T0, ua: 'Chrome/120 OPR/106', blobs: true, byId: 'stub',
+  voices: [{ name: 'Bart', lang: 'nl-BE' }]
 });
-const app = mk();
-class FakeDate extends Date {
-  constructor(...a) { if (!a.length) super(NOW); else super(...a); }
-  static now() { return NOW; }
-}
-const ctx = {
-  console, setTimeout: f => { try { f(); } catch (e) {} return 0; },
-  clearTimeout() {}, setInterval() {}, clearInterval() {}, requestAnimationFrame: f => f(),
-  Math: SafeMath, Date: FakeDate, JSON, Map, Set, RegExp, Array, Object, String, Number, Promise, Error, Boolean,
-  URL: { createObjectURL: () => 'b', revokeObjectURL() {} },
-  Blob: function () {}, Audio: function () { return { play: () => Promise.resolve() }; },
-  localStorage: {
-    getItem: k => (k in store ? store[k] : null),
-    setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; }
-  },
-  navigator: { onLine: true, userAgent: 'Chrome/120 OPR/106' },
-  location: { hash: '', protocol: 'https:' },
-  speechSynthesis: { getVoices: () => [{ name: 'Bart', lang: 'nl-BE' }], speak(u) { if (u.onend) u.onend(); }, cancel() {}, addEventListener() {} },
-  SpeechSynthesisUtterance: function (t) { this.text = t; },
-  document: {
-    readyState: 'complete', documentElement: { setAttribute() {}, removeAttribute() {} },
-    getElementById: id => (id === 'app' ? app : mk()),
-    querySelector: () => null, querySelectorAll: () => [], addEventListener() {},
-    activeElement: { tagName: 'BODY' }, createElement: mk, body: { appendChild() {} }
-  }
-};
-ctx.window = ctx; ctx.globalThis = ctx; ctx.self = ctx; ctx.top = ctx; ctx.addEventListener = () => {};
-vm.createContext(ctx);
-fs.readFileSync(path.join(ROOT, 'build.sh'), 'utf8').match(/SRC="([\s\S]*?)"/)[1]
-  .split('\n').map(s => s.trim()).filter(Boolean)
-  .forEach(f => vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), ctx, { filename: f }));
-const NL = ctx.NL, U = NL.util;
+const NL = B.NL, U = NL.util, RAND = B.random;
+const answer = require('./lib/answer')(B);
+const MIN = 60000, DAY = 86400000;
+/* Un deuxième apprenant, moins assidu : une seule séance par jour. */
+const ONE_A_DAY = process.argv[4] === 'one';
+/* Un troisième : une séance sur cinq se passe là où l'on ne peut pas parler. */
+const QUIET = process.argv[5] === 'quiet';
 
 /* Combien de secondes coûte chaque type — pour traduire la charge en minutes. */
 const SECS = { match: 22, pick: 7, recall: 7, intrus: 9, article: 6, vlaams: 9,
@@ -78,64 +30,144 @@ NL.state.open().then(() => {
   NL.content.refresh();
   const S = NL.screens.sessie;
   const total = NL.content.allItems().length;
+  NL.ui.go('sessie');
 
-  const perDay = [], mix = {}, seenOnDay = {};
+  const perDay = [], mix = {}, seenOnDay = {}, dry = [], aloud = {}, passedOn = {};
+  /* Passé l'échelon 3, un élément compte parmi ceux que l'on sait produire. */
+  const PAST = 4;
   let backToBack = 0, prevEx = null, exhausted = null, maxBacklog = 0, tasks = 0, lateRecog = 0;
+  const owed = {};
+  let sessions = 0, taps = 0, touched = 0, spokeAfter = 0, detour = 0, putOff = 0, early = 0;
 
   for (let day = 1; day <= DAYS; day++) {
-    NOW = Date.parse('2026-01-05T08:00:00Z') + (day - 1) * 86400000;
+    B.clock.set(T0 + (day - 1) * DAY);
     NL.state.touchDay();
     maxBacklog = Math.max(maxBacklog, NL.srs.dueItems().length);
+    const unmetAtDawn = total - NL.srs.counts().seen;
 
-    let dayTasks = 0, daySecs = 0, guard = 0;
-    /* Autant de séances que le budget du jour l'autorise. */
-    while (NL.srs.budgetLeft() > 0 && guard++ < 12 && S.begin('vandaag')) {
+    let dayTasks = 0, daySecs = 0, dayNew = 0, guard = 0;
+    /* Autant de séances que le budget du jour l'autorise — ou une seule. */
+    while (NL.srs.budgetLeft() > 0 && guard++ < (ONE_A_DAY ? 1 : 12)) {
+      /* Ce que la séance contient, demandé à compose() avant qu'elle commence :
+         c'est parmi ces éléments qu'un « je ne peux pas parler » met de côté,
+         ceux qui ne pouvaient déjà qu'être dits. Un élément qui monte à
+         l'échelon 3 pendant la séance n'avait aucun exercice parlé à perdre. */
+      const planned = NL.srs.compose('vandaag');
+      const voiceAtStart = planned.due.concat(planned.fresh).filter(NL.srs.needsVoice);
+      if (!S.begin('vandaag')) break;
       let n = 0;
-      while (n++ < 40) {
-        const c = S.peek(); if (!c) break;
+      const cantTalk = QUIET && ++sessions % 5 === 0;
+      let tapped = false;
+      /* Ce que la séance a déjà servi avant le geste : le geste ne leur retire rien. */
+      const answeredHere = new Set();
+      while (S.peek() && n++ < 80) {
+        const c = S.peek(), wasMatch = c.ex === 'match';
+        /* Là où l'on ne peut pas parler : « je ne peux pas parler » au premier
+           exercice à voix haute, et la séance continue sans. Ce seul geste met
+           de côté tous les exercices parlés qui restaient, pas seulement celui
+           qui est à l'écran : chaque élément de la séance qui ne peut être que
+           dit doit revenir à voix haute, et le geste ne doit rien toucher, ni
+           un enregistrement, ni le journal, ni le budget du jour. */
+        if (c.ex === 'speak' && tapped) spokeAfter++;
+        if (c.ex === 'speak' && cantTalk && !tapped) {
+          voiceAtStart.forEach(it => { if (!owed[it.id]) { owed[it.id] = true; putOff++; if (answeredHere.has(it.id)) early++; } });
+          const before = JSON.stringify(NL.state.allRecs()), logged = NL.state.logs().length, left = NL.srs.budgetLeft();
+          answer.cantSpeak();
+          tapped = true; taps++;
+          if (JSON.stringify(NL.state.allRecs()) !== before || NL.state.logs().length !== logged || NL.srs.budgetLeft() !== left) touched++;
+          continue;
+        }
+        /* Ce qui a été mis de côté revient à voix haute, pas autrement. */
+        if (!wasMatch && owed[c.items[0].id]) { if (c.ex !== 'speak') detour++; delete owed[c.items[0].id]; }
+        if (!wasMatch) answeredHere.add(c.items[0].id);
         tasks++; dayTasks++;
         daySecs += SECS[c.ex] || 15;
         mix[c.ex] = (mix[c.ex] || 0) + 1;
         const wasAt = NL.srs.stageOf(c.items[0]);
+        if (!wasMatch && wasAt < 0) dayNew++;
         if (wasAt >= 1 && (c.ex === 'pick' || c.ex === 'recall' || c.ex === 'match')) lateRecog++;
-        if (c.ex === prevEx && c.ex !== 'match') backToBack++;
+        if (c.ex === prevEx && c.ex !== 'match' && !c.retry) backToBack++;
         prevEx = c.ex;
+        /* Le jour où chaque élément est demandé à voix haute pour la première fois. */
+        if (c.ex === 'speak' && !aloud[c.items[0].id]) aloud[c.items[0].id] = day;
         c.items.forEach(it => {
           seenOnDay[it.id] = seenOnDay[it.id] || new Set();
           seenOnDay[it.id].add(day);
         });
-        const right = RAND() < 0.85;
-        c.items.forEach(it => NL.srs.grade(it, right, { spoken: c.ex === 'speak' && right, ex: c.ex }));
-        NL.srs.spend(1);
-        const before = S.peek();
-        try { S.click({ dataset: {} }, { next: '1' }); } catch (e) { break; }
-        if (S.peek() === before) break;
+        /* L'horloge avance PENDANT la journée, du temps que coûte chaque
+           exercice. Figée à huit heures, un retour prévu dans douze minutes
+           n'arrivait jamais : deux cents jours simulés avaient l'air sains
+           pendant que le deuxième jour réel ne servait rien de neuf. */
+        B.clock.advance((SECS[c.ex] || 15) * 1000);
+        /* Et la réponse passe par l'écran, pas par le planificateur : c'est la
+           séance qui porte les reprises et le renforcement des rencontres. */
+        if (wasMatch || RAND() < 0.85) answer.right(); else answer.wrong();
+        /* L'exercice sur lequel chaque élément passe l'échelon de l'écrit. */
+        if (!wasMatch && wasAt < PAST && NL.srs.stageOf(c.items[0]) >= PAST && !passedOn[c.items[0].id]) passedOn[c.items[0].id] = c.ex;
+        answer.next(wasMatch);
+        if (B.app.innerHTML.indexOf('done-stage') >= 0) break;
       }
       S.abandon();
+      B.clock.advance(10 * MIN);          // une pause entre deux séances
     }
+    if (unmetAtDawn > 0 && dayNew === 0) dry.push(day);
+    const spent = NL.state.meta().exToday || 0;
     const met = NL.srs.counts().seen;
     if (!exhausted && met >= total) exhausted = day;
-    perDay.push({ day, tasks: dayTasks, mins: Math.round(daySecs / 60), met,
-      mastered: NL.content.courseProgress().mastered });
+    perDay.push({ day, tasks: dayTasks, spent, mins: Math.round(daySecs / 60), met,
+      produce: NL.content.courseProgress().produce });
   }
 
   const cap = NL.srs.pace().cap;
-  const over = perDay.filter(d => d.tasks > cap + 2);
+  /* Une séance commencée avec du budget se termine : ses reprises (six au plus)
+     et son échauffement par paires peuvent déborder le plafond, jamais plus. */
+  const over = perDay.filter(d => d.spent > cap + 7);
   const peak = Math.max(...perDay.map(d => d.mins));
-  const busiest = Math.max(...perDay.map(d => d.tasks));
+  const busiest = Math.max(...perDay.map(d => d.spent));
 
   console.log('\nCHARGE SUR ' + DAYS + ' JOURS   (rythme ' + (NL.state.meta().pace || 'normal') +
     ', plafond ' + cap + ' exercices)');
   console.log('='.repeat(70));
-  console.log('  jour   exercices   minutes   rencontrés   maîtrisés');
+  console.log('  jour   exercices   minutes   rencontrés   produits');
   [1, 7, 30, 90, 180, 300, DAYS].filter(d => d <= DAYS).forEach(d => {
     const r = perDay[d - 1];
     console.log('  ' + String(r.day).padStart(4) + String(r.tasks).padStart(12) +
-      String(r.mins).padStart(10) + String(r.met).padStart(13) + String(r.mastered).padStart(12));
+      String(r.mins).padStart(10) + String(r.met).padStart(13) + String(r.produce).padStart(11));
   });
 
   console.log('\nCE QUE LA SIMULATION VÉRIFIE');
   console.log('='.repeat(70));
+  /* Le défaut que tout ce travail répare : une journée sans rien de neuf alors
+     qu'il reste du cours à rencontrer. */
+  ok(dry.length === 0, dry.length + ' jour(s) sans aucun élément nouveau alors qu’il en restait à rencontrer — le premier : jour ' + dry[0]);
+  P('jours sans rien de neuf', dry.length === 0 ? 'aucun' : dry.length + ' (jours ' + dry.slice(0, 8).join(', ') + '…)');
+  /* Dire tôt : un mot ou une phrase rencontré le premier jour est demandé à voix
+     haute en une dizaine de jours, et jamais après trois semaines. Avec « dis-le »
+     au seul échelon 5, c'était cinq semaines. */
+  const firstDay = Object.keys(seenOnDay).filter(id => seenOnDay[id].has(1) && NL.content.byId(id).kind !== 'pattern');
+  const waits = firstDay.map(id => aloud[id] || Infinity).sort((a, b) => a - b);
+  const typical = waits[Math.floor(waits.length / 2)], latest = waits[waits.length - 1];
+  ok(typical <= 10, 'un élément du premier jour est typiquement demandé à voix haute le jour ' + typical + ' : plus de dix jours');
+  ok(latest <= 21, 'un élément du premier jour attend le jour ' + latest + ' pour être demandé à voix haute : plus de trois semaines');
+  P('première demande à voix haute', 'jours ' + waits[0] + ' à ' + latest + ', pour les ' + waits.length + ' éléments du premier jour');
+  /* Et dire tôt ne doit pas se payer sur le sens du second compte : un élément
+     que l'on « sait produire » a passé l'échelon de l'écrit en étant écrit. Lu à
+     voix haute, il a le mot sous les yeux. Quand la première réponse parlée
+     faisait monter, c'était 97 éléments sur 100 ; il en reste quelques-uns, ceux
+     qui, déjà dits, retombent puis tirent « dis-le » en revenant à l'échelon 3. */
+  const passed = Object.keys(passedOn), read = passed.filter(id => passedOn[id] === 'speak');
+  ok(read.length <= passed.length / 5, read.length + ' des ' + passed.length + ' éléments qui ont passé l’échelon de l’écrit l’ont passé en étant lus à voix haute');
+  P('échelon de l’écrit passé par écrit', (passed.length - read.length) + ' sur ' + passed.length);
+  /* L'apprenant qui ne peut pas toujours parler : mettre de côté ne coûte rien,
+     ne laisse rien passer à voix haute, et ne fait rien sauter. */
+  if (QUIET) {
+    ok(taps > 0, 'aucune séance sans parler n’a rencontré d’exercice à voix haute : la simulation ne vérifie rien');
+    ok(touched === 0, touched + ' « je ne peux pas parler » ont modifié un enregistrement, écrit au journal ou entamé le budget du jour');
+    ok(spokeAfter === 0, spokeAfter + ' exercice(s) à voix haute servis après « je ne peux pas parler »');
+    ok(detour === 0, detour + ' élément(s) mis de côté sont revenus autrement qu’à voix haute');
+    ok(early === 0, early + ' élément(s) comptés mis de côté avaient déjà été servis plus tôt dans la séance : le geste ne leur a rien retiré');
+    P('séances sans parler', taps + ', ' + putOff + ' éléments mis de côté : rien de noté, rien à voix haute ensuite, tout revient à voix haute');
+  }
   ok(over.length === 0, over.length + ' jours dépassent le plafond quotidien — la dette explose');
   P('plafond quotidien respecté', over.length === 0 ? 'oui, ' + busiest + ' au maximum' : 'NON');
   P('pic de charge', peak + ' min');
@@ -179,9 +211,9 @@ NL.state.open().then(() => {
   console.log('='.repeat(70));
   P('éléments au catalogue', total);
   P('tout rencontré le jour', exhausted || 'pas encore');
-  P('maîtrisé au jour ' + DAYS, perDay[DAYS - 1].mastered + ' / ' + total);
+  P('produits au jour ' + DAYS, perDay[DAYS - 1].produce + ' / ' + total);
   if (exhausted && exhausted < 200) {
-    console.log('  → le contenu s’épuise : c’est la phase 2 qui le règle, pas le moteur.');
+    console.log('  → le contenu s’épuise : c’est la phase 4 qui le règle, pas le moteur.');
   }
 
   console.log('\n' + checks + ' vérifications, ' + (fails === 0 ? 'AUCUN PROBLÈME' : fails + ' PROBLÈME(S)'));

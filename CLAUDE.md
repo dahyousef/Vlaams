@@ -21,6 +21,13 @@ under `src/`, run `sh build.sh` and commit both.
 goes in that list or it never runs. `TESTING.md` says what each suite covers — and what
 the suite cannot see.
 
+The suite takes three to six minutes. While working, run the one file you are changing, for
+example `node test/engine.js .`. A new suite loads the app through
+`test/lib/browser.js` and answers exercises through `test/lib/answer.js`, as a learner
+would. Grading through `NL.srs.grade()` directly is for `test/engine.js`, the scheduler's
+own suite; the older `test/smoke.js` and `test/sync.js` do it too. Any suite may call
+`NL.srs` to set up or read state, as `test/pace.js` calls `compose()` and `needsVoice()`.
+
 Every fix leaves a test that fails on the old code. Write it, watch it fail, then fix it.
 
 ## Conventions you can't infer from the code
@@ -28,18 +35,37 @@ Every fix leaves a test that fails on the old code. Write it, watch it fail, the
 - User-facing text lives in `src/core/fr.js`. `test/smoke.js` fails the build if an
   English interface string reaches `index.html`.
 - Storage keys keep their spelling: `vlaams-onderweg`, `vlaams/fallback`,
-  `vlaams/outbox`, `vlaams/owner`. Renaming one orphans every database already on a
-  device and every backup already written.
+  `vlaams/outbox`, `vlaams/owner`, `vlaams/errors` (the local error log) and
+  `vlaams/noaccount` (« continue without an account »). Renaming one orphans every
+  database already on a device and every backup already written.
 - The same goes for **field names inside a stored record** — `stage`, `due`, `interval`,
-  `ease`, `reps`, `lapses`, `said`, `retired`. Records are stored and synced whole, so a
+  `ease`, `reps`, `lapses`, `said`, `retired`, `base`. Records are stored and synced whole, so a
   rename orphans them exactly as a key rename would. `GLOSSARY.md` says to call a stage a
   **rung** in prose and in new names; it is not an instruction to rename the stored field.
-- The codebase uses `const` and arrow functions throughout and no optional chaining.
+- Values are `const`, or `let` where they change, never `var`; no optional chaining. Both
+  arrow functions and `function` declarations are in use: arrows for short helpers and
+  callbacks, declarations for longer named functions. New code follows the same split;
+  existing code is not converted.
 - The repo is **public**. Personal data stays out of tracked files; content personalises
   through `{naam}`, `{stad}` and `{bedrijf}`, substituted once at load.
 - `SUPABASE_URL` and `SUPABASE_ANON_KEY` must exist for **Production and Preview**.
   Without them `build.sh` ships the local-only page and sync quietly does nothing.
 - The Supabase anon key is public by design; row-level security protects the data.
+- One function decides what a session contains, `NL.srs.compose()`, and it takes new items
+  out before reviews. The home screen and the session both ask it. A second calculation
+  anywhere is the fault phase 1 removed.
+- `resetAt` in the stored settings is the moment of the last reset, and other devices compare
+  against it. It only grows, except on a device joining an account (below). The server enforces it: the
+  `keep_reset` trigger on `user_meta` keeps the stored `resetAt` and `progress` when a write would
+  lower `resetAt`, so lowering it by hand means disabling that trigger first. `supabase/schema.sql`
+  is kept in step with the live project by hand. `ENGINE_EPOCH` in `src/core/state.js` is a fixed date and
+  must stay one: changing it wipes progress again, or stops wiping it.
+  Records and log lines carry the reset they descend from (`base`), the frontier and the done-lists
+  travel in `progress`, and a device no account owned takes the account's `resetAt` at sign-in.
+- `said` on a stored record is what makes an item's first spoken exercise certain. That
+  exercise never moves the item's rung: a written one, later in the same session, decides.
+  « Je ne peux pas parler » lives in the running session and is deliberately not a
+  setting. Issue #12 says why, for all three.
 
 ## Decisions already taken
 
@@ -54,6 +80,8 @@ content to B1". Read it before planning or implementing anything. Tickets hang o
 sub-issues. `GLOSSARY.md` holds the vocabulary it uses.
 
 
+- `docs/superpowers/plans/2026-10-12-phase-1-moteur-ecrans-garde-fous.md` — the phase 1
+  plan, implemented. Its last sections record why the engine is as it is
 - `docs/CONSTATS-2026-10-06.md` — what a week of real study found, and how it was found
 - `docs/superpowers/specs/2026-10-08-moteur-et-contenu-design.md` — **superseded in scope.**
   It covers the engine only. A session on 9 October 2026 decided to replace it with one

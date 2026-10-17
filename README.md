@@ -53,7 +53,8 @@ python -m http.server 8080      # puis http://localhost:8080
 
 Tout dépend du navigateur, et l'app le mesure au lieu de le supposer :
 **Plus → Son et micro** teste tes voix, joue une phrase, demande le micro et te
-dit dans quel niveau tu es.
+dit dans quel niveau tu es. Cet écran liste aussi les dernières erreurs vues
+sur l'appareil, à copier et à envoyer.
 
 | Où | Audio | Oral |
 | --- | --- | --- |
@@ -87,16 +88,21 @@ hébergé, et **copier/coller** qui marche partout.
 | Écran | À quoi il sert |
 | --- | --- |
 | **Aujourd'hui** | L'écran par défaut, et le seul dont tu as besoin la plupart des jours. Une seule action, environ quinze minutes. |
-| **Parcours** | Douze unités A1 avec les explications de grammaire. Alimente le planificateur. |
+| **Parcours** | Douze unités A1 avec les explications de grammaire. Chaque carte d'unité dit combien d'éléments il reste à rencontrer avant que la suivante s'ouvre. Alimente le planificateur. |
 | **Parler** | Six jeux de rôle. Tu choisis ta réplique puis tu la dis. |
 | **Écouter** | Du flamand à vitesse réelle sans texte, plus du shadowing. |
-| **Plus** | Tes mots, les antisèches, standard/flamand, le français caché, les sons, les familles de de/het, le docteur audio, le test de niveau. |
+| **Plus** | Tes mots, les antisèches, standard/flamand, le français caché, les sons, les familles de de/het, le docteur audio. |
+| **Ce qui résiste** | Depuis **Plus**. Les éléments le plus souvent répondus à tort sur les deux derniers mois, le plus raté d'abord, et une séance sur ces éléments seulement. |
 
 ## Le budget quotidien
 
 Un plafond dur : **120 exercices par jour, environ 25 minutes** au rythme Normal.
-Du nouveau n'est libéré que si la journée a de la place une fois les révisions
-faites. Ce qui déborde attend, et ne s'affiche jamais comme un arriéré.
+Une part de chaque séance est réservée aux éléments jamais rencontrés : trente
+pour cent des places, et jamais moins de quatre. Elle est prélevée avant que les
+révisions ne remplissent le reste, et ne rétrécit pas, tant qu'il reste du
+nouveau à rencontrer. Une seule fonction décide du contenu d'une séance
+(`NL.srs.compose()`), et l'écran d'accueil l'interroge elle aussi (ADR 0007).
+Ce qui déborde attend, et ne s'affiche jamais comme un arriéré.
 
 C'est le seul mécanisme qui empêche la dette de révisions : sans lui, une
 simulation sur 400 jours passe à deux heures par jour au sixième mois.
@@ -123,13 +129,17 @@ réordonne ensuite la file pour qu'aucun type ne colle à lui-même.
 | 0 | découverte | pick · recall | pick · recall |
 | 1 | reconnaissance | article · l'intrus · dictée | assemblage · standaard/Vlaams · trou |
 | 2 | à l'oreille | dictée · écrire | trou · corrige l'erreur · dictée |
-| 3 | à l'écrit | écrire · trou | dictée · corrige |
-| 4 | à voix haute | écrire · dictée | écrire · trou |
-| 5 | maîtrisé | **parler** | **parler** |
+| 3 | à l'écrit | écrire · dictée · parler | parler · écrire |
+| 4 | à voix haute | écrire · trou · dictée | écrire · trou · corrige l'erreur |
+| 5 | consolidé | **parler** | **parler** |
 | 6 | ancré | alterné | alterné, dont réponse libre |
 
 L'échelon 5 est **parler** et rien d'autre : c'est ce qui garantit que rien n'est
-acquis sans être sorti de ta bouche.
+acquis sans être sorti de ta bouche. Un élément jamais dit se voit proposer
+**parler** en premier dès l'échelon 3 ; il garde alors son échelon, et c'est
+l'exercice écrit qui suit, dans la même séance, qui le fait monter. Cet exercice
+écrit se **tape** au clavier : un trou à choisir ou des tuiles à ranger ne
+montrent pas que tu sais l'écrire.
 
 Les QCM proposent **quatre** options, et les leurres sont choisis de même nature
 (nom contre nom, verbe contre verbe) et du même genre : on ne les élimine pas
@@ -152,15 +162,18 @@ meilleur score reste à battre. Il se débloque après dix éléments rencontré
 Deux règles trouvées en simulation, et testées :
 
 - une rechute redescend de **deux** barreaux et **rentre dans l'échelle** — elle
-  ne repart pas de deux minutes pour remonter en multipliant, sinon l'élément
-  oscille sous son plafond sans jamais en sortir ;
+  ne repart pas du bas pour remonter en multipliant (aucun intervalle ne dure
+  moins d'un jour), sinon l'élément oscille sous son plafond sans jamais en
+  sortir ;
 - elle ne redescend **jamais sous le barreau 1** : on ne te REPRÉSENTE pas un mot
   que tu connais depuis des mois ;
 - au sommet de son palier, l'intervalle **continue de croître** puis l'élément
   sort du paquet quotidien. Figé, il reviendrait tous les jours à vie.
 
-Les mots transparents — *de tram, de garage, direct* — démarrent au barreau 3 :
-un francophone n'a pas besoin de douze passages pour les apprendre.
+Les mots transparents — *de tram, de garage, direct* — ne sautent que l'exercice
+de sens : ils démarrent au barreau 1 et gardent l'article, les dictées et
+l'exercice parlé. Ressembler à un mot connu dit le sens, pas l'article ni le son
+(ADR 0004).
 
 ## Ce que le français t'apporte
 
@@ -188,6 +201,11 @@ réseau. Hors ligne, rien ne change ; au retour, tout rattrape.
   le jour le plus récent, les listes s'unissent.
 - **Première connexion** : la progression déjà présente sur l'appareil est
   adoptée par le compte.
+- **Remise à zéro** : « Remettre la progression à zéro » efface la progression
+  (fiches, historique des réponses, frontière, conversations et écoutes faites)
+  sur l'appareil et sur le serveur, avant que la synchro suivante ne le relise.
+  Réglages, score et mots personnels restent ; les autres appareils comparent la
+  date de la remise à zéro et abandonnent ce qui est plus ancien (ADR 0006).
 - **Autre compte sur le même appareil** : l'appareil est effacé d'abord. La
   déconnexion envoie ce qui reste, puis efface.
 - **Sans configuration** (pas de variables Supabase au build), la synchro est
@@ -235,10 +253,10 @@ SUPABASE_URL=https://xxxx.supabase.co SUPABASE_ANON_KEY=... sh build.sh
 ## Fichiers
 
 ```
-src/core/     util  fr (toute l'interface)  state (IndexedDB)  srs  speech  audio  sync (Supabase)
+src/core/     util  fr (toute l'interface)  state (IndexedDB)  srs  speech  audio  sync (Supabase)  errlog (journal d'erreurs local)
 src/content/  lexicon.a1  lexicon.a1b  grammar  reference  scenarios  index
 src/ex/       les types d'exercices, derrière une seule interface
-src/ui/       shell  session  home  scenario  listen  library  placement  doctor  account
+src/ui/       shell  session  home  scenario  listen  library  doctor  account  mistakes
 styles.css    le système de design
 build.sh      concatène le tout en index.html + artifact.html, et prépare dist/
 vendor/       supabase-js (UMD, version dans SUPABASE_VERSION), seulement dans index.html
@@ -270,6 +288,9 @@ qu'elle ne voit pas et le dernier passage complet sont dans
 
 ```sh
 node test/smoke.js    "$(pwd)"              # contenu, échelle, exercices, notation, balayage français
+node test/content.js  "$(pwd)"              # orthographe, exercices constructibles, vocabulaire d'une unité ultérieure, doublons
+node test/engine.js   "$(pwd)"              # contenu d'une séance et retour des éléments, horloge en marche
+node test/screens.js  "$(pwd)"              # chaque écran dans quatre états, relu comme du texte
 node test/sim.js      "$(pwd)"              # chaque écran, une séance, un scénario, une série d'écoute
 node test/firstrun.js "$(pwd)"              # base vide : premier écran, première séance, sauvegarde
 node test/sync.js     "$(pwd)"              # deux appareils, faux Supabase : adoption, conflits, panne, comptes
@@ -298,9 +319,7 @@ prénom/commune/employeur.
 
 **Moteur, refait après simulation** : budget quotidien borné, paliers par
 élément, les deux correctifs d'intervalle, gouverneur de variété et étalement,
-déverrouillage par frontière contiguë, pourcentage de maîtrise seule, test de
-placement en échelle (4 questions dont une à taper, 3 bonnes, arrêt à la
-première échouée),
+déverrouillage par frontière contiguë, deux comptes, rencontrés et produits, sans pourcentage,
 quatre nouveaux types d'exercice — l'intrus, corrige l'erreur, standaard of
 Vlaams, réponse libre notée sur rubrique.
 

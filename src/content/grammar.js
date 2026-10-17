@@ -57,7 +57,7 @@ NL.content.patterns = (function () {
       explain: 'Le néerlandais dit les unités avant les dizaines : <span class="ex">eenentwintig</span> (21), <span class="ex">vierenzestig</span> (64), <span class="ex">negenennegentig</span> (99). En un seul mot, sans espace. C’est pour ça qu’un prix ou un numéro de téléphone semble mélangé : tu entends le deuxième chiffre avant le premier. Bonne nouvelle pour toi : <span class="ex">zeventig</span> = septante et <span class="ex">negentig</span> = nonante, exactement comme en Belgique. Le français de France, lui, t’aurait imposé un détour par soixante-dix.',
       drills: [
         D('Het kost eenentwintig euro.', 'Ça coûte vingt-et-un euros.', 'eenentwintig'),
-        D('Ik ben tweeenveertig jaar.', 'J’ai quarante-deux ans.', 'tweeenveertig'),
+        D('Ik ben tweeënveertig jaar.', 'J’ai quarante-deux ans.', 'tweeënveertig'),
         D('Dat is vijfenzestig euro.', 'Ça fait soixante-cinq euros.', 'vijfenzestig'),
         D('Zij is zeventig jaar.', 'Elle a septante ans.', 'zeventig')
       ]

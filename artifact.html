@@ -717,6 +717,45 @@ NL.util = (function () {
 })();
 </script>
 <script>
+/* Le journal d'erreurs local.
+
+   Sur un téléphone il n'y a pas de console : quand un écran meurt, tout ce qu'on
+   peut rapporter est « ça ne marche plus ». Ce journal garde les vingt dernières
+   erreurs, sur l'appareil et nulle part ailleurs — il n'est ni synchronisé ni
+   envoyé. L'écran « Son et micro » les affiche et permet de les copier. */
+NL.errlog = (function () {
+  'use strict';
+  const KEY = 'vlaams/errors', KEEP = 20;
+
+  const all = () => { try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (e) { return []; } };
+
+  /* `where` dit d'où vient l'erreur quand ce n'est pas la fenêtre elle-même. */
+  function note(err, where) {
+    const list = all();
+    list.push({
+      t: Date.now(), where: where || '', route: (NL.ui && NL.ui.route) || '',
+      msg: String((err && err.message) || err).slice(0, 300),
+      stack: String((err && err.stack) || '').split('\n').slice(0, 4).join('\n').slice(0, 600)
+    });
+    try { localStorage.setItem(KEY, JSON.stringify(list.slice(-KEEP))); } catch (e) {}
+  }
+
+  const clear = () => { try { localStorage.removeItem(KEY); } catch (e) {} };
+
+  /* Le texte à copier : une erreur par paragraphe, la plus récente en dernier. */
+  const text = () => all().map(e =>
+    new Date(e.t).toISOString() + ' [' + (e.route || '?') + (e.where ? ' · ' + e.where : '') + '] ' + e.msg +
+    (e.stack ? '\n' + e.stack : '')).join('\n\n');
+
+  function watch() {
+    window.addEventListener('error', e => note((e && e.error) || (e && e.message), 'fenêtre'));
+    window.addEventListener('unhandledrejection', e => note(e && e.reason, 'promesse'));
+  }
+
+  return { note, all, clear, text, watch, KEEP };
+})();
+</script>
+<script>
 /* Toute l'interface, en un seul endroit. Une seule langue d'interface, donc une
    table plate plutôt qu'un système i18n complet — ça garde le ton cohérent et
    rend un basculement vers le néerlandais possible plus tard. */
@@ -744,27 +783,23 @@ NL.t = {
   todayAllDone: 'Tout est à jour.',
   todayAllDoneSub: 'Rien à revoir. Réviser trop tôt ne sert à rien — ça brûle la répétition. Repasse plus tard, ou travaille quelque chose de précis ci-dessous.',
   todayReady: n => n + (n === 1 ? ' élément t’attend' : ' éléments t’attendent'),
-  todaySplit: (due, fresh, mins) => due + ' à revoir, ' + fresh + ' nouveaux · environ ' + mins + ' minutes.',
+  todaySplit: (due, fresh, mins) => due + ' à revoir, ' + fresh + (fresh === 1 ? ' nouveau' : ' nouveaux') + ' · environ ' + mins + ' minutes.',
+  unitOne: n => 'Unité ' + n,
+  unitsRange: (a, b) => 'Unités ' + a + '–' + b,
   todayStart: 'Démarrer la session',
   todayPractise: 'Travailler une conversation',
   todayGoal: (a, b) => a + ' / ' + b + ' nouveaux',
   statStreak: n => n === 1 ? 'jour d’affilée' : 'jours d’affilée',
-  statSaid: 'dits à voix haute',
-  statCourse: 'du cours',
+  statMet: 'rencontrés',
+  statProduce: 'que tu sais produire',
   morepractice: 'Continuer autrement',
-
-  /* --- accueil, premier lancement --- */
-  firstTitle: 'Ce que tu entends déjà compte.',
-  firstBody: 'Tu entends du néerlandais depuis des années. Commencer à « de man eet brood » gaspillerait des semaines. Un test de cinq minutes te place là où tu es vraiment.',
-  firstDoTest: 'Faire le test de niveau',
-  firstSkip: 'Commencer de zéro',
 
   /* --- parcours --- */
   pathEyebrow: 'Parcours',
   pathTitle: 'Le niveau A1, en douze unités',
   pathBody: 'Les unités alimentent le planificateur en nouvelles matières. Tu ne dois pas finir une unité pour ouvrir la suivante : elle s’ouvre d’elle-même quand l’essentiel de la précédente a été vu.',
-  pathSolid: (a, b) => a + ' éléments sur ' + b + ' sont bien ancrés.',
-  unitSeen: (a, b) => a + '/' + b + ' vus',
+  courseCounts: (met, produce, total) => met + ' rencontrés sur ' + total + ', dont ' + produce + ' que tu sais produire.',
+  unitCounts: (met, produce, total) => met + ' rencontrés sur ' + total + ' · ' + produce + ' que tu sais produire',
   unitStart: 'Commencer cette unité',
   unitPractise: 'Travailler cette unité',
   unitLocked: n => 'S’ouvre quand l’unité ' + n + ' aura été vue en grande partie.',
@@ -799,6 +834,7 @@ NL.t = {
   doneFlawless: 'Sans faute.',
   doneOk: 'Session terminée.',
   doneSpoken: n => 'Tu as dit ' + n + (n === 1 ? ' élément' : ' éléments') + ' à voix haute. Ce sont ceux qui sortiront de ta bouche dans un magasin.',
+  doneSpokenKept: n => n + (n === 1 ? ' exercice à voix haute gardé' : ' exercices à voix haute gardés') + ' pour la prochaine séance.',
   doneNoSpoken: 'Rien de dit à voix haute cette fois — les exercices de prononciation arrivent quand les éléments montent dans l’échelle.',
   tallyXp: 'XP', tallyRight: 'Juste', tallyDays: 'Jours', tallyTime: 'Durée',
   sessionMore: 'Encore une session',
@@ -824,7 +860,6 @@ NL.t = {
   exOpen: 'À toi d’écrire',
   openPlaceholder: 'Écris ta réponse en néerlandais…',
   openModel: 'Un exemple :',
-  rungs: ['découverte', 'reconnaissance', 'à l’oreille', 'à l’écrit', 'à voix haute', 'maîtrisé', 'ancré'],
   tapWords: 'Touche les mots ci-dessous',
   specialLetters: 'Lettres spéciales',
   typeHere: 'Tape en néerlandais',
@@ -834,10 +869,13 @@ NL.t = {
   micTap: 'Touche et dis la phrase.',
   micListening: 'J’écoute…',
   micHeard: 'Entendu :',
+  wordsHeard: (a, b) => a + (a === 1 ? ' mot' : ' mots') + ' sur ' + b,
   micRetry: n => 'Réessayer (' + n + ')',
   micAnyway: 'Continuer quand même',
   micSaidIt: 'Je l’ai dit',
   micNotYet: 'Pas encore',
+  cantSpeak: 'Je ne peux pas parler',
+  quietOnly: 'Il ne reste que des exercices à voix haute. Ils t’attendent à la prochaine séance.',
   micNotedOk: 'Noté comme réussi.',
   micNotedNo: 'Noté — on le retravaillera.',
   micDenied: 'Micro bloqué. Autorise-le dans la barre d’adresse, ou évalue-toi toi-même.',
@@ -896,7 +934,17 @@ NL.t = {
   wordsNoResult: 'Rien trouvé.',
   wordsMineNone: 'Aucun mot à toi pour l’instant. Ajoute-en un avec le bouton ci-dessus.',
   wordsSearch: 'Rechercher…',
-  wordsAll: 'tous', wordsWeak: 'fragiles', wordsStrong: 'solides', wordsMine: 'à moi',
+  wordsAll: 'tous', wordsWeak: 'fragiles', wordsStrong: 'produits', wordsMine: 'à moi',
+  wordsTile: (met, produce) => met + ' rencontrés, ' + produce + ' que tu sais produire',
+
+  /* --- ce qui résiste --- */
+  missEyebrow: 'Ce qui résiste',
+  missTitle: n => n === 1 ? 'Un élément te résiste' : n + ' éléments te résistent',
+  missBody: 'Classés par nombre de réponses fausses sur les deux derniers mois, le plus raté d’abord. Une séance ici les attaque directement, sans attendre qu’ils reviennent.',
+  missNone: 'Rien ne te résiste pour l’instant : aucune réponse fausse sur les deux derniers mois.',
+  missTile: n => n === 0 ? 'Rien pour l’instant' : n === 1 ? 'Un élément souvent raté' : n + ' éléments souvent ratés',
+  missRow: (wrong, total) => 'raté ' + wrong + ' fois sur ' + total,
+  missStart: n => n === 1 ? 'Travailler cet élément' : 'Travailler les ' + n + ' plus ratés',
   wordsNl: 'Néerlandais', wordsFr: 'Français', wordsBe: 'Comme on dit ici',
   wordsOptional: '(facultatif)',
   wordsNeedBoth: 'Le néerlandais et le français sont nécessaires.',
@@ -924,29 +972,9 @@ NL.t = {
   soundsEasy: 'tu l’as déjà',
   soundsWatch: 'attention',
   dehetTitle: 'Les familles de het',
-  dehetBody: 'Environ 70% des mots het suivent une règle. Apprends les familles au lieu des 425 articles un par un — et ne traduis jamais depuis le français : het huis est neutre, la maison est féminine.',
+  dehetBody: 'Environ sept mots het sur dix suivent une règle. Apprends les familles au lieu des 425 articles un par un — et ne traduis jamais depuis le français : het huis est neutre, la maison est féminine.',
   dehetHet: 'Prennent het', dehetDe: 'Prennent de',
   dehetSure: 'sans exception',
-
-  /* --- test de niveau --- */
-  placeEyebrow: 'Test de niveau · aucune pénalité',
-  placeQ: 'Qu’est-ce que ça veut dire ?',
-  placeHigh: 'Tu comprends déjà bien plus que tu ne crois.',
-  placeMid: 'Il y a déjà une base, surtout passive.',
-  placeLow: 'On commence au début — et c’est très bien.',
-  placeSeeded: n => n === 0
-    ? 'Tout ce que ces unités contiennent était déjà en cours d’apprentissage : le test ne change rien à ta progression.'
-    : 'Reconnaître un mot n’est pas savoir le dire, donc rien n’a été marqué comme acquis : ' + n + ' éléments ont simplement été placés plus haut dans l’échelle, en sautant les présentations dont tu n’as clairement pas besoin. Ils doivent encore atteindre l’étape orale.',
-  placeNone: 'Rien n’a été avancé, donc tu pars propre. C’est le point de départ honnête.',
-  placeRecognised: 'Reconnus', placeAdvanced: 'Avancés',
-  placeUnits: 'Unités', placeAsked: 'Questions',
-  placeRule: (a, b) => a + ' bonnes réponses sur ' + b + ', dont une à écrire, pour créditer l’unité et passer à la suivante.',
-  placeTypeQ: 'Écris-le en néerlandais',
-  placeSubmit: 'Valider',
-  placeStops: n => 'Le test s’arrête à « ' + n + ' » : c’est de là que tu pars.',
-  placeAll: n => 'Les ' + n + ' unités sont passées : tout le niveau A1 est avancé. Il reste à faire monter chaque élément jusqu’à l’oral.',
-  placeFirst: 'Commence ta première session',
-  placeLater: 'Plus tard',
 
   /* --- réglages --- */
   setTitle: 'Réglages',
@@ -966,33 +994,31 @@ NL.t = {
   paceNote: p => p.mins + ' min par jour · ' + p.cap + ' exercices maximum',
   paceWhy: 'Le plafond quotidien est ce qui empêche les révisions de s’accumuler jusqu’à deux heures par jour au sixième mois. Ce qui déborde attend son tour.',
   budgetDone: 'Le quota du jour est atteint. C’est voulu : demain sera plus léger.',
-  migrated: 'Progression remise à zéro — l’ancien test de niveau créditait des unités entières sans preuve.',
-  unitGate: (a, b) => 'L’unité suivante s’ouvre à ' + b + '% travaillés — tu es à ' + a + '%.',
-  unitLevel: n => 'Niveau ' + n + ' / 5',
-  masteredOf: (a, b) => a + ' maîtrisés sur ' + b,
-  metOf: (a, b) => a + ' rencontrés sur ' + b,
+  migrated: 'Progression remise à zéro : le moteur a changé, et l’ancienne ne pouvait pas le suivre. Tes réglages, ton score et tes mots sont restés.',
+  unitGate: n => n === 1 ? 'Encore un élément à rencontrer avant l’unité suivante.' : 'Encore ' + n + ' éléments à rencontrer avant l’unité suivante.',
   currentUnit: 'À faire maintenant',
   setVoice: 'Voix et micro',
   setDoctor: 'Tester le son et le micro',
   setStorage: 'Stockage :',
   setExport: 'Exporter ma progression',
   setImport: 'Importer une sauvegarde',
-  setReset: 'Tout effacer',
-  setResetTitle: 'Effacer toute la progression ?',
-  setResetBody: 'Chaque révision, chaque série, chaque mot ajouté. C’est définitif.',
-  setResetYes: 'Oui, tout effacer',
+  setReset: 'Remettre la progression à zéro',
+  setResetTitle: 'Remettre la progression à zéro ?',
+  setResetBody: 'Chaque élément rencontré, l’historique de tes réponses et les conversations déjà faites, sur tous tes appareils. Tes réglages, ton score et tes mots à toi restent. C’est définitif.',
+  setResetYes: 'Oui, repartir de zéro',
   quitTitle: 'Arrêter la session ?',
   quitBody: 'Ce que tu as déjà réussi est gardé. Le reste revient simplement plus tard.',
   quitYes: 'Arrêter',
   quitNo: 'Continuer',
   exported: 'Sauvegarde téléchargée.',
   imported: 'Progression restaurée.',
+  importedOld: 'Sauvegarde de l’ancien moteur : réglages, score et mots restaurés, la progression repart de zéro.',
   importFailed: 'Ce fichier n’est pas une sauvegarde valable.',
-  wiped: 'Tout est effacé.',
+  wiped: 'Progression remise à zéro.',
 
   /* --- statistiques --- */
   weekTitle: 'Cette semaine',
-  statLearning: 'en cours', statStrong: 'solides', statSpoken: 'dits à voix haute',
+  statProduced: 'produits', statMine: 'à toi', statSpoken: 'dits à voix haute',
   statBest: 'plus longue série',
   statCombo: 'meilleure série de réponses', statDefi: 'record au défi',
   days: ['dim', 'lun', 'mar', 'mer', 'jeu', 'ven', 'sam'],
@@ -1010,6 +1036,11 @@ NL.t = {
   docPlayTest: 'Jouer la phrase test',
   docMicTest: 'Tester le micro',
   docTierTitle: 'Ton niveau actuel',
+  errTitle: 'Ce qui a cassé sur cet appareil',
+  errNone: 'Aucune erreur enregistrée.',
+  errCount: n => n === 1 ? 'Une erreur enregistrée. Rien ne quitte cet appareil : copie le texte pour l’envoyer.' : n + ' erreurs enregistrées. Rien ne quitte cet appareil : copie le texte pour l’envoyer.',
+  errCopy: 'Copier', errClear: 'Vider la liste',
+  errCopied: 'Copié.', errCopyByHand: 'Sélectionne le texte et copie-le à la main.',
   docFixTitle: 'Installer la voix flamande sur Windows',
   docFixSteps: [
     'Paramètres → Heure et langue → Langue et région',
@@ -1071,26 +1102,116 @@ NL.state = (function () {
   const LS = 'vlaams/fallback';
   const mem = { srs: new Map(), custom: new Map(), log: [] };
 
+  /* Tout ce qui a été appris avec l'ancien moteur — retours à douze minutes,
+     unités créditées par le test de niveau — est antérieur à cet instant. La
+     date est FIXE, et non « maintenant » : un second appareil qui migre un jour
+     plus tard effacerait sinon ce que le premier a appris entre-temps. C'est
+     aussi un plancher : tout appareil de cette version naît après la migration. */
+  const ENGINE_EPOCH = Date.UTC(2026, 9, 13);
+
   const defaults = () => ({
     xp: 0, streak: 0, best: 0, lastDay: null, theme: 'system',
     placed: false, dailyGoal: 20, doneToday: 0, doneDay: null,
     mic: true, autoplay: true, showFlemish: true, unlocked: 1,
     scenariosDone: [], listenDone: [], firstRun: true,
     learnerName: '', town: '', company: '',
-    pace: 'normal', exDay: null, exToday: 0, dataVersion: 2, lastEx: null,
-    reached: 0                 // index of the furthest unit ever opened; never goes back
+    pace: 'normal', exDay: null, exToday: 0, dataVersion: 3, lastEx: null,
+    reached: 0,                // index of the furthest unit ever opened; never goes back
+    resetAt: ENGINE_EPOCH,     // l'instant de la dernière remise à zéro ; ce qui descend d'une plus ancienne est effacé
+    progress: { reached: 0, scenariosDone: [], listenDone: [] }   // la copie de confiance, voir setMeta
   });
   let meta = defaults();
 
-  /* Une seule fois : la progression fabriquée par l'ancien test de placement
-     — des unités entières créditées sur une réponse chanceuse — est effacée.
-     XP, série, réglages et mots personnels survivent. */
+  /* Le journal garde deux mois de réponses au rythme le plus soutenu : c'est ce
+     que l'écran des fautes relit. */
+  const LOG_KEEP = 12000;
+
+  const progressOf = x => ({
+    reached: x.reached || 0,
+    scenariosDone: (x.scenariosDone || []).slice(), listenDone: (x.listenDone || []).slice()
+  });
+
+  /* La progression de l'ancien moteur est effacée, ici et sur le serveur.
+     Réglages, score et mots personnels survivent.
+     dataVersion ne suffit pas à dire si c'est fait : la version précédente
+     recopie les réglages d'un appareil qui a migré sans rien effacer chez elle.
+     Ce sont donc les données qui le disent. Une fiche ou une ligne de journal
+     qui descend d'avant le plancher — sans `base`, elle vient de la version
+     précédente — est effacée ; une frontière ou des listes qui ne sont plus
+     égales à `progress` ont été réécrites par la version précédente, et
+     reprennent la copie de confiance. Rend vrai quand quelque chose a été
+     effacé ; la seconde fois, il n'y a plus rien à effacer. */
   function migrate() {
-    if ((meta.dataVersion || 1) >= 2) return false;
-    mem.srs.clear();
-    if (useIDB) { try { db.transaction('srs', 'readwrite').objectStore('srs').clear(); } catch (e) {} }
-    setMeta({ dataVersion: 2, placed: false, exDay: null, exToday: 0 });
-    return true;
+    const floor = Math.max(meta.resetAt || 0, ENGINE_EPOCH);
+    const old = x => (x.base || 0) < floor;
+    const trusted = progressOf(meta.progress || {});
+    const rewritten = JSON.stringify(progressOf(meta)) !== JSON.stringify(trusted);
+    const had = rewritten || [...mem.srs.values()].some(old) || mem.log.some(old);
+    if (had) drop(floor);
+    if (had || (meta.dataVersion || 1) < 3 || (meta.resetAt || 0) < floor) {
+      setMeta(Object.assign({ dataVersion: 3, resetAt: floor }, trusted));
+    }
+    /* Le serveur n'efface que ce qui précède l'époque, jamais une date plus
+       récente : ce qu'un autre appareil a appris depuis sur ce moteur reste. */
+    if (had) emit('reset', ENGINE_EPOCH);
+    return had;
+  }
+
+  /* Remet la PROGRESSION à zéro : les fiches, le journal des réponses, la
+     frontière, et les conversations et écoutes cochées — repartir de zéro en
+     gardant « six conversations faites », ce n'est pas repartir de zéro.
+     Réglages, score et mots personnels restent, et le compteur du jour aussi :
+     une remise à zéro efface la progression, pas l'effort déjà fait aujourd'hui.
+       before  n'efface que ce qui descend d'une remise à zéro antérieure à cet instant (défaut : tout)
+       silent   la remise à zéro vient du serveur : elle n'y repart pas
+     L'instant est gardé dans les réglages (resetAt) : c'est lui qui dit aux
+     autres appareils que leur copie est périmée. */
+  function resetProgress(before, silent) {
+    const cut = before || Date.now();
+    drop(cut);
+    setMeta({
+      resetAt: Math.max(meta.resetAt || 0, cut), reached: 0, scenariosDone: [], listenDone: []
+    }, silent);
+    if (!silent) emit('reset', cut);
+  }
+
+  /* La coupe se fait sur `base`, la remise à zéro dont chaque fiche et chaque
+     ligne descend, et non sur sa date : un appareil périmé qui répond hors
+     ligne après une remise à zéro faite ailleurs écrit des fiches datées
+     d'après, mais bâties sur des échelons effacés. Sans `base`, une donnée vient
+     de la version précédente : elle compte pour 0. */
+  function drop(cut) {
+    [...mem.srs.values()].forEach(r => { if ((r.base || 0) < cut) mem.srs.delete(r.id); });
+    mem.log = mem.log.filter(l => (l.base || 0) >= cut);
+    rewrite();
+  }
+  /* withCustom : les mots personnels aussi (une restauration les remplace ; une
+     remise à zéro les garde). */
+  function rewrite(withCustom) {
+    if (useIDB) {
+      try {
+        const s = db.transaction('srs', 'readwrite').objectStore('srs');
+        s.clear(); mem.srs.forEach(r => s.put(r));
+        const l = db.transaction('log', 'readwrite').objectStore('log');
+        l.clear(); mem.log.forEach(e => l.put(e));
+        if (withCustom) {
+          const c = db.transaction('custom', 'readwrite').objectStore('custom');
+          c.clear(); mem.custom.forEach(r => c.put(r));
+        }
+      } catch (e) {}
+    }
+    saveLS();
+  }
+
+  /* Une progression anonyme rejoint un compte telle quelle : elle descend
+     désormais de la dernière remise à zéro du compte. L'instant peut reculer,
+     et c'est voulu : une remise à zéro faite ici sans compte ne devient pas
+     celle du compte. Silencieux : la synchro envoie tout juste après. */
+  function rebase(at) {
+    mem.srs.forEach(r => { r.base = at; });
+    mem.log.forEach(l => { l.base = at; });
+    rewrite();
+    setMeta({ resetAt: at }, true);
   }
 
   function open() {
@@ -1113,7 +1234,7 @@ NL.state = (function () {
           c.forEach(r => mem.custom.set(r.id, r));
           /* Le journal était enregistré mais jamais relu : le graphique de la
              semaine ne montrait que la séance en cours. */
-          mem.log = (l || []).slice(-4000);
+          mem.log = (l || []).slice(-LOG_KEEP);
           if (m && m.v) meta = Object.assign(defaults(), m.v);
           resolve();
         }).catch(() => resolve(loadLS()));
@@ -1128,13 +1249,19 @@ NL.state = (function () {
       (raw.srs || []).forEach(r => mem.srs.set(r.id, r));
       (raw.custom || []).forEach(r => mem.custom.set(r.id, r));
       if (raw.meta) meta = Object.assign(defaults(), raw.meta);
+      /* Le journal aussi : sans lui, « Ce qui résiste » repartait vide à chaque
+         rechargement sur le repli. */
+      mem.log = (raw.log || []).slice(-LOG_KEEP);
     } catch (e) { /* private mode: run from memory only */ }
   }
+  /* Le repli n'a que quelques Mo : il ne garde que les dernières lignes du journal. */
+  const LS_LOG_KEEP = 3000;
   const saveLS = NL.util.debounce(() => {
     if (useIDB) return;
     try {
       localStorage.setItem(LS, JSON.stringify({
-        srs: [...mem.srs.values()], custom: [...mem.custom.values()], meta
+        srs: [...mem.srs.values()], custom: [...mem.custom.values()], meta,
+        log: mem.log.slice(-LS_LOG_KEEP)
       }));
     } catch (e) {}
   }, 400);
@@ -1169,7 +1296,9 @@ NL.state = (function () {
   /* ---- SRS records ---- */
   const rec = id => mem.srs.get(id) || null;
   function setRec(r, silent) {
-    if (!silent) r.updatedAt = Date.now();
+    /* `base` : la remise à zéro en vigueur quand la fiche est écrite ici. Une
+       fiche venue du serveur garde la sienne. */
+    if (!silent) { r.updatedAt = Date.now(); r.base = meta.resetAt; }
     mem.srs.set(r.id, r); put('srs', r); saveLS();
     if (!silent) emit('rec', r);
   }
@@ -1180,6 +1309,11 @@ NL.state = (function () {
   const m = () => meta;
   function setMeta(patch, silent) {
     Object.assign(meta, patch);
+    /* La frontière et les listes voyagent aussi dans `progress`, que seule
+       cette version écrit. La version précédente la recopie telle quelle et
+       réécrit le premier niveau par maximum et union : ce qu'elle a touché se
+       reconnaît à ce que les deux ne sont plus égaux. */
+    meta.progress = progressOf(meta);
     if (!silent) meta.updatedAt = Date.now();
     put('meta', { k: 'meta', v: meta }); saveLS();
     if (!silent) emit('meta', meta);
@@ -1187,9 +1321,11 @@ NL.state = (function () {
 
   /* ---- review log, for the stats strip ---- */
   function logReview(entry, silent) {
+    if (!silent) entry.base = meta.resetAt;
     mem.log.push(entry);
-    if (mem.log.length > 4000) mem.log.shift();
+    if (mem.log.length > LOG_KEEP) mem.log.shift();
     if (useIDB) { try { db.transaction('log', 'readwrite').objectStore('log').put(entry); } catch (e) {} }
+    else saveLS();
     if (!silent) emit('log', entry);
   }
   const logs = () => mem.log;
@@ -1224,17 +1360,37 @@ NL.state = (function () {
     return {
       app: 'vlaams-onderweg', v: 1, at: Date.now(),
       meta, srs: [...mem.srs.values()], custom: [...mem.custom.values()],
-      log: mem.log.slice(-2000)
+      log: mem.log.slice()      // tout le journal : il tient au plus LOG_KEEP lignes
     };
   }
+  /* Une sauvegarde exportée avant ENGINE_EPOCH vient de l'ancien moteur : sa
+     progression n'a plus de sens, et la migration l'effacerait au chargement. */
+  const isOldBackup = data => !!data && (data.at || 0) < ENGINE_EPOCH;
   function importAll(data) {
     if (!data || data.app !== 'vlaams-onderweg' || !Array.isArray(data.srs)) return false;
+    /* Restaurer une sauvegarde est une remise à zéro suivie d'un rechargement :
+       les fiches et les lignes sont datées de maintenant et descendent de cet
+       instant, sinon les autres appareils et la migration les prendraient pour
+       de la progression effacée. Une sauvegarde de l'ancien moteur rend ce
+       qu'une remise à zéro garde — réglages hors progression, score, mots
+       personnels — et ni fiche ni ligne de journal. */
+    const old = isOldBackup(data);
+    const stamp = Date.now();
     mem.srs.clear(); mem.custom.clear();
-    data.srs.forEach(r => { if (r && r.id) { mem.srs.set(r.id, r); put('srs', r); } });
-    (data.custom || []).forEach(r => { if (r && r.id) { mem.custom.set(r.id, r); put('custom', r); } });
-    if (data.meta) { meta = Object.assign(defaults(), data.meta); put('meta', { k: 'meta', v: meta }); }
-    mem.log = Array.isArray(data.log) ? data.log : [];
-    saveLS();
+    if (!old) data.srs.forEach(r => { if (r && r.id) { r.updatedAt = stamp; r.base = stamp; mem.srs.set(r.id, r); } });
+    (data.custom || []).forEach(r => { if (r && r.id) mem.custom.set(r.id, r); });
+    mem.log = !old && Array.isArray(data.log) ? data.log : [];
+    mem.log.forEach(l => { if (l && typeof l === 'object') l.base = stamp; });
+    /* Les trois magasins sont réécrits en entier : écrire les fiches restaurées
+       par-dessus laissait dans IndexedDB celles d'après la sauvegarde, et
+       l'ancien journal, que la migration effaçait au chargement suivant en
+       annonçant que le moteur avait changé ; un mot ajouté après la sauvegarde
+       revenait de même. */
+    rewrite(true);
+    if (data.meta) meta = Object.assign(defaults(), data.meta);
+    setMeta(Object.assign({ resetAt: stamp, updatedAt: stamp },
+      old ? { dataVersion: 3, reached: 0, scenariosDone: [], listenDone: [] } : {}), true);
+    emit('reset', stamp);
     return true;
   }
 
@@ -1255,7 +1411,7 @@ NL.state = (function () {
     setMeta(patch);
   }
 
-  return { open, migrate, onWrite, rec, setRec, allRecs, seenCount, meta: m, setMeta, logReview, logs, addCustom, putCustom, delCustom, customs, clearAll, touchDay, creditDay, exportAll, importAll, get storage() { return useIDB ? 'IndexedDB' : 'localStorage'; } };
+  return { open, migrate, resetProgress, rebase, ENGINE_EPOCH, onWrite, rec, setRec, allRecs, seenCount, meta: m, setMeta, logReview, logs, addCustom, putCustom, delCustom, customs, clearAll, touchDay, creditDay, exportAll, importAll, isOldBackup, get storage() { return useIDB ? 'IndexedDB' : 'localStorage'; } };
 })();
 </script>
 <script>
@@ -1265,11 +1421,19 @@ NL.state = (function () {
    budget = ce qui empêche la dette de révisions d'exploser */
 NL.srs = (function () {
   'use strict';
-  const { clamp, MIN, DAY } = NL.util;
+  const { clamp, DAY } = NL.util;
 
-  const MAX_TASKS = 22;
+  const MAX_TASKS = 22;             // les places d'une séance : un élément par place
   const MAX_STAGE = 6;
-  const GRADUATED = 5;              // atteint uniquement en disant l'élément à voix haute
+  const PRODUCE = 4;                // l'échelon de l'écrit est passé : l'élément se produit
+  /* La part de chaque séance réservée à ce qui n'a jamais été rencontré. Sans
+     elle, les révisions finissent par occuper toutes les places et plus rien de
+     neuf n'arrive. Elle se calcule sur la SÉANCE, jamais sur le budget du jour :
+     le budget vaut plusieurs séances, et en réserver 30 % dépasserait la séance. */
+  const NEW_SHARE = 0.3, NEW_MIN = 4;
+  /* Un élément rencontré revient une fois dans la même séance : il coûte donc
+     deux exercices. Au-delà de la moitié des places, la séance doublerait. */
+  const NEW_MAX = MAX_TASKS / 2;
   const RETIRE_AT = 200 * DAY;
   const MAX_INTERVAL = 365 * DAY;   // au-delà, l'élément est acquis, pas oublié      // au-delà, l'élément sort du paquet quotidien
 
@@ -1294,9 +1458,9 @@ NL.srs = (function () {
 
   /* Un rythme, et le prix honnête qui va avec. */
   const PACE = {
-    calme:     { cap: 70,  fresh: 15, mins: 15 },
-    normal:    { cap: 120, fresh: 25, mins: 25 },
-    intensif:  { cap: 200, fresh: 40, mins: 45 }
+    calme:     { cap: 70,  mins: 15 },
+    normal:    { cap: 120, mins: 25 },
+    intensif:  { cap: 200, mins: 45 }
   };
   const pace = () => PACE[NL.state.meta().pace || 'normal'] || PACE.normal;
 
@@ -1305,12 +1469,24 @@ NL.srs = (function () {
      chose qui rend 26 000 exercices supportables. */
   /* Un cran plus exigeant : la découverte alterne les deux sens, et l'oreille
      (la dictée) arrive dès le deuxième barreau au lieu d'attendre le troisième. */
+  /* « Dis-le » dès l'échelon 3 pour les mots, les phrases et les expressions :
+     au seul échelon 5, la première demande à voix haute tombait cinq semaines
+     après la rencontre. Voir exerciseFor() pour qui y a droit d'office, et
+     firstAloud() pour ce que vaut cette première fois. */
+  /* À l'échelon 3, l'exercice écrit se tape. C'est lui qui mène à l'échelon 4,
+     où l'élément compte parmi ceux que l'on sait produire : choisir un trou,
+     toucher la faute ou ranger des tuiles ne le prouve pas. La dictée d'un mot
+     se tape, et le mot la garde à côté d'« écrire » : avec « écrire » seul, les
+     exercices se suivaient pareils et l'étalement ne faisait plus mieux que le
+     hasard (test/pace.js). Celle d'une phrase ou d'une expression se range en
+     tuiles : les phrases empruntent donc « écrire » à l'échelon 4, et une
+     règle de grammaire n'y garde qu'« écrire ». « Dis-le » reste où il était. */
   const RUNGS = {
     word: [
       ['pick', 'recall'],
       ['article', 'intrus', 'dictation'],
       ['dictation', 'type'],
-      ['type', 'cloze'],
+      ['type', 'dictation', 'speak'],
       ['type', 'cloze', 'dictation'],
       ['speak'],
       ['speak', 'type', 'dictation', 'cloze']
@@ -1319,7 +1495,7 @@ NL.srs = (function () {
       ['pick', 'recall'],
       ['bank', 'vlaams', 'cloze'],
       ['cloze', 'corrige', 'dictation'],
-      ['dictation', 'corrige'],
+      ['speak', 'type'],
       ['type', 'cloze', 'corrige'],
       ['speak'],
       ['speak', 'type', 'open', 'corrige', 'dictation']
@@ -1328,7 +1504,7 @@ NL.srs = (function () {
       ['pick', 'recall'],
       ['bank', 'vlaams'],
       ['cloze'],
-      ['type', 'dictation'],
+      ['type', 'speak'],
       ['type', 'dictation', 'cloze'],
       ['speak'],
       ['speak', 'type', 'cloze']
@@ -1337,15 +1513,18 @@ NL.srs = (function () {
       ['order'],
       ['order', 'corrige'],
       ['cloze', 'corrige'],
-      ['type', 'order'],
+      ['type'],
       ['speak', 'open'],
       ['speak'],
       ['open', 'speak']
     ]
   };
 
-  /* Sous la journée, l'élément reste dans la même séance ; au-dessus, SM-2 prend le relais. */
-  const STEP = [2 * MIN, 12 * MIN, 1 * DAY, 3 * DAY, 8 * DAY, 21 * DAY];
+  /* Aucun intervalle enregistré ne descend sous un jour. Le renforcement quelques
+     minutes après la rencontre existe toujours, mais c'est la séance en cours
+     qui le fait (src/ui/session.js) : enregistré comme une échéance, il
+     disputait les places de la séance à tout le reste. Voir docs/adr/0001. */
+  const STEP = [1 * DAY, 1 * DAY, 1 * DAY, 3 * DAY, 8 * DAY, 21 * DAY];
 
   const blank = (id, kind) => ({
     id, kind: kind || 'word', stage: 0, due: 0, interval: 0,
@@ -1355,12 +1534,22 @@ NL.srs = (function () {
 
   /* ---------------- choix de l'exercice ---------------- */
   /* `avoid` = les types déjà servis dans cette séance. Le gouverneur évite ce que
-     l'élément a eu la dernière fois, puis ce qui vient de passer. */
-  function exerciseFor(item, avoid) {
+     l'élément a eu la dernière fois, puis ce qui vient de passer.
+     `quiet` = une séance où l'on ne peut pas parler : rien à voix haute. */
+  function exerciseFor(item, avoid, quiet) {
     const r = recOf(item);
-    const set = (RUNGS[item.kind] || RUNGS.word)[clamp(r.stage, 0, 6)] || ['pick'];
+    /* Un mot transparent n'a pas besoin qu'on lui enseigne son sens : sa
+       première rencontre se fait à l'échelon suivant. Rien d'autre n'est sauté —
+       ressembler à un mot connu ne dit ni son article ni comment il sonne. */
+    const rung = (r.reps === 0 && item.cognate) ? 1 : clamp(r.stage, 0, 6);
+    const set = (RUNGS[item.kind] || RUNGS.word)[rung] || ['pick'];
     let usable = set.filter(n => supports(item, n));
+    if (quiet) usable = usable.filter(n => n !== 'speak');
     if (!usable.length) usable = [fallback(item)];
+    /* Un élément jamais dit à voix haute l'est dès que son échelon le propose.
+       Tiré au sort parmi les exercices de l'échelon, « dis-le » ne tombait qu'une
+       fois sur deux ou trois, et le reste attendait l'échelon 5. */
+    if (!r.said && usable.indexOf('speak') >= 0) return 'speak';
 
     let pick = usable.filter(n => n !== r.lastEx);
     if (!pick.length) pick = usable;
@@ -1388,6 +1577,27 @@ NL.srs = (function () {
   }
   const fallback = item => (NL.util.tiles(item.nl || '').length >= 3 ? 'type' : 'pick');
 
+  /* Vrai quand le prochain exercice de l'élément ne peut être que parlé : son
+     échelon n'offre rien d'autre, ou bien il n'a jamais été dit et son échelon
+     propose de le dire. Une séance où l'on ne peut pas parler laisse ces
+     éléments attendre plutôt que de leur donner autre chose. */
+  function needsVoice(item) {
+    const r = recOf(item);
+    const usable = ((RUNGS[item.kind] || RUNGS.word)[clamp(r.stage, 0, 6)] || []).filter(n => supports(item, n));
+    return usable.indexOf('speak') >= 0 && (!r.said || usable.length === 1);
+  }
+
+  /* Vrai quand l'élément n'a jamais été dit et que son échelon propose de le
+     dire à côté d'un autre exercice. Le dire ne déplace alors rien : réussi, il
+     est dit et garde son échelon, et c'est l'exercice écrit qui suit, dans la
+     même séance, qui le fait monter. Sans cela, lire un mot à voix haute
+     suffirait à le compter parmi ceux que l'on sait produire. */
+  function firstAloud(item) {
+    const r = recOf(item);
+    const usable = ((RUNGS[item.kind] || RUNGS.word)[clamp(r.stage, 0, 6)] || []).filter(n => supports(item, n));
+    return !r.said && usable.length > 1 && usable.indexOf('speak') >= 0;
+  }
+
   /* ---------------- notation ---------------- */
   function grade(item, ok, opts) {
     const r = recOf(item);
@@ -1397,12 +1607,26 @@ NL.srs = (function () {
     r.reps++; r.last = now;
     if (opts && opts.ex) r.lastEx = opts.ex;
 
-    if (ok) {
+    /* Dit pour la première fois, là où l'échelon propose aussi autre chose :
+       l'élément est dit, et rien d'autre ne bouge. Un second exercice, en fin de
+       séance, le redemande par écrit, et c'est cette réponse-là qui le fait
+       monter. Si la séance s'arrête avant, il revient demain, par écrit. */
+    const first = !!opts && opts.ex === 'speak' && firstAloud(item);
+    if (ok && first && opts.spoken) {
+      r.said = true;
+      r.interval = STEP[0];
+    } else if (ok) {
       if (opts && opts.spoken) r.said = true;
-      /* Les transparents (de tram, de garage, direct) ne méritent pas douze
-         passages : la première réussite en saute deux. */
-      const jump = (r.reps === 1 && item.cognate) ? 3 : 1;
+      /* Un transparent (de tram, de garage, direct) a été rencontré à l'échelon 1 :
+         sa première réussite le mène donc à l'échelon 2. Un seul échelon sauté,
+         celui du sens. Voir docs/adr/0004. */
+      const jump = (r.reps === 1 && item.cognate) ? 2 : 1;
       r.stage = clamp(r.stage + jump, 0, top);
+      /* Le défi ne fait pas passer à un élément jamais dit à voix haute le premier
+         échelon où son genre le fait dire — le 3, et le 4 pour une règle de
+         grammaire : son premier exercice parlé y vient encore. */
+      const aloudAt = (RUNGS[item.kind] || RUNGS.word).findIndex(set => set.indexOf('speak') >= 0);
+      if (opts && opts.defi && !r.said && aloudAt >= 0 && r.stage > aloudAt) r.stage = Math.max(aloudAt, r.stage - jump);
       r.ease = clamp(r.ease + 0.05, 1.3, 2.9);
       /* PIÈGE 1 — au sommet de son palier, l'intervalle doit continuer de croître.
          Figé sur STEP[rung], l'élément revient tous les jours, à vie. */
@@ -1412,14 +1636,23 @@ NL.srs = (function () {
       if (r.stage >= top && r.interval > RETIRE_AT) r.retired = true;
     } else {
       r.lapses++;
-      /* PIÈGE 2 — une rechute rentre dans l'échelle, elle ne repart pas de deux
-         minutes pour remonter en multipliant : sinon l'élément oscille sous son
+      /* PIÈGE 2 — une rechute rentre dans l'échelle, elle ne repart pas du bas
+         pour remonter en multipliant : sinon l'élément oscille sous son
          plafond sans jamais en sortir. */
       /* Jamais en dessous de l'échelon 1 : on ne te REPRÉSENTE pas un mot que tu
          connais depuis des mois, on te le redemande autrement. */
-      r.stage = clamp(r.stage - 2, r.reps > 1 ? 1 : 0, top);
-      r.ease = clamp(r.ease - 0.2, 1.3, 2.9);
-      r.interval = STEP[Math.min(r.stage, STEP.length - 1)];
+      /* Un exercice parlé raté tant que l'élément n'a jamais été dit ne coûte
+         aucun échelon. La phrase est à l'écran : ce n'est pas un oubli, c'est la
+         prononciation ou le micro, et redescendre de deux échelons renverrait
+         l'élément se faire reconnaître. Il garde sa place et revient demain. */
+      const unsaid = !r.said && !!opts && opts.ex === 'speak';
+      if (!unsaid) {
+        /* Un transparent ne tombe jamais à l'échelon 0 non plus : il serait alors
+           interrogé sur le sens qu'on lui avait épargné (docs/adr/0004). */
+        r.stage = clamp(r.stage - 2, (r.reps > 1 || item.cognate) ? 1 : 0, top);
+        r.ease = clamp(r.ease - 0.2, 1.3, 2.9);
+      }
+      r.interval = unsaid ? STEP[0] : STEP[Math.min(r.stage, STEP.length - 1)];
       r.retired = false;
     }
     r.due = now + r.interval;
@@ -1428,7 +1661,7 @@ NL.srs = (function () {
     return r;
   }
 
-  /* Place un élément directement sur un échelon — test de placement, mots transparents. */
+  /* Place un élément directement sur un échelon : c'est ainsi que les tests posent un état. */
   function seed(item, stage) {
     const r = blank(item.id, item.kind);
     r.stage = clamp(stage, 0, maxRung(item));
@@ -1443,28 +1676,54 @@ NL.srs = (function () {
   const stageOf = item => { const r = NL.state.rec(item.id); return r ? r.stage : -1; };
   const atTop = item => { const r = NL.state.rec(item.id); return !!r && r.stage >= maxRung(item); };
 
+  /* Les vrais retards passent devant. Un arriéré tombé au même instant est
+     départagé par un tirage qui dépend de l'élément et du nombre d'exercices
+     faits aujourd'hui : il change d'une séance à l'autre, mais pas entre l'écran
+     qui annonce la séance et la séance elle-même. */
+  const tieBreak = s => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
   function dueItems(now) {
     now = now || Date.now();
-    const list = NL.content.allItems().filter(it => {
-      const r = NL.state.rec(it.id);
-      return r && !r.retired && r.due <= now;
-    });
-    /* Mélange puis tri stable par échéance : les vrais retards passent devant,
-       mais un arriéré tombé au même instant est puisé uniformément au lieu de
-       rendre la même tranche à chaque séance. */
-    return NL.util.shuffle(list).sort((a, b) => NL.state.rec(a.id).due - NL.state.rec(b.id).due);
+    const m = NL.state.meta();
+    const salt = ':' + (m.exDay || '') + ':' + (m.exToday || 0);
+    return NL.content.allItems()
+      .filter(it => { const r = NL.state.rec(it.id); return r && !r.retired && r.due <= now; })
+      .map(it => ({ it, due: NL.state.rec(it.id).due, k: tieBreak(it.id + salt) }))
+      .sort((a, b) => a.due - b.due || a.k - b.k)
+      .map(x => x.it);
   }
 
   function counts() {
     const now = Date.now();
-    let due = 0, learning = 0, mature = 0, said = 0, retired = 0;
+    let due = 0, said = 0, retired = 0;
     NL.state.allRecs().forEach(r => {
-      if (r.retired) { retired++; mature++; return; }
+      if (r.retired) { retired++; return; }
       if (r.due <= now) due++;
-      if (r.stage >= GRADUATED) mature++; else learning++;
       if (r.said) said++;
     });
-    return { due, learning, mature, said, retired, seen: NL.state.seenCount() };
+    return { due, said, retired, seen: NL.state.seenCount() };
+  }
+
+  /* ---------------- ce qui résiste ---------------- */
+  /* Chaque réponse est enregistrée depuis le premier jour, et aucun écran ne
+     l'avait jamais relue. Les éléments sont classés par nombre de réponses
+     fausses sur les deux derniers mois, le plus raté d'abord. Un élément
+     toujours réussi n'y figure pas ; une réponse qui nomme un élément disparu
+     du cours est ignorée plutôt que de casser l'écran. */
+  const MISS_WINDOW = 62 * DAY;
+  function mistakes(now) {
+    now = now || Date.now();
+    const by = new Map();
+    NL.state.logs().forEach(l => {
+      if (!l || !l.id || l.t < now - MISS_WINDOW) return;
+      const item = NL.content.byId(l.id);
+      if (!item) return;
+      /* Un refus de la reconnaissance vocale ne dit rien de la mémoire. */
+      if (l.ex === 'speak') return;
+      const x = by.get(l.id) || { item, wrong: 0, right: 0, last: 0 };
+      if (l.ok) x.right++; else { x.wrong++; x.last = Math.max(x.last, l.t); }
+      by.set(l.id, x);
+    });
+    return [...by.values()].filter(x => x.wrong > 0).sort((a, b) => b.wrong - a.wrong || b.last - a.last);
   }
 
   /* ---------------- budget quotidien ---------------- */
@@ -1483,36 +1742,148 @@ NL.srs = (function () {
     NL.state.setMeta({ exDay: today, exToday: (m.exDay === today ? (m.exToday || 0) : 0) + (n || 1) });
   }
 
-  /* Du nouveau seulement si la journée a de la place une fois les révisions faites. */
-  function freshItems(n) {
+  /* Les n premiers éléments jamais rencontrés des unités ouvertes, dans l'ordre
+     du cours. `uid` restreint à une unité. */
+  function freshItems(n, uid) {
     const out = [];
-    for (const it of NL.content.allItems()) {
+    if (n <= 0) return out;
+    const open = NL.content.frontier();
+    const at = {};
+    NL.content.units.forEach((u, i) => { at[u.id] = i; });
+    /* Les mots que la personne a ajoutés passent devant le cours : rangés en fin
+       de liste, ils attendaient que tout le reste ait été rencontré. */
+    const all = NL.content.allItems();
+    for (const it of all.filter(x => x.unit === 'eigen').concat(all.filter(x => x.unit !== 'eigen'))) {
       if (out.length >= n) break;
       if (NL.state.rec(it.id)) continue;
-      if (!NL.content.unitOpen(it.unit)) continue;
+      if (uid && it.unit !== uid) continue;
+      if (it.unit !== 'eigen' && !(at[it.unit] <= open)) continue;
       out.push(it);
     }
     return out;
   }
 
+  /* LE seul endroit qui décide de ce qu'une séance contient. L'écran qui
+     l'annonce et la séance elle-même posent tous deux la question ici : ils ne
+     peuvent donc pas se contredire.
+       source   'vandaag' (défaut) ou l'identifiant d'une unité
+       opts     { quiet, without } : une séance où l'on ne peut pas parler laisse
+                attendre ce qui ne peut être que dit, et ne reprend pas les
+                éléments (`without`, un Set d'identifiants) qu'elle contient déjà
+       → { due, fresh, left }   deux listes d'éléments, et le budget restant */
+  function compose(source, now, opts) {
+    const uid = source && source !== 'vandaag' ? source : null;
+    /* Travailler une unité précise est un choix : le budget du jour ne la bride pas. */
+    const left = uid ? Infinity : budgetLeft();
+    const places = Math.min(MAX_TASKS, left);
+    if (places <= 0) return { due: [], fresh: [], left };
+
+    let due = dueItems(now);
+    if (uid) due = due.filter(it => it.unit === uid);
+    if (opts && opts.quiet) due = due.filter(it => !needsVoice(it) && !(opts.without && opts.without.has(it.id)));
+    const unmet = freshItems(MAX_TASKS, uid);
+
+    /* La réserve sort AVANT que les révisions remplissent le reste, et elle
+       disparaît d'elle-même quand il ne reste rien à rencontrer. */
+    const reserve = Math.min(unmet.length, places, Math.max(NEW_MIN, Math.ceil(places * NEW_SHARE)));
+    let nDue = Math.min(due.length, places - reserve);
+    let nNew = Math.min(unmet.length, Math.max(reserve, Math.min(NEW_MAX, Math.floor((places + reserve - nDue) / 2))));
+    /* Les règles de grammaire sont neuf parmi quatre cents : sans siège garanti,
+       une semaine entière peut passer sans en revoir une. */
+    const pick = n => {
+      const pats = due.filter(it => it.kind === 'pattern').slice(0, Math.min(2, n));
+      return pats.concat(due.filter(it => pats.indexOf(it) < 0).slice(0, n - pats.length));
+    };
+    /* Budget presque épuisé : on rabote les révisions d'abord. La réserve survit
+       au rabotage — c'est précisément ce qu'elle doit faire. Le coût se compte
+       sur la séance servie : une rencontre, ou un élément dit pour la première
+       fois, en vaut deux quand son second exercice trouve sa place (voir
+       lace()), un seul sinon. */
+    while (exercises(pick(nDue), unmet.slice(0, nNew)) > left && nDue > 0) nDue--;
+    while (exercises(pick(nDue), unmet.slice(0, nNew)) > left && nNew > 1) nNew--;
+    /* Le rabotage a pu prendre trop : les rencontres gardées, une révision de
+       plus pèse parfois moins que ce qu'elle rend possible (le renforcement de
+       chaque rencontre). On les rend une à une tant que la séance servie tient
+       dans ce qui reste du jour. La réserve n'y est pas touchée. */
+    while (nDue < due.length && nDue + nNew < places && exercises(pick(nDue + 1), unmet.slice(0, nNew)) <= left) nDue++;
+    return { due: pick(nDue), fresh: unmet.slice(0, nNew), left };
+  }
+
+  /* ---------------- la disposition d'une séance ---------------- */
+  /* Un second exercice — le renforcement d'une rencontre, ou l'écrit qui suit une
+     première réponse à voix haute — ne vient qu'avec au moins SECOND_GAP exercices
+     entre lui et le dernier exercice de son élément : écrire un mot qu'on vient
+     de voir à l'écran ne prouve rien. Là où cet écart ne tient pas, il n'est pas
+     servi, et l'élément reste comme après une séance quittée entre les deux :
+     il revient le lendemain. Une reprise après une réponse fausse est une
+     correction, non un second exercice : cet écart ne la lie pas. */
+  const SECOND_GAP = 3;
+  const apart = (first, at) => at - first > SECOND_GAP;
+
+  /* Tresse les rencontres, les révisions et les seconds exercices. C'est LA
+     disposition d'une séance : plan() la compte sur les éléments, la séance la
+     remplit avec leurs exercices.
+       meetings, reviews  les premiers exercices, dans l'ordre
+       toSay(x)           vrai pour une première réponse à voix haute
+       second(x)          ce qui tient la place du second exercice de x
+     Les renforcements se glissent à intervalles réguliers dans ce qui suit leur
+     rencontre : groupés en fin de séance, ils formeraient une longue file du même
+     exercice. L'écrit qui suit une première réponse à voix haute ferme la séance,
+     le plus loin possible d'elle ; trois révisions ordinaires sont gardées pour la
+     fin, afin qu'il ne la suive jamais aussitôt. Ce qui n'a pas trouvé sa place à
+     la fin n'est pas servi. La longueur ne dépend que du nombre de rencontres, de
+     premières fois et de révisions ordinaires, jamais de leur ordre : l'annonce
+     et la séance comptent donc la même chose. */
+  function lace(meetings, reviews, toSay, second) {
+    const plain = reviews.filter(x => !toSay(x)).slice(-SECOND_GAP);
+    const base = meetings.concat(reviews.filter(x => plain.indexOf(x) < 0), plain);
+    const every = Math.max(1, Math.floor(base.length / Math.max(1, meetings.length)));
+    const out = [], waiting = [], aloud = [];
+    let i = 0, since = 0;
+    while (i < base.length || waiting.length) {
+      if (waiting.length && apart(waiting[0].at, out.length) && (i >= base.length || since >= every)) {
+        out.push(second(waiting.shift().x)); since = 0;
+        continue;
+      }
+      if (i >= base.length) break;
+      const x = base[i];
+      if (i < meetings.length) waiting.push({ at: out.length, x });
+      else if (toSay(x)) aloud.push({ at: out.length, x });
+      out.push(x); i++; since++;
+    }
+    aloud.forEach(a => { if (apart(a.at, out.length)) out.push(second(a.x)); });
+    return out;
+  }
+
+  /* Ce qu'une séance coûte en exercices : la longueur de sa disposition. Une
+     rencontre en coûte deux, une première fois à voix haute aussi, quand leur
+     second exercice trouve sa place ; une seule sinon. */
+  const exercises = (due, fresh) => lace(fresh, due, firstAloud, x => x).length;
+
+  /* Ce que l'écran d'accueil annonce : les comptes de compose(), rien d'autre.
+       total = éléments ; tasks = exercices, comptés par exercises() */
   function plan() {
-    const left = budgetLeft();
-    const due = Math.min(dueItems().length, left);
-    const room = Math.max(0, left - due);
-    const found = freshItems(Math.min(room, pace().fresh)).length;
-    /* Les parties doivent faire le tout : la séance est plafonnée à MAX_TASKS,
-       donc on rabote le nouveau, pas les révisions — sinon l'écran affiche
-       « -3 à revoir » en soustrayant un nouveau non plafonné d'un total plafonné. */
-    const total = Math.min(due + found, MAX_TASKS);
-    const dueShown = Math.min(due, total);
-    const fresh = total - dueShown;
-    return { due: dueShown, fresh, total, left, mins: Math.max(1, Math.round(total * 0.22)) };
+    const c = compose('vandaag');
+    const tasks = exercises(c.due, c.fresh);
+    return {
+      due: c.due.length, fresh: c.fresh.length, total: c.due.length + c.fresh.length,
+      tasks, left: c.left, mins: Math.max(1, Math.round(tasks * 0.22)),
+      units: unitSpan(c.due.concat(c.fresh))
+    };
+  }
+
+  /* Les unités que couvre une liste d'éléments : la première et la dernière. */
+  function unitSpan(items) {
+    const ns = [];
+    items.forEach(it => { const u = NL.content.unit(it.unit); if (u) ns.push(u.n); });
+    return ns.length ? { from: Math.min.apply(null, ns), to: Math.max.apply(null, ns) } : null;
   }
 
   return {
-    RUNGS, STEP, PACE, MAX_STAGE, MAX_TASKS, GRADUATED, TIER_MAX, RETIRE_AT,
-    maxRung, pace, exerciseFor, supports, grade, seed, isSeen, stageOf, atTop,
-    dueItems, counts, freshItems, plan, recOf, budgetLeft, spend
+    RUNGS, STEP, PACE, MAX_STAGE, MAX_TASKS, PRODUCE, NEW_SHARE, NEW_MIN, NEW_MAX, TIER_MAX, RETIRE_AT,
+    maxRung, pace, exerciseFor, firstAloud, needsVoice, supports, grade, seed, isSeen, stageOf, atTop,
+    dueItems, counts, freshItems, compose, plan, unitSpan, mistakes, recOf, budgetLeft, spend,
+    SECOND_GAP, apart, lace
   };
 })();
 </script>
@@ -1833,7 +2204,7 @@ NL.sync = (function () {
   const QKEY = 'vlaams/outbox';
   const OWNER = 'vlaams/owner';
   const PAGE = 1000;
-  const LOG_DAYS = 45;
+  const LOG_DAYS = 62;            // deux mois : ce que l'écran des fautes relit
 
   let client = null, user = null;
   let state = enabled ? 'idle' : 'off';     // off | idle | syncing | error | offline
@@ -1841,7 +2212,7 @@ NL.sync = (function () {
   const subs = [];
 
   /* ---------------- boîte d'envoi ---------------- */
-  const empty = () => ({ recs: {}, customs: {}, meta: false, logs: [] });
+  const empty = () => ({ recs: {}, customs: {}, meta: false, logs: [], reset: 0 });
   let box = load();
   function load() {
     try { return Object.assign(empty(), JSON.parse(localStorage.getItem(QKEY) || '{}')); }
@@ -1849,7 +2220,7 @@ NL.sync = (function () {
   }
   function persist() { try { localStorage.setItem(QKEY, JSON.stringify(box)); } catch (e) {} }
   const pending = () => Object.keys(box.recs).length + Object.keys(box.customs).length +
-    (box.meta ? 1 : 0) + box.logs.length;
+    (box.meta ? 1 : 0) + box.logs.length + (box.reset ? 1 : 0);
 
   const owner = () => { try { return localStorage.getItem(OWNER); } catch (e) { return null; } };
   const setOwner = id => { try { id ? localStorage.setItem(OWNER, id) : localStorage.removeItem(OWNER); } catch (e) {} };
@@ -1866,9 +2237,26 @@ NL.sync = (function () {
     else if (type === 'custom') box.customs[v.id] = 1;
     else if (type === 'custom-del') box.customs[v] = 'deleted';
     else if (type === 'log') { box.logs.push(v); if (box.logs.length > 5000) box.logs.shift(); }
+    /* Une remise à zéro : ce qui en descendait n'est plus à envoyer, et le
+       serveur devra effacer la même chose avant d'être relu. Sans compte, elle
+       reste sur l'appareil : à la connexion suivante, elle effacerait sinon
+       tout l'historique du compte, sur le serveur et sur chacun de ses appareils.
+       Connecté mais pas encore rattaché, elle est déjà celle du compte. */
+    else if (type === 'reset') {
+      if (owner() || user) box.reset = Math.max(box.reset || 0, v);
+      prune(v); box.meta = true;
+    }
     persist();
     schedule();
   });
+
+  /* Ce qu'une remise à zéro retire de la boîte : les fiches effacées, et les
+     lignes de journal qui descendent d'avant la coupe. Ce qui a été écrit
+     depuis — une progression anonyme, par exemple — attend son envoi. */
+  function prune(cut) {
+    Object.keys(box.recs).forEach(id => { if (!NL.state.rec(id)) delete box.recs[id]; });
+    box.logs = box.logs.filter(l => ((l && l.base) || 0) >= cut);
+  }
 
   function queueAll() {
     NL.state.allRecs().forEach(r => { box.recs[r.id] = 1; });
@@ -1903,14 +2291,23 @@ NL.sync = (function () {
       user = data && data.session ? data.session.user : null;
     } catch (e) { user = null; }
     if (user) adopt().then(notify, notify);   // l'interface s'affiche sans attendre le réseau
-    window.addEventListener('online', () => { state = 'idle'; notify(); flush(); });
+    window.addEventListener('online', () => { state = 'idle'; notify(); if (!reattach()) flush(); });
     window.addEventListener('offline', () => { state = 'offline'; notify(); });
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') flush();
-      else if (user) pull().then(() => flush());   // retour sur l'onglet : rattraper les autres appareils
+      else if (user && !reattach()) pull().then(() => flush());   // retour sur l'onglet : rattraper les autres appareils
     });
-    setInterval(() => flush(), 60000);
+    setInterval(() => { if (!reattach()) flush(); }, 60000);
     return user;
+  }
+
+  /* Connecté mais pas rattaché : l'adoption a échoué sur le réseau. Chaque
+     occasion de synchroniser la retente ; sinon la synchro resterait éteinte
+     jusqu'au prochain chargement. Rend vrai quand une adoption est en route. */
+  function reattach() {
+    if (!user || attached()) return false;
+    adopt().then(notify, notify);
+    return true;
   }
 
   /* Rattache les données de cet appareil au compte connecté.
@@ -1921,6 +2318,11 @@ NL.sync = (function () {
   /* Le retour du lien magique déclenche à la fois l’événement de connexion et
      getSession : un seul rattachement par compte. */
   let adopting = null, adoptedFor = null;
+  /* Le compte auquel CETTE page a rattaché l'appareil. Distinct de vlaams/owner :
+     si l'écriture de celui-ci échoue, la page reste rattachée au lieu de refaire
+     l'adoption à chaque occasion — ou d'attendre, depuis pull(), l'adoption même
+     qui l'appelle. */
+  let attachedTo = null;
   function adopt() {
     if (adoptedFor === user.id && adopting) return adopting;
     adoptedFor = user.id;
@@ -1932,13 +2334,34 @@ NL.sync = (function () {
     if (prev && prev !== user.id) {
       await NL.state.clearAll();
       box = empty(); persist();
-    } else if (!prev && NL.state.seenCount() + NL.state.customs().length > 0) {
-      queueAll();
+    } else if (!prev) {
+      /* La progression anonyme rejoint le compte telle quelle : elle descend
+         désormais de la dernière remise à zéro du compte, si bien qu'une remise
+         à zéro du compte ne l'efface pas, et qu'une remise à zéro faite ici
+         sans compte ne passe pas au compte. Même sans rien à adopter : une
+         remise à zéro faite sans compte ne laisse souvent rien sur l'appareil,
+         mais son instant passerait au compte par la fusion des réglages. Les
+         lignes déjà dans la boîte sont rebasées aussi : après un rechargement,
+         ce sont d'autres objets que celles du journal. */
+      let remote;
+      try { remote = await readMeta(); }
+      catch (e) { adoptedFor = null; fail(e); return; }   // rien n'est rattaché : reattach() réessaiera
+      /* Une remise à zéro pressée connecté, avant ce rattachement, est celle du
+         compte : le rebasage ne la défait pas. */
+      const at = Math.max((remote && remote.resetAt) || 0, box.reset || 0, NL.state.ENGINE_EPOCH);
+      NL.state.rebase(at);
+      box.logs.forEach(l => { if (l && typeof l === 'object') l.base = at; });
+      if (NL.state.seenCount() + NL.state.customs().length > 0) queueAll();
     }
-    setOwner(user.id);
+    setOwner(user.id); attachedTo = user.id;
     await pull();
     await flush();
   }
+
+  /* Tant que l'appareil n'est pas rattaché au compte connecté, rien ne part ni
+     n'arrive : sa progression n'a pas encore été rebasée sur celle du compte,
+     et une remise à zéro faite sans compte partirait avec elle. */
+  const attached = () => !!user && attachedTo === user.id;
 
   async function signIn(email) {
     if (!enabled) return { error: 'off' };
@@ -1959,21 +2382,25 @@ NL.sync = (function () {
   }
 
   /* Déconnexion : on envoie ce qui reste, puis on efface l'appareil pour que la
-     personne suivante ne voie rien. */
+     personne suivante ne voie rien. Pas encore rattaché, ce qui a été fait ici
+     n'est pas encore au compte : on le rattache d'abord. */
   async function signOut() {
     if (!enabled || !user) return;
+    if (!attached()) { try { await adopt(); } catch (e) {} }
     try { await flush(); } catch (e) {}
     await client.auth.signOut();
     await NL.state.clearAll();
     box = empty(); persist(); setOwner(null);
-    user = null; adopting = null; adoptedFor = null; notify();
+    user = null; adopting = null; adoptedFor = null; attachedTo = null; notify();
   }
 
   /* ---------------- tirer ---------------- */
+  /* Les lectures se bornent au compte comme les effacements : la politique de
+     sécurité des lignes le fait déjà, ce filtre le fait encore si elle tombe. */
   async function selectAll(table, filter) {
     const rows = [];
     for (let from = 0; ; from += PAGE) {
-      let q = client.from(table).select('*');
+      let q = client.from(table).select('*').eq('user_id', user.id);
       if (filter) q = filter(q);
       const { data, error } = await q.range(from, from + PAGE - 1);
       if (error) throw error;
@@ -1982,12 +2409,62 @@ NL.sync = (function () {
     }
   }
 
+  /* Les remises à zéro passent AVANT tout le reste, dans les deux sens.
+     La nôtre d'abord : le serveur efface ce que cet appareil a effacé, sinon la
+     lecture qui suit le lui rendrait. Puis celle des autres : si le serveur
+     porte une remise à zéro plus récente, la copie locale est périmée et rien
+     d'elle ne doit repartir. Rend les réglages du serveur, déjà lus. */
+  async function settleResets() {
+    if (box.reset) {
+      await eraseBefore(box.reset);
+      box.reset = 0; box.meta = true; persist();
+    }
+    const remote = await readMeta();
+    /* Des réglages de l'ancien moteur : personne n'a encore migré ce compte. Le
+       premier appareil qui les voit efface ce que la migration aurait effacé. */
+    if (remote && attached() && (!remote.progress || (remote.dataVersion || 1) < 3)) {
+      await eraseBefore(NL.state.ENGINE_EPOCH);
+    }
+    if (remote && (remote.resetAt || 0) > (NL.state.meta().resetAt || 0)) {
+      NL.state.resetProgress(remote.resetAt, true);
+      prune(remote.resetAt); persist();
+      NL.content.refresh();
+    }
+    return remote;
+  }
+
+  /* Le filtre sur user_id double la politique de sécurité des lignes : si elle
+     tombait un jour, la remise à zéro d'une personne n'effacerait pas les autres. */
+  async function eraseBefore(at) {
+    let r = await client.from('srs_records').delete().eq('user_id', user.id).lt('updated_at', at);
+    if (r.error) throw r.error;
+    r = await client.from('review_log').delete().eq('user_id', user.id).lt('t', at);
+    if (r.error) throw r.error;
+  }
+
+  async function readMeta() {
+    const { data, error } = await client.from('user_meta').select('*').eq('user_id', user.id).range(0, 0);
+    if (error) throw error;
+    return data && data[0] ? data[0].data : null;
+  }
+
+  /* Une ligne du serveur qui descend d'une remise à zéro antérieure à la nôtre
+     est en cours d'effacement ; sans `base`, elle vient de la version
+     précédente, qui écrit encore après l'époque. Ni l'une ni l'autre n'entre. */
+  const stale = (row, cut) => ((row.data && row.data.base) || 0) < cut;
+
   async function pull() {
     if (!user) return;
+    /* « Synchroniser maintenant » après une adoption échouée : la retenter.
+       L'adoption tire elle-même une fois rattachée. */
+    if (!attached()) { try { await adopt(); } catch (e) { fail(e); } return; }
     state = 'syncing'; notify();
     try {
+      const remoteMeta = await settleResets();
+      const cut = NL.state.meta().resetAt || 0;
       const recs = await selectAll('srs_records');
       recs.forEach(row => {
+        if (stale(row, cut)) return;
         const local = NL.state.rec(row.item_id);
         if (box.recs[row.item_id] && local && (local.updatedAt || 0) >= row.updated_at) return;
         if (!local || (local.updatedAt || 0) < row.updated_at) {
@@ -2003,11 +2480,10 @@ NL.sync = (function () {
         else NL.state.putCustom(Object.assign({}, row.data, { id: row.id, updatedAt: row.updated_at }), true);
       });
 
-      const metaRows = await selectAll('user_meta');
-      if (metaRows[0]) {
-        const merged = mergeMeta(NL.state.meta(), metaRows[0].data);
+      if (remoteMeta) {
+        const merged = mergeMeta(NL.state.meta(), remoteMeta);
         NL.state.setMeta(merged, true);
-        if (JSON.stringify(merged) !== JSON.stringify(metaRows[0].data)) { box.meta = true; persist(); }
+        if (JSON.stringify(merged) !== JSON.stringify(remoteMeta)) { box.meta = true; persist(); }
       } else {
         box.meta = true; persist();
       }
@@ -2016,7 +2492,7 @@ NL.sync = (function () {
       const have = new Set(NL.state.logs().map(l => l.t + '|' + l.id));
       const logs = await selectAll('review_log', q => q.gte('t', since));
       logs.sort((a, b) => a.t - b.t).forEach(row => {
-        if (!have.has(row.t + '|' + row.item_id)) NL.state.logReview(row.data, true);
+        if (!stale(row, cut) && !have.has(row.t + '|' + row.item_id)) NL.state.logReview(row.data, true);
       });
 
       NL.content.refresh();
@@ -2026,7 +2502,7 @@ NL.sync = (function () {
 
   /* ---------------- pousser ---------------- */
   function flush() {
-    if (!user || !enabled) return Promise.resolve();
+    if (!enabled || !attached()) return Promise.resolve();
     if (typeof navigator !== 'undefined' && navigator.onLine === false) { state = 'offline'; notify(); return Promise.resolve(); }
     if (flushing) return flushing;
     flushing = doFlush().finally(() => { flushing = null; });
@@ -2036,6 +2512,10 @@ NL.sync = (function () {
   async function doFlush() {
     if (!pending()) { done(); return; }
     state = 'syncing'; notify();
+    let remoteMeta = null;
+    try { remoteMeta = await settleResets(); }
+    catch (e) { fail(e); schedule(30000); return; }
+    if (!pending()) { done(); return; }
     /* On prend un instantané et on vide la boîte : ce qui s'écrit PENDANT
        l'envoi repart dans une boîte neuve au lieu d'être effacé par erreur. */
     const snap = box; box = empty(); persist();
@@ -2063,9 +2543,7 @@ NL.sync = (function () {
       if (snap.meta) {
         /* Les réglages se fusionnent avec la copie du serveur AVANT l'envoi :
            l'XP gagnée ailleurs pendant que cet appareil était hors ligne reste. */
-        const { data: remote, error: readErr } = await client.from('user_meta').select('*').range(0, 0);
-        if (readErr) throw readErr;
-        if (remote && remote[0]) NL.state.setMeta(mergeMeta(NL.state.meta(), remote[0].data), true);
+        if (remoteMeta) NL.state.setMeta(mergeMeta(NL.state.meta(), remoteMeta), true);
         const m = NL.state.meta();
         const { error } = await client.from('user_meta').upsert(
           { user_id: uid, data: m, updated_at: m.updatedAt || now }, { onConflict: 'user_id' });
@@ -2118,11 +2596,26 @@ NL.sync = (function () {
       if (da === db) out[cnt] = Math.max(a[cnt] || 0, b[cnt] || 0);
       else { const w = da > db ? a : b; out[k] = w[k]; out[cnt] = w[cnt]; }
     });
-    ['scenariosDone', 'listenDone'].forEach(k => {
-      out[k] = Array.from(new Set([].concat(a[k] || [], b[k] || [])));
-    });
     out.placed = !!(a.placed || b.placed);
-    out.reached = Math.max(a.reached || 0, b.reached || 0);
+    /* La frontière ne recule jamais et les listes de choses faites s'unissent —
+       sauf remise à zéro : tout ce qui relève de la progression suit alors le
+       côté qui porte la plus récente, sinon l'autre appareil rendrait ce qu'on
+       vient d'effacer.
+       Elles se lisent dans `progress`, et là seulement : la version précédente
+       réécrit le premier niveau par maximum et union et recopie `progress` sans
+       le toucher. Un côté sans `progress` n'apporte rien. */
+    const pa = a.progress || {}, pb = b.progress || {};
+    const ra = a.resetAt || 0, rb = b.resetAt || 0;
+    const later = ra > rb ? pa : pb;
+    out.resetAt = Math.max(ra, rb);
+    out.reached = ra === rb ? Math.max(pa.reached || 0, pb.reached || 0) : (later.reached || 0);
+    ['scenariosDone', 'listenDone'].forEach(k => {
+      out[k] = ra === rb ? Array.from(new Set([].concat(pa[k] || [], pb[k] || []))) : (later[k] || []).slice();
+    });
+    out.progress = { reached: out.reached, scenariosDone: out.scenariosDone.slice(), listenDone: out.listenDone.slice() };
+    /* Une version de données ne redescend jamais : un appareil neuf ne reprend
+       pas le dataVersion 2 d'un compte que personne n'a encore migré. */
+    out.dataVersion = Math.max(a.dataVersion || 1, b.dataVersion || 1);
     out.updatedAt = Math.max(a.updatedAt || 0, b.updatedAt || 0);
     return out;
   }
@@ -2754,7 +3247,7 @@ NL.content.patterns = (function () {
       explain: 'Le néerlandais dit les unités avant les dizaines : <span class="ex">eenentwintig</span> (21), <span class="ex">vierenzestig</span> (64), <span class="ex">negenennegentig</span> (99). En un seul mot, sans espace. C’est pour ça qu’un prix ou un numéro de téléphone semble mélangé : tu entends le deuxième chiffre avant le premier. Bonne nouvelle pour toi : <span class="ex">zeventig</span> = septante et <span class="ex">negentig</span> = nonante, exactement comme en Belgique. Le français de France, lui, t’aurait imposé un détour par soixante-dix.',
       drills: [
         D('Het kost eenentwintig euro.', 'Ça coûte vingt-et-un euros.', 'eenentwintig'),
-        D('Ik ben tweeenveertig jaar.', 'J’ai quarante-deux ans.', 'tweeenveertig'),
+        D('Ik ben tweeënveertig jaar.', 'J’ai quarante-deux ans.', 'tweeënveertig'),
         D('Dat is vijfenzestig euro.', 'Ça fait soixante-cinq euros.', 'vijfenzestig'),
         D('Zij is zeventig jaar.', 'Elle a septante ans.', 'zeventig')
       ]
@@ -4024,15 +4517,22 @@ NL.content = NL.content || {};
   const unit = id => NL.content.units.find(u => u.id === id) || null;
   const itemsOf = uid => allItems().filter(it => it.unit === uid);
 
-  /* Deux seuils, tenant compte du palier de chaque élément : un mot du palier
-     « reconnaître » plafonne à l'échelon 2 et ne peut pas atteindre l'échelon 5. */
-  const READY = it => NL.srs.stageOf(it) >= Math.min(3, NL.srs.maxRung(it));
-  const MASTERED = it => NL.srs.stageOf(it) >= Math.min(NL.srs.GRADUATED, NL.srs.maxRung(it));
-  const GATE = 0.8;
+  /* Deux comptes, et pas de troisième. Rencontré : l'élément a été vu au moins
+     une fois. Produit : il a passé l'échelon de l'écrit — en tenant compte du
+     palier, puisqu'un mot du palier « reconnaître » plafonne à l'échelon 2. */
+  const MET = it => NL.srs.stageOf(it) >= 0;
+  const PRODUCED = it => NL.srs.stageOf(it) >= Math.min(NL.srs.PRODUCE, NL.srs.maxRung(it));
+
+  /* Une unité ouvre la suivante quand les trois quarts de ses éléments ont été
+     RENCONTRÉS. Le seuil portait sur un échelon qui demande au moins deux jours
+     de bonnes réponses : une unité entièrement rencontrée n'ouvrait pas la
+     suivante, et il ne restait alors rien de neuf à servir. */
+  const GATE = 0.75;
+  const gateSize = n => Math.ceil(n * GATE);
 
   const unitComplete = uid => {
     const items = itemsOf(uid);
-    return !items.length || items.filter(READY).length / items.length >= GATE;
+    return items.filter(MET).length >= gateSize(items.length);
   };
 
   /* La frontière : on remonte depuis la première unité tant qu'elle est faite ;
@@ -4043,15 +4543,8 @@ NL.content = NL.content || {};
     const us = NL.content.units;
     let i = 0;
     while (i < us.length - 1 && unitComplete(us[i].id)) i++;
-    /* Une unité ouverte le reste. Sans cette mémoire, quelques rechutes dans
-       l'unité 1 la font repasser sous 80 % et referment les onze suivantes,
-       même entièrement rencontrées. Le maximum atteint reste contigu. */
-    /* Rattrapage pour les progressions d'avant : on ne rencontre les éléments
-       que d'une unité ouverte, donc une unité rencontrée à 80 % l'a été. */
-    for (let j = us.length - 1; j > i; j--) {
-      const items = itemsOf(us[j].id);
-      if (items.length && items.filter(it => NL.srs.stageOf(it) >= 0).length / items.length >= GATE) { i = j; break; }
-    }
+    /* Une unité ouverte le reste : la frontière ne recule jamais, et le
+       maximum atteint reste contigu. */
     const reached = Math.min(NL.state.meta().reached || 0, us.length - 1);
     if (i > reached) { NL.state.setMeta({ reached: i }); return i; }
     return reached;
@@ -4063,31 +4556,22 @@ NL.content = NL.content || {};
     return i >= 0 && i <= frontier();
   }
 
-  /* Le pourcentage ne compte QUE la maîtrise : ce que tu as dit à voix haute et
-     réussi. Il affiche 0% pendant des jours. C'est la vérité — 33% alors que
-     rien n'est appris est pire. */
+  /* Des comptes, jamais de pourcentage : un compte bouge tous les jours, et ne
+     peut pas être exact et muet à la fois. Voir docs/adr/0002.
+       toOpen = combien d'éléments restent à rencontrer avant l'unité suivante */
   function unitProgress(uid) {
     const items = itemsOf(uid);
-    if (!items.length) return { pct: 0, met: 0, ready: 0, mastered: 0, total: 0, gate: 0, level: 0 };
-    const met = items.filter(it => NL.srs.stageOf(it) >= 0).length;
-    const ready = items.filter(READY).length;
-    const mastered = items.filter(MASTERED).length;
-    const pct = Math.round(mastered / items.length * 100);
+    const met = items.filter(MET).length;
     return {
-      pct, met, ready, mastered, total: items.length,
-      gate: Math.round(ready / items.length * 100),
-      level: Math.min(5, Math.floor(pct / 20))
+      met, produce: items.filter(PRODUCED).length, total: items.length,
+      toOpen: Math.max(0, gateSize(items.length) - met)
     };
   }
 
   function courseProgress() {
     const items = allItems().filter(it => it.unit !== 'eigen');
-    const mastered = items.filter(MASTERED).length;
-    const ready = items.filter(READY).length;
     return {
-      pct: Math.round(mastered / items.length * 100),
-      mastered, ready, total: items.length,
-      unitsDone: NL.content.units.filter(u => unitComplete(u.id)).length,
+      met: items.filter(MET).length, produce: items.filter(PRODUCED).length, total: items.length,
       current: NL.content.units[frontier()] || null
     };
   }
@@ -4110,7 +4594,7 @@ NL.content = NL.content || {};
     return out;
   }
 
-  Object.assign(NL.content, { allItems, refresh, byId, unit, itemsOf, unitOpen, unitComplete, frontier, unitProgress, courseProgress, scenario, listenClips, fill, DEFAULTS });
+  Object.assign(NL.content, { allItems, refresh, byId, unit, itemsOf, unitOpen, unitComplete, frontier, unitProgress, courseProgress, met: MET, produced: PRODUCED, scenario, listenClips, fill, DEFAULTS });
 })();
 </script>
 <script>
@@ -4165,6 +4649,9 @@ NL.ex = (function () {
   const tileShuffleGuard = html => html || '<span class="muted">—</span>';
 
   const said = (task, L) => L.picked.map(i => task.bank[i]).join(' ');
+
+  /* Une note de prononciation se dit en mots reconnus, pas en pourcentage. */
+  const wordScore = parts => NL.t.wordsHeard((parts || []).filter(p => p.ok).length, (parts || []).length);
 
   /* Les mauvaises réponses décident de la difficulté d'un QCM. Tirées au hasard
      dans l'unité, elles s'éliminent sans connaître le mot : la bonne est la plus
@@ -4425,12 +4912,15 @@ NL.ex = (function () {
           (sp.partial ? '<p class="heard">' + esc(sp.partial) + '</p>' : '') + '</div>';
       } else if (sp.phase === 'done') {
         panel = '<div class="mic-panel ' + (sp.ok ? 'good' : 'bad') + '">' +
-          '<div class="score-row"><span class="score">' + sp.pct + '%</span>' +
+          '<div class="score-row"><span class="score">' + wordScore(sp.parts) + '</span>' +
           '<span class="score-bar"><span style="width:' + sp.pct + '%"></span></span></div>' +
           '<p class="word-diff">' + sp.parts.map(p =>
             '<span class="' + (p.ok ? (p.close ? 'w-close' : 'w-ok') : 'w-no') + '">' + esc(p.word) + '</span>').join(' ') + '</p>' +
           (sp.heard ? '<p class="heard">' + NL.t.micHeard + ' &ldquo;' + esc(sp.heard) + '&rdquo;</p>' : '') +
           (!sp.ok && sp.tries < 3 ? '<div class="mic-actions"><button class="btn btn-blue" data-mic="start">' + NL.t.micRetry(3 - sp.tries) + '</button></div>' : '') +
+          /* Trois refus : le micro n'entend peut-être simplement pas ce mot-là.
+             Sans cette issue, l'élément serait redemandé chaque jour sans jamais monter. */
+          (!sp.ok && sp.tries >= 3 ? selfRate(sp) : '') +
           '</div>';
       } else {
         panel = '<div class="mic-panel"><button class="mic big" data-mic="start" aria-label="' + NL.t.speak + '">' + ICON.mic(34) + '</button>' +
@@ -4438,9 +4928,15 @@ NL.ex = (function () {
           (sp.error ? selfRate(sp) : '') + '</div>';
       }
 
+      /* « Je ne peux pas parler » : proposé tant que rien n'a été tenté. Une fois
+         la réponse donnée, c'est une réponse. */
+      const untried = phase === 'ask' && sp.selfRated == null && sp.phase !== 'done' && sp.phase !== 'listening' &&
+        sp.recState !== 'rec' && sp.recState !== 'done';
+      const hush = untried ? '<div class="mic-actions"><button class="btn btn-ghost" data-quiet="1">' + NL.t.cantSpeak + '</button></div>' : '';
+
       return '<div class="sentence prompt">' + esc(t.target) + flemish(t.item.be, t.target) + '</div>' +
         '<div class="gloss-line">' + esc(t.prompt) + '</div>' +
-        speakerRow(t.target, {}) + panel;
+        speakerRow(t.target, {}) + panel + hush;
     },
     ready(t, L) {
       const sp = L.speech;
@@ -4660,7 +5156,7 @@ NL.ex = (function () {
     }
   };
 
-  return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, recordPanel, selfRate, sameSense };
+  return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, recordPanel, selfRate, sameSense, wordScore };
 })();
 </script>
 <script>
@@ -4688,8 +5184,8 @@ NL.ui = (function () {
     luisteren: '<path d="M4 13.5a8 8 0 0 1 16 0M4 13.5v3a2.5 2.5 0 0 0 5 0v-3M20 13.5v3a2.5 2.5 0 0 1-5 0v-3"/>',
     meer: '<circle cx="6" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="18" cy="12" r="1.4"/>'
   };
-  const UNDER_MEER = ['woorden', 'spiek', 'register', 'klanken', 'doctor', 'dehet'];
-  const FULLSCREEN = { sessie: 1, scenario: 1, placement: 1, doctor: 1, compte: 1 };
+  const UNDER_MEER = ['woorden', 'spiek', 'register', 'klanken', 'doctor', 'dehet', 'fouten'];
+  const FULLSCREEN = { sessie: 1, scenario: 1, doctor: 1, compte: 1 };
 
   function go(to, a) {
     if (route === 'sessie' && to !== 'sessie' && NL.screens.sessie.active()) { sheet = 'quit-session'; return render(); }
@@ -4753,6 +5249,14 @@ NL.ui = (function () {
   function card(title, body, actions) {
     return '<div class="sheet" data-backdrop="1"><div class="sheet-card" role="dialog" aria-modal="true">' +
       '<h3>' + title + '</h3>' + (body || '') + '<div class="sheet-actions">' + actions + '</div></div></div>';
+  }
+
+  /* « Unité 5 · Chez le boulanger », ou « Unités 4–5 » : le même libellé sur la
+     carte de l'accueil et sur l'écran de la séance. */
+  function unitLabel(span) {
+    if (span.from !== span.to) return t.unitsRange(span.from, span.to);
+    const u = NL.content.units.find(x => x.n === span.from);
+    return t.unitOne(span.from) + (u ? ' · ' + u.name : '');
   }
 
   function sheetHtml() {
@@ -4918,10 +5422,11 @@ NL.ui = (function () {
   function restore(raw) {
     let data = null;
     try { data = JSON.parse(raw); } catch (e) { /* reported below */ }
+    const old = NL.state.isOldBackup(data);
     if (NL.state.importAll(data)) {
       NL.content.refresh(); sheet = null;
       if (NL.sync.user) { NL.sync.queueAll(); NL.sync.flush(); }
-      render(); toast(t.imported);
+      render(); toast(old ? t.importedOld : t.imported);
     }
     else toast(t.importFailed);
   }
@@ -4984,9 +5489,12 @@ NL.ui = (function () {
         }
         if (d.reset !== undefined) { sheet = 'reset-confirm'; render(); return; }
         if (d.resetYes !== undefined) {
-          Promise.resolve(NL.state.clearAll()).then(() => {
-            NL.content.refresh(); sheet = null; route = 'vandaag'; render(); toast(t.wiped);
-          });
+          /* La progression seulement : réglages, score et mots personnels
+             restent. Connecté, le serveur est effacé avant d'être relu — sinon
+             la synchro suivante rendrait tout ce qu'on vient d'effacer. */
+          NL.state.resetProgress();
+          NL.content.refresh(); sheet = null; route = 'vandaag'; render(); toast(t.wiped);
+          if (NL.sync.user) NL.sync.flush();
           return;
         }
         if (d.quitYes !== undefined) { NL.screens.sessie.abandon(); sheet = null; go('vandaag'); return; }
@@ -5033,7 +5541,7 @@ NL.ui = (function () {
   function onAuth() { if (route === 'compte') go('vandaag'); else render(); }
 
   return {
-    bind, render, go, toast, openSheet, closeSheet, I, card, onAuth,
+    bind, render, go, toast, openSheet, closeSheet, I, card, unitLabel, onAuth,
     get route() { return route; },
     boot() { const h = fromHash(); if (h) { route = h.r; arg = h.a; } render(); }
   };
@@ -5089,76 +5597,215 @@ NL.screens.sessie = (function () {
     return true;
   }
 
-  function start(source) {
-    NL.state.touchDay();
-    if (source === 'defi') return startDefi();
-    const m = NL.state.meta();
-    const due = NL.srs.dueItems();
-    let fresh, pool;
-
-    if (source && source !== 'vandaag') {
-      const items = NL.content.itemsOf(source);
-      pool = items.filter(it => NL.srs.stageOf(it) >= 0 && NL.state.rec(it.id).due <= Date.now());
-      fresh = items.filter(it => NL.srs.stageOf(it) < 0).slice(0, NL.srs.pace().fresh);
-    } else {
-      const left = NL.srs.budgetLeft();
-      pool = due.slice(0, left);
-      fresh = NL.srs.freshItems(Math.min(Math.max(0, left - pool.length), NL.srs.pace().fresh));
-    }
-
-    const queue = [];
-    /* Brand-new items get met as a matching warm-up before anything is demanded. */
-    const newWords = fresh.filter(it => it.kind !== 'pattern');
-    if (newWords.length >= 4) {
-      queue.push({ ex: 'match', task: EX.registry.match.build(newWords.slice(0, 5)), items: newWords.slice(0, 5) });
-    }
-    /* Grammar rules are nine items among four hundred, so uniform sampling buries
-       them — a whole week could pass without one. Give them a guaranteed seat. */
-    const pats = pool.filter(it => it.kind === 'pattern').slice(0, 2);
-    const others = pool.filter(it => pats.indexOf(it) < 0).slice(0, MAX_TASKS - pats.length);
-    /* Le gouverneur : on retient les deux derniers types servis pour qu'aucun
-       ne se répète coup sur coup. */
-    const rest = U.shuffle(pats.concat(others, fresh));
-    const recent = [];
-    rest.forEach(it => {
-      const name = NL.srs.exerciseFor(it, new Set(recent));
-      const ex = EX.get(name);
+  /* Un exercice par élément. Le gouverneur retient les deux derniers types
+     servis pour qu'aucun ne se répète coup sur coup. */
+  function build(items, recent, quiet) {
+    const out = [];
+    items.forEach(it => {
+      const name = NL.srs.exerciseFor(it, new Set(recent), quiet);
       try {
-        queue.push({ ex: name, task: ex.build(it), items: [it] });
+        out.push({ ex: name, task: EX.get(name).build(it), items: [it] });
         recent.push(name);
         if (recent.length > 2) recent.shift();
-      } catch (e) { /* un élément mal formé est simplement sauté */ }
+      } catch (e) {
+        /* Un élément mal formé est sauté — mais plus en silence : sans trace,
+           il pouvait n'être jamais drillé sans que personne le sache. */
+        NL.errlog.note(e, 'exercice ' + name + ' · ' + it.id);
+      }
     });
+    return out;
+  }
 
-    /* Étalement optimal. Choisir « le premier qui diffère » ne suffit pas : quand
-       un type domine la file, il faut le répartir activement. On puise donc à
-       tour de rôle dans le plus gros paquet restant, ce qui est l'ordonnancement
-       qui minimise réellement les voisins identiques. La mémoire traverse aussi
-       les séances : sans elle, chaque nouvelle séance repart aveugle. */
-    const head = queue.length && queue[0].ex === 'match' ? [queue.shift()] : [];
+  /* Étalement optimal. Choisir « le premier qui diffère » ne suffit pas : quand
+     un type domine la file, il faut le répartir activement. On puise donc à
+     tour de rôle dans le plus gros paquet restant, ce qui est l'ordonnancement
+     qui minimise réellement les voisins identiques. */
+  function spread(list, last) {
     const bucket = {};
-    queue.forEach(x => { (bucket[x.ex] = bucket[x.ex] || []).push(x); });
-    queue.length = 0;                      // la file est vidée : on la reconstruit étalée
-    const spread = [];
-    let last = head.length ? head[0].ex : NL.state.meta().lastEx || null;
+    list.forEach(x => { (bucket[x.ex] = bucket[x.ex] || []).push(x); });
+    const out = [];
     const left = () => Object.keys(bucket).filter(k => bucket[k].length);
     while (left().length) {
       const keys = left().sort((a, b) => bucket[b].length - bucket[a].length);
       const k = keys.find(x => x !== last) || keys[0];
-      spread.push(bucket[k].shift());
+      out.push(bucket[k].shift());
       last = k;
     }
-    queue.push.apply(queue, head.concat(spread));
-    if (queue.length) NL.state.setMeta({ lastEx: queue[queue.length - 1].ex });
+    return out;
+  }
+
+  /* Trois temps : les rencontres, les révisions, puis le renforcement de chaque
+     rencontre. C'est ce renforcement qui remplace l'ancien retour à douze minutes :
+     l'élément revient quelques minutes plus tard, dans la même séance, sans
+     jamais devenir une échéance. Quand il trouve sa place, elle est réservée dès
+     le départ, pour que le compteur de la séance ne s'allonge pas en cours de
+     route ; sinon il n'est pas servi, et l'élément revient le lendemain. */
+  function start(source) {
+    NL.state.touchDay();
+    if (source === 'defi') return startDefi();
+    if (source === 'fouten') return startMistakes();
+    /* Ce que la séance contient, c'est compose() qui le décide — le même appel
+       que l'écran d'accueil. */
+    const c = NL.srs.compose(source);
+
+    const queue = [];
+    /* Brand-new items get met as a matching warm-up before anything is demanded. */
+    const newWords = c.fresh.filter(it => it.kind !== 'pattern');
+    if (newWords.length >= 4) {
+      queue.push({ ex: 'match', task: EX.registry.match.build(newWords.slice(0, 5)), items: newWords.slice(0, 5) });
+    }
+    /* La mémoire du dernier type traverse les séances : sans elle, chaque
+       nouvelle séance repart aveugle. */
+    const recent = [];
+    const meetings = spread(build(c.fresh, recent), queue.length ? 'match' : NL.state.meta().lastEx || null);
+    const reviews = spread(build(U.shuffle(c.due), recent), meetings.length ? meetings[meetings.length - 1].ex : NL.state.meta().lastEx || null);
+    queue.push.apply(queue, NL.srs.lace(meetings, reviews, toSay, secondOf));
+    queue.forEach((x, i) => { if (x.second) x.metAt = queue.findIndex(y => !y.second && y.ex !== 'match' && y.items[0] === x.items[0]); });
 
     if (queue.length === 0) { L = null; return false; }
+    const built = meetings.concat(reviews);
+    if (built.length) NL.state.setMeta({ lastEx: built[built.length - 1].ex });
 
     L = Object.assign(blankTurn(), {
-      source: source || 'vandaag', queue: queue.slice(0, MAX_TASKS + 1), at: 0,
+      source: source || 'vandaag', queue, at: 0, cap: queue.length + 6,
       phase: 'ask', right: 0, wrong: 0, spoken: 0, xp: 0, started: Date.now(), finished: false,
-      newCount: fresh.length, combo: 0, bestCombo: 0, lives: null
+      newCount: c.fresh.length, combo: 0, bestCombo: 0, lives: null
+    });
+    arm();
+    return !!L.queue.length;
+  }
+
+  /* Un second exercice ne revient jamais à moins de SECOND_GAP exercices de son
+     élément : la règle et la disposition de la séance sont dans NL.srs.lace().
+
+     Un élément qu'on dit à voix haute pour la première fois revient lui aussi
+     une seconde fois, et c'est ce second exercice qui décide de son échelon :
+     par écrit s'il vient d'être dit, de nouveau à voix haute sinon. */
+  const SECOND_GAP = NL.srs.SECOND_GAP;
+  const toSay = x => x.ex === 'speak' && NL.srs.firstAloud(x.items[0]);
+  const secondOf = x => ({ ex: null, task: null, items: x.items, second: true });
+
+  /* Une séance sur ce qui résiste : les éléments le plus souvent ratés, chacun à
+     l'échelon où il se trouve. Comme le défi, elle ne compte pas dans le budget
+     du jour qu'elle n'a pas à attendre, et ses réponses sont de vraies révisions. */
+  function startMistakes() {
+    const items = NL.srs.mistakes().slice(0, MAX_TASKS).map(x => x.item);
+    const queue = spread(build(items, []), NL.state.meta().lastEx || null);
+    if (!queue.length) { L = null; return false; }
+    L = Object.assign(blankTurn(), {
+      source: 'fouten', queue, at: 0, cap: queue.length + 6,
+      phase: 'ask', right: 0, wrong: 0, spoken: 0, xp: 0, started: Date.now(), finished: false,
+      newCount: 0, combo: 0, bestCombo: 0, lives: null
     });
     return true;
+  }
+
+  /* Le renforcement d'une rencontre se construit quand son tour arrive : son exercice
+     dépend de l'échelon que l'élément vient d'atteindre. Raté à la rencontre, il
+     est redemandé au même échelon ; réussi, à l'échelon suivant.
+     Quand plusieurs renforcements se suivent, on sert d'abord celui dont l'exercice
+     diffère du précédent — sans jamais rapprocher un renforcement de sa rencontre. */
+  function arm() {
+    while (L && L.at < L.queue.length && !L.queue[L.at].task) {
+      const prev = L.at > 0 ? L.queue[L.at - 1].ex : null;
+      const after = L.queue[L.at + 1] && L.queue[L.at + 1].task ? L.queue[L.at + 1].ex : null;
+      const avoid = new Set([prev, after].filter(Boolean));
+      let at = L.at, name = NL.srs.exerciseFor(L.queue[L.at].items[0], avoid, L.quiet);
+      for (let j = L.at + 1; name === prev && j < L.queue.length && !L.queue[j].task; j++) {
+        if (!NL.srs.apart(L.queue[j].metAt, L.at)) continue;
+        const n = NL.srs.exerciseFor(L.queue[j].items[0], avoid, L.quiet);
+        if (n !== prev) { at = j; name = n; }
+      }
+      const c = L.queue[at];
+      L.queue[at] = L.queue[L.at];
+      L.queue[L.at] = c;
+      try {
+        c.ex = name;
+        c.task = EX.get(name).build(c.items[0]);
+      } catch (e) { L.queue.splice(L.at, 1); }
+    }
+  }
+
+  /* Une faute sur un élément dont le renforcement attend plus loin n'ajoute pas de
+     reprise : le renforcement EST sa seconde chance.
+
+     Sauf à voix haute, tant que l'élément n'a jamais été dit : son second
+     exercice doit rester libre pour l'écrire. On le redemande donc à voix haute
+     sans l'attendre, quelques exercices plus loin. Dit cette fois, il est écrit
+     dans la séance ; sinon c'est ce second exercice qui le redemande à voix
+     haute, et l'écrit attend le lendemain. */
+  function again(c) {
+    const at = L.queue.findIndex((x, i) => i > L.at && x.second && !x.task && x.items[0] === c.items[0]);
+    if (at < 0) { if (L.queue.length < L.cap) L.queue.push(retryOf(c)); return; }
+    if (c.ex !== 'speak' || c.retry || L.queue.length >= L.cap || !NL.srs.firstAloud(c.items[0])) return;
+    const pos = Math.max(L.at + 1, Math.min(L.at + 1 + SECOND_GAP, at - SECOND_GAP));
+    L.queue.forEach(x => { if (x.second && x.metAt >= pos) x.metAt++; });
+    L.queue.splice(pos, 0, retryOf(c));
+    L.queue[at + 1].metAt = pos;
+  }
+
+  /* « Je ne peux pas parler » : plus rien à voix haute jusqu'à la fin de la
+     séance. Les exercices parlés qui restaient sont retirés sans être notés et
+     sans rien prendre au budget du jour : leurs éléments restent dus. Ceux que
+     needsVoice() désigne, dont le prochain exercice ne peut être que parlé,
+     reviendront à voix haute ; pour les autres, l'exercice sera tiré de
+     nouveau, et ils pourront être demandés par écrit. D'autres éléments dus
+     prennent leur place, choisis par compose() comme pour toute séance. Rien
+     n'est retenu au-delà : la séance suivante redemande. Ce n'est pas un
+     réglage, parce qu'un réglage suit l'appareil et s'oublie éteint. */
+  function quiet() {
+    const c = cur();
+    if (!c || c.ex !== 'speak' || L.phase !== 'ask') return;
+    NL.speech.abort(); NL.speech.clearRecording();
+    L.quiet = true;
+    /* Le bilan dira combien d'exercices parlés sont gardés pour la séance suivante. */
+    L.putOff = (L.putOff || 0) + L.queue.slice(L.at).filter(x => x.ex === 'speak').length;
+    const head = L.queue.slice(0, L.at), rest = L.queue.slice(L.at);
+    const spoken = rest.filter(x => x.ex === 'speak').length;
+    /* Le second exercice d'un élément qui ne peut être que dit part avec son
+       exercice parlé : servi sans parler, il le ferait monter par écrit sans
+       qu'il ait jamais été dit. Sa place, elle, est reprise ; la séance
+       raccourcit donc d'un exercice par élément mis de côté. */
+    const kept = rest.filter(x => x.ex !== 'speak' && !(!x.task && NL.srs.needsVoice(x.items[0])));
+    /* Les séances à liste fixe, les fautes et le défi, ne se complètent pas. */
+    let more = [];
+    if (L.source !== 'fouten' && L.source !== 'defi') {
+      const here = new Set();
+      L.queue.forEach(x => x.items.forEach(it => here.add(it.id)));
+      more = NL.srs.compose(L.source, undefined, { quiet: true, without: here }).due.slice(0, spoken);
+    }
+    L.queue = settle(head.concat(kept, spread(build(more, [], true), kept.length ? kept[kept.length - 1].ex : null)), L.at);
+    Object.assign(L, blankTurn());
+    L.phase = 'ask';
+    /* Il ne restait que du parlé, et rien n'a encore été répondu : il n'y a pas
+       de séance à conclure, ni de journée à compter. */
+    if (L.at >= L.queue.length && L.right + L.wrong === 0) { L = null; NL.ui.go('vandaag'); NL.ui.toast(NL.t.quietOnly); return; }
+    if (L.at >= L.queue.length) return finish();
+    arm();
+    if (L.at >= L.queue.length) return finish();
+    NL.ui.render();
+    autoplay();
+  }
+
+  /* Resserrée, la file peut rapprocher un second exercice de son élément : il
+     attend alors que SECOND_GAP exercices l'en séparent de nouveau, comme dans
+     NL.srs.lace(), et n'est pas servi s'il n'y arrive pas avant la fin. */
+  function settle(queue, from) {
+    const out = queue.slice(0, from), waiting = [];
+    const ripe = () => waiting.findIndex(x => NL.srs.apart(x.metAt, out.length));
+    const flush = () => { for (let k = ripe(); k >= 0; k = ripe()) out.push(waiting.splice(k, 1)[0]); };
+    queue.slice(from).forEach(x => {
+      flush();
+      if (x.second) {
+        let k = out.length - 1;
+        while (k >= 0 && (out[k].second || out[k].ex === 'match' || out[k].items[0] !== x.items[0])) k--;
+        x.metAt = k;
+        if (!NL.srs.apart(k, out.length)) { waiting.push(x); return; }
+      }
+      out.push(x);
+    });
+    flush();
+    return out;
   }
 
   const cur = () => L && L.queue[L.at];
@@ -5182,8 +5829,9 @@ NL.screens.sessie = (function () {
     L.lastSpoken = !!v.spoken;
     L.close = !!v.close;
 
-    c.items.forEach(it => NL.srs.grade(it, v.ok, { spoken: v.spoken, ex: c.ex }));
-    NL.srs.spend(1);
+    c.items.forEach(it => NL.srs.grade(it, v.ok, { spoken: v.spoken, ex: c.ex, defi: L.source === 'defi' }));
+    /* La séance sur les fautes est hors du budget du jour. */
+    if (L.source !== 'fouten') NL.srs.spend(1);
 
     if (v.ok) {
       L.right++;
@@ -5196,7 +5844,7 @@ NL.screens.sessie = (function () {
       L.combo = 0;
       NL.audio.no();
       if (L.source === 'defi') L.lives--;
-      else if (L.queue.length < MAX_TASKS + 6) L.queue.push(retryOf(c));
+      else again(c);
     }
     NL.ui.render();
   }
@@ -5224,20 +5872,27 @@ NL.screens.sessie = (function () {
     Object.assign(L, blankTurn());
     L.phase = 'ask';
     if (L.at >= L.queue.length || (L.source === 'defi' && L.lives <= 0)) return finish();
+    arm();
+    if (L.at >= L.queue.length) return finish();
     NL.ui.render();
     autoplay();
   }
 
   function skip() {
     const c = cur(); if (!c) return;
-    c.items.forEach(it => NL.srs.grade(it, false, { ex: c.ex }));
-    NL.srs.spend(1);
-    L.wrong++;
+    /* Passer le plateau de paires n'enregistre rien : ses éléments ne sont ni
+       notés, ni comptés, et la rencontre se fait dans leurs propres exercices. */
+    const board = c.ex === 'match';
+    if (!board) {
+      c.items.forEach(it => NL.srs.grade(it, false, { ex: c.ex }));
+      if (L.source !== 'fouten') NL.srs.spend(1);
+      L.wrong++;
+    }
     L.combo = 0;
     L.close = false;
     L.phase = 'no';
-    if (L.source === 'defi') L.lives--;
-    else if (L.queue.length < MAX_TASKS + 6) L.queue.push(retryOf(c));
+    /* Un plateau passé n'est ni une faute ni une reprise : on le laisse. */
+    if (!board) { if (L.source === 'defi') L.lives--; else again(c); }
     NL.audio.no();
     NL.ui.render();
   }
@@ -5263,9 +5918,10 @@ NL.screens.sessie = (function () {
     const c = cur();
     const ex = EX.get(c.ex);
     const pct = Math.round(L.at / L.queue.length * 100);
-    const it = c.items[0];
-    const unit = NL.content.unit(it.unit);
-    const stage = NL.srs.stageOf(it);
+    /* Les unités de toute la séance, lues dans sa file, et non celle de
+       l'exercice en cours : à cheval sur deux unités, elle les nomme toutes
+       les deux, comme la carte de l'accueil. */
+    const span = NL.srs.unitSpan([].concat.apply([], L.queue.map(x => x.items)));
 
     return '<div class="lesson">' +
       '<div class="lesson-head">' +
@@ -5279,22 +5935,13 @@ NL.screens.sessie = (function () {
 
       '<div class="lesson-body"><div class="stage">' +
       '<div class="kicker"><span class="sub">' +
-      esc(unit ? unit.name : 'Mes mots') +
-      (c.retry ? ' · ' + NL.t.again2 : '') +
-      '</span>' + esc(ex.kicker) + stagePips(stage, it) + '</div>' +
+      esc(span ? NL.ui.unitLabel(span) : NL.t.wordsEyebrow) +
+      (c.retry || c.second ? ' · ' + NL.t.again2 : '') +
+      '</span>' + esc(ex.kicker) + '</div>' +
       ex.view(c.task, L, L.phase) +
       '</div></div>' +
       foot(c, ex) +
       '</div>';
-  }
-
-  function stagePips(stage, item) {
-    const top = NL.srs.maxRung(item);
-    const r = Math.max(0, stage);
-    let s = '<span class="pips">';
-    for (let i = 0; i < top; i++) s += '<i class="' + (i <= stage ? 'on' : '') + '"></i>';
-    s += '<b>' + NL.t.rungs[Math.min(r, NL.t.rungs.length - 1)] + '</b>';
-    return s + '</span>';
   }
 
   function foot(c, ex) {
@@ -5347,7 +5994,6 @@ NL.screens.sessie = (function () {
   }
 
   function done() {
-    const acc = (L.right + L.wrong) ? Math.round(L.right / (L.right + L.wrong) * 100) : 100;
     const mins = Math.max(1, Math.round((Date.now() - L.started) / 60000));
     const m = NL.state.meta();
     if (L.source === 'defi') return defiDone(mins);
@@ -5355,10 +6001,10 @@ NL.screens.sessie = (function () {
       '<div class="done-mark">' + (L.wrong === 0 ? '\u{1F3AF}' : '\u{2713}') + '</div>' +
       '<h2>' + (L.wrong === 0 ? NL.t.doneFlawless : NL.t.doneOk) + '</h2>' +
       '<p class="done-sub">' + (L.spoken > 0
-        ? NL.t.doneSpoken(L.spoken)
-        : NL.t.doneNoSpoken) + '</p>' +
+        ? NL.t.doneSpoken(L.spoken) + (L.putOff > 0 ? ' ' + NL.t.doneSpokenKept(L.putOff) : '')
+        : L.putOff > 0 ? NL.t.doneSpokenKept(L.putOff) : NL.t.doneNoSpoken) + '</p>' +
       '<div class="tally">' +
-      box('+' + L.xp, NL.t.tallyXp, 'gold') + box(acc + '%', NL.t.tallyRight, 'blue') +
+      box('+' + L.xp, NL.t.tallyXp, 'gold') + box(L.right + '/' + (L.right + L.wrong), NL.t.tallyRight, 'blue') +
       box(m.streak, NL.t.tallyDays, 'green') + box(mins + 'm', NL.t.tallyTime, '') +
       (L.bestCombo >= 3 ? box('\u{1F525} ' + L.bestCombo, NL.t.tallyCombo, L.comboRecord ? 'gold' : '') : '') +
       '</div>' +
@@ -5399,6 +6045,7 @@ NL.screens.sessie = (function () {
     if (d.check !== undefined) return check();
     if (d.next !== undefined) return next();
     if (d.skip !== undefined) return skip();
+    if (d.quiet !== undefined) return quiet();
     if (!L || L.phase !== 'ask') return;
 
     const c = cur();
@@ -5553,14 +6200,10 @@ NL.screens.sessie = (function () {
   'use strict';
   const U = NL.util, esc = U.esc, t = NL.t;
 
-  const pct = n => Math.max(0, Math.min(100, Math.round(n)));
-  const bar = (p, cls) => '<span class="bar"><span class="bar-fill ' + (cls || '') + '" style="width:' + pct(p) + '%"></span></span>';
-
   /* ---------------------------------------------------- Aujourd'hui */
   NL.screens.vandaag = {
     render() {
       const m = NL.state.meta();
-      const c = NL.srs.counts();
       const cp = NL.content.courseProgress();
       const p = NL.srs.plan();
       const fresh = p.fresh, total = p.total, mins = p.mins;
@@ -5568,20 +6211,14 @@ NL.screens.sessie = (function () {
 
       let html = '<div class="wrap">';
 
-      if (!m.placed && c.seen === 0) {
-        html += '<section class="card lead">' +
-          '<h1>' + t.firstTitle + '</h1>' +
-          '<p>' + t.firstBody + '</p>' +
-          '<div class="lead-actions">' +
-          '<button class="btn btn-primary" data-go="placement">' + t.firstDoTest + '</button>' +
-          '<button class="btn btn-ghost" data-act="skip-place">' + t.firstSkip + '</button>' +
-          '</div></section>';
-      }
-
-      /* The one thing this screen is for. */
+      /* The one thing this screen is for. Elle nomme l'unité — ou les deux, quand
+         la séance en couvre plusieurs : un libellé ne dit jamais une demi-vérité. */
       html += '<section class="card session-card">' +
-        '<span class="eyebrow">' + t.todayEyebrow + '</span>' +
-        (total === 0
+        '<span class="eyebrow">' + t.todayEyebrow + (p.units ? ' · ' + esc(NL.ui.unitLabel(p.units)) : '') + '</span>' +
+        (total === 0 && p.left === 0 && NL.srs.dueItems().length > 0
+          ? '<h2>' + t.budgetDone + '</h2>' +
+          '<button class="btn btn-blue wide big" data-go="praten">' + t.todayPractise + '</button>'
+          : total === 0
           ? '<h2>' + t.todayAllDone + '</h2><p class="sc-sub">' + t.todayAllDoneSub + '</p>' +
           '<button class="btn btn-blue wide big" data-go="praten">' + t.todayPractise + '</button>'
           : '<h2>' + t.todayReady(total) + '</h2>' +
@@ -5597,8 +6234,8 @@ NL.screens.sessie = (function () {
 
       html += '<div class="tri">' +
         stat(m.streak, t.statStreak(m.streak)) +
-        stat(c.said, t.statSaid) +
-        stat(cp.pct + '%', t.statCourse) +
+        stat(cp.met, t.statMet) +
+        stat(cp.produce, t.statProduce) +
         '</div>';
 
       html += '<h3 class="sec">' + t.morepractice + '</h3><div class="cards">';
@@ -5614,7 +6251,6 @@ NL.screens.sessie = (function () {
     click(el, d) {
       if (d.act === 'start') { NL.screens.sessie.begin('vandaag'); NL.ui.go('sessie'); return; }
       if (d.act === 'defi') return openDefi();
-      if (d.act === 'skip-place') { NL.state.setMeta({ placed: true }); NL.ui.render(); return; }
       if (d.scn) { NL.ui.go('scenario', d.scn); return; }
       if (d.sheetid) { NL.ui.go('spiek', d.sheetid); return; }
     }
@@ -5650,8 +6286,7 @@ NL.screens.sessie = (function () {
         '<span class="eyebrow">' + t.pathEyebrow + '</span>' +
         '<h1>' + t.pathTitle + '</h1>' +
         '<p>' + t.pathBody + '</p>' +
-        '<div class="prog-line">' + bar(cp.pct) + '<b>' + cp.pct + '%</b></div>' +
-        '<p class="muted small">' + t.masteredOf(cp.mastered, cp.total) + '</p>' +
+        '<p class="muted small">' + t.courseCounts(cp.met, cp.produce, cp.total) + '</p>' +
         '</section>';
 
       NL.content.units.forEach(u => {
@@ -5665,12 +6300,13 @@ NL.screens.sessie = (function () {
           '<span class="uc-icon">' + u.icon + '</span>' +
           '<div class="uc-title"><span class="eyebrow">Unité ' + u.n + ' · ' + u.level + ' · ' + trackName(u.track) + '</span>' +
           '<h2>' + esc(u.name) + '<i class="uc-nl">' + esc(u.nlName || '') + '</i></h2></div>' +
-          '<span class="uc-pct" title="' + t.unitLevel(p.level) + '">' + p.pct + '%</span>' +
+          '<span class="uc-pct">' + p.met + '/' + p.total + '</span>' +
           '</div>' +
           '<p class="uc-blurb">' + esc(u.blurb) + '</p>' +
-          '<div class="prog-line">' + bar(p.pct) + '<span class="muted small">' + t.metOf(p.met, p.total) + '</span></div>' +
-          (open && !NL.content.unitComplete(u.id)
-            ? '<p class="uc-gate">' + t.unitGate(p.gate, 80) + '</p>' : '') +
+          '<p class="muted small">' + t.unitCounts(p.met, p.produce, p.total) + '</p>' +
+          /* Le seuil est un compte à rebours, pas un mystère. */
+          (open && p.toOpen > 0 && u !== NL.content.units[NL.content.units.length - 1]
+            ? '<p class="uc-gate">' + t.unitGate(p.toOpen) + '</p>' : '') +
           (g.length ? '<div class="uc-gram">' + g.map(x =>
             '<button class="gram-chip" data-act="gram" data-id="' + x.id + '">' + esc(x.title) + '</button>').join('') + '</div>' : '') +
           (open
@@ -5698,6 +6334,8 @@ NL.screens.sessie = (function () {
   NL.screens.meer = {
     render() {
       const c = NL.srs.counts();
+      const cp = NL.content.courseProgress();
+      const mine = NL.content.allItems().filter(it => it.unit === 'eigen').length;
       const m = NL.state.meta();
       const byDay = {};
       NL.state.logs().forEach(l => { const d = U.dayKey(l.t); byDay[d] = (byDay[d] || 0) + 1; });
@@ -5711,13 +6349,13 @@ NL.screens.sessie = (function () {
       return '<div class="wrap">' +
         '<div class="cards">' +
         defiTile(m) +
-        tile('\u{1F4D2}', t.wordsEyebrow, c.seen + ' vus, ' + c.mature + ' solides', 'go', 'woorden') +
+        tile('\u{1F4D2}', t.wordsEyebrow, t.wordsTile(cp.met, cp.produce), 'go', 'woorden') +
+        tile('\u{1F3AF}', t.missEyebrow, t.missTile(NL.srs.mistakes().length), 'go', 'fouten') +
         tile('\u{1F4CB}', t.sheetsEyebrow, t.sheetsTitle, 'go', 'spiek') +
         tile('\u{1F1E7}\u{1F1EA}', t.regEyebrow, t.regTitle, 'go', 'register') +
         tile('\u{1F444}', t.soundsEyebrow, t.soundsTitle, 'go', 'klanken') +
         tile('\u{1F517}', 'de / het', t.dehetTitle, 'go', 'dehet') +
         tile('\u{1F50A}', t.docEyebrow, t.docTitle, 'go', 'doctor') +
-        tile('\u{1F4CF}', 'Test de niveau', m.placed ? 'Le refaire' : 'Pas encore fait', 'go', 'placement') +
         '</div>' +
 
         '<h3 class="sec">' + t.weekTitle + '</h3>' +
@@ -5727,8 +6365,9 @@ NL.screens.sessie = (function () {
           '<span>' + t.days[new Date(x.d).getDay()] + '</span></div>').join('') +
         '</div>' +
         '<div class="mini-stats">' +
-        '<span><b>' + c.learning + '</b> ' + t.statLearning + '</span>' +
-        '<span><b>' + c.mature + '</b> ' + t.statStrong + '</span>' +
+        '<span><b>' + cp.met + '</b> ' + t.statMet + '</span>' +
+        '<span><b>' + cp.produce + '</b> ' + t.statProduced + '</span>' +
+        (mine ? '<span><b>' + mine + '</b> ' + t.statMine + '</span>' : '') +
         '<span><b>' + c.said + '</b> ' + t.statSpoken + '</span>' +
         '<span><b>' + (m.best || 0) + '</b> ' + t.statBest + '</span>' +
         '<span><b>' + (m.bestCombo || 0) + '</b> ' + t.statCombo + '</span>' +
@@ -5836,7 +6475,7 @@ NL.screens.sessie = (function () {
         }
         return '<div class="bub you"><div><p class="bub-nl">' + esc(b.nl) + '</p>' +
           '<p class="bub-en">' + esc(b.fr) + '</p>' +
-          (b.pct != null ? '<p class="bub-score">' + b.pct + '% prononcé</p>' : '') + '</div></div>';
+          (b.score ? '<p class="bub-score">' + esc(b.score) + '</p>' : '') + '</div></div>';
       }).join('');
 
       let panel = '';
@@ -5889,7 +6528,7 @@ NL.screens.sessie = (function () {
       if (d.mic !== undefined) return mic(d.mic);
       if (d.rec !== undefined) return recAction(d.rec);
       if (d.self !== undefined) { P.speech.selfRated = d.self === '1'; commit(d.self === '1', null); return; }
-      if (d.act === 'accept') { commit(!!P.speech.ok, P.speech.pct); return; }
+      if (d.act === 'accept') { commit(!!P.speech.ok, NL.ex.wordScore(P.speech.parts)); return; }
     },
     key(e) {
       if (!P) return;
@@ -5906,12 +6545,12 @@ NL.screens.sessie = (function () {
     }
   };
 
-  function commit(ok, pct) {
+  function commit(ok, score) {
     const step = P.scn.steps[P.at];
     if (!step || !step.you || P.choice == null) return;
     const c = step.you.choices[P.choice];
     if (ok) P.spoken++;
-    P.log.push({ who: 'you', nl: c.nl, fr: c.fr, pct: pct });
+    P.log.push({ who: 'you', nl: c.nl, fr: c.fr, score: score });
     P.at++;
     if (c.reply) {
       P.log.push({ who: 'them', nl: c.reply.nl, be: c.reply.be, fr: c.reply.fr });
@@ -5969,7 +6608,7 @@ NL.screens.sessie = (function () {
     }
     if (sp.phase === 'done') {
       return '<div class="mic-panel ' + (sp.ok ? 'good' : 'bad') + '">' +
-        '<div class="score-row"><span class="score">' + sp.pct + '%</span>' +
+        '<div class="score-row"><span class="score">' + NL.ex.wordScore(sp.parts) + '</span>' +
         '<span class="score-bar"><span style="width:' + sp.pct + '%"></span></span></div>' +
         '<p class="word-diff">' + sp.parts.map(p =>
           '<span class="' + (p.ok ? (p.close ? 'w-close' : 'w-ok') : 'w-no') + '">' + esc(p.word) + '</span>').join(' ') + '</p>' +
@@ -6104,7 +6743,7 @@ NL.screens.luisteren = (function () {
     }
     if (sp.phase === 'done') {
       return '<div class="mic-panel ' + (sp.ok ? 'good' : 'bad') + '">' +
-        '<div class="score-row"><span class="score">' + sp.pct + '%</span>' +
+        '<div class="score-row"><span class="score">' + NL.ex.wordScore(sp.parts) + '</span>' +
         '<span class="score-bar"><span style="width:' + sp.pct + '%"></span></span></div>' +
         '<p class="word-diff">' + sp.parts.map(p => '<span class="' + (p.ok ? (p.close ? 'w-close' : 'w-ok') : 'w-no') + '">' + esc(p.word) + '</span>').join(' ') + '</p>' +
         '<div class="mic-actions"><button class="btn btn-blue" data-act="mic">' + NL.t.replay + '</button></div></div>';
@@ -6138,7 +6777,7 @@ NL.screens.luisteren = (function () {
         ? (pct >= 70 ? NL.t.listenGoodEar : NL.t.listenHardEar)
         : NL.t.listenShadowDone) + '</p>' +
       '<div class="tally">' +
-      (S.mode === 'begrijpen' ? '<div class="tally-box blue"><div class="t-n">' + pct + '%</div><div class="t-l">' + NL.t.listenUnderstood + '</div></div>' : '') +
+      (S.mode === 'begrijpen' ? '<div class="tally-box blue"><div class="t-n">' + S.right + '/' + S.clips.length + '</div><div class="t-l">' + NL.t.listenUnderstood + '</div></div>' : '') +
       '<div class="tally-box gold"><div class="t-n">+8</div><div class="t-l">XP</div></div></div>' +
       '<button class="btn btn-primary wide" data-act="menu">' + NL.t.listenMore + '</button>' +
       '<button class="btn btn-ghost wide" data-go="vandaag">' + NL.t.back + '</button>' +
@@ -6209,9 +6848,12 @@ NL.screens.luisteren = (function () {
       /* Your own words show from the moment you add them; the rest appear once met. */
       const seen = all.filter(it => NL.srs.stageOf(it) >= 0 || it.unit === 'eigen');
       const q = U.norm(query);
+      /* « Fragile » veut dire raté, pas récent : un mot rencontré hier est sur un
+         échelon bas et n'a rien de fragile. */
+      const missed = new Set(NL.srs.mistakes().map(x => x.item.id));
       let list = (filter === 'eigen' ? all.filter(it => it.unit === 'eigen')
-        : filter === 'zwak' ? seen.filter(it => NL.srs.stageOf(it) < 3)
-          : filter === 'sterk' ? seen.filter(it => NL.srs.stageOf(it) >= NL.srs.GRADUATED)
+        : filter === 'zwak' ? seen.filter(it => missed.has(it.id))
+          : filter === 'sterk' ? all.filter(it => it.unit !== 'eigen' && NL.content.produced(it))   // l'ensemble et le prédicat du compteur « produits »
             : seen);
       if (q) list = all.filter(it => U.norm(it.nl).indexOf(q) >= 0 || U.norm(it.fr).indexOf(q) >= 0 || (it.be && U.norm(it.be).indexOf(q) >= 0));
 
@@ -6387,205 +7029,42 @@ NL.screens.luisteren = (function () {
 })();
 </script>
 <script>
-/* Le test de placement, en échelle et non en éventail.
-   L'ancienne version étalait 20 questions sur 12 unités : une seule bonne réponse
-   sur quatre choix — 25% au hasard — créditait une unité entière. D'où douze
-   unités à 33% avec « 0 élément bien ancré ».
-   Ici on monte unité par unité : 4 questions, 3 bonnes pour créditer, arrêt à la
-   première échouée. Le hasard passe une unité 5% du temps au lieu de 75%, et
-   trois d'affilée une fois sur huit mille. */
-NL.screens.placement = (function () {
+/* Ce qui résiste : les éléments le plus souvent ratés, et une séance pour les
+   attaquer. Tout vient du journal des réponses, enregistré depuis le premier
+   jour et qu'aucun écran n'avait jamais relu. */
+NL.screens.fouten = (function () {
   'use strict';
   const U = NL.util, esc = U.esc, t = NL.t;
-  const PER_UNIT = 4, TO_PASS = 3, SEED_RUNG = 3;
-  let T = null;
-
-  function begin() {
-    T = { ui: 0, q: [], at: 0, hits: 0, credited: [], seeded: 0, phase: 'ask', sel: null, done: false, asked: 0 };
-    loadUnit();
-  }
-
-  function loadUnit() {
-    const u = NL.content.units[T.ui];
-    if (!u) return finish();
-    const pool = NL.content.itemsOf(u.id).filter(i => i.kind !== 'pattern');
-    if (pool.length < PER_UNIT) return finish();
-    /* La dernière question se tape : reconnaître parmi quatre ne prouve pas
-       qu'on sait le mot. Un mot simple, pour que ce soit un test et non une dictée. */
-    const typeable = U.shuffle(pool.filter(i => i.kind === 'word' && U.tiles(U.bare(i.nl)).length === 1));
-    const typed = typeable[0] || null;
-    T.q = U.sample(pool.filter(i => i !== typed), PER_UNIT - (typed ? 1 : 0)).concat(typed ? [typed] : []);
-    T.typedAt = typed ? PER_UNIT - 1 : -1;
-    T.at = 0; T.hits = 0; T.phase = 'ask'; T.sel = null;
-    buildOpts();
-  }
-
-  const isTyped = () => T.at === T.typedAt;
-
-  function buildOpts() {
-    const it = T.q[T.at];
-    T.input = ''; T.typedOk = null;
-    /* Même règle que les exercices : aucun leurre ne peut être une autre bonne
-       réponse. « collega » existe dans deux unités, et « collègue » affiché deux
-       fois dont un compté faux ferait échouer une unité à tort. */
-    const right = U.bareFr(it.fr);
-    const pool = NL.content.allItems().filter(x =>
-      x.id !== it.id && x.kind === it.kind && x.unit !== 'eigen' &&
-      U.norm(U.bareFr(x.fr)) !== U.norm(right) && !NL.ex.sameSense(x, it));
-    const wrong = [];
-    U.shuffle(pool).forEach(x => {
-      const l = U.bareFr(x.fr);
-      if (wrong.length < 3 && !wrong.some(w => U.norm(w) === U.norm(l))) wrong.push(l);
-    });
-    T.opts = U.shuffle([{ label: right, ok: true }].concat(wrong.map(l => ({ label: l, ok: false }))));
-    T.sel = null;
-  }
-
-  function answer(i) {
-    T.sel = i; T.phase = 'shown'; T.asked++;
-    if ((T.opts[i] || {}).ok) { T.hits++; NL.audio.ok(); } else NL.audio.no();
-    NL.ui.render();
-  }
-
-  function submitTyped() {
-    if (!T.input.trim()) return;
-    const target = U.bare(T.q[T.at].nl);
-    T.typedOk = U.typedOk(T.input, target);
-    T.phase = 'shown'; T.asked++;
-    if (T.typedOk) { T.hits++; NL.audio.ok(); } else NL.audio.no();
-    NL.ui.render();
-  }
-
-  function next() {
-    T.at++;
-    if (T.at < T.q.length) { T.phase = 'ask'; buildOpts(); NL.ui.render(); return; }
-    /* Bilan de l'unité : créditée, ou fin du test. */
-    if (T.hits >= TO_PASS) {
-      const u = NL.content.units[T.ui];
-      NL.content.itemsOf(u.id).forEach(it => {
-        if (it.kind === 'pattern' || NL.state.rec(it.id)) return;
-        NL.srs.seed(it, Math.min(SEED_RUNG, NL.srs.maxRung(it)));
-        T.seeded++;
-      });
-      T.credited.push(u);
-      T.ui++;
-      loadUnit();
-      NL.ui.render();
-      return;
-    }
-    finish();
-  }
-
-  function finish() {
-    T.done = true;
-    NL.state.setMeta({ placed: true });
-    NL.audio.win();
-    NL.ui.render();
-  }
+  const SHOWN = 40;
 
   function render() {
-    if (!T) begin();
-    if (T.done) return summary();
-    const it = T.q[T.at];
-    const u = NL.content.units[T.ui];
-    const pct = Math.round(T.at / T.q.length * 100);
+    const list = NL.srs.mistakes();
+    let html = '<div class="wrap">' +
+      '<section class="card lead slim"><span class="eyebrow">' + t.missEyebrow + '</span>' +
+      '<h1>' + (list.length ? t.missTitle(list.length) : t.missEyebrow) + '</h1>' +
+      '<p>' + (list.length ? t.missBody : t.missNone) + '</p>' +
+      (list.length ? '<button class="btn btn-primary" data-act="start">' +
+        t.missStart(Math.min(list.length, NL.srs.MAX_TASKS)) + '</button>' : '') +
+      '</section>';
 
-    return '<div class="lesson">' +
-      '<div class="lesson-head">' +
-      '<button class="iconbtn" data-act="exit" aria-label="' + t.quitYes + '">' + NL.ui.I.x + '</button>' +
-      '<div class="rail"><div class="rail-fill" style="width:' + Math.max(pct, 4) + '%"></div></div>' +
-      '<span class="pill">' + (T.at + 1) + '/' + PER_UNIT + '</span></div>' +
-      '<div class="lesson-body"><div class="stage">' +
-      '<div class="kicker"><span class="sub">' + esc(u.name) + ' · ' + t.placeEyebrow + '</span>' + (isTyped() ? t.placeTypeQ : t.placeQ) + '</div>' +
-      (isTyped() ? typedBody(it) : choiceBody(it)) +
-      '<p class="place-note">' + t.placeRule(TO_PASS, PER_UNIT) + '</p>' +
-      '</div></div>' +
-      '<div class="foot"><div class="foot-in">' +
-      (T.phase === 'shown'
-        ? '<button class="btn btn-primary push" data-act="next">' + t.next + '</button>'
-        : '<button class="btn btn-ghost" data-act="dunno">' + t.dunno + '</button>' +
-          (isTyped() ? '<button class="btn btn-primary push" data-act="submit"' + (T.input.trim() ? '' : ' disabled') + '>' + t.placeSubmit + '</button>' : '')) +
-      '</div></div></div>';
-  }
-
-  function typedBody(it) {
-    const target = U.bare(it.nl);
-    return '<p class="sentence prompt">' + esc(U.bareFr(it.fr)) + '</p>' +
-      '<input class="textin" id="place-in" type="text" value="' + esc(T.input) + '" autocomplete="off" autocapitalize="off" ' +
-      'spellcheck="false" placeholder="' + t.typeHere + '"' + (T.phase === 'shown' ? ' disabled' : '') + '>' +
-      (T.phase === 'shown'
-        ? '<p class="place-verdict ' + (T.typedOk ? 'ok' : 'no') + '">' + (T.typedOk ? U.one(t.praise) : t.wrongTitle) + ' <b>' + esc(target) + '</b></p>'
-        : '');
-  }
-
-  function choiceBody(it) {
-    return NL.ex.speakerRow(U.bare(it.nl), { show: true, be: it.be }) +
-      '<div class="opts">' + T.opts.map((o, i) => {
-        let cls = '';
-        if (T.phase === 'shown') { if (o.ok) cls = ' ok'; else if (T.sel === i) cls = ' no'; }
-        return '<button class="opt' + cls + '" data-opt="' + i + '"' + (T.phase === 'shown' ? ' disabled' : '') + '>' +
-          '<span class="opt-key">' + (i + 1) + '</span><span>' + esc(o.label) + '</span></button>';
-      }).join('') + '</div>';
-  }
-
-  function summary() {
-    const n = T.credited.length;
-    /* On repart de l'unité ÉCHOUÉE, pas de la dernière réussie ; et si tout est
-       passé, il n'y a pas d'arrêt à annoncer. */
-    const stopAt = NL.content.units[T.ui];
-    const where = stopAt ? t.placeStops(esc(stopAt.name)) : t.placeAll(n);
-    return '<div class="lesson"><div class="lesson-body"><div class="stage done-stage">' +
-      '<div class="done-mark">\u{1F4CF}</div>' +
-      '<h2>' + (n === 0 ? t.placeLow : n >= 4 ? t.placeHigh : t.placeMid) + '</h2>' +
-      '<p class="done-sub">' + (n === 0
-        ? t.placeNone
-        : t.placeSeeded(T.seeded) + ' ' + where) + '</p>' +
-      '<div class="tally">' +
-      '<div class="tally-box blue"><div class="t-n">' + n + '</div><div class="t-l">' + t.placeUnits + '</div></div>' +
-      '<div class="tally-box gold"><div class="t-n">' + T.seeded + '</div><div class="t-l">' + t.placeAdvanced + '</div></div>' +
-      '<div class="tally-box green"><div class="t-n">' + T.asked + '</div><div class="t-l">' + t.placeAsked + '</div></div>' +
-      '</div>' +
-      '<button class="btn btn-primary wide" data-act="go">' + t.placeFirst + '</button>' +
-      '<button class="btn btn-ghost wide" data-go="vandaag">' + t.placeLater + '</button>' +
-      '</div></div></div>';
+    list.slice(0, SHOWN).forEach(x => {
+      const it = x.item;
+      html += '<div class="vrow">' +
+        '<button class="speaker tiny" data-say="' + esc(U.bare(it.nl)) + '" aria-label="' + t.listen + '">' + NL.ex.ICON.speaker(17) + '</button>' +
+        '<span class="v-nl">' + (it.art ? '<span class="art ' + it.art + '">' + it.art + '</span>' : '') + esc(U.bare(it.nl)) + '</span>' +
+        '<span class="v-en">' + esc(U.bareFr(it.fr)) + '</span>' +
+        '<span class="muted small">' + t.missRow(x.wrong, x.wrong + x.right) + '</span>' +
+        '</div>';
+    });
+    return html + '</div>';
   }
 
   return {
     render,
     click(el, d) {
-      if (d.act === 'exit') { T = null; NL.ui.go('vandaag'); return; }
-      if (d.act === 'go') { T = null; NL.screens.sessie.begin('vandaag'); NL.ui.go('sessie'); return; }
-      if (d.act === 'next') { next(); return; }
-      if (d.act === 'dunno') { T.phase = 'shown'; T.sel = -1; T.typedOk = false; T.asked++; NL.audio.no(); NL.ui.render(); return; }
-      if (d.act === 'submit' && T.phase === 'ask') { submitTyped(); return; }
-      if (d.opt !== undefined && T.phase === 'ask') answer(+d.opt);
-    },
-    input(el) {
-      if (!T || el.id !== 'place-in') return;
-      const had = !!T.input.trim();
-      T.input = el.value;
-      const b = document.querySelector('[data-act="submit"]');
-      if (b && had !== !!T.input.trim()) b.disabled = !T.input.trim();
-    },
-    after() {
-      const inp = document.getElementById('place-in');
-      if (inp && T && T.phase === 'ask') { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
-    },
-    key(e) {
-      if (!T || T.done) return;
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        if (T.phase === 'ask' && isTyped()) { submitTyped(); return; }
-        const b = document.querySelector('[data-act="next"]'); if (b) b.click(); return;
-      }
-      if (document.activeElement && document.activeElement.id === 'place-in') return;
-      if (/^[1-4]$/.test(e.key) && T.phase === 'ask') {
-        const b = document.querySelector('[data-opt="' + (+e.key - 1) + '"]'); if (b) b.click();
-      }
-    },
-    reset() { T = null; },
-    /* Read-only, for the headless tests. */
-    peek: () => (T && !T.done ? { item: T.q[T.at], opts: T.opts, typed: isTyped(), hits: T.hits, credited: T.credited.length } : null)
+      if (d.act !== 'start') return;
+      if (NL.screens.sessie.begin('fouten')) NL.ui.go('sessie');
+    }
   };
 })();
 </script>
@@ -6614,6 +7093,18 @@ NL.screens.doctor = (function () {
     return '<ul class="doc-list">' + vs.map(v =>
       '<li class="' + (/BE/i.test(v.lang) ? 'good' : '') + '"><b>' + esc(v.name) + '</b><span>' + esc(v.lang) +
       (/BE/i.test(v.lang) ? ' · flamande' : ' · nord') + '</span></li>').join('') + '</ul>';
+  }
+
+  /* Ce que l'app a vu casser sur CET appareil. Sur un téléphone il n'y a pas de
+     console : sans cette liste, tout ce qu'on peut rapporter est « ça ne marche
+     plus ». Rien ne quitte l'appareil — c'est à copier et à envoyer soi-même. */
+  function errorBlock() {
+    const list = NL.errlog.all();
+    if (!list.length) return '<p class="muted small">' + t.errNone + '</p>';
+    return '<p class="muted small">' + t.errCount(list.length) + '</p>' +
+      '<textarea class="backup-box" id="err-out" readonly spellcheck="false">' + esc(NL.errlog.text()) + '</textarea>' +
+      '<div class="row"><button class="btn btn-blue" data-act="errcopy">' + t.errCopy + '</button>' +
+      '<button class="btn btn-ghost" data-act="errclear">' + t.errClear + '</button></div>';
   }
 
   function render() {
@@ -6662,6 +7153,8 @@ NL.screens.doctor = (function () {
       (S.micMsg ? '<p class="doc-verdict ' + (S.mic ? 'good' : 'bad') + '">' + esc(S.micMsg) + '</p>' : '') +
       '</section>' +
 
+      '<section class="doc-block"><h4>' + t.errTitle + '</h4>' + errorBlock() + '</section>' +
+
       (v.quality !== 'be'
         ? '<section class="doc-fix">' +
         '<h4>' + t.docFixTitle + '</h4>' +
@@ -6684,6 +7177,16 @@ NL.screens.doctor = (function () {
       if (d.act === 'heard-no') { S.heard = false; NL.ui.render(); return; }
       if (d.act === 'recheck') { NL.speech.rescanVoices(); S.heard = null; NL.ui.render(); NL.ui.toast('Revérifié.'); return; }
       if (d.act === 'playrec') { NL.speech.playRecording(); return; }
+      if (d.act === 'errclear') { NL.errlog.clear(); NL.ui.render(); return; }
+      if (d.act === 'errcopy') {
+        const box = document.getElementById('err-out');
+        if (box) box.select();
+        const done = navigator.clipboard
+          ? navigator.clipboard.writeText(NL.errlog.text()).then(() => true).catch(() => false)
+          : Promise.resolve(!!(document.execCommand && document.execCommand('copy')));
+        Promise.resolve(done).then(good => NL.ui.toast(good ? t.errCopied : t.errCopyByHand));
+        return;
+      }
       if (d.act === 'recstop') { NL.speech.stopRecord(); return; }
       if (d.act === 'rec') {
         S.rec = 'rec'; S.micMsg = 'Parle maintenant…'; S.mic = null; NL.ui.render();
@@ -6837,6 +7340,7 @@ NL.screens.compte = (function () {
   'use strict';
   function start() {
     const root = document.getElementById('app');
+    NL.errlog.watch();
     NL.state.open().then(() => {
       const wiped = NL.state.migrate();
       NL.content.refresh();
@@ -6852,7 +7356,7 @@ NL.screens.compte = (function () {
       });
       NL.sync.onChange(() => {
         const r = NL.ui.route;
-        if (r === 'sessie' || r === 'scenario' || r === 'placement') return;
+        if (r === 'sessie' || r === 'scenario') return;
         if (r === 'compte' && !NL.sync.user) return;   // ne pas effacer l'adresse en cours de saisie
         NL.ui.render();
       });

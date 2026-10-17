@@ -11,26 +11,116 @@ NL.state = (function () {
   const LS = 'vlaams/fallback';
   const mem = { srs: new Map(), custom: new Map(), log: [] };
 
+  /* Tout ce qui a été appris avec l'ancien moteur — retours à douze minutes,
+     unités créditées par le test de niveau — est antérieur à cet instant. La
+     date est FIXE, et non « maintenant » : un second appareil qui migre un jour
+     plus tard effacerait sinon ce que le premier a appris entre-temps. C'est
+     aussi un plancher : tout appareil de cette version naît après la migration. */
+  const ENGINE_EPOCH = Date.UTC(2026, 9, 13);
+
   const defaults = () => ({
     xp: 0, streak: 0, best: 0, lastDay: null, theme: 'system',
     placed: false, dailyGoal: 20, doneToday: 0, doneDay: null,
     mic: true, autoplay: true, showFlemish: true, unlocked: 1,
     scenariosDone: [], listenDone: [], firstRun: true,
     learnerName: '', town: '', company: '',
-    pace: 'normal', exDay: null, exToday: 0, dataVersion: 2, lastEx: null,
-    reached: 0                 // index of the furthest unit ever opened; never goes back
+    pace: 'normal', exDay: null, exToday: 0, dataVersion: 3, lastEx: null,
+    reached: 0,                // index of the furthest unit ever opened; never goes back
+    resetAt: ENGINE_EPOCH,     // l'instant de la dernière remise à zéro ; ce qui descend d'une plus ancienne est effacé
+    progress: { reached: 0, scenariosDone: [], listenDone: [] }   // la copie de confiance, voir setMeta
   });
   let meta = defaults();
 
-  /* Une seule fois : la progression fabriquée par l'ancien test de placement
-     — des unités entières créditées sur une réponse chanceuse — est effacée.
-     XP, série, réglages et mots personnels survivent. */
+  /* Le journal garde deux mois de réponses au rythme le plus soutenu : c'est ce
+     que l'écran des fautes relit. */
+  const LOG_KEEP = 12000;
+
+  const progressOf = x => ({
+    reached: x.reached || 0,
+    scenariosDone: (x.scenariosDone || []).slice(), listenDone: (x.listenDone || []).slice()
+  });
+
+  /* La progression de l'ancien moteur est effacée, ici et sur le serveur.
+     Réglages, score et mots personnels survivent.
+     dataVersion ne suffit pas à dire si c'est fait : la version précédente
+     recopie les réglages d'un appareil qui a migré sans rien effacer chez elle.
+     Ce sont donc les données qui le disent. Une fiche ou une ligne de journal
+     qui descend d'avant le plancher — sans `base`, elle vient de la version
+     précédente — est effacée ; une frontière ou des listes qui ne sont plus
+     égales à `progress` ont été réécrites par la version précédente, et
+     reprennent la copie de confiance. Rend vrai quand quelque chose a été
+     effacé ; la seconde fois, il n'y a plus rien à effacer. */
   function migrate() {
-    if ((meta.dataVersion || 1) >= 2) return false;
-    mem.srs.clear();
-    if (useIDB) { try { db.transaction('srs', 'readwrite').objectStore('srs').clear(); } catch (e) {} }
-    setMeta({ dataVersion: 2, placed: false, exDay: null, exToday: 0 });
-    return true;
+    const floor = Math.max(meta.resetAt || 0, ENGINE_EPOCH);
+    const old = x => (x.base || 0) < floor;
+    const trusted = progressOf(meta.progress || {});
+    const rewritten = JSON.stringify(progressOf(meta)) !== JSON.stringify(trusted);
+    const had = rewritten || [...mem.srs.values()].some(old) || mem.log.some(old);
+    if (had) drop(floor);
+    if (had || (meta.dataVersion || 1) < 3 || (meta.resetAt || 0) < floor) {
+      setMeta(Object.assign({ dataVersion: 3, resetAt: floor }, trusted));
+    }
+    /* Le serveur n'efface que ce qui précède l'époque, jamais une date plus
+       récente : ce qu'un autre appareil a appris depuis sur ce moteur reste. */
+    if (had) emit('reset', ENGINE_EPOCH);
+    return had;
+  }
+
+  /* Remet la PROGRESSION à zéro : les fiches, le journal des réponses, la
+     frontière, et les conversations et écoutes cochées — repartir de zéro en
+     gardant « six conversations faites », ce n'est pas repartir de zéro.
+     Réglages, score et mots personnels restent, et le compteur du jour aussi :
+     une remise à zéro efface la progression, pas l'effort déjà fait aujourd'hui.
+       before  n'efface que ce qui descend d'une remise à zéro antérieure à cet instant (défaut : tout)
+       silent   la remise à zéro vient du serveur : elle n'y repart pas
+     L'instant est gardé dans les réglages (resetAt) : c'est lui qui dit aux
+     autres appareils que leur copie est périmée. */
+  function resetProgress(before, silent) {
+    const cut = before || Date.now();
+    drop(cut);
+    setMeta({
+      resetAt: Math.max(meta.resetAt || 0, cut), reached: 0, scenariosDone: [], listenDone: []
+    }, silent);
+    if (!silent) emit('reset', cut);
+  }
+
+  /* La coupe se fait sur `base`, la remise à zéro dont chaque fiche et chaque
+     ligne descend, et non sur sa date : un appareil périmé qui répond hors
+     ligne après une remise à zéro faite ailleurs écrit des fiches datées
+     d'après, mais bâties sur des échelons effacés. Sans `base`, une donnée vient
+     de la version précédente : elle compte pour 0. */
+  function drop(cut) {
+    [...mem.srs.values()].forEach(r => { if ((r.base || 0) < cut) mem.srs.delete(r.id); });
+    mem.log = mem.log.filter(l => (l.base || 0) >= cut);
+    rewrite();
+  }
+  /* withCustom : les mots personnels aussi (une restauration les remplace ; une
+     remise à zéro les garde). */
+  function rewrite(withCustom) {
+    if (useIDB) {
+      try {
+        const s = db.transaction('srs', 'readwrite').objectStore('srs');
+        s.clear(); mem.srs.forEach(r => s.put(r));
+        const l = db.transaction('log', 'readwrite').objectStore('log');
+        l.clear(); mem.log.forEach(e => l.put(e));
+        if (withCustom) {
+          const c = db.transaction('custom', 'readwrite').objectStore('custom');
+          c.clear(); mem.custom.forEach(r => c.put(r));
+        }
+      } catch (e) {}
+    }
+    saveLS();
+  }
+
+  /* Une progression anonyme rejoint un compte telle quelle : elle descend
+     désormais de la dernière remise à zéro du compte. L'instant peut reculer,
+     et c'est voulu : une remise à zéro faite ici sans compte ne devient pas
+     celle du compte. Silencieux : la synchro envoie tout juste après. */
+  function rebase(at) {
+    mem.srs.forEach(r => { r.base = at; });
+    mem.log.forEach(l => { l.base = at; });
+    rewrite();
+    setMeta({ resetAt: at }, true);
   }
 
   function open() {
@@ -53,7 +143,7 @@ NL.state = (function () {
           c.forEach(r => mem.custom.set(r.id, r));
           /* Le journal était enregistré mais jamais relu : le graphique de la
              semaine ne montrait que la séance en cours. */
-          mem.log = (l || []).slice(-4000);
+          mem.log = (l || []).slice(-LOG_KEEP);
           if (m && m.v) meta = Object.assign(defaults(), m.v);
           resolve();
         }).catch(() => resolve(loadLS()));
@@ -68,13 +158,19 @@ NL.state = (function () {
       (raw.srs || []).forEach(r => mem.srs.set(r.id, r));
       (raw.custom || []).forEach(r => mem.custom.set(r.id, r));
       if (raw.meta) meta = Object.assign(defaults(), raw.meta);
+      /* Le journal aussi : sans lui, « Ce qui résiste » repartait vide à chaque
+         rechargement sur le repli. */
+      mem.log = (raw.log || []).slice(-LOG_KEEP);
     } catch (e) { /* private mode: run from memory only */ }
   }
+  /* Le repli n'a que quelques Mo : il ne garde que les dernières lignes du journal. */
+  const LS_LOG_KEEP = 3000;
   const saveLS = NL.util.debounce(() => {
     if (useIDB) return;
     try {
       localStorage.setItem(LS, JSON.stringify({
-        srs: [...mem.srs.values()], custom: [...mem.custom.values()], meta
+        srs: [...mem.srs.values()], custom: [...mem.custom.values()], meta,
+        log: mem.log.slice(-LS_LOG_KEEP)
       }));
     } catch (e) {}
   }, 400);
@@ -109,7 +205,9 @@ NL.state = (function () {
   /* ---- SRS records ---- */
   const rec = id => mem.srs.get(id) || null;
   function setRec(r, silent) {
-    if (!silent) r.updatedAt = Date.now();
+    /* `base` : la remise à zéro en vigueur quand la fiche est écrite ici. Une
+       fiche venue du serveur garde la sienne. */
+    if (!silent) { r.updatedAt = Date.now(); r.base = meta.resetAt; }
     mem.srs.set(r.id, r); put('srs', r); saveLS();
     if (!silent) emit('rec', r);
   }
@@ -120,6 +218,11 @@ NL.state = (function () {
   const m = () => meta;
   function setMeta(patch, silent) {
     Object.assign(meta, patch);
+    /* La frontière et les listes voyagent aussi dans `progress`, que seule
+       cette version écrit. La version précédente la recopie telle quelle et
+       réécrit le premier niveau par maximum et union : ce qu'elle a touché se
+       reconnaît à ce que les deux ne sont plus égaux. */
+    meta.progress = progressOf(meta);
     if (!silent) meta.updatedAt = Date.now();
     put('meta', { k: 'meta', v: meta }); saveLS();
     if (!silent) emit('meta', meta);
@@ -127,9 +230,11 @@ NL.state = (function () {
 
   /* ---- review log, for the stats strip ---- */
   function logReview(entry, silent) {
+    if (!silent) entry.base = meta.resetAt;
     mem.log.push(entry);
-    if (mem.log.length > 4000) mem.log.shift();
+    if (mem.log.length > LOG_KEEP) mem.log.shift();
     if (useIDB) { try { db.transaction('log', 'readwrite').objectStore('log').put(entry); } catch (e) {} }
+    else saveLS();
     if (!silent) emit('log', entry);
   }
   const logs = () => mem.log;
@@ -164,17 +269,37 @@ NL.state = (function () {
     return {
       app: 'vlaams-onderweg', v: 1, at: Date.now(),
       meta, srs: [...mem.srs.values()], custom: [...mem.custom.values()],
-      log: mem.log.slice(-2000)
+      log: mem.log.slice()      // tout le journal : il tient au plus LOG_KEEP lignes
     };
   }
+  /* Une sauvegarde exportée avant ENGINE_EPOCH vient de l'ancien moteur : sa
+     progression n'a plus de sens, et la migration l'effacerait au chargement. */
+  const isOldBackup = data => !!data && (data.at || 0) < ENGINE_EPOCH;
   function importAll(data) {
     if (!data || data.app !== 'vlaams-onderweg' || !Array.isArray(data.srs)) return false;
+    /* Restaurer une sauvegarde est une remise à zéro suivie d'un rechargement :
+       les fiches et les lignes sont datées de maintenant et descendent de cet
+       instant, sinon les autres appareils et la migration les prendraient pour
+       de la progression effacée. Une sauvegarde de l'ancien moteur rend ce
+       qu'une remise à zéro garde — réglages hors progression, score, mots
+       personnels — et ni fiche ni ligne de journal. */
+    const old = isOldBackup(data);
+    const stamp = Date.now();
     mem.srs.clear(); mem.custom.clear();
-    data.srs.forEach(r => { if (r && r.id) { mem.srs.set(r.id, r); put('srs', r); } });
-    (data.custom || []).forEach(r => { if (r && r.id) { mem.custom.set(r.id, r); put('custom', r); } });
-    if (data.meta) { meta = Object.assign(defaults(), data.meta); put('meta', { k: 'meta', v: meta }); }
-    mem.log = Array.isArray(data.log) ? data.log : [];
-    saveLS();
+    if (!old) data.srs.forEach(r => { if (r && r.id) { r.updatedAt = stamp; r.base = stamp; mem.srs.set(r.id, r); } });
+    (data.custom || []).forEach(r => { if (r && r.id) mem.custom.set(r.id, r); });
+    mem.log = !old && Array.isArray(data.log) ? data.log : [];
+    mem.log.forEach(l => { if (l && typeof l === 'object') l.base = stamp; });
+    /* Les trois magasins sont réécrits en entier : écrire les fiches restaurées
+       par-dessus laissait dans IndexedDB celles d'après la sauvegarde, et
+       l'ancien journal, que la migration effaçait au chargement suivant en
+       annonçant que le moteur avait changé ; un mot ajouté après la sauvegarde
+       revenait de même. */
+    rewrite(true);
+    if (data.meta) meta = Object.assign(defaults(), data.meta);
+    setMeta(Object.assign({ resetAt: stamp, updatedAt: stamp },
+      old ? { dataVersion: 3, reached: 0, scenariosDone: [], listenDone: [] } : {}), true);
+    emit('reset', stamp);
     return true;
   }
 
@@ -195,5 +320,5 @@ NL.state = (function () {
     setMeta(patch);
   }
 
-  return { open, migrate, onWrite, rec, setRec, allRecs, seenCount, meta: m, setMeta, logReview, logs, addCustom, putCustom, delCustom, customs, clearAll, touchDay, creditDay, exportAll, importAll, get storage() { return useIDB ? 'IndexedDB' : 'localStorage'; } };
+  return { open, migrate, resetProgress, rebase, ENGINE_EPOCH, onWrite, rec, setRec, allRecs, seenCount, meta: m, setMeta, logReview, logs, addCustom, putCustom, delCustom, customs, clearAll, touchDay, creditDay, exportAll, importAll, isOldBackup, get storage() { return useIDB ? 'IndexedDB' : 'localStorage'; } };
 })();

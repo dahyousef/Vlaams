@@ -1,58 +1,19 @@
 /* Headless smoke test: loads every module into a stubbed browser and exercises
    the content model, the scheduler and all ten exercise types. */
-const fs = require('fs'), path = require('path'), vm = require('vm');
+const path = require('path'), fs = require('fs');
+const browser = require('./lib/browser');
 const ROOT = process.argv[2];
 
-/* Même graine que les autres suites : une mesure statistique qui échoue une fois
-   sur dix ne dit rien. SEED=... pour rejouer une autre distribution. */
-function rng(seed) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6D2B79F5) >>> 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-const SafeMath = Object.create(Math);
-SafeMath.random = rng(Number(process.env.SEED || 20260917));
-
-const store = {};
-const ctx = {
-  console,
-  setTimeout, clearTimeout, setInterval, clearInterval,
-  Math: SafeMath, Date, JSON, Map, Set, RegExp, Array, Object, String, Number, Promise, Error,
-  localStorage: {
-    getItem: k => (k in store ? store[k] : null),
-    setItem: (k, v) => { store[k] = String(v); },
-    removeItem: k => { delete store[k]; }
-  },
-  navigator: { onLine: true },
-  location: { hash: '', protocol: 'file:' },
-  document: {
-    readyState: 'complete',
-    documentElement: { setAttribute() {}, removeAttribute() {} },
-    getElementById: () => null,
-    querySelector: () => null,
-    querySelectorAll: () => [],
-    addEventListener() {},
-    activeElement: { tagName: 'BODY' }
-  }
-};
-ctx.window = ctx;
-ctx.globalThis = ctx;
-vm.createContext(ctx);
-
-const FILES = `src/core/util.js src/core/fr.js src/core/state.js src/core/srs.js src/core/speech.js src/core/audio.js
-src/content/lexicon.a1.js src/content/lexicon.a1b.js src/content/grammar.js src/content/open.js src/content/reference.js
-src/content/scenarios.js src/content/index.js src/ex/index.js`.split(/\s+/).filter(Boolean);
-
-for (const f of FILES) {
-  try { vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), ctx, { filename: f }); }
-  catch (e) { console.log('LOAD FAIL ' + f + ': ' + e.message); process.exit(1); }
-}
-
-const NL = ctx.NL;
+/* Le contenu, le planificateur et les exercices : ni interface, ni synchro, ni
+   phrases d'exemple. */
+const B = browser.open({
+  root: ROOT, seed: browser.SEED, timers: 'real', location: { protocol: 'file:' },
+  files: ['src/core/util.js', 'src/core/fr.js', 'src/core/state.js', 'src/core/srs.js', 'src/core/speech.js',
+    'src/core/audio.js', 'src/content/lexicon.a1.js', 'src/content/lexicon.a1b.js', 'src/content/grammar.js',
+    'src/content/open.js', 'src/content/reference.js', 'src/content/scenarios.js', 'src/content/index.js',
+    'src/ex/index.js']
+});
+const NL = B.NL;
 let fails = 0;
 const ok = (cond, msg) => { if (!cond) { console.log('  FAIL: ' + msg); fails++; } };
 
@@ -149,17 +110,18 @@ NL.state.open().then(() => {
   console.log('  phrase ladder   ' + pl.join(' -> '));
   ok(pl.includes('speak'), 'phrase ladder never reaches speak');
 
-  /* Failing must drop a stage and become due inside the session. */
-  NL.srs.seed(w, 4);
+  /* Un échec fait perdre deux échelons. */
+  NL.srs.seed(w, 5);
   NL.srs.grade(w, false);
   const r = NL.state.rec(w.id);
-  ok(r.stage === 2, 'a lapse must drop two rungs (got ' + r.stage + ')');
-  /* PIÈGE 2 : une rechute rentre dans l'échelle. Repartir de deux minutes puis
-     multiplier fait osciller l'élément sous son plafond sans fin. */
-  ok(r.interval === NL.srs.STEP[2], 'lapse must re-enter the step ladder, not restart at 2 min');
+  ok(r.stage === 3, 'a lapse must drop two rungs (got ' + r.stage + ')');
+  /* PIÈGE 2 : une rechute rentre dans l'échelle. Repartir du bas (un jour) puis
+     multiplier fait osciller l'élément sous son plafond sans fin. L'échelon 3
+     (trois jours) se distingue du bas : les trois premiers pas valent un jour. */
+  ok(r.interval === NL.srs.STEP[3], 'lapse must re-enter the step ladder at its rung, not restart at the bottom (got ' + Math.round(r.interval / 86400000) + ' days)');
   NL.srs.grade(w, true);
-  ok(NL.state.rec(w.id).stage === 3, 'pass did not advance');
-  console.log('  rechute         -2 échelons, intervalle ' + Math.round(r.interval / 60000) + ' min, puis remonte');
+  ok(NL.state.rec(w.id).stage === 4, 'pass did not advance');
+  console.log('  rechute         -2 échelons, intervalle ' + Math.round(r.interval / 86400000) + ' jours, puis remonte');
 
   /* PIÈGE 1 : au sommet de son palier, l'intervalle doit continuer de croître,
      sinon l'élément revient tous les jours à vie. */
@@ -185,32 +147,30 @@ NL.state.open().then(() => {
   if (cog) {
     NL.state.setRec({ id: cog.id, kind: 'word', stage: 0, due: 0, interval: 0, ease: 2.5, reps: 0, lapses: 0, last: 0, said: false, retired: false, lastEx: null });
     NL.srs.grade(cog, true);
-    ok(NL.srs.stageOf(cog) >= 3, 'un mot transparent devrait sauter les premiers échelons');
-    console.log('  transparent     « ' + cog.nl + ' » démarre à l’échelon ' + NL.srs.stageOf(cog));
+    ok(NL.srs.stageOf(cog) === 2, 'a cognate skips one rung, the meaning drill, and no more — it sits on rung ' + NL.srs.stageOf(cog));
+    console.log('  transparent     « ' + cog.nl + ' » saute le sens, et rien d’autre : échelon ' + NL.srs.stageOf(cog));
   }
 
-  /* La frontière est contiguë : impossible d'ouvrir une unité par-dessus un trou. */
-  NL.content.units.forEach(u => NL.content.itemsOf(u.id).forEach(it => NL.srs.seed(it, 5)));
+  /* La frontière est contiguë : impossible d'ouvrir une unité par-dessus un trou.
+     Le trou, c'est une unité dont rien n'a été RENCONTRÉ. */
+  NL.state.clearAll();
   const gapUnit = NL.content.units[3];
-  NL.content.itemsOf(gapUnit.id).forEach(it => NL.srs.seed(it, 0));
+  NL.content.units.forEach(u => { if (u !== gapUnit) NL.content.itemsOf(u.id).forEach(it => NL.srs.seed(it, 5)); });
   const opened = NL.content.units.map(u => NL.content.unitOpen(u.id));
   const firstShut = opened.indexOf(false);
   ok(firstShut < 0 || opened.slice(firstShut).every(o => !o),
     'the open range is not contiguous — a unit is open beyond a locked one');
   console.log('  frontière       ' + (firstShut < 0 ? 'tout ouvert' : firstShut + ' unités ouvertes, puis fermé') + ' — contigu');
 
-  /* Une unité ouverte ne se referme pas : quelques rechutes dans l'unité 1
-     refermaient les onze suivantes, pourtant déjà rencontrées. */
+  /* Une unité ouverte ne se referme pas : la frontière est gardée en mémoire,
+     et des rechutes dans l'unité 1 ne referment rien. */
   {
-    NL.state.setMeta({ reached: 0 });
+    NL.state.clearAll();
     NL.content.units.forEach(u => NL.content.itemsOf(u.id).forEach(it => NL.srs.seed(it, 5)));
-    ok(NL.content.units.every(u => NL.content.unitOpen(u.id)), 'a fully worked course is not fully open');
-    NL.content.itemsOf(NL.content.units[0].id).forEach(it => NL.srs.seed(it, 1));
+    ok(NL.content.units.every(u => NL.content.unitOpen(u.id)), 'a fully met course is not fully open');
+    NL.content.itemsOf(NL.content.units[0].id).forEach(it => NL.srs.grade(it, false));
     const stillOpen = NL.content.units.filter(u => NL.content.unitOpen(u.id)).length;
     ok(stillOpen === NL.content.units.length, 'lapses in unit 1 closed ' + (NL.content.units.length - stillOpen) + ' unit(s) that were already open');
-    /* Rattrapage : sans mémoire enregistrée, une unité rencontrée à 80 % compte comme ouverte. */
-    NL.state.setMeta({ reached: 0 });
-    ok(NL.content.unitOpen(NL.content.units[NL.content.units.length - 1].id), 'an older profile with every unit met stays locked');
     console.log('  frontière       une unité ouverte le reste, même après des rechutes');
   }
 
@@ -438,11 +398,11 @@ NL.state.open().then(() => {
     console.log('  ' + label.padEnd(14) + r.pct + '%  ' + (r.pass ? 'pass' : 'fail'));
   });
 
-  console.log('\nPLACEMENT / PROGRESS');
+  console.log('\nPROGRESS');
   const before = NL.content.unitProgress('overleven');
   NL.content.itemsOf('tijd').forEach(i => { if (i.kind !== 'pattern') NL.srs.seed(i, 2); });
-  console.log('  unit progress   overleven ' + before.pct + '%, tijd ' + NL.content.unitProgress('tijd').pct + '%');
-  console.log('  course          ' + NL.content.courseProgress().pct + '%');
+  console.log('  unit progress   overleven ' + before.met + '/' + before.total + ' met, tijd ' + NL.content.unitProgress('tijd').met + '/' + NL.content.unitProgress('tijd').total);
+  console.log('  course          ' + NL.content.courseProgress().met + ' met, ' + NL.content.courseProgress().produce + ' produced');
   console.log('  unit 2 open?    ' + NL.content.unitOpen('ikengij'));
   console.log('  counts          ' + JSON.stringify(NL.srs.counts()));
   console.log('  storage         ' + NL.state.storage);

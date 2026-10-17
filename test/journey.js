@@ -1,7 +1,7 @@
 /* Full user journey with a Dutch voice installed.
    Walks every screen and every flow the way a person would, and reports
    anything that throws, renders empty, or contradicts itself. */
-const fs = require('fs'), path = require('path'), vm = require('vm');
+const browser = require('./lib/browser');
 const ROOT = process.argv[2];
 const VOICE = process.argv[3] || 'nl-BE';
 const BROWSER = process.argv[4] || 'OPR';
@@ -10,120 +10,20 @@ let fails = 0, checks = 0;
 const ok = (c, m) => { checks++; if (!c) { console.log('   ✗ ' + m); fails++; } };
 const head = s => console.log('\n' + s);
 
-/* ---------- a browser, roughly ---------- */
-
-/* Générateur déterministe : un test qui échoue au hasard vaut moins que pas de
-   test du tout. La graine rend chaque exécution reproductible, en local comme
-   en CI, et un échec devient donc un vrai signal. */
-function rng(seed) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6D2B79F5) >>> 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-const RAND = rng(Number(process.env.SEED || 20260917));
-const SafeMath = Object.create(Math);
-SafeMath.random = RAND;
-
-const store = {};
-const listeners = {};
-function mkEl(tag) {
-  const el = {
-    tagName: (tag || 'div').toUpperCase(), innerHTML: '', value: '', disabled: false,
-    scrollTop: 0, dataset: {}, files: [], style: {}, children: [],
-    classList: { _s: new Set(), contains(n) { return this._s.has(n); }, add(n) { this._s.add(n); }, remove(n) { this._s.delete(n); } },
-    addEventListener(t, f) { (listeners[t] = listeners[t] || []).push(f); },
-    removeEventListener() {}, setSelectionRange() {}, focus() {}, select() {}, click() {},
-    setAttribute() {}, removeAttribute() {}, remove() {}, appendChild() {},
-    insertAdjacentHTML() {}, matches: () => false, closest: () => null, contains: () => true,
-    querySelector: () => null, querySelectorAll: () => [],
-    getBoundingClientRect: () => ({ width: 400, height: 600, top: 0, left: 0 })
-  };
-  return el;
-}
-const app = mkEl('div');
-
 const voices = VOICE === 'none' ? [{ name: 'Microsoft Hazel', lang: 'en-GB' }]
   : VOICE === 'nl-NL' ? [{ name: 'Microsoft Frank', lang: 'nl-NL' }, { name: 'Microsoft Hazel', lang: 'en-GB' }]
     : [{ name: 'Microsoft Bart - Dutch (Belgium)', lang: 'nl-BE', localService: true },
        { name: 'Microsoft Dena Online (Natural) - Dutch (Belgium)', lang: 'nl-BE', localService: false },
        { name: 'Microsoft Frank', lang: 'nl-NL', localService: true }, { name: 'Microsoft Hazel', lang: 'en-GB' }];
 
-const spoken = [];
-const ctx = {
-  console,
-  setTimeout: (f) => { try { f(); } catch (e) { console.log('   ✗ timer threw: ' + e.message); fails++; } return 0; },
-  clearTimeout() {}, setInterval() {}, clearInterval() {}, requestAnimationFrame: f => f(),
-  Math: SafeMath, Date, JSON, Map, Set, RegExp, Array, Object, String, Number, Promise, Error, Boolean,
-  URL: { createObjectURL: () => 'blob:x', revokeObjectURL() {} },
-  Blob: function (parts) { this.size = (parts && parts[0] || '').length; },
-  Audio: function () { return { play: () => Promise.resolve(), onended: null }; },
-  FileReader: function () { this.readAsText = () => { this.onload && this.onload(); }; },
-  localStorage: {
-    getItem: k => (k in store ? store[k] : null),
-    setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; }
-  },
-  navigator: {
-    onLine: true,
-    userAgent: {
-      OPR: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120 Safari/537.36 OPR/106.0',
-      EDG: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120 Safari/537.36 Edg/120.0',
-      /* iPhone : Chrome est Safari par-dessous et n'a pas de reconnaissance. */
-      IOS: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 CriOS/120 Mobile/15E148 Safari/604.1',
-      SAF: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1'
-    }[BROWSER],
-    mediaDevices: { getUserMedia: () => Promise.reject(Object.assign(new Error('no'), { name: 'NotAllowedError' })) },
-    clipboard: { writeText: () => Promise.resolve() }
-  },
-  MediaRecorder: function () {},
-  location: { hash: '', protocol: 'https:', origin: 'https://claude.ai', href: 'https://claude.ai/x' },
-  speechSynthesis: {
-    getVoices: () => voices,
-    speak: u => { spoken.push({ text: u.text, lang: u.lang, rate: u.rate }); if (u.onend) u.onend(); },
-    cancel() {}, addEventListener() {}
-  },
-  SpeechSynthesisUtterance: function (t) { this.text = t; },
-  document: {
-    readyState: 'complete', documentElement: { setAttribute() {}, removeAttribute() {} },
-    getElementById: id => (id === 'app' ? app : mkEl('input')),
-    querySelector: () => null, querySelectorAll: () => [],
-    addEventListener(t, f) { (listeners[t] = listeners[t] || []).push(f); },
-    activeElement: { tagName: 'BODY' }, createElement: mkEl, body: { appendChild() {} },
-    execCommand: () => true
-  }
-};
-/* iOS expose l'API même là où elle ne marche pas : le stub aussi. */
-if (BROWSER !== 'OPR') {
-  ctx.webkitSpeechRecognition = function () {
-    this.start = () => {
-      /* Le navigateur refuse le micro : erreur puis fin, comme Chrome et Edge. */
-      if (ctx.__denyNext) {
-        ctx.__denyNext = false;
-        if (this.onerror) this.onerror({ error: 'not-allowed' });
-        if (this.onend) this.onend();
-        return;
-      }
-      const said = ctx.__saidNext || '';
-      if (this.onresult) this.onresult({ resultIndex: 0, results: [Object.assign([{ transcript: said }], { isFinal: true, length: 1 })] });
-      if (this.onend) this.onend();
-    };
-    this.abort = () => {};
-  };
-}
-ctx.window = ctx; ctx.globalThis = ctx; ctx.self = ctx; ctx.top = ctx;
-ctx.addEventListener = (t, f) => { (listeners[t] = listeners[t] || []).push(f); };
-vm.createContext(ctx);
-
-const FILES = fs.readFileSync(path.join(ROOT, 'build.sh'), 'utf8')
-  .match(/SRC="([\s\S]*?)"/)[1].split('\n').map(s => s.trim()).filter(Boolean);
-for (const f of FILES) {
-  try { vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), ctx, { filename: f }); }
-  catch (e) { console.log('LOAD FAIL ' + f + ': ' + e.message); process.exit(1); }
-}
-const NL = ctx.NL, U = NL.util;
+/* Opera définit l'API de reconnaissance sans service derrière : pas de stub. */
+const B = browser.open({
+  root: ROOT, seed: browser.SEED, ua: browser.UA[BROWSER], voices, media: true, byId: 'stub',
+  recogniser: BROWSER !== 'OPR',
+  location: { origin: 'https://claude.ai', href: 'https://claude.ai/x' },
+  onTimerError: e => { console.log('   ✗ timer threw: ' + e.message); fails++; }
+});
+const NL = B.NL, U = NL.util, ctx = B.ctx, app = B.app, listeners = B.listeners, spoken = B.spoken, mkEl = B.mkEl;
 
 /* Drives a screen's click handler the way the shell would. */
 function tap(screen, data) {
@@ -139,6 +39,7 @@ function view(screen, arg) {
     ok(html.indexOf('undefined') < 0, screen + ' printed the word "undefined"');
     ok(html.indexOf('[object Object]') < 0, screen + ' printed [object Object]');
     ok(html.indexOf('NaN') < 0, screen + ' printed NaN');
+    ok(!/\d\s?%/.test(html.replace(/<[^>]*>/g, ' ')), screen + ' shows a percentage');
     return html;
   } catch (e) { console.log('   ✗ ' + screen + ' render threw: ' + e.message); fails++; return ''; }
 }
@@ -182,55 +83,15 @@ function view(screen, arg) {
   /* ---------------------------------------------------------- 2. every screen */
   head('2. Every screen renders');
   ['vandaag', 'leerpad', 'praten', 'luisteren', 'meer', 'woorden', 'spiek',
-   'register', 'klanken', 'dehet', 'doctor'].forEach(s => view(s));
+   'register', 'klanken', 'dehet', 'doctor', 'fouten'].forEach(s => view(s));
   NL.content.sheets.forEach(sh => view('spiek', sh.id));
-  console.log('   ' + (11 + NL.content.sheets.length) + ' screens drawn');
+  console.log('   ' + (12 + NL.content.sheets.length) + ' screens drawn');
 
-  /* ---------------------------------------------------------- 3. placement */
-  head('3. Placement test, answered honestly');
-  const P = NL.screens.placement;
-  view('placement');
-  let guard = 0, dupOpts = 0;
-  while (guard++ < 40) {
-    const html = P.render();
-    if (html.indexOf('done-stage') >= 0) break;
-    /* Deux options identiques, dont une comptée fausse, feraient échouer une unité à tort. */
-    const labels = (html.match(/<span class="opt-key">\d<\/span><span>([^<]*)<\/span>/g) || []).map(s => U.norm(s.replace(/<[^>]+>/g, '').slice(1)));
-    if (new Set(labels).size !== labels.length) dupOpts++;
-    tap('placement', { opt: '0' });          // whatever is first, like a real guess
-    if (html.indexOf('id="place-in"') >= 0) tap('placement', { act: 'dunno' });
-    tap('placement', { act: 'next' });
-  }
-  ok(P.render().indexOf('done-stage') >= 0, 'placement never finished');
-  ok(dupOpts === 0, 'placement showed the same option twice in ' + dupOpts + ' question(s)');
-  console.log('   finished in ' + guard + ' questions, seeded ' + NL.srs.counts().seen + ' items');
-  ok(NL.state.meta().placed === true, 'placement did not mark itself done');
-
-  /* Répondu juste, y compris la question à taper : toutes les unités passent.
-     Et une question à taper ratée coûte bien un point. */
-  {
-    NL.state.clearAll(); NL.content.refresh(); P.reset();
-    NL.ui.go('placement');
-    let g = 0, typedSeen = 0, missTyped = true;
-    while (g++ < 80) {
-      const html = P.render();
-      if (html.indexOf('done-stage') >= 0) break;
-      const q = P.peek();
-      if (q.typed) {
-        typedSeen++;
-        ok(html.indexOf('data-opt=') < 0, 'the typed placement question still shows options');
-        /* Unité 1 : on rate exprès la question tapée, les trois autres justes. */
-        const want = missTyped ? 'zzzz' : U.bare(q.item.nl);
-        P.input({ id: 'place-in', value: want });
-        tap('placement', { act: 'submit' });
-        if (missTyped) { ok(P.peek().hits === 3, 'a wrong typed answer still counted'); missTyped = false; }
-      } else tap('placement', { opt: String(q.opts.findIndex(o => o.ok)) });
-      tap('placement', { act: 'next' });
-    }
-    ok(typedSeen >= NL.content.units.length, 'not every unit asked a typed question (' + typedSeen + ')');
-    ok(P.render().indexOf('Les 12 unités sont passées') >= 0, 'answering everything right did not pass all twelve units');
-    console.log('   answered right: ' + typedSeen + ' typed questions, all units passed');
-  }
+  /* ---------------------------------------------------------- 3. no placement */
+  head('3. No placement test');
+  ok(!NL.screens.placement, 'the placement screen still exists');
+  ok(view('vandaag').indexOf('placement') < 0 && view('meer').indexOf('placement') < 0, 'a screen still leads to the placement test');
+  console.log('   nothing asks the learner to prove what they know before starting');
 
   /* ---------------------------------------------------------- 4. every exercise */
   head('4. Every exercise type, driven to a correct answer');
@@ -287,6 +148,7 @@ function view(screen, arg) {
       const after = S.render();
       if (c.ex !== 'match') ok(after.indexOf('foot ok') >= 0 || after.indexOf('foot no') >= 0, c.ex + ' gave no verdict');
       if (c.ex !== 'match') ok(after.indexOf('foot no') < 0, c.ex + ' rejected a correct answer');
+      ok(!/\d\s?%/.test(after.replace(/<[^>]*>/g, ' ')), c.ex + ' shows a percentage after the answer');
       tap('sessie', { next: '1' });
     }
     S.abandon();
@@ -448,10 +310,11 @@ function view(screen, arg) {
   NL.state.clearAll(); NL.content.refresh();
   const plan = NL.srs.plan();
   S.begin('vandaag');
+  const warmup = S.peek() && S.peek().ex === 'match' ? 1 : 0;
   const real = S.peek() ? NL.screens.sessie.render().match(/class="pill">\d+\/(\d+)</) : null;
   const delivered = real ? +real[1] : 0;
-  console.log('   promised ' + plan.total + ', session holds ' + delivered);
-  ok(Math.abs(plan.total - delivered) <= 1, 'home promises ' + plan.total + ' but the session holds ' + delivered);
+  console.log('   promised ' + plan.tasks + ' exercises (' + plan.due + ' to review, ' + plan.fresh + ' new), session holds ' + (delivered - warmup) + (warmup ? ' after its warm-up' : ''));
+  ok(delivered - warmup === plan.tasks, 'home promises ' + plan.tasks + ' exercises but the session holds ' + (delivered - warmup));
   S.abandon();
 
   /* ---------------------------------------------------------- 14. mic refused mid-scenario */
@@ -479,6 +342,42 @@ function view(screen, arg) {
     const moved = NL.screens.scenario.render(scn.id);
     ok(moved.indexOf('Micro bloqué') < 0, 'rating yourself did not move the scenario on');
     console.log('   refusal explained, self-rating offered, scenario continues');
+  }
+
+  /* ---------------------------------------------------------- 15. the recogniser refuses three times */
+  head('15. The recogniser refuses three times');
+  if (noRecogniser) {
+    console.log('   skipped: no recogniser here, a spoken exercise is already self-rated');
+  } else {
+    NL.state.clearAll(); NL.content.refresh();
+    /* Everything met and not due, except one word on the rung that asks for it aloud. */
+    NL.content.allItems().forEach(it => NL.srs.seed(it, 2));
+    const word = NL.content.allItems().find(it => it.kind === 'word' && !it.cognate);
+    NL.srs.seed(word, 3);
+    const due = NL.state.rec(word.id); due.due = 0; NL.state.setRec(due);
+    /* And three plain reviews: alone in its session, its second exercise would
+       not have three exercises between it and the first, and would wait for the
+       next day (NL.srs.lace). */
+    NL.content.allItems().filter(it => it !== word && it.kind === 'word' && !it.cognate).slice(0, 3)
+      .forEach(it => { const r = NL.state.rec(it.id); r.due = 0; NL.state.setRec(r); });
+    ok(S.begin('vandaag') && S.peek().ex === 'speak', 'a never-said item on rung 3 is not asked aloud');
+    for (let k = 0; k < 3; k++) {
+      ok(S.render().indexOf('data-self=') < 0, 'self-rating offered after ' + k + ' refusal(s), before the third');
+      ctx.__saidNext = 'iets heel anders';
+      tap('sessie', { mic: 'start' });
+    }
+    ok(S.render().indexOf('data-self="1"') >= 0, 'after three refusals there is still no way to say « ' + NL.t.micSaidIt + ' »');
+    tap('sessie', { self: '1' });
+    tap('sessie', { check: '1' });
+    ok(S.render().indexOf('foot ok') >= 0, 'rating yourself right after three refusals is counted as wrong');
+    const now = NL.state.rec(word.id);
+    ok(now.said === true && now.stage === 3, 'the item should be said and still on rung 3: it is said ' + now.said + ', on rung ' + now.stage);
+    /* Dit, il lui reste à être écrit : c'est son second exercice dans la séance. */
+    tap('sessie', { next: '1' });
+    for (let k = 0; k < 6 && S.peek() && S.peek().items[0].id !== word.id; k++) { tap('sessie', { skip: '1' }); tap('sessie', { next: '1' }); }
+    ok(S.peek() && S.peek().items[0].id === word.id && S.peek().ex !== 'speak', 'once said, the item is not asked in writing before the session ends');
+    S.abandon();
+    console.log('   three refusals, then « ' + NL.t.micSaidIt + ' » is offered and counts');
   }
 
   console.log('\n' + checks + ' checks, ' + (fails === 0 ? 'NO PROBLEMS' : fails + ' PROBLEM(S)'));

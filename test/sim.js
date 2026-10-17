@@ -1,45 +1,13 @@
 /* Drives the real UI headlessly: renders every screen, then runs a whole session
    and a whole scenario, so any crash in a render path shows up here. */
-const fs = require('fs'), path = require('path'), vm = require('vm');
+const browser = require('./lib/browser');
 const ROOT = process.argv[2];
 
-const store = {};
-const mkEl = () => ({
-  innerHTML: '', value: '', disabled: false, scrollTop: 0, tagName: 'DIV',
-  dataset: {}, classList: { contains: () => false, add() {}, remove() {} },
-  addEventListener() {}, setSelectionRange() {}, focus() {}, click() {},
-  querySelector: () => null, querySelectorAll: () => [], closest: () => null,
-  insertAdjacentHTML() {}, matches: () => false, getBoundingClientRect: () => ({ width: 400, height: 400, top: 0, left: 0 })
+const B = browser.open({
+  root: ROOT, location: { protocol: 'file:', origin: 'file://' },
+  onTimerError: e => { throw e; }
 });
-const app = mkEl();
-
-const ctx = {
-  console, setTimeout: (f) => { try { f(); } catch (e) { throw e; } }, clearTimeout, setInterval, clearInterval,
-  requestAnimationFrame: f => f(),
-  Math, Date, JSON, Map, Set, RegExp, Array, Object, String, Number, Promise, Error, Boolean,
-  localStorage: { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } },
-  navigator: { onLine: true, serviceWorker: undefined },
-  location: { hash: '', protocol: 'file:', origin: 'file://' },
-  document: {
-    readyState: 'complete',
-    documentElement: { setAttribute() {}, removeAttribute() {} },
-    getElementById: id => (id === 'app' ? app : null),
-    querySelector: () => null, querySelectorAll: () => [],
-    addEventListener() {}, activeElement: { tagName: 'BODY' }, createElement: mkEl
-  }
-};
-ctx.addEventListener = function(){}; ctx.removeEventListener = function(){}; ctx.window = ctx; ctx.globalThis = ctx;
-vm.createContext(ctx);
-
-const FILES = fs.readFileSync(path.join(ROOT, 'build.sh'), 'utf8')
-  .match(/SRC="([\s\S]*?)"/)[1].split('\n').map(s => s.trim()).filter(Boolean);
-
-for (const f of FILES) {
-  try { vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), ctx, { filename: f }); }
-  catch (e) { console.log('LOAD FAIL ' + f + ': ' + e.message); process.exit(1); }
-}
-
-const NL = ctx.NL;
+const NL = B.NL, app = B.app;
 let fails = 0;
 const fail = m => { console.log('  FAIL: ' + m); fails++; };
 const sizeOf = () => app.innerHTML.length;
@@ -49,7 +17,7 @@ NL.state.open().then(() => {
   NL.ui.bind(app);
 
   console.log('SCREENS');
-  ['vandaag', 'leerpad', 'praten', 'luisteren', 'meer', 'woorden', 'spiek', 'register', 'klanken', 'dehet', 'doctor']
+  ['vandaag', 'leerpad', 'praten', 'luisteren', 'meer', 'woorden', 'spiek', 'register', 'klanken', 'dehet', 'doctor', 'fouten']
     .forEach(r => {
       try {
         NL.ui.go(r);
@@ -68,19 +36,6 @@ NL.state.open().then(() => {
     catch (e) { fail(s + ' threw: ' + e.message); }
   });
   NL.ui.closeSheet();
-
-  console.log('\nPLACEMENT');
-  try {
-    NL.ui.go('placement');
-    let guard = 0;
-    while (app.innerHTML.indexOf('done-stage') < 0 && guard++ < 40) {
-      NL.screens.placement.click({ dataset: {} }, { opt: '0' });
-      NL.screens.placement.click({ dataset: {} }, { act: 'dunno' });   // the typed question has no options
-      NL.screens.placement.click({ dataset: {} }, { act: 'next' });
-    }
-    console.log('  ran ' + guard + ' questions, summary rendered: ' + (app.innerHTML.indexOf('done-stage') >= 0));
-    if (guard >= 40) fail('placement never finished');
-  } catch (e) { fail('placement threw: ' + e.message); }
 
   console.log('\nSESSION');
   try {

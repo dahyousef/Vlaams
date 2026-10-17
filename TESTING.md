@@ -13,11 +13,14 @@ n'y a qu'une seule liste. Il faut Node et un `sh` (sous Windows, celui de Git).
 | --- | --- |
 | `smoke.js` | Le contenu, l'échelle, chaque type d'exercice, la notation, la qualité des leurres, l'orthographe, et qu'aucune chaîne anglaise ne survit dans le build |
 | `dehet.js` | Chaque nom du cours confronté au Wiktionnaire : `de` ou `het`, sur la fiche **et** dans ses phrases d'exemple |
+| `content.js` | L'orthographe contre 410 000 formes néerlandaises, que chaque exercice promis se construise vraiment, qu'une phrase d'exemple n'emprunte pas de vocabulaire à une unité ultérieure, et les éléments enseignés deux fois |
+| `engine.js` | Ce qu'une séance contient et quand un élément revient, horloge en marche : la panne d'octobre, deux jours de suite, le renforcement dans la séance, la réserve de nouveautés, le seuil des unités, la première demande à voix haute et l'exercice écrit qui la suit, l'écrit de l'échelon 3 toujours tapé, « je ne peux pas parler » |
+| `screens.js` | Chaque écran dans quatre états, relu comme du texte : ni pourcentage, ni maîtrise ; les comptes, le nom de l'unité, ce qui résiste, le bouton « je ne peux pas parler », le journal d'erreurs |
 | `sim.js` | Chaque écran, une séance, un scénario, une série d'écoute |
 | `firstrun.js` | Une base vide : premier écran, première séance, le défi, la sauvegarde |
-| `sync.js` | Deux appareils et un faux Supabase : adoption, conflits, panne, comptes |
+| `sync.js` | Deux appareils et un faux Supabase : adoption, conflits, panne, comptes, la remise à zéro sur deux appareils (dont un hors ligne qui revient), la migration unique, un appareil resté sur l'ancienne version et un serveur qui garde la remise à zéro la plus récente |
 | `journey.js` | Le parcours complet d'un utilisateur, pour une voix et un navigateur donnés |
-| `pace.js` | 200 jours simulés : charge quotidienne, variété, exigence |
+| `pace.js` | 200 jours simulés, pour trois apprenants (budget épuisé chaque jour ; une seule séance par jour ; une seule séance, dont une sur cinq là où l’on ne peut pas parler) : charge quotidienne, variété, exigence — aucune journée sans élément nouveau tant qu’il en reste, un élément du premier jour demandé à voix haute en dix jours et jamais après trois semaines, l’échelon de l’écrit passé en écrivant, et « je ne peux pas parler » qui ne note rien, ne coûte rien et ne fait rien sauter. L’horloge avance pendant la journée |
 
 `journey.js` tourne huit fois : trois voix (flamande, néerlandaise du nord,
 aucune) sous Opera et Edge, plus Chrome et Safari sur iPhone. Les tests sont
@@ -31,7 +34,24 @@ Ils tournent sans navigateur. Trois choses ne se vérifient qu'en vrai :
 
 - le **micro réel** et la reconnaissance vocale ;
 - une **vraie voix** néerlandaise, et ce qu'elle donne à l'oreille ;
-- la **série de jours**, sur plusieurs jours réels.
+- **deux séances, deux jours de suite**, sur un vrai appareil : la simulation
+  avance son horloge, mais elle ne remplace pas ça.
+
+La **branche IndexedDB**, celle que prend tout vrai navigateur, n'est atteinte
+que par `test/sync.js`, à travers un faux IndexedDB minimal (`idb` dans
+`test/lib/browser.js`) qui survit à un rechargement : la restauration d'une
+sauvegarde, la migration et le rebasage d'une progression adoptée y sont relus
+au chargement suivant. Les autres suites tournent sur le repli localStorage.
+Trois choses restent hors d'atteinte : le **vrai IndexedDB** d'un navigateur
+(transactions qui échouent, quota, onglets qui écrivent ensemble) ; les
+**suppressions contre le vrai serveur** (seul le faux serveur de
+`test/sync.js` les a exécutées) ; et un **vrai appareil qui tourne encore sur
+la version précédente** quand la nouvelle est déployée — les suites en écrivent
+l'état, elles ne font pas tourner l'ancienne version.
+
+Les déclencheurs de `supabase/schema.sql` ne tournent que sur la vraie base :
+`test/sync.js` les reflète en JavaScript, et le SQL de `keep_reset` a été
+vérifié une fois contre un Postgres local (PGlite), hors de la suite.
 
 Et une limite du test `de`/`het` : il vérifie l'article du mot drillé, pas tous
 les articles d'une phrase. Un balayage large demanderait une analyse
@@ -39,6 +59,15 @@ grammaticale — « het » est aussi le pronom impersonnel (« is het druk »), 
 infinitif substantivé est neutre quand son pluriel prend « de » (« van het
 werken »). Restent donc invérifiés : l'article devant un **autre** nom à
 l'intérieur d'une phrase d'exemple, l'idiome, et le registre.
+
+Trois de ces contrôles portent un budget plutôt qu'une exigence de zéro, parce
+que le contenu actuel enfreint déjà la règle : 62 phrases d'exemple empruntent du
+vocabulaire à une unité ultérieure, 9 éléments sont enseignés deux fois, 4
+échelons n'ont aucun exercice possible. Un budget ne peut que baisser.
+
+Et ce qu'aucun d'eux ne voit : l'idiome, le registre, l'ordre des mots, si une
+phrase vaut la peine d'être apprise. Les scénarios et les antisèches ne passent
+pas par le contrôle d'orthographe.
 
 ## Le passage complet du 30 septembre 2026
 

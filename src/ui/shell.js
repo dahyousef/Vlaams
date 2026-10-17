@@ -22,8 +22,8 @@ NL.ui = (function () {
     luisteren: '<path d="M4 13.5a8 8 0 0 1 16 0M4 13.5v3a2.5 2.5 0 0 0 5 0v-3M20 13.5v3a2.5 2.5 0 0 1-5 0v-3"/>',
     meer: '<circle cx="6" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="18" cy="12" r="1.4"/>'
   };
-  const UNDER_MEER = ['woorden', 'spiek', 'register', 'klanken', 'doctor', 'dehet'];
-  const FULLSCREEN = { sessie: 1, scenario: 1, placement: 1, doctor: 1, compte: 1 };
+  const UNDER_MEER = ['woorden', 'spiek', 'register', 'klanken', 'doctor', 'dehet', 'fouten'];
+  const FULLSCREEN = { sessie: 1, scenario: 1, doctor: 1, compte: 1 };
 
   function go(to, a) {
     if (route === 'sessie' && to !== 'sessie' && NL.screens.sessie.active()) { sheet = 'quit-session'; return render(); }
@@ -87,6 +87,14 @@ NL.ui = (function () {
   function card(title, body, actions) {
     return '<div class="sheet" data-backdrop="1"><div class="sheet-card" role="dialog" aria-modal="true">' +
       '<h3>' + title + '</h3>' + (body || '') + '<div class="sheet-actions">' + actions + '</div></div></div>';
+  }
+
+  /* « Unité 5 · Chez le boulanger », ou « Unités 4–5 » : le même libellé sur la
+     carte de l'accueil et sur l'écran de la séance. */
+  function unitLabel(span) {
+    if (span.from !== span.to) return t.unitsRange(span.from, span.to);
+    const u = NL.content.units.find(x => x.n === span.from);
+    return t.unitOne(span.from) + (u ? ' · ' + u.name : '');
   }
 
   function sheetHtml() {
@@ -252,10 +260,11 @@ NL.ui = (function () {
   function restore(raw) {
     let data = null;
     try { data = JSON.parse(raw); } catch (e) { /* reported below */ }
+    const old = NL.state.isOldBackup(data);
     if (NL.state.importAll(data)) {
       NL.content.refresh(); sheet = null;
       if (NL.sync.user) { NL.sync.queueAll(); NL.sync.flush(); }
-      render(); toast(t.imported);
+      render(); toast(old ? t.importedOld : t.imported);
     }
     else toast(t.importFailed);
   }
@@ -318,9 +327,12 @@ NL.ui = (function () {
         }
         if (d.reset !== undefined) { sheet = 'reset-confirm'; render(); return; }
         if (d.resetYes !== undefined) {
-          Promise.resolve(NL.state.clearAll()).then(() => {
-            NL.content.refresh(); sheet = null; route = 'vandaag'; render(); toast(t.wiped);
-          });
+          /* La progression seulement : réglages, score et mots personnels
+             restent. Connecté, le serveur est effacé avant d'être relu — sinon
+             la synchro suivante rendrait tout ce qu'on vient d'effacer. */
+          NL.state.resetProgress();
+          NL.content.refresh(); sheet = null; route = 'vandaag'; render(); toast(t.wiped);
+          if (NL.sync.user) NL.sync.flush();
           return;
         }
         if (d.quitYes !== undefined) { NL.screens.sessie.abandon(); sheet = null; go('vandaag'); return; }
@@ -367,7 +379,7 @@ NL.ui = (function () {
   function onAuth() { if (route === 'compte') go('vandaag'); else render(); }
 
   return {
-    bind, render, go, toast, openSheet, closeSheet, I, card, onAuth,
+    bind, render, go, toast, openSheet, closeSheet, I, card, unitLabel, onAuth,
     get route() { return route; },
     boot() { const h = fromHash(); if (h) { route = h.r; arg = h.a; } render(); }
   };

@@ -4,14 +4,10 @@
   'use strict';
   const U = NL.util, esc = U.esc, t = NL.t;
 
-  const pct = n => Math.max(0, Math.min(100, Math.round(n)));
-  const bar = (p, cls) => '<span class="bar"><span class="bar-fill ' + (cls || '') + '" style="width:' + pct(p) + '%"></span></span>';
-
   /* ---------------------------------------------------- Aujourd'hui */
   NL.screens.vandaag = {
     render() {
       const m = NL.state.meta();
-      const c = NL.srs.counts();
       const cp = NL.content.courseProgress();
       const p = NL.srs.plan();
       const fresh = p.fresh, total = p.total, mins = p.mins;
@@ -19,20 +15,14 @@
 
       let html = '<div class="wrap">';
 
-      if (!m.placed && c.seen === 0) {
-        html += '<section class="card lead">' +
-          '<h1>' + t.firstTitle + '</h1>' +
-          '<p>' + t.firstBody + '</p>' +
-          '<div class="lead-actions">' +
-          '<button class="btn btn-primary" data-go="placement">' + t.firstDoTest + '</button>' +
-          '<button class="btn btn-ghost" data-act="skip-place">' + t.firstSkip + '</button>' +
-          '</div></section>';
-      }
-
-      /* The one thing this screen is for. */
+      /* The one thing this screen is for. Elle nomme l'unité — ou les deux, quand
+         la séance en couvre plusieurs : un libellé ne dit jamais une demi-vérité. */
       html += '<section class="card session-card">' +
-        '<span class="eyebrow">' + t.todayEyebrow + '</span>' +
-        (total === 0
+        '<span class="eyebrow">' + t.todayEyebrow + (p.units ? ' · ' + esc(NL.ui.unitLabel(p.units)) : '') + '</span>' +
+        (total === 0 && p.left === 0 && NL.srs.dueItems().length > 0
+          ? '<h2>' + t.budgetDone + '</h2>' +
+          '<button class="btn btn-blue wide big" data-go="praten">' + t.todayPractise + '</button>'
+          : total === 0
           ? '<h2>' + t.todayAllDone + '</h2><p class="sc-sub">' + t.todayAllDoneSub + '</p>' +
           '<button class="btn btn-blue wide big" data-go="praten">' + t.todayPractise + '</button>'
           : '<h2>' + t.todayReady(total) + '</h2>' +
@@ -48,8 +38,8 @@
 
       html += '<div class="tri">' +
         stat(m.streak, t.statStreak(m.streak)) +
-        stat(c.said, t.statSaid) +
-        stat(cp.pct + '%', t.statCourse) +
+        stat(cp.met, t.statMet) +
+        stat(cp.produce, t.statProduce) +
         '</div>';
 
       html += '<h3 class="sec">' + t.morepractice + '</h3><div class="cards">';
@@ -65,7 +55,6 @@
     click(el, d) {
       if (d.act === 'start') { NL.screens.sessie.begin('vandaag'); NL.ui.go('sessie'); return; }
       if (d.act === 'defi') return openDefi();
-      if (d.act === 'skip-place') { NL.state.setMeta({ placed: true }); NL.ui.render(); return; }
       if (d.scn) { NL.ui.go('scenario', d.scn); return; }
       if (d.sheetid) { NL.ui.go('spiek', d.sheetid); return; }
     }
@@ -101,8 +90,7 @@
         '<span class="eyebrow">' + t.pathEyebrow + '</span>' +
         '<h1>' + t.pathTitle + '</h1>' +
         '<p>' + t.pathBody + '</p>' +
-        '<div class="prog-line">' + bar(cp.pct) + '<b>' + cp.pct + '%</b></div>' +
-        '<p class="muted small">' + t.masteredOf(cp.mastered, cp.total) + '</p>' +
+        '<p class="muted small">' + t.courseCounts(cp.met, cp.produce, cp.total) + '</p>' +
         '</section>';
 
       NL.content.units.forEach(u => {
@@ -116,12 +104,13 @@
           '<span class="uc-icon">' + u.icon + '</span>' +
           '<div class="uc-title"><span class="eyebrow">Unité ' + u.n + ' · ' + u.level + ' · ' + trackName(u.track) + '</span>' +
           '<h2>' + esc(u.name) + '<i class="uc-nl">' + esc(u.nlName || '') + '</i></h2></div>' +
-          '<span class="uc-pct" title="' + t.unitLevel(p.level) + '">' + p.pct + '%</span>' +
+          '<span class="uc-pct">' + p.met + '/' + p.total + '</span>' +
           '</div>' +
           '<p class="uc-blurb">' + esc(u.blurb) + '</p>' +
-          '<div class="prog-line">' + bar(p.pct) + '<span class="muted small">' + t.metOf(p.met, p.total) + '</span></div>' +
-          (open && !NL.content.unitComplete(u.id)
-            ? '<p class="uc-gate">' + t.unitGate(p.gate, 80) + '</p>' : '') +
+          '<p class="muted small">' + t.unitCounts(p.met, p.produce, p.total) + '</p>' +
+          /* Le seuil est un compte à rebours, pas un mystère. */
+          (open && p.toOpen > 0 && u !== NL.content.units[NL.content.units.length - 1]
+            ? '<p class="uc-gate">' + t.unitGate(p.toOpen) + '</p>' : '') +
           (g.length ? '<div class="uc-gram">' + g.map(x =>
             '<button class="gram-chip" data-act="gram" data-id="' + x.id + '">' + esc(x.title) + '</button>').join('') + '</div>' : '') +
           (open
@@ -149,6 +138,8 @@
   NL.screens.meer = {
     render() {
       const c = NL.srs.counts();
+      const cp = NL.content.courseProgress();
+      const mine = NL.content.allItems().filter(it => it.unit === 'eigen').length;
       const m = NL.state.meta();
       const byDay = {};
       NL.state.logs().forEach(l => { const d = U.dayKey(l.t); byDay[d] = (byDay[d] || 0) + 1; });
@@ -162,13 +153,13 @@
       return '<div class="wrap">' +
         '<div class="cards">' +
         defiTile(m) +
-        tile('\u{1F4D2}', t.wordsEyebrow, c.seen + ' vus, ' + c.mature + ' solides', 'go', 'woorden') +
+        tile('\u{1F4D2}', t.wordsEyebrow, t.wordsTile(cp.met, cp.produce), 'go', 'woorden') +
+        tile('\u{1F3AF}', t.missEyebrow, t.missTile(NL.srs.mistakes().length), 'go', 'fouten') +
         tile('\u{1F4CB}', t.sheetsEyebrow, t.sheetsTitle, 'go', 'spiek') +
         tile('\u{1F1E7}\u{1F1EA}', t.regEyebrow, t.regTitle, 'go', 'register') +
         tile('\u{1F444}', t.soundsEyebrow, t.soundsTitle, 'go', 'klanken') +
         tile('\u{1F517}', 'de / het', t.dehetTitle, 'go', 'dehet') +
         tile('\u{1F50A}', t.docEyebrow, t.docTitle, 'go', 'doctor') +
-        tile('\u{1F4CF}', 'Test de niveau', m.placed ? 'Le refaire' : 'Pas encore fait', 'go', 'placement') +
         '</div>' +
 
         '<h3 class="sec">' + t.weekTitle + '</h3>' +
@@ -178,8 +169,9 @@
           '<span>' + t.days[new Date(x.d).getDay()] + '</span></div>').join('') +
         '</div>' +
         '<div class="mini-stats">' +
-        '<span><b>' + c.learning + '</b> ' + t.statLearning + '</span>' +
-        '<span><b>' + c.mature + '</b> ' + t.statStrong + '</span>' +
+        '<span><b>' + cp.met + '</b> ' + t.statMet + '</span>' +
+        '<span><b>' + cp.produce + '</b> ' + t.statProduced + '</span>' +
+        (mine ? '<span><b>' + mine + '</b> ' + t.statMine + '</span>' : '') +
         '<span><b>' + c.said + '</b> ' + t.statSpoken + '</span>' +
         '<span><b>' + (m.best || 0) + '</b> ' + t.statBest + '</span>' +
         '<span><b>' + (m.bestCombo || 0) + '</b> ' + t.statCombo + '</span>' +

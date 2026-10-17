@@ -3,6 +3,7 @@
   'use strict';
   function start() {
     const root = document.getElementById('app');
+    NL.errlog.watch();
     NL.state.open().then(() => {
       const wiped = NL.state.migrate();
       NL.content.refresh();
@@ -18,7 +19,7 @@
       });
       NL.sync.onChange(() => {
         const r = NL.ui.route;
-        if (r === 'sessie' || r === 'scenario' || r === 'placement') return;
+        if (r === 'sessie' || r === 'scenario') return;
         if (r === 'compte' && !NL.sync.user) return;   // ne pas effacer l'adresse en cours de saisie
         NL.ui.render();
       });

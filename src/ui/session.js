@@ -46,76 +46,215 @@ NL.screens.sessie = (function () {
     return true;
   }
 
-  function start(source) {
-    NL.state.touchDay();
-    if (source === 'defi') return startDefi();
-    const m = NL.state.meta();
-    const due = NL.srs.dueItems();
-    let fresh, pool;
-
-    if (source && source !== 'vandaag') {
-      const items = NL.content.itemsOf(source);
-      pool = items.filter(it => NL.srs.stageOf(it) >= 0 && NL.state.rec(it.id).due <= Date.now());
-      fresh = items.filter(it => NL.srs.stageOf(it) < 0).slice(0, NL.srs.pace().fresh);
-    } else {
-      const left = NL.srs.budgetLeft();
-      pool = due.slice(0, left);
-      fresh = NL.srs.freshItems(Math.min(Math.max(0, left - pool.length), NL.srs.pace().fresh));
-    }
-
-    const queue = [];
-    /* Brand-new items get met as a matching warm-up before anything is demanded. */
-    const newWords = fresh.filter(it => it.kind !== 'pattern');
-    if (newWords.length >= 4) {
-      queue.push({ ex: 'match', task: EX.registry.match.build(newWords.slice(0, 5)), items: newWords.slice(0, 5) });
-    }
-    /* Grammar rules are nine items among four hundred, so uniform sampling buries
-       them — a whole week could pass without one. Give them a guaranteed seat. */
-    const pats = pool.filter(it => it.kind === 'pattern').slice(0, 2);
-    const others = pool.filter(it => pats.indexOf(it) < 0).slice(0, MAX_TASKS - pats.length);
-    /* Le gouverneur : on retient les deux derniers types servis pour qu'aucun
-       ne se répète coup sur coup. */
-    const rest = U.shuffle(pats.concat(others, fresh));
-    const recent = [];
-    rest.forEach(it => {
-      const name = NL.srs.exerciseFor(it, new Set(recent));
-      const ex = EX.get(name);
+  /* Un exercice par élément. Le gouverneur retient les deux derniers types
+     servis pour qu'aucun ne se répète coup sur coup. */
+  function build(items, recent, quiet) {
+    const out = [];
+    items.forEach(it => {
+      const name = NL.srs.exerciseFor(it, new Set(recent), quiet);
       try {
-        queue.push({ ex: name, task: ex.build(it), items: [it] });
+        out.push({ ex: name, task: EX.get(name).build(it), items: [it] });
         recent.push(name);
         if (recent.length > 2) recent.shift();
-      } catch (e) { /* un élément mal formé est simplement sauté */ }
+      } catch (e) {
+        /* Un élément mal formé est sauté — mais plus en silence : sans trace,
+           il pouvait n'être jamais drillé sans que personne le sache. */
+        NL.errlog.note(e, 'exercice ' + name + ' · ' + it.id);
+      }
     });
+    return out;
+  }
 
-    /* Étalement optimal. Choisir « le premier qui diffère » ne suffit pas : quand
-       un type domine la file, il faut le répartir activement. On puise donc à
-       tour de rôle dans le plus gros paquet restant, ce qui est l'ordonnancement
-       qui minimise réellement les voisins identiques. La mémoire traverse aussi
-       les séances : sans elle, chaque nouvelle séance repart aveugle. */
-    const head = queue.length && queue[0].ex === 'match' ? [queue.shift()] : [];
+  /* Étalement optimal. Choisir « le premier qui diffère » ne suffit pas : quand
+     un type domine la file, il faut le répartir activement. On puise donc à
+     tour de rôle dans le plus gros paquet restant, ce qui est l'ordonnancement
+     qui minimise réellement les voisins identiques. */
+  function spread(list, last) {
     const bucket = {};
-    queue.forEach(x => { (bucket[x.ex] = bucket[x.ex] || []).push(x); });
-    queue.length = 0;                      // la file est vidée : on la reconstruit étalée
-    const spread = [];
-    let last = head.length ? head[0].ex : NL.state.meta().lastEx || null;
+    list.forEach(x => { (bucket[x.ex] = bucket[x.ex] || []).push(x); });
+    const out = [];
     const left = () => Object.keys(bucket).filter(k => bucket[k].length);
     while (left().length) {
       const keys = left().sort((a, b) => bucket[b].length - bucket[a].length);
       const k = keys.find(x => x !== last) || keys[0];
-      spread.push(bucket[k].shift());
+      out.push(bucket[k].shift());
       last = k;
     }
-    queue.push.apply(queue, head.concat(spread));
-    if (queue.length) NL.state.setMeta({ lastEx: queue[queue.length - 1].ex });
+    return out;
+  }
+
+  /* Trois temps : les rencontres, les révisions, puis le renforcement de chaque
+     rencontre. C'est ce renforcement qui remplace l'ancien retour à douze minutes :
+     l'élément revient quelques minutes plus tard, dans la même séance, sans
+     jamais devenir une échéance. Quand il trouve sa place, elle est réservée dès
+     le départ, pour que le compteur de la séance ne s'allonge pas en cours de
+     route ; sinon il n'est pas servi, et l'élément revient le lendemain. */
+  function start(source) {
+    NL.state.touchDay();
+    if (source === 'defi') return startDefi();
+    if (source === 'fouten') return startMistakes();
+    /* Ce que la séance contient, c'est compose() qui le décide — le même appel
+       que l'écran d'accueil. */
+    const c = NL.srs.compose(source);
+
+    const queue = [];
+    /* Brand-new items get met as a matching warm-up before anything is demanded. */
+    const newWords = c.fresh.filter(it => it.kind !== 'pattern');
+    if (newWords.length >= 4) {
+      queue.push({ ex: 'match', task: EX.registry.match.build(newWords.slice(0, 5)), items: newWords.slice(0, 5) });
+    }
+    /* La mémoire du dernier type traverse les séances : sans elle, chaque
+       nouvelle séance repart aveugle. */
+    const recent = [];
+    const meetings = spread(build(c.fresh, recent), queue.length ? 'match' : NL.state.meta().lastEx || null);
+    const reviews = spread(build(U.shuffle(c.due), recent), meetings.length ? meetings[meetings.length - 1].ex : NL.state.meta().lastEx || null);
+    queue.push.apply(queue, NL.srs.lace(meetings, reviews, toSay, secondOf));
+    queue.forEach((x, i) => { if (x.second) x.metAt = queue.findIndex(y => !y.second && y.ex !== 'match' && y.items[0] === x.items[0]); });
 
     if (queue.length === 0) { L = null; return false; }
+    const built = meetings.concat(reviews);
+    if (built.length) NL.state.setMeta({ lastEx: built[built.length - 1].ex });
 
     L = Object.assign(blankTurn(), {
-      source: source || 'vandaag', queue: queue.slice(0, MAX_TASKS + 1), at: 0,
+      source: source || 'vandaag', queue, at: 0, cap: queue.length + 6,
       phase: 'ask', right: 0, wrong: 0, spoken: 0, xp: 0, started: Date.now(), finished: false,
-      newCount: fresh.length, combo: 0, bestCombo: 0, lives: null
+      newCount: c.fresh.length, combo: 0, bestCombo: 0, lives: null
+    });
+    arm();
+    return !!L.queue.length;
+  }
+
+  /* Un second exercice ne revient jamais à moins de SECOND_GAP exercices de son
+     élément : la règle et la disposition de la séance sont dans NL.srs.lace().
+
+     Un élément qu'on dit à voix haute pour la première fois revient lui aussi
+     une seconde fois, et c'est ce second exercice qui décide de son échelon :
+     par écrit s'il vient d'être dit, de nouveau à voix haute sinon. */
+  const SECOND_GAP = NL.srs.SECOND_GAP;
+  const toSay = x => x.ex === 'speak' && NL.srs.firstAloud(x.items[0]);
+  const secondOf = x => ({ ex: null, task: null, items: x.items, second: true });
+
+  /* Une séance sur ce qui résiste : les éléments le plus souvent ratés, chacun à
+     l'échelon où il se trouve. Comme le défi, elle ne compte pas dans le budget
+     du jour qu'elle n'a pas à attendre, et ses réponses sont de vraies révisions. */
+  function startMistakes() {
+    const items = NL.srs.mistakes().slice(0, MAX_TASKS).map(x => x.item);
+    const queue = spread(build(items, []), NL.state.meta().lastEx || null);
+    if (!queue.length) { L = null; return false; }
+    L = Object.assign(blankTurn(), {
+      source: 'fouten', queue, at: 0, cap: queue.length + 6,
+      phase: 'ask', right: 0, wrong: 0, spoken: 0, xp: 0, started: Date.now(), finished: false,
+      newCount: 0, combo: 0, bestCombo: 0, lives: null
     });
     return true;
+  }
+
+  /* Le renforcement d'une rencontre se construit quand son tour arrive : son exercice
+     dépend de l'échelon que l'élément vient d'atteindre. Raté à la rencontre, il
+     est redemandé au même échelon ; réussi, à l'échelon suivant.
+     Quand plusieurs renforcements se suivent, on sert d'abord celui dont l'exercice
+     diffère du précédent — sans jamais rapprocher un renforcement de sa rencontre. */
+  function arm() {
+    while (L && L.at < L.queue.length && !L.queue[L.at].task) {
+      const prev = L.at > 0 ? L.queue[L.at - 1].ex : null;
+      const after = L.queue[L.at + 1] && L.queue[L.at + 1].task ? L.queue[L.at + 1].ex : null;
+      const avoid = new Set([prev, after].filter(Boolean));
+      let at = L.at, name = NL.srs.exerciseFor(L.queue[L.at].items[0], avoid, L.quiet);
+      for (let j = L.at + 1; name === prev && j < L.queue.length && !L.queue[j].task; j++) {
+        if (!NL.srs.apart(L.queue[j].metAt, L.at)) continue;
+        const n = NL.srs.exerciseFor(L.queue[j].items[0], avoid, L.quiet);
+        if (n !== prev) { at = j; name = n; }
+      }
+      const c = L.queue[at];
+      L.queue[at] = L.queue[L.at];
+      L.queue[L.at] = c;
+      try {
+        c.ex = name;
+        c.task = EX.get(name).build(c.items[0]);
+      } catch (e) { L.queue.splice(L.at, 1); }
+    }
+  }
+
+  /* Une faute sur un élément dont le renforcement attend plus loin n'ajoute pas de
+     reprise : le renforcement EST sa seconde chance.
+
+     Sauf à voix haute, tant que l'élément n'a jamais été dit : son second
+     exercice doit rester libre pour l'écrire. On le redemande donc à voix haute
+     sans l'attendre, quelques exercices plus loin. Dit cette fois, il est écrit
+     dans la séance ; sinon c'est ce second exercice qui le redemande à voix
+     haute, et l'écrit attend le lendemain. */
+  function again(c) {
+    const at = L.queue.findIndex((x, i) => i > L.at && x.second && !x.task && x.items[0] === c.items[0]);
+    if (at < 0) { if (L.queue.length < L.cap) L.queue.push(retryOf(c)); return; }
+    if (c.ex !== 'speak' || c.retry || L.queue.length >= L.cap || !NL.srs.firstAloud(c.items[0])) return;
+    const pos = Math.max(L.at + 1, Math.min(L.at + 1 + SECOND_GAP, at - SECOND_GAP));
+    L.queue.forEach(x => { if (x.second && x.metAt >= pos) x.metAt++; });
+    L.queue.splice(pos, 0, retryOf(c));
+    L.queue[at + 1].metAt = pos;
+  }
+
+  /* « Je ne peux pas parler » : plus rien à voix haute jusqu'à la fin de la
+     séance. Les exercices parlés qui restaient sont retirés sans être notés et
+     sans rien prendre au budget du jour : leurs éléments restent dus. Ceux que
+     needsVoice() désigne, dont le prochain exercice ne peut être que parlé,
+     reviendront à voix haute ; pour les autres, l'exercice sera tiré de
+     nouveau, et ils pourront être demandés par écrit. D'autres éléments dus
+     prennent leur place, choisis par compose() comme pour toute séance. Rien
+     n'est retenu au-delà : la séance suivante redemande. Ce n'est pas un
+     réglage, parce qu'un réglage suit l'appareil et s'oublie éteint. */
+  function quiet() {
+    const c = cur();
+    if (!c || c.ex !== 'speak' || L.phase !== 'ask') return;
+    NL.speech.abort(); NL.speech.clearRecording();
+    L.quiet = true;
+    /* Le bilan dira combien d'exercices parlés sont gardés pour la séance suivante. */
+    L.putOff = (L.putOff || 0) + L.queue.slice(L.at).filter(x => x.ex === 'speak').length;
+    const head = L.queue.slice(0, L.at), rest = L.queue.slice(L.at);
+    const spoken = rest.filter(x => x.ex === 'speak').length;
+    /* Le second exercice d'un élément qui ne peut être que dit part avec son
+       exercice parlé : servi sans parler, il le ferait monter par écrit sans
+       qu'il ait jamais été dit. Sa place, elle, est reprise ; la séance
+       raccourcit donc d'un exercice par élément mis de côté. */
+    const kept = rest.filter(x => x.ex !== 'speak' && !(!x.task && NL.srs.needsVoice(x.items[0])));
+    /* Les séances à liste fixe, les fautes et le défi, ne se complètent pas. */
+    let more = [];
+    if (L.source !== 'fouten' && L.source !== 'defi') {
+      const here = new Set();
+      L.queue.forEach(x => x.items.forEach(it => here.add(it.id)));
+      more = NL.srs.compose(L.source, undefined, { quiet: true, without: here }).due.slice(0, spoken);
+    }
+    L.queue = settle(head.concat(kept, spread(build(more, [], true), kept.length ? kept[kept.length - 1].ex : null)), L.at);
+    Object.assign(L, blankTurn());
+    L.phase = 'ask';
+    /* Il ne restait que du parlé, et rien n'a encore été répondu : il n'y a pas
+       de séance à conclure, ni de journée à compter. */
+    if (L.at >= L.queue.length && L.right + L.wrong === 0) { L = null; NL.ui.go('vandaag'); NL.ui.toast(NL.t.quietOnly); return; }
+    if (L.at >= L.queue.length) return finish();
+    arm();
+    if (L.at >= L.queue.length) return finish();
+    NL.ui.render();
+    autoplay();
+  }
+
+  /* Resserrée, la file peut rapprocher un second exercice de son élément : il
+     attend alors que SECOND_GAP exercices l'en séparent de nouveau, comme dans
+     NL.srs.lace(), et n'est pas servi s'il n'y arrive pas avant la fin. */
+  function settle(queue, from) {
+    const out = queue.slice(0, from), waiting = [];
+    const ripe = () => waiting.findIndex(x => NL.srs.apart(x.metAt, out.length));
+    const flush = () => { for (let k = ripe(); k >= 0; k = ripe()) out.push(waiting.splice(k, 1)[0]); };
+    queue.slice(from).forEach(x => {
+      flush();
+      if (x.second) {
+        let k = out.length - 1;
+        while (k >= 0 && (out[k].second || out[k].ex === 'match' || out[k].items[0] !== x.items[0])) k--;
+        x.metAt = k;
+        if (!NL.srs.apart(k, out.length)) { waiting.push(x); return; }
+      }
+      out.push(x);
+    });
+    flush();
+    return out;
   }
 
   const cur = () => L && L.queue[L.at];
@@ -139,8 +278,9 @@ NL.screens.sessie = (function () {
     L.lastSpoken = !!v.spoken;
     L.close = !!v.close;
 
-    c.items.forEach(it => NL.srs.grade(it, v.ok, { spoken: v.spoken, ex: c.ex }));
-    NL.srs.spend(1);
+    c.items.forEach(it => NL.srs.grade(it, v.ok, { spoken: v.spoken, ex: c.ex, defi: L.source === 'defi' }));
+    /* La séance sur les fautes est hors du budget du jour. */
+    if (L.source !== 'fouten') NL.srs.spend(1);
 
     if (v.ok) {
       L.right++;
@@ -153,7 +293,7 @@ NL.screens.sessie = (function () {
       L.combo = 0;
       NL.audio.no();
       if (L.source === 'defi') L.lives--;
-      else if (L.queue.length < MAX_TASKS + 6) L.queue.push(retryOf(c));
+      else again(c);
     }
     NL.ui.render();
   }
@@ -181,20 +321,27 @@ NL.screens.sessie = (function () {
     Object.assign(L, blankTurn());
     L.phase = 'ask';
     if (L.at >= L.queue.length || (L.source === 'defi' && L.lives <= 0)) return finish();
+    arm();
+    if (L.at >= L.queue.length) return finish();
     NL.ui.render();
     autoplay();
   }
 
   function skip() {
     const c = cur(); if (!c) return;
-    c.items.forEach(it => NL.srs.grade(it, false, { ex: c.ex }));
-    NL.srs.spend(1);
-    L.wrong++;
+    /* Passer le plateau de paires n'enregistre rien : ses éléments ne sont ni
+       notés, ni comptés, et la rencontre se fait dans leurs propres exercices. */
+    const board = c.ex === 'match';
+    if (!board) {
+      c.items.forEach(it => NL.srs.grade(it, false, { ex: c.ex }));
+      if (L.source !== 'fouten') NL.srs.spend(1);
+      L.wrong++;
+    }
     L.combo = 0;
     L.close = false;
     L.phase = 'no';
-    if (L.source === 'defi') L.lives--;
-    else if (L.queue.length < MAX_TASKS + 6) L.queue.push(retryOf(c));
+    /* Un plateau passé n'est ni une faute ni une reprise : on le laisse. */
+    if (!board) { if (L.source === 'defi') L.lives--; else again(c); }
     NL.audio.no();
     NL.ui.render();
   }
@@ -220,9 +367,10 @@ NL.screens.sessie = (function () {
     const c = cur();
     const ex = EX.get(c.ex);
     const pct = Math.round(L.at / L.queue.length * 100);
-    const it = c.items[0];
-    const unit = NL.content.unit(it.unit);
-    const stage = NL.srs.stageOf(it);
+    /* Les unités de toute la séance, lues dans sa file, et non celle de
+       l'exercice en cours : à cheval sur deux unités, elle les nomme toutes
+       les deux, comme la carte de l'accueil. */
+    const span = NL.srs.unitSpan([].concat.apply([], L.queue.map(x => x.items)));
 
     return '<div class="lesson">' +
       '<div class="lesson-head">' +
@@ -236,22 +384,13 @@ NL.screens.sessie = (function () {
 
       '<div class="lesson-body"><div class="stage">' +
       '<div class="kicker"><span class="sub">' +
-      esc(unit ? unit.name : 'Mes mots') +
-      (c.retry ? ' · ' + NL.t.again2 : '') +
-      '</span>' + esc(ex.kicker) + stagePips(stage, it) + '</div>' +
+      esc(span ? NL.ui.unitLabel(span) : NL.t.wordsEyebrow) +
+      (c.retry || c.second ? ' · ' + NL.t.again2 : '') +
+      '</span>' + esc(ex.kicker) + '</div>' +
       ex.view(c.task, L, L.phase) +
       '</div></div>' +
       foot(c, ex) +
       '</div>';
-  }
-
-  function stagePips(stage, item) {
-    const top = NL.srs.maxRung(item);
-    const r = Math.max(0, stage);
-    let s = '<span class="pips">';
-    for (let i = 0; i < top; i++) s += '<i class="' + (i <= stage ? 'on' : '') + '"></i>';
-    s += '<b>' + NL.t.rungs[Math.min(r, NL.t.rungs.length - 1)] + '</b>';
-    return s + '</span>';
   }
 
   function foot(c, ex) {
@@ -304,7 +443,6 @@ NL.screens.sessie = (function () {
   }
 
   function done() {
-    const acc = (L.right + L.wrong) ? Math.round(L.right / (L.right + L.wrong) * 100) : 100;
     const mins = Math.max(1, Math.round((Date.now() - L.started) / 60000));
     const m = NL.state.meta();
     if (L.source === 'defi') return defiDone(mins);
@@ -312,10 +450,10 @@ NL.screens.sessie = (function () {
       '<div class="done-mark">' + (L.wrong === 0 ? '\u{1F3AF}' : '\u{2713}') + '</div>' +
       '<h2>' + (L.wrong === 0 ? NL.t.doneFlawless : NL.t.doneOk) + '</h2>' +
       '<p class="done-sub">' + (L.spoken > 0
-        ? NL.t.doneSpoken(L.spoken)
-        : NL.t.doneNoSpoken) + '</p>' +
+        ? NL.t.doneSpoken(L.spoken) + (L.putOff > 0 ? ' ' + NL.t.doneSpokenKept(L.putOff) : '')
+        : L.putOff > 0 ? NL.t.doneSpokenKept(L.putOff) : NL.t.doneNoSpoken) + '</p>' +
       '<div class="tally">' +
-      box('+' + L.xp, NL.t.tallyXp, 'gold') + box(acc + '%', NL.t.tallyRight, 'blue') +
+      box('+' + L.xp, NL.t.tallyXp, 'gold') + box(L.right + '/' + (L.right + L.wrong), NL.t.tallyRight, 'blue') +
       box(m.streak, NL.t.tallyDays, 'green') + box(mins + 'm', NL.t.tallyTime, '') +
       (L.bestCombo >= 3 ? box('\u{1F525} ' + L.bestCombo, NL.t.tallyCombo, L.comboRecord ? 'gold' : '') : '') +
       '</div>' +
@@ -356,6 +494,7 @@ NL.screens.sessie = (function () {
     if (d.check !== undefined) return check();
     if (d.next !== undefined) return next();
     if (d.skip !== undefined) return skip();
+    if (d.quiet !== undefined) return quiet();
     if (!L || L.phase !== 'ask') return;
 
     const c = cur();
