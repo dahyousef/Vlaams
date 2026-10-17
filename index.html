@@ -4719,16 +4719,17 @@ NL.ex = (function () {
   /* Ce que la réponse tapée accepte pour un élément : la cible, ses variantes
      flamandes (une par virgule pour un mot, la phrase entière pour une phrase) et
      sa liste « also ». Un mot se tape avec ou sans article, comme la cible. */
+  const variants = item => !item.be ? []
+    : item.kind === 'word' ? String(item.be).split(',').map(f => f.trim()).filter(Boolean) : [item.be];
   function accepted(item) {
     const word = item.kind === 'word';
-    const be = !item.be ? [] : word ? String(item.be).split(',') : [item.be];
-    return U.uniq([item.nl].concat(be, item.also || [])
-      .map(x => U.norm(word ? U.bare(String(x).trim()) : x)).filter(Boolean));
+    return U.uniq([item.nl].concat(variants(item), item.also || [])
+      .map(x => U.norm(word ? U.bare(x) : x)).filter(Boolean));
   }
   /* Les éléments qui disent la même chose : taper l'un est juste pour l'autre. */
   const siblings = item => NL.content.allItems().filter(x => x.id !== item.id && x.nl && sameSense(x, item));
-  /* `a` accepte-t-il le néerlandais de `b` comme réponse ? */
-  const accepts = (a, b) => accepted(a).indexOf(U.norm(U.bare(b.nl))) >= 0;
+  /* Les réponses acceptées (`list`) comprennent-elles le néerlandais de `b` ? */
+  const accepts = (list, b) => list.indexOf(U.norm(U.bare(b.nl))) >= 0;
 
   /* La nature du mot, grossièrement : « oui » face à « sorry / spreken / ja » se
      résout sans connaître le mot, parce qu'un verbe ne répond pas à « oui ». */
@@ -4754,7 +4755,8 @@ NL.ex = (function () {
     }
     /* Ni un synonyme, ni une réponse que l'un des deux accepte : « dag » face à
        « bonjour » ne doit pas offrir « hallo » comme faux. */
-    pool = pool.filter(x => U.norm(label(x)) !== tn && !sameSense(x, item) && !accepts(item, x) && !accepts(x, item));
+    const mine = accepted(item);
+    pool = pool.filter(x => U.norm(label(x)) !== tn && !sameSense(x, item) && !accepts(mine, x) && !accepts(accepted(x), item));
 
     const score = x => {
       const s = label(x);
@@ -5252,9 +5254,7 @@ NL.ex = (function () {
   function hereLine(item, shown, keepSame) {
     if (!item || !item.be) return '';
     const own = U.norm(U.bare(item.nl)), seen = U.norm(shown);
-    const forms = (item.kind === 'word' ? String(item.be).split(',') : [item.be])
-      .map(f => f.trim()).filter(Boolean)
-      .filter(f => keepSame || (U.norm(U.bare(f)) !== own && U.norm(U.bare(f)) !== seen));
+    const forms = variants(item).filter(f => keepSame || (U.norm(U.bare(f)) !== own && U.norm(U.bare(f)) !== seen));
     if (!forms.length) return '';
     return '<p class="v-be">' + NL.t.hereThey + ' ' + forms.map(f => boldForm(item, f)).join(', ') + '</p>';
   }
