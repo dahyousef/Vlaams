@@ -2610,6 +2610,9 @@ NL.sync = (function () {
       else { const w = da > db ? a : b; out[k] = w[k]; out[cnt] = w[cnt]; }
     });
     out.placed = !!(a.placed || b.placed);
+    /* Le robot de sauvegarde écrit lastBackup sans toucher à updatedAt : le côté
+       le plus récent peut porter la date d'avant. Elle ne fait que croître. */
+    if (a.lastBackup || b.lastBackup) out.lastBackup = Math.max(a.lastBackup || 0, b.lastBackup || 0);
     /* La frontière ne recule jamais et les listes de choses faites s'unissent —
        sauf remise à zéro : tout ce qui relève de la progression suit alors le
        côté qui porte la plus récente, sinon l'autre appareil rendrait ce qu'on
