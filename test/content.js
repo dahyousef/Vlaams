@@ -45,11 +45,13 @@ NL.state.open().then(() => {
     (u.words || []).forEach((w, i) => {
       texts.push([w.nl, u.id + ':w' + i]);
       if (w.be) texts.push([w.be, u.id + ':w' + i + ' (variante)']);
+      (w.also || []).forEach(a => texts.push([a, u.id + ':w' + i + ' (on dit aussi)']));
       (w.drills || []).forEach((d, j) => texts.push([d.nl, u.id + ':w' + i + ' phrase ' + (j + 1)]));
     });
     (u.phrases || []).forEach((p, i) => {
       texts.push([p.nl, u.id + ':p' + i]);
       if (p.be) texts.push([p.be, u.id + ':p' + i + ' (variante)']);
+      (p.also || []).forEach(a => texts.push([a, u.id + ':p' + i + ' (on dit aussi)']));
     });
   });
   (NL.content.patterns || []).forEach(g => (g.drills || []).forEach((d, j) => texts.push([d.nl, g.id + ' phrase ' + (j + 1)])));
@@ -71,6 +73,7 @@ NL.state.open().then(() => {
   /* Une exception qui ne sert plus ne protège plus rien. */
   Object.keys(FLEMISH).forEach(t => ok(used.has(t), '« ' + t + ' » est dans FLEMISH mais plus dans le cours : retirer l’exception'));
   ok(count > 3000, 'only ' + count + ' tokens were checked: the content did not load');
+  ok(NL.content.alsoReport && NL.content.alsoReport.missing.length === 0, 'src/content/also.js : ' + ((NL.content.alsoReport || { missing: ['(table non chargée)'] }).missing.join(', ')) + ' ne correspond à aucun élément du lexique');
   console.log('  orthographe     ' + count + ' formes vérifiées contre ' + forms.size + ', ' + unknown.size + ' inconnue(s), ' +
     Object.keys(FLEMISH).length + ' flamandes assumées');
 

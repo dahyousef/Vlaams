@@ -70,6 +70,20 @@ NL.ex = (function () {
     return U.norm(U.bare(a.nl)) === U.norm(U.bare(b.nl));
   }
 
+  /* Ce que la réponse tapée accepte pour un élément : la cible, ses variantes
+     flamandes (une par virgule pour un mot, la phrase entière pour une phrase) et
+     sa liste « also ». Un mot se tape avec ou sans article, comme la cible. */
+  function accepted(item) {
+    const word = item.kind === 'word';
+    const be = !item.be ? [] : word ? String(item.be).split(',') : [item.be];
+    return U.uniq([item.nl].concat(be, item.also || [])
+      .map(x => U.norm(word ? U.bare(String(x).trim()) : x)).filter(Boolean));
+  }
+  /* Les éléments qui disent la même chose : taper l'un est juste pour l'autre. */
+  const siblings = item => NL.content.allItems().filter(x => x.id !== item.id && x.nl && sameSense(x, item));
+  /* `a` accepte-t-il le néerlandais de `b` comme réponse ? */
+  const accepts = (a, b) => accepted(a).indexOf(U.norm(U.bare(b.nl))) >= 0;
+
   /* La nature du mot, grossièrement : « oui » face à « sorry / spreken / ja » se
      résout sans connaître le mot, parce qu'un verbe ne répond pas à « oui ». */
   function wordClass(x) {
@@ -92,7 +106,9 @@ NL.ex = (function () {
       pool = pool.concat(NL.content.allItems().filter(x =>
         x.kind === item.kind && x.unit !== item.unit && x.id !== item.id && NL.srs.isSeen(x)));
     }
-    pool = pool.filter(x => U.norm(label(x)) !== tn && !sameSense(x, item));
+    /* Ni un synonyme, ni une réponse que l'un des deux accepte : « dag » face à
+       « bonjour » ne doit pas offrir « hallo » comme faux. */
+    pool = pool.filter(x => U.norm(label(x)) !== tn && !sameSense(x, item) && !accepts(item, x) && !accepts(x, item));
 
     const score = x => {
       const s = label(x);
@@ -287,9 +303,16 @@ NL.ex = (function () {
         '</div>';
     },
     ready: (t, L) => L.input.trim().length > 0,
+    /* Juste si l'entrée vaut l'une des réponses de l'élément, ou de celle d'un
+       autre élément au même sens (alors `other` : le panneau nomme le mot
+       demandé). « Presque » se mesure contre toutes, à une lettre. */
     judge(t, L) {
-      const ok = U.typedOk(L.input, t.target);
-      return { ok, close: !ok && U.typedOk(L.input, t.target, 1) };
+      const own = accepted(t.item);
+      if (own.some(a => U.typedOk(L.input, a))) return { ok: true };
+      const others = [];
+      siblings(t.item).forEach(x => accepted(x).forEach(a => others.push(a)));
+      if (others.some(a => U.typedOk(L.input, a))) return { ok: true, other: true };
+      return { ok: false, close: own.concat(others).some(a => U.typedOk(L.input, a, 1)) };
     },
     answer: t => t.target
   };
@@ -556,5 +579,39 @@ NL.ex = (function () {
     }
   };
 
-  return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, recordPanel, selfRate, sameSense, wordScore };
+  /* La ligne « Ici on dit » : les formes flamandes de l'élément, sans celle qui
+     répète le néerlandais standard ni la réponse déjà affichée (`shown`), sauf
+     `keepSame` — dans « Comment le dit-on ici ? » la variante EST la réponse. En
+     gras, ce qui change par rapport au standard ; la ponctuation reste dehors. */
+  const PUNCT = '[.,!?;:"()…]*';
+  function boldForm(item, form) {
+    const diff = U.diffWords(item.nl, form);
+    let n = 0, out = '', open = false;
+    form.split(/\s+/).filter(Boolean).forEach(tok => {
+      const m = tok.match(new RegExp('^(' + PUNCT + ')(.*?)(' + PUNCT + ')$'));
+      const lead = m[1], core = m[2], trail = m[3];
+      const d = U.norm(core) ? diff[n++] : null;
+      const changed = !!d && (!d.ok || d.close);
+      const sep = out ? ' ' : '';
+      if (changed && open && !lead) out += ' ' + esc(core);
+      else {
+        if (open) { out += '</b>'; open = false; }
+        if (changed) { out += sep + esc(lead) + '<b>' + esc(core); open = true; }
+        else out += sep + esc(lead + core + trail);
+      }
+      if (changed && trail) { out += '</b>' + esc(trail); open = false; }
+    });
+    return out + (open ? '</b>' : '');
+  }
+  function hereLine(item, shown, keepSame) {
+    if (!item || !item.be) return '';
+    const own = U.norm(U.bare(item.nl)), seen = U.norm(shown);
+    const forms = (item.kind === 'word' ? String(item.be).split(',') : [item.be])
+      .map(f => f.trim()).filter(Boolean)
+      .filter(f => keepSame || (U.norm(U.bare(f)) !== own && U.norm(U.bare(f)) !== seen));
+    if (!forms.length) return '';
+    return '<p class="v-be">' + NL.t.hereThey + ' ' + forms.map(f => boldForm(item, f)).join(', ') + '</p>';
+  }
+
+  return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, recordPanel, selfRate, sameSense, wordScore, hereLine };
 })();

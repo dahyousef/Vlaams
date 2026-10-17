@@ -72,6 +72,8 @@ NL.t = {
   defiToBeat: n => 'Record à battre : ' + n + '.',
   defiAgain: 'Relancer le défi',
   hereThey: 'Ici on dit :',
+  askedFor: 'On demandait :',
+  alsoSaid: 'On dit aussi :',
   matchHint: 'Touche un mot néerlandais, puis sa traduction.',
   doneFlawless: 'Sans faute.',
   doneOk: 'Session terminée.',

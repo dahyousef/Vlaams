@@ -8,7 +8,7 @@ NL.screens.sessie = (function () {
   const MAX_TASKS = NL.srs.MAX_TASKS;
 
   function blankTurn() {
-    return { sel: null, picked: [], input: '', close: false, matchSel: null, matchGone: [], matchBad: null, speech: { phase: 'idle', tries: 0, selfRated: null } };
+    return { sel: null, picked: [], input: '', close: false, other: false, matchSel: null, matchGone: [], matchBad: null, speech: { phase: 'idle', tries: 0, selfRated: null } };
   }
 
   /* ---------------- le défi ----------------
@@ -277,6 +277,7 @@ NL.screens.sessie = (function () {
     L.phase = v.ok ? 'ok' : 'no';
     L.lastSpoken = !!v.spoken;
     L.close = !!v.close;
+    L.other = !!v.other;
 
     c.items.forEach(it => NL.srs.grade(it, v.ok, { spoken: v.spoken, ex: c.ex, defi: L.source === 'defi' }));
     /* La séance sur les fautes est hors du budget du jour. */
@@ -339,6 +340,7 @@ NL.screens.sessie = (function () {
     }
     L.combo = 0;
     L.close = false;
+    L.other = false;
     L.phase = 'no';
     /* Un plateau passé n'est ni une faute ni une reprise : on le laisse. */
     if (!board) { if (L.source === 'defi') L.lives--; else again(c); }
@@ -417,15 +419,23 @@ NL.screens.sessie = (function () {
       : L.close ? NL.t.almost
         : L.source === 'defi' && L.lives <= 0 ? NL.t.defiOut
           : NL.t.wrongTitle;
-    const be = (it && it.be && NL.state.meta().showFlemish !== false) ? it.be : null;
+    /* Dans « Comment le dit-on ici ? » la variante est la réponse : elle remplace
+       la ligne de réponse, juste ou faux, que la ligne flamande soit réglée ou non.
+       Ailleurs la ligne flamande ne répète ni le standard ni la réponse. */
+    const vl = c.ex === 'vlaams' ? EX.hereLine(it, '', true) : '';
+    const be = vl || (NL.state.meta().showFlemish !== false ? EX.hereLine(it, ans, false) : '');
+    /* Un autre élément au même sens a été tapé : on dit quel mot était demandé. */
+    const asked = ok && L.other ? '<p>' + NL.t.askedFor + ' <b>' + esc(ans) + '</b></p>' : '';
+    const also = it && it.also && it.also.length
+      ? '<p class="v-also">' + NL.t.alsoSaid + ' ' + esc(it.also.join(', ')) + '</p>' : '';
     return '<div class="foot ' + (ok ? 'ok' : 'no') + '"><div class="foot-in">' +
       '<div class="verdict ' + (ok ? 'ok' : 'no') + '">' +
       '<span class="v-icon">' + (ok
         ? '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7"/></svg>'
         : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>') + '</span>' +
       '<div><h5>' + note + '</h5>' +
-      (ans ? '<p><b>' + esc(ans) + '</b></p>' : '') +
-      (be ? '<p class="v-be">' + NL.t.hereThey + ' <b>' + esc(be) + '</b></p>' : '') +
+      (vl ? '' : asked || (ans ? '<p><b>' + esc(ans) + '</b></p>' : '')) +
+      be + also +
       (it && it.note ? '<p class="v-note">' + esc(it.note) + '</p>' : '') +
       '</div></div>' +
       '<button class="btn ' + (ok ? 'btn-good' : 'btn-bad') + ' push" data-next="1">' + NL.t.next + '</button>' +
