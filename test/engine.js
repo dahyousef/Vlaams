@@ -175,25 +175,31 @@ NL.state.open().then(() => {
      réponse, et jamais moins de huit heures après elle. Les instants sont écrits
      en UTC, et ce qu'on en attend aussi, relevé sur le calendrier de Bruxelles.
      Le fuseau est fixé pour ce bloc seul : la CI, qui tourne en UTC, voit ainsi
-     les mêmes nuits de changement d'heure. */
+     les mêmes nuits de changement d'heure. Effacer TZ ne rend pas le fuseau de
+     départ, Node garde le dernier : on remet donc son nom, et le reste de la
+     suite tourne là où il a commencé. */
   {
-    const zone = process.env.TZ;
+    const offsets = () => [Date.UTC(2026, 0, 15), Date.UTC(2026, 6, 15)].map(t => new Date(t).getTimezoneOffset()).join(' / ');
+    const before = offsets();
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     process.env.TZ = 'Europe/Brussels';
-    fresh();
-    const it = NL.content.allItems().find(i => i.kind === 'word' && !i.cognate);
-    [
-      ['10 March 2026, 08:00', '2026-03-10T07:00:00Z', 0, '2026-03-10T23:00:00Z'],      // minuit, le 11
-      ['10 March 2026, 23:50', '2026-03-10T22:50:00Z', 0, '2026-03-11T06:50:00Z'],      // 7 h 50, le 11
-      ['25 October 2026, 00:30', '2026-10-24T22:30:00Z', 0, '2026-10-25T23:00:00Z'],    // minuit, le 26 : on recule d'une heure la nuit du 25
-      ['28 March 2026, 23:50', '2026-03-28T22:50:00Z', 0, '2026-03-29T06:50:00Z'],      // 8 h 50, le 29 : on avance d'une heure cette nuit-là
-      ['20 October 2026, 08:00, rung 3', '2026-10-20T06:00:00Z', 3, '2026-10-27T23:00:00Z'] // huit jours : minuit, le 28
-    ].forEach(([when, at, rung, want]) => {
-      B.clock.set(Date.parse(at));
-      put(it, rung, Date.parse(at));
-      const r = NL.srs.grade(it, true, { ex: 'type' });
-      ok(r.due === Date.parse(want), 'answered on ' + when + ' in Brussels, an item is due ' + new Date(r.due).toISOString() + ', not ' + want);
-    });
-    if (zone === undefined) delete process.env.TZ; else process.env.TZ = zone;
+    try {
+      fresh();
+      const it = NL.content.allItems().find(i => i.kind === 'word' && !i.cognate);
+      [
+        ['10 March 2026, 08:00', '2026-03-10T07:00:00Z', 0, '2026-03-10T23:00:00Z'],      // minuit, le 11
+        ['10 March 2026, 23:50', '2026-03-10T22:50:00Z', 0, '2026-03-11T06:50:00Z'],      // 7 h 50, le 11
+        ['25 October 2026, 00:30', '2026-10-24T22:30:00Z', 0, '2026-10-25T23:00:00Z'],    // minuit, le 26 : on recule d'une heure la nuit du 25
+        ['28 March 2026, 23:50', '2026-03-28T22:50:00Z', 0, '2026-03-29T06:50:00Z'],      // 8 h 50, le 29 : on avance d'une heure cette nuit-là
+        ['20 October 2026, 08:00, rung 3', '2026-10-20T06:00:00Z', 3, '2026-10-27T23:00:00Z'] // huit jours : minuit, le 28
+      ].forEach(([when, at, rung, want]) => {
+        B.clock.set(Date.parse(at));
+        put(it, rung, Date.parse(at));
+        const r = NL.srs.grade(it, true, { ex: 'type' });
+        ok(r.due === Date.parse(want), 'answered on ' + when + ' in Brussels, an item is due ' + new Date(r.due).toISOString() + ', not ' + want);
+      });
+    } finally { process.env.TZ = zone; }
+    ok(offsets() === before, 'after the Brussels block the rest of the suite runs at UTC offsets ' + offsets() + ' (January / July), not ' + before + ' as before it');
     console.log('  8 h → minuit ; 23 h 50 → huit heures plus tard ; les deux nuits de changement d’heure ; huit jours → minuit');
   }
 
