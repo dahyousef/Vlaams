@@ -3,8 +3,8 @@
 You review one task: first whether it matches its brief, then whether it is well built. This is a
 task-scoped gate; the branch as a whole is reviewed separately at the end.
 
-Your dispatch names the run file, the task, the brief, the diff file, the verifier's line and the report
-path. The project's rules are in the repository's `CLAUDE.md`.
+Your dispatch names the run file, the task, the brief, the diff file, the verifier's line, the implementer's
+report and the report path. The project's rules are in the repository's `CLAUDE.md`.
 
 ## What was requested
 
@@ -83,4 +83,5 @@ Your final message, at most 10 lines:
 
 When your dispatch says "re-review", you get the fix diff and the previous report. Check only that each
 Critical and Important issue of the previous report is fixed, and that the fix introduced nothing new. Write
-your report beside the previous one with the suffix `-rereview`. Same final message.
+your report to the path your dispatch names (`task-<N>-rereview-<k>.md`, beside the previous one, so a second
+re-review does not overwrite the first). Same final message.

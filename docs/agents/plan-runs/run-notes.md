@@ -17,7 +17,8 @@ Where they differ from a command in your brief, these notes win.
 - PowerShell mangles double quotes inside an argument and non-ASCII characters in a pipe. For anything beyond
   a plain command (a pipe, a redirection, quotes, `;`, `$?`, an accent), write the command lines to a `.sh`
   file in `<WS>/tmp/` with the Write tool and run `sh "<that file>"`. The worktree path contains spaces:
-  quote it.
+  quote it. A risky git command (`git push`, `reset`, `clean`, `checkout --`, `restore`, `branch -D`) always
+  runs as a plain command, never inside a `.sh` file: the guardrail reads only the command string.
 - Name the repository root `.`, never `"$(pwd)"`.
 - Sources in the working tree have CRLF line endings and commits have LF (`core.autocrlf=true`). Match on
   content, not on line endings; `git diff` is the judge of what you changed.
@@ -40,7 +41,8 @@ Where they differ from a command in your brief, these notes win.
 - If the brief leaves a decision open, do not decide it: stop with status `NEEDS_RULING` and the question in
   one or two lines.
 - Comments match the file you edit (mostly French). User-facing text is French and lives in
-  `src/core/fr.js`. `const` and arrow functions; no optional chaining.
+  `src/core/fr.js`. `const`, or `let` where a value changes, never `var`; no optional chaining; arrows for short
+  helpers and callbacks, `function` declarations for longer named functions.
 
 ## Git
 
@@ -53,7 +55,8 @@ Where they differ from a command in your brief, these notes win.
   does not name `index.html` and `artifact.html`, stage them too.
 - One commit for the task; one more per fix round. Never amend or rewrite a commit.
 - No `git stash`. A hook refuses `git reset --hard`, `git clean -f`, `git checkout -- .`, `git restore .`,
-  `git branch -D` and any push to `main`. If a command is refused, do not look for another way: report.
+  `git branch -D` and any push to `main`. A refused command is never retried, in any form. A push or `gh` step
+  in your brief is the task controller's: skip it and say so in your report.
 - The repository is public: no personal data in files or commit messages.
 - Do not edit the plan, `GLOSSARY.md`, `docs/adr/`, or any file your brief does not name.
 

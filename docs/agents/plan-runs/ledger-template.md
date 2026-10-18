@@ -14,7 +14,7 @@ Log.
 |---|---|---|---|---|---|---|
 | 1 | mechanical | #<n> | pending | | | |
 
-States: `pending`, `in progress`, `done`, `fallback`, `needs ruling`, `needs design`, `failed`.
+States: `pending`, `in progress`, `done`, `fallback`, `needs ruling`, `needs design`, `failed`, `replaced by <id>`.
 
 ## Rulings
 

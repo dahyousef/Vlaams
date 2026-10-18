@@ -8,7 +8,7 @@ reviewer (`opus`) checks what per-task reviews cannot see. It is not a second fu
 Your dispatch names the run file and the run's base commit.
 
 1. Read the log of `<WS>/progress.md`: every task's verdict and open points.
-2. Write `<WS>/reviews/closing.diff` with a `.sh` file: `git diff --stat BASE..HEAD`, then
+2. Write `<WS>/reviews/closing.diff` with a `.sh` file in `<WS>/tmp/`: `git diff --stat BASE..HEAD`, then
    `git diff -U5 BASE..HEAD -- . ':(exclude)index.html' ':(exclude)artifact.html'`. Do not read it whole.
 3. Dispatch at most four area reviewers (`sonnet`), one for each area the diff's stat touches:
    - engine: `src/core/srs.js` and the code that calls it;
@@ -17,7 +17,8 @@ Your dispatch names the run file and the run's base commit.
    - tests: `test/`.
    Each gets the area's paths, the diff file, `reviewer.md`'s Part 2 and Calibration, the checklist below,
    and a report path `<WS>/reports/closing-<area>.md`. Its final message, at most 10 lines: issue counts and
-   the checklist items it found broken.
+   the checklist items it found broken. Dispatch each one in the foreground and wait for its return; never end
+   your turn while one runs.
 4. Read the area reviewers' final messages. Open a report only for a Critical or Important item, and read the
    diff only around it.
 5. Check the checklist against the diff's stat and the areas' answers.
@@ -32,7 +33,8 @@ Your dispatch names the run file and the run's base commit.
 - No English interface string reaches `index.html`: `test/smoke.js` checks it; confirm it ran in the
   verifier lines of the log.
 - `index.html` and `artifact.html` are committed and match their sources.
-- `resetAt` only grows; `ENGINE_EPOCH` is unchanged unless the plan says otherwise.
+- `resetAt` only grows; `ENGINE_EPOCH` is unchanged unless the plan says otherwise; reset and sync still agree
+  with ADR 0006.
 - Every task in the log has a verifier pass and an Approved review.
 
 ## Your report and your final message
