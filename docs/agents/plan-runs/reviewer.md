@@ -36,7 +36,7 @@ downgrades a finding.
 
 ## Tests
 
-The verifier ran the whole suite on this commit; its line is in your dispatch. Never run the whole suite. Run
+The verifier ran the whole suite on this commit (in a fallback review, on the current HEAD); its line is in your dispatch. Never run the whole suite. Run
 a test only when the code raises a specific doubt that no existing run answers, and then only that file
 (`node test/<name>.js .`). Warnings or noise in reported test output are findings.
 

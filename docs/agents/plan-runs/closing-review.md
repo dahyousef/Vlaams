@@ -27,7 +27,7 @@ Your dispatch names the run file and the run's base commit.
 - Storage keys keep their spelling: `vlaams-onderweg`, `vlaams/fallback`, `vlaams/outbox`, `vlaams/owner`,
   `vlaams/errors`, `vlaams/noaccount`.
 - Stored record field names are unchanged: `stage`, `due`, `interval`, `ease`, `reps`, `lapses`, `said`,
-  `retired`.
+  `retired`, `base`.
 - `NL.srs.compose()` is still the only place a session's content is decided.
 - No English interface string reaches `index.html`: `test/smoke.js` checks it; confirm it ran in the
   verifier lines of the log.
