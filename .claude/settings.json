@@ -14,6 +14,12 @@
         "hooks": [
           { "type": "command", "command": "node -e \"require('child_process').spawnSync(process.execPath,[(process.env.CLAUDE_PROJECT_DIR||'.')+'/.claude/hooks/run-reminder.js'],{stdio:'inherit'})\"; exit $LASTEXITCODE" }
         ]
+      },
+      {
+        "matcher": "startup|clear",
+        "hooks": [
+          { "type": "command", "command": "node -e \"require('child_process').spawnSync(process.execPath,[(process.env.CLAUDE_PROJECT_DIR||'.')+'/.claude/hooks/transcript-path.js'],{stdio:'inherit'})\"; exit $LASTEXITCODE" }
+        ]
       }
     ]
   }

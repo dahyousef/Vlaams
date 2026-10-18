@@ -48,10 +48,13 @@ The dispatch prompt:
 ## Sittings
 
 - A sitting is one session. At its start, before the first dispatch, append one line to `<WS>/run.md`:
-  `Sitting: <date and time> — <its transcript path>`, the path found as Measuring below says. A sitting that is
-  cut off is then recorded too. The sitting ends at the maintainer's word, at a limit stop, or at the first task
-  boundary after you have dispatched 10 tasks in it. Then tell the maintainer to start the next sitting with
-  the start prompt below, in a new session.
+  `Sitting: <date and time> — <its transcript path>`, the path the session-start hook printed
+  (`This session's transcript: …`), copied. Before writing the line, check that a file exists at that path. If
+  there is none, write `Sitting: <date and time> — no transcript on disk at <path>`; if the hook printed no line,
+  write `Sitting: <date and time> — transcript unknown (no hook line)`. A sitting that is cut off is then recorded too.
+  The sitting ends at the maintainer's word, at a limit stop, or at the first task
+  boundary after you have dispatched 10 tasks in it. Then tell the maintainer to start the next sitting with the
+  start prompt below, in a new session.
 - Never continue a run with `--resume` or `--continue`: a resumed run rewrites its whole context into the
   cache. A new sitting starts from the files.
 - After a compaction or a resume, a hook reminds you to re-read this file and the Status table. Do it before
@@ -69,8 +72,8 @@ After the third task is `done`, and at the end of the run, run
 
     node "$HOME/.claude/tools/measure-session/usage.js" "<transcript path without .jsonl>" "<WS>/tmp/usage.json"
 
-on this sitting's transcript — the newest `.jsonl` in `$HOME/.claude/projects/<this worktree's project
-folder>/` — and on the earlier sittings named by the `Sitting:` lines of `run.md`, not the log. Report the
+on the transcript of each sitting named by the `Sitting:` lines of `run.md`, this one included, not the log. A
+sitting whose line says no transcript or unknown is reported as « not measured », never guessed. Report the
 weighted total per task, and the average per task for `engine` and for `mechanical` tasks apart, beside it. If
 the average after three tasks is above 1.32M (60% of phase 1's 2.2M per task), stop and tell the maintainer
 before going on.
