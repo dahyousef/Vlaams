@@ -150,7 +150,7 @@ NL.state.open().then(() => {
     console.log('  french sweep    build is clean of known EN/NL interface strings');
   }
 
-  /* Ni `var` ni chaînage optionnel (`?.`) dans les sources. La liste est celle de
+  /* Ni `var` ni chaînage optionnel (`?.`) dans les sources. Les listes sont celles de
      build.sh : un fichier ajouté plus tard est relu lui aussi. Les sources actuelles
      n'en ont aucun ; les cas ci-dessous prouvent que la relecture voit encore quelque
      chose, et qu'elle ne compte ni les chaînes ni les commentaires. */
@@ -169,15 +169,22 @@ NL.state.open().then(() => {
   ].forEach(([src, want]) => ok(JSON.stringify(found(src)) === JSON.stringify(want),
     'syntax check on ' + JSON.stringify(src) + ' found ' + JSON.stringify(found(src)) + ', wanted ' + JSON.stringify(want)));
   const sources = browser.sources(ROOT);
+  /* sw.js n'est pas dans SRC : build.sh le copie à côté de la page (cp … dist/), et
+     chaque appareil qui ouvre l'app l'installe. Les .js des lignes cp sont donc relus
+     aussi. vendor/supabase.js, du code tiers, entre dans la page par cat : il n'est
+     sur aucune des deux listes, et la relecture ne le lit pas. */
+  const copied = (fs.readFileSync(path.join(ROOT, 'build.sh'), 'utf8').match(/^cp .* dist\/\s*$/gm) || [])
+    .flatMap(l => l.trim().split(/\s+/).slice(1, -1)).filter(f => /\.js$/.test(f));
   const why = { 'var': 'a var declaration, use const, or let where it changes', '?.': 'optional chaining (?.)' };
   let seen = 0;
   ok(sources.length > 0, 'the syntax check read no source file from build.sh');
-  sources.forEach(f => syntaxFindings(fs.readFileSync(path.join(ROOT, f), 'utf8')).forEach(x => {
+  ok(copied.length > 0, 'the syntax check read no .js file from a cp … dist/ line of build.sh');
+  sources.concat(copied).forEach(f => syntaxFindings(fs.readFileSync(path.join(ROOT, f), 'utf8')).forEach(x => {
     ok(false, f + ':' + x.line + ': ' + (why[x.what] || x.what + ', as the syntax check reads it'));
     seen++;
   }));
-  console.log('  syntax          ' + sources.length + ' sources from build.sh: ' +
-    (seen ? seen + ' finding(s)' : 'no var, no ?.'));
+  console.log('  syntax          ' + sources.length + ' sources in SRC and ' + copied.length + ' copied to dist/ (' +
+    copied.join(', ') + ') from build.sh: ' + (seen ? seen + ' finding(s)' : 'no var, no ?.'));
 
   items.filter(i => i.art).forEach(i =>
     ok(i.nl.startsWith(i.art + ' '), 'article mismatch: ' + i.nl + ' / ' + i.art));
