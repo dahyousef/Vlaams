@@ -17,9 +17,82 @@ const NL = B.NL;
 let fails = 0;
 const ok = (cond, msg) => { if (!cond) { console.log('  FAIL: ' + msg); fails++; } };
 
-/* Les `var` et les `?.` d'une source, chacun avec sa ligne. Pas encore écrite. */
+/* Les `var` et les `?.` d'une source, chacun avec sa ligne. La source est d'abord
+   relue sans ses chaînes, ses commentaires, ses regex ni le texte de ses gabarits :
+   chacun de leurs caractères devient une espace, les sauts de ligne restent, et les
+   numéros de ligne avec eux. Une chaîne ou une regex encore ouverte en fin de ligne,
+   ou quoi que ce soit d'ouvert en fin de fichier, est signalé à sa ligne : la
+   relecture a perdu le fil, elle ne passe pas en silence. */
 function syntaxFindings(src) {
-  return [];
+  const out = src.split(''), found = [], frames = [];   // frames : un par ${ ouvert
+  const lineAt = k => src.slice(0, k).split('\n').length;
+  const lost = (what, k) => found.push({ line: lineAt(k), what: 'unclosed ' + what });
+  const blank = (a, b) => { for (let k = a; k < Math.min(b, src.length); k++) if (out[k] !== '\n') out[k] = ' '; };
+  /* Une barre ouvre une regex, sauf après ce qui finit une valeur : un nom (hors
+     return, typeof…), un nombre, une chaîne, ) ou ]. */
+  const regexAt = k => {
+    let j = k - 1;
+    while (j >= 0 && /\s/.test(out[j])) j--;
+    if (j < 0 || !/[\w$)\]'"`]/.test(out[j])) return true;
+    if (!/[\w$]/.test(out[j])) return false;
+    let w = j;
+    while (w >= 0 && /[\w$]/.test(out[w])) w--;
+    return out[w] !== '.' && /^(return|typeof|instanceof|in|of|new|delete|void|throw|case|do|else|yield|await)$/
+      .test(out.slice(w + 1, j + 1).join(''));
+  };
+  /* Le texte d'un gabarit, de k jusqu'au ` qui le ferme ou au ${ qui rouvre du code. */
+  const text = k => {
+    const a = k;
+    while (k < src.length && src[k] !== '`' && !(src[k] === '$' && src[k + 1] === '{')) k += src[k] === '\\' ? 2 : 1;
+    blank(a, k);
+    if (k >= src.length) { lost('template', a - 1); return src.length; }
+    if (src[k] === '`') return k + 1;
+    frames.push({ depth: 0, at: k });
+    return k + 2;
+  };
+  let i = 0;
+  while (i < src.length) {
+    const c = src[i], d = src[i + 1], top = frames[frames.length - 1];
+    if (c === '/' && d === '/') {
+      const e = src.indexOf('\n', i);
+      blank(i, e < 0 ? src.length : e);
+      i = e < 0 ? src.length : e;
+    } else if (c === '/' && d === '*') {
+      const e = src.indexOf('*/', i + 2);
+      if (e < 0) lost('comment', i);
+      blank(i, e < 0 ? src.length : e + 2);
+      i = e < 0 ? src.length : e + 2;
+    } else if (c === '"' || c === "'") {
+      let k = i + 1;
+      while (k < src.length && src[k] !== c && src[k] !== '\n') k += src[k] === '\\' ? 2 : 1;
+      blank(i + 1, k);
+      if (src[k] === c) i = k + 1; else { lost('string', i); i = k; }
+    } else if (c === '/' && regexAt(i)) {
+      let k = i + 1, cls = false;
+      while (k < src.length && src[k] !== '\n' && (cls || src[k] !== '/')) {
+        if (src[k] === '\\') k++;
+        else if (src[k] === '[') cls = true;
+        else if (src[k] === ']') cls = false;
+        k++;
+      }
+      blank(i + 1, k);
+      if (src[k] === '/') i = k + 1; else { lost('regex', i); i = k; }
+    } else if (c === '`') {
+      i = text(i + 1);
+    } else if (c === '}' && top && top.depth === 0) {
+      frames.pop();
+      i = text(i + 1);
+    } else {
+      if (top && c === '{') top.depth++;
+      if (top && c === '}') top.depth--;
+      i++;
+    }
+  }
+  frames.forEach(f => lost('template', f.at));
+  const code = out.join('');
+  [[/(?<![\w$.])var(?=\s+[\w$[{])/g, 'var'], [/\?\.(?!\d)/g, '?.']].forEach(([rx, what]) =>
+    Array.from(code.matchAll(rx)).forEach(m => found.push({ line: lineAt(m.index), what })));
+  return found.sort((a, b) => a.line - b.line);
 }
 
 NL.state.open().then(() => {
