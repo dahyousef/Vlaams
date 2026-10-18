@@ -24,7 +24,7 @@ States: `pending`, `in progress`, `done`, `fallback`, `needs ruling`, `needs des
 
 <!-- Append only, newest last: one entry per task boundary, in this form.
 
-### Task <N> — <state> — <YYYY-MM-DD HH:MM UTC>
+### Task <N> — <state> — <commit or none> — <YYYY-MM-DD HH:MM UTC>
 - Scope and decisions: <what was built; rulings applied>
 - State and next: <state>; next is task <N+1>
 - Files and tree: <files changed>; git status --short: <clean, or the list>

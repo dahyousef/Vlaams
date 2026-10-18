@@ -15,7 +15,9 @@ on is a reason to ask the maintainer, not to read the code.
 
 ## The loop
 
-1. Take the first task, in plan order, whose state is not `done` or `fallback`.
+1. In a normal sitting, take the first `fallback` task, in plan order, if there is one: it was committed
+   unpushed, and now gets its review and its push. Otherwise (and always in a fallback sitting) take the first
+   task, in plan order, whose state is not `done` or `fallback`.
 2. Set its Status row to `in progress`.
 3. Dispatch one task controller (a background subagent) with the prompt below. Model by the task's class:
    `sonnet` for `mechanical`, `opus` for `engine`.
@@ -23,7 +25,7 @@ on is a reason to ask the maintainer, not to read the code.
 5. Write the return into the task's Status row: state, commit, verifier line, review verdict.
 6. Tell the maintainer in one short paragraph.
 7. By state:
-   - `done` or `fallback`: the next task.
+   - `done` or `fallback`: the next task. (A fallback review returns `done`.)
    - `needs ruling`: ask the maintainer the question as given. Add a line to **Rulings** (date, task,
      question, answer). Dispatch the same task again with the ruling in its prompt.
    - `needs design`: stop the run. The task waits for a design sitting (`design-sitting.md`); its brief
@@ -37,6 +39,7 @@ The dispatch prompt:
     Brief: <WS>/briefs/task-<N>.md. Class: <class>. Ticket: <#n or none>.
     [Ruling: <the maintainer's answer> — only when re-dispatching after a ruling.]
     [This is a fallback sitting. — only in a fallback sitting.]
+    [This is a fallback review. — only for a task whose state is `fallback`, in a normal sitting.]
 
 ## Sittings
 
@@ -97,7 +100,7 @@ Starting a sitting — in PowerShell, in the worktree:
 then paste:
 
     Run the plan in <WS>/run.md. Read docs/agents/plan-runs/run-controller.md, then the Status table of
-    <WS>/progress.md, and continue from the first task that is not done.
+    <WS>/progress.md, and continue from the first task that is not done (the loop above puts `fallback` tasks first).
 
 A fallback sitting, when Claude's limit is reached and OmniRoute is set up with a profile: start it with
 `omniroute launch --profile <name>` and paste the same prompt followed by `This is a fallback sitting.`

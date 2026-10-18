@@ -13,16 +13,29 @@ is not yours.
 - Your task's row in the Status table of `<WS>/progress.md`, and your task's entries in its log. Not the
   rest of the log, and not other briefs.
 
-## If the log already has an entry for your task
+## If the task was already started
 
-A sitting stopped in the middle of it.
+Your Status row is always `in progress` when you start, so look for the signs: `<WS>/tmp/task-<N>-base` exists
+(step 1 writes it), or the log has an entry for your task. If so, a sitting stopped in the middle of it.
+(Not in a fallback review, below: its task is finished, only unreviewed.)
 
-- If an entry says `done` or `fallback` with a commit that `git branch --contains <commit>` shows on the
-  branch: return that state and commit at once. Do not redo the task.
-- Otherwise run `git status --short`. If there is uncommitted work, and it matches the brief, and the brief's
-  own test file passes: carry on from step 3 with that work. If not, run
-  `git stash push -m "task <N> interrupted"` and start from step 1. You never discard work. You are the only
-  role allowed `git stash`, and only here.
+- If an entry says `done` or `fallback` with a commit in its heading that `git branch --contains <commit>`
+  shows on the branch: return that state and commit at once. Do not redo the task.
+- Otherwise run `git status --short` and `git log --oneline BASE..HEAD`, BASE being the one in the file.
+  - Committed work after BASE with the brief's commit subject, a clean tree, and the brief's own test file
+    passing: carry on from step 3 with that commit.
+  - Uncommitted work that matches the brief, with its test file passing: dispatch the implementer to commit it
+    with the brief's commit subject, then carry on from step 3.
+  - Uncommitted work that does not match, or does not pass: run `git stash push -m "task <N> interrupted"`
+    and start from step 1. You never discard work. You are the only role allowed `git stash`, and only here.
+  - Commits after BASE that do not match the brief: return `needs ruling` with the `git log` lines.
+
+## A fallback review
+
+If your dispatch says "This is a fallback review", the task is committed and was never reviewed or pushed.
+Do not implement. BASE is in `<WS>/tmp/task-<N>-base` and the commit is in the task's Status row. Run the
+verifier on it (step 3), then steps 4 and 5 with the diff BASE..that commit, and the fix rounds of step 6 if
+the review asks for them. On `Approved`, do step 7 (push, comment) and return `done`.
 
 ## The roles you dispatch
 
@@ -40,7 +53,7 @@ Dispatch nothing else, and nothing below these four.
 
 ## The steps
 
-1. Note the base: `git rev-parse HEAD`.
+1. Note the base: `git rev-parse HEAD`, written to `<WS>/tmp/task-<N>-base` unless that file exists. BASE below is its content.
 2. Dispatch the implementer: "Read docs/agents/plan-runs/run-notes.md, then your brief <path>. Run file:
    <WS>/run.md. Ticket: <…>. [Ruling: …] Report to <WS>/reports/task-<N>-impl.md." On `BLOCKED` or
    `NEEDS_RULING` with a question the brief does not answer: return `needs ruling` with that question.
@@ -58,9 +71,11 @@ Dispatch nothing else, and nothing below these four.
    - `DESIGN: yes`: return `needs design` with the reviewer's one-line reason.
 6. A fix round — at most two for the task in all; a third need returns `needs ruling` with "two fix rounds
    were not enough" and the report path. Dispatch the implementer again: "Fix the Critical and Important
-   issues in <report>. One new commit; never amend." Then the verifier, if code changed. Then the
-   re-reviewer, with the fix diff (written as in step 4, from the commit before the fix) and the previous
-   report.
+   issues in <report>. One new commit; never amend." Then the verifier, if code changed. Then:
+   - if the round began at step 3 (the verifier failed), the task has had no review: continue at step 4, for
+     the full review;
+   - if it began at step 5, the re-reviewer, with the fix diff (written as in step 4, from the commit before
+     the fix) and the previous report.
 7. Unless this is a fallback sitting or `run.md` says `Push: none`: run `run.md`'s push command. If the
    ticket is not `none`, write a comment file and run `gh issue comment <n> --body-file "<file>"`: the
    commit, the verifier line, the review verdict. In a fallback sitting: no push; your state is `fallback`.
