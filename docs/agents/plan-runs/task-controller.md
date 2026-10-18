@@ -33,9 +33,10 @@ Your Status row is always `in progress` when you start, so look for the signs: `
 ## A fallback review
 
 If your dispatch says "This is a fallback review", the task is committed and was never reviewed or pushed.
-Do not implement. BASE is in `<WS>/tmp/task-<N>-base` and the commit is in the task's Status row. Run the
-verifier on it (step 3), then steps 4 and 5 with the diff BASE..that commit, and the fix rounds of step 6 if
-the review asks for them. On `Approved`, do step 7 (push, comment) and return `done`.
+Do not implement. BASE is in `<WS>/tmp/task-<N>-base` and the commit is in the heading of the task's log
+entry in the ledger. Run the verifier on the current HEAD, not on that commit (the verifier requires HEAD to
+equal the hash it is given, and later fallback tasks sit on top of this one; the suite tests the tree). Then
+do steps 4 and 5 with the diff BASE..that commit, and the fix rounds of step 6 if the review asks for them. On `Approved`, do step 7 (push, comment) and return `done`.
 
 ## The roles you dispatch
 
