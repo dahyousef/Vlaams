@@ -1,8 +1,10 @@
 # Sub-day reinforcement lives in the session, not in the schedule
 
-Every stored interval is at least one day. The reinforcement of being asked a word again a
-few minutes after meeting it still happens, but the running session does it, rather than
-the item being scheduled to return.
+Every stored interval is at least one day. The return it schedules falls at the start of the
+local day that many calendar days after the answer, and never less than eight hours after it
+(#28), so an item met today comes back tomorrow whatever the hour of study. The reinforcement
+of being asked a word again a few minutes after meeting it still happens, but the running
+session does it, rather than the item being scheduled to return.
 
 Stored as a due date, a twelve-minute return competed for the session's places like any
 other review. With about twenty items sitting at the first rung, those returns filled every

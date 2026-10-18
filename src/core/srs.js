@@ -4,7 +4,7 @@
    budget = ce qui empêche la dette de révisions d'exploser */
 NL.srs = (function () {
   'use strict';
-  const { clamp, DAY } = NL.util;
+  const { clamp, DAY, HOUR, dayKey } = NL.util;
 
   const MAX_TASKS = 22;             // les places d'une séance : un élément par place
   const MAX_STAGE = 6;
@@ -106,8 +106,19 @@ NL.srs = (function () {
   /* Aucun intervalle enregistré ne descend sous un jour. Le renforcement quelques
      minutes après la rencontre existe toujours, mais c'est la séance en cours
      qui le fait (src/ui/session.js) : enregistré comme une échéance, il
-     disputait les places de la séance à tout le reste. Voir docs/adr/0001. */
+     disputait les places de la séance à tout le reste. L'échéance tombe au début du jour
+     local situé `interval` jours après la réponse, et jamais moins de huit heures après
+     elle (#28) : un élément rencontré aujourd'hui revient demain, quelle que soit l'heure.
+     Voir docs/adr/0001. */
   const STEP = [1 * DAY, 1 * DAY, 1 * DAY, 3 * DAY, 8 * DAY, 21 * DAY];
+
+  /* Des jours civils, pas des durées : sinon celui qui étudie à la même heure ne trouve
+     rien d'échu le lendemain, et la nuit du changement d'heure décale tout. */
+  const dueAt = (now, interval) => {
+    const [y, m, d] = dayKey(now).split('-').map(Number);
+    const days = Math.max(1, Math.round(interval / DAY));
+    return Math.max(new Date(y, m - 1, d + days).getTime(), now + 8 * HOUR);
+  };
 
   const blank = (id, kind) => ({
     id, kind: kind || 'word', stage: 0, due: 0, interval: 0,
@@ -238,7 +249,7 @@ NL.srs = (function () {
       r.interval = unsaid ? STEP[0] : STEP[Math.min(r.stage, STEP.length - 1)];
       r.retired = false;
     }
-    r.due = now + r.interval;
+    r.due = dueAt(now, r.interval);
     NL.state.setRec(r);
     NL.state.logReview({ id: item.id, t: now, ok: !!ok, stage: r.stage, kind: r.kind, ex: (opts && opts.ex) || null });
     return r;
