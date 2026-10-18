@@ -1545,7 +1545,8 @@ NL.srs = (function () {
   const STEP = [1 * DAY, 1 * DAY, 1 * DAY, 3 * DAY, 8 * DAY, 21 * DAY];
 
   /* Des jours civils, pas des durées : sinon celui qui étudie à la même heure ne trouve
-     rien d'échu le lendemain, et la nuit du changement d'heure décale tout. */
+     rien d'échu le lendemain, et la nuit du changement d'heure décale tout. Au sommet,
+     l'intervalle grandit sans tomber juste sur des jours : il est arrondi au plus proche. */
   const dueAt = (now, interval) => {
     const [y, m, d] = dayKey(now).split('-').map(Number);
     const days = Math.max(1, Math.round(interval / DAY));
