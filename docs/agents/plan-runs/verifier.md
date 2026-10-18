@@ -1,6 +1,7 @@
 # Running a plan — the verifier
 
-You run the project's whole test suite once and report the result. You change nothing except the restores in steps 2 and 3.
+You run the project's whole test suite once and report the result. You change nothing except the restores in
+steps 2 and 3.
 
 Your dispatch names the run file and the commit to verify. In the worktree named in `<WS>/run.md`:
 

@@ -39,8 +39,8 @@ console.log('  status          ' + t1.status);
 console.log('  output          ' + (t1.stdout || '').trim().slice(0, 90));
 ok(t1.status === 0, 'le crochet du transcript sort avec 0');
 ok((t1.stdout || '').includes("This session's transcript: C:/x/projects/p/0000-test.jsonl"), 'le crochet imprime le chemin reçu');
-ok(t2.status === 0 && (t2.stdout || '').trim() === '', 'sans stdin : sortie 0 et rien n est imprimé');
-ok(t3.status === 0 && (t3.stdout || '').trim() === '', 'avec un JSON invalide : sortie 0 et rien n est imprimé');
+ok(t2.status === 0 && (t2.stdout || '').trim() === '', 'sans stdin : sortie 0 et rien n\'est imprimé');
+ok(t3.status === 0 && (t3.stdout || '').trim() === '', 'avec un JSON invalide : sortie 0 et rien n\'est imprimé');
 
 const rc = fs.readFileSync(path.join(ROOT, 'docs/agents/plan-runs/run-controller.md'), 'utf8');
 ok(rc.includes("This session's transcript"), 'run-controller.md nomme la ligne du crochet');
@@ -48,7 +48,7 @@ ok(!rc.includes('newest `.jsonl`'), 'run-controller.md ne devine plus le transcr
 
 const ver = fs.readFileSync(path.join(ROOT, 'docs/agents/plan-runs/verifier.md'), 'utf8');
 const iCo = ver.indexOf('git checkout -- index.html artifact.html'), iSt = ver.indexOf('`git status --short`');
-ok(iCo >= 0 && iSt >= 0 && iCo < iSt, 'verifier.md remet index.html et artifact.html avant la vérification de l arbre entier');
+ok(iCo >= 0 && iSt >= 0 && iCo < iSt, 'verifier.md remet index.html et artifact.html avant la vérification de l\'arbre entier');
 
 // Le garde-fou git reste branché, pour les deux shells.
 const guard = (hooks.PreToolUse || []).find(e => e.matcher === 'Bash|PowerShell');

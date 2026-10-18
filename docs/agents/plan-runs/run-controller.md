@@ -49,9 +49,9 @@ The dispatch prompt:
 
 - A sitting is one session. At its start, before the first dispatch, append one line to `<WS>/run.md`:
   `Sitting: <date and time> — <its transcript path>`, the path the session-start hook printed
-  (`This session's transcript: …`), copied. Before writing the line, check that a file exists at that path. If none
-  does, write `Sitting: <date and time> — no transcript on disk at <path>`; if the hook printed no line, write
-  `Sitting: <date and time> — transcript unknown (no hook line)`. A sitting that is cut off is then recorded too.
+  (`This session's transcript: …`), copied. Before writing the line, check that a file exists at that path. If
+  there is none, write `Sitting: <date and time> — no transcript on disk at <path>`; if the hook printed no line,
+  write `Sitting: <date and time> — transcript unknown (no hook line)`. A sitting that is cut off is then recorded too.
   The sitting ends at the maintainer's word, at a limit stop, or at the first task
   boundary after you have dispatched 10 tasks in it. Then tell the maintainer to start the next sitting with the
   start prompt below, in a new session.
