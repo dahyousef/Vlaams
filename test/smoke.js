@@ -41,7 +41,7 @@ function syntaxFindings(src) {
       .test(out.slice(w + 1, j + 1).join(''));
   };
   /* Le texte d'un gabarit, de k jusqu'au ` qui le ferme ou au ${ qui rouvre du code. */
-  const text = k => {
+  const templateText = k => {
     const a = k;
     while (k < src.length && src[k] !== '`' && !(src[k] === '$' && src[k + 1] === '{')) k += src[k] === '\\' ? 2 : 1;
     blank(a, k);
@@ -78,10 +78,10 @@ function syntaxFindings(src) {
       blank(i + 1, k);
       if (src[k] === '/') i = k + 1; else { lost('regex', i); i = k; }
     } else if (c === '`') {
-      i = text(i + 1);
+      i = templateText(i + 1);
     } else if (c === '}' && top && top.depth === 0) {
       frames.pop();
-      i = text(i + 1);
+      i = templateText(i + 1);
     } else {
       if (top && c === '{') top.depth++;
       if (top && c === '}') top.depth--;
