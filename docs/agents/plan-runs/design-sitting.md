@@ -14,8 +14,12 @@ A new session on Opus, with the maintainer. Paste:
     me to a decision; you may measure with a throwaway prototype outside the repository. Write no product
     code. The output is one brief in the form below, saved to <WS>/briefs/task-<id>.md.
 
-The sitting ends when the maintainer approves the brief. The run controller then adds a Status row for it,
-with the brief's class, and the run continues.
+The sitting ends when the maintainer approves the brief. It hands the maintainer the new task's id, class,
+ticket and position; the run controller adds its Status row and its `run.md` entry from that, and never reads
+the brief. The position follows dependencies, not the end of the queue: before the run continues, the sitting
+reads every later task that touches the same code and adjusts their briefs for whatever the new task would
+break. The original task's `needs design` row becomes `replaced by <new id>`: the next sitting neither redoes
+it nor waits on it.
 
 ## The brief form
 

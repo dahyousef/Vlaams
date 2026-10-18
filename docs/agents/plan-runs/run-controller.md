@@ -17,7 +17,7 @@ on is a reason to ask the maintainer, not to read the code.
 
 1. In a normal sitting, take the first `fallback` task, in plan order, if there is one: it was committed
    unpushed, and now gets its review and its push. Otherwise (and always in a fallback sitting) take the first
-   task, in plan order, whose state is not `done` or `fallback`.
+   task, in plan order, whose state is not `done`, `fallback` or `replaced by <id>`.
 2. Set its Status row to `in progress`.
 3. Dispatch one task controller (a background subagent) with the prompt below. Model by the task's class:
    `sonnet` for `mechanical`, `opus` for `engine`.
