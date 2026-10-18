@@ -20,6 +20,7 @@ n'y a qu'une seule liste. Il faut Node et un `sh` (sous Windows, celui de Git).
 | `sim.js` | Chaque écran, une séance, un scénario, une série d'écoute |
 | `firstrun.js` | Une base vide : premier écran, première séance, le défi, la sauvegarde |
 | `sync.js` | Deux appareils et un faux Supabase : adoption, conflits, panne, comptes, la remise à zéro sur deux appareils (dont un hors ligne qui revient), la migration unique, un appareil resté sur l'ancienne version et un serveur qui garde la remise à zéro la plus récente |
+| `hooks.js` | Le rappel de reprise : `.claude/settings.json` le branche sur SessionStart (`compact|resume`), il imprime où une exécution de plan garde son état, même sans `CLAUDE_PROJECT_DIR`, et le garde-fou git reste branché |
 | `journey.js` | Le parcours complet d'un utilisateur, pour une voix et un navigateur donnés |
 | `pace.js` | 200 jours simulés, pour trois apprenants (budget épuisé chaque jour ; une seule séance par jour ; une seule séance, dont une sur cinq là où l’on ne peut pas parler) : charge quotidienne, variété, exigence — aucune journée sans élément nouveau tant qu’il en reste, des éléments laissés à un jour qui reviennent le lendemain, un élément du premier jour demandé à voix haute en dix jours et jamais après trois semaines, l’échelon de l’écrit passé en écrivant, et « je ne peux pas parler » qui ne note rien, ne coûte rien et ne fait rien sauter. L’horloge avance pendant la journée |
 
