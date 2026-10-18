@@ -54,14 +54,8 @@ Every fix leaves a test that fails on the old code. Write it, watch it fail, the
 - One function decides what a session contains, `NL.srs.compose()`, and it takes new items
   out before reviews. The home screen and the session both ask it. A second calculation
   anywhere is the fault phase 1 removed.
-- `resetAt` in the stored settings is the moment of the last reset, and other devices compare
-  against it. It only grows, except on a device joining an account (below). The server enforces it: the
-  `keep_reset` trigger on `user_meta` keeps the stored `resetAt` and `progress` when a write would
-  lower `resetAt`, so lowering it by hand means disabling that trigger first. `supabase/schema.sql`
-  is kept in step with the live project by hand. `ENGINE_EPOCH` in `src/core/state.js` is a fixed date and
-  must stay one: changing it wipes progress again, or stops wiping it.
-  Records and log lines carry the reset they descend from (`base`), the frontier and the done-lists
-  travel in `progress`, and a device no account owned takes the account's `resetAt` at sign-in.
+- Before touching a reset, `resetAt`, `base`, `ENGINE_EPOCH` or sync, read ADR 0006: the server's
+  `keep_reset` trigger enforces part of it, and `ENGINE_EPOCH` must stay a fixed date.
 - `said` on a stored record is what makes an item's first spoken exercise certain. That
   exercise never moves the item's rung: a written one, later in the same session, decides.
   « Je ne peux pas parler » lives in the running session and is deliberately not a
@@ -83,12 +77,6 @@ sub-issues. `GLOSSARY.md` holds the vocabulary it uses.
 - `docs/superpowers/plans/2026-10-12-phase-1-moteur-ecrans-garde-fous.md` — the phase 1
   plan, implemented. Its last sections record why the engine is as it is
 - `docs/CONSTATS-2026-10-06.md` — what a week of real study found, and how it was found
-- `docs/superpowers/specs/2026-10-08-moteur-et-contenu-design.md` — **superseded in scope.**
-  It covers the engine only. A session on 9 October 2026 decided to replace it with one
-  spec covering the engine, English as the default language, and content to B1. Keep it as
-  history; don't implement from it.
-- `docs/superpowers/plans/2026-10-08-moteur-ecrans-garde-fous.md` — **superseded with it**,
-  for the same reason
 - `TESTING.md` — how this app is tested
 - `ATTRIBUTION.md` — where the Dutch reference data comes from, and why it imposes no licence
 
