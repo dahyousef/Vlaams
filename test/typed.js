@@ -60,11 +60,11 @@ function verdict(it) {
   };
 }
 
-function typed(nl, input) {
+function typed(which, input) {
   fresh();
-  const it = find(nl);
-  if (!it) { ok(false, 'setup: no item ' + say(nl)); return null; }
-  if (!askTyped(it)) { ok(false, 'setup: ' + say(nl) + ' is never asked in « Écris-le en néerlandais »'); return null; }
+  const it = typeof which === 'string' ? find(which) : NL.content.byId(which.id);
+  if (!it) { ok(false, 'setup: no item ' + say(typeof which === 'string' ? which : which.id)); return null; }
+  if (!askTyped(it)) { ok(false, 'setup: ' + say(it.nl) + ' is never asked in « Écris-le en néerlandais »'); return null; }
   answer.type(input);
   answer.click({ check: '1' });
   const v = verdict(it);
@@ -73,6 +73,17 @@ function typed(nl, input) {
   return v;
 }
 const targetOf = it => it.kind === 'word' ? U.bare(it.nl) : it.nl;
+
+/* Les formes que le panneau présente comme justes : toutes celles qu'imprime
+   « Ici on dit », et la liste also. Lues dans le HTML du panneau : c'est ce
+   que la personne voit. */
+const decode = s => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+const formsOf = it => {
+  const line = decode(NL.ex.hereLine(it, '', true).replace(/<[^>]*>/g, '')).trim();
+  const body = line.indexOf(t.hereThey) === 0 ? line.slice(t.hereThey.length).trim() : '';
+  const be = !body ? [] : it.kind === 'word' ? body.split(',').map(s => s.trim()).filter(Boolean) : [body];
+  return be.map(f => ['be', f]).concat((it.also || []).map(f => ['also', f]));
+};
 
 NL.state.open().then(() => {
   console.log('\nRÉPONSES TAPÉES');
@@ -153,6 +164,37 @@ NL.state.open().then(() => {
       S.abandon();
     }
     console.log('  dictée         une seule cible');
+  }
+
+  console.log('\nTOUT LE COURS');
+  /* Tout le cours, pas seulement les réponses du 17 octobre : pour chaque
+     élément, sa cible puis chaque forme que le panneau présente comme juste,
+     tapées à l'écran. « Écris-le en néerlandais » est sur l'échelle de chaque
+     sorte d'élément : il peut tous les demander. Chaque forme est juste et
+     laisse l'élément comme la cible (#32). Par l'écran plutôt que par le juge :
+     mesuré le 18 octobre, une réponse tapée coûte 11 ms, et le cours entier se
+     tape en quelques secondes. */
+  {
+    const all = NL.content.allItems();
+    const unread = all.filter(it => it.be && !formsOf(it).some(([src]) => src === 'be'));
+    ok(unread.length === 0, 'setup: no form read from « ' + t.hereThey + ' » for ' + unread.length + ' item(s) with a be variant, e.g. ' + unread.slice(0, 3).map(it => it.id).join(', '));
+    let forms = 0;
+    all.forEach(it => {
+      const target = targetOf(it), start = it.kind === 'word' ? 2 : 3;
+      const twin = typed(it, target);
+      if (!twin) return;
+      ok(twin.right && twin.rec.stage === start + 1 && twin.rec.lapses === 0,
+        'the exact answer ' + say(target) + ' for ' + it.id + ' is marked ' + (twin.right ? 'right' : 'wrong') + ' and leaves it on rung ' + twin.rec.stage + ' with ' + twin.rec.lapses + ' lapse(s)');
+      formsOf(it).forEach(([src, f]) => {
+        forms++;
+        const v = typed(it, f);
+        if (!v) return;
+        ok(v.right, say(f) + ', which the panel presents as right (' + src + '), is marked wrong for ' + it.id + ' ' + say(it.nl));
+        if (v.right) ok(JSON.stringify(v.rec) === JSON.stringify(twin.rec),
+          say(f) + ' (' + src + ') leaves ' + it.id + ' as ' + JSON.stringify(v.rec) + ', the exact answer as ' + JSON.stringify(twin.rec));
+      });
+    });
+    console.log('  cours entier   ' + all.length + ' cibles et ' + forms + ' formes du panneau, justes et notées comme la cible');
   }
 
   console.log('\nLEURRES');
