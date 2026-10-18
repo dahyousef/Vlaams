@@ -50,10 +50,14 @@ The dispatch prompt:
   cache. A new sitting starts from the files.
 - After a compaction or a resume, a hook reminds you to re-read this file and the Status table. Do it before
   the next dispatch.
+- Closing a session's window does not stop a suite its verifier started: `sh test/run-all.sh` runs on for up
+  to six minutes, rewriting `<WS>/tmp/suite.txt` and the build outputs. After a cut-off, wait six minutes
+  before the next sitting, and trust no `suite.txt` that no verifier reported on.
 
 ## After the last task
 
-Dispatch the closing review (`closing-review.md`) on `opus`. Then measure, and write the run's final report
+Dispatch the closing review (`closing-review.md`) on `opus`, naming the run file and its `Base:` commit. Then
+measure, and write the run's final report
 for the maintainer. The full review of the branch is the maintainer's (`/code-review main`).
 
 ## Measuring
@@ -88,6 +92,7 @@ Once per plan, in the run's worktree, create `<WS>` = `.superpowers/sdd/<plan na
     # Run — <plan file>
     Worktree: <absolute path>
     Branch: <branch>
+    Base: <the commit the run starts from: git rev-parse HEAD before task 1>
     Push: git push origin HEAD:<branch>        (or: none)
     Workspace (<WS>): <absolute path>
     Tickets: task 1 → #<n>, task 2 → #<n>     (or: none)

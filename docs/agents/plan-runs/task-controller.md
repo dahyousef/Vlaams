@@ -41,7 +41,8 @@ do steps 4 and 5 with the diff BASE..that commit, and the fix rounds of step 6 i
 ## The roles you dispatch
 
 Give each one its model explicitly, and tell it: its final message is at most 10 lines; everything longer
-goes to the report file you name.
+goes to the report file you name. Dispatch each one in the foreground and wait for its return; never end
+your turn while one runs.
 
 | Role | Model | Its instructions |
 |---|---|---|
