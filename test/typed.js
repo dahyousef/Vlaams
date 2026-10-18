@@ -74,7 +74,7 @@ function typed(which, input) {
 }
 const targetOf = it => it.kind === 'word' ? U.bare(it.nl) : it.nl;
 
-/* Les formes que le panneau présente comme juste : toutes celles qu'imprime
+/* Les formes que le panneau présente comme justes : toutes celles qu'imprime
    « Ici on dit », et la liste also. Lues dans le HTML du panneau : c'est ce
    que la personne voit. */
 const decode = s => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&amp;/g, '&');
