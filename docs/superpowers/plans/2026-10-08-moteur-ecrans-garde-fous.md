@@ -1,5 +1,8 @@
 # Moteur, écrans et garde-fous — Implementation Plan
 
+> **Superseded on 9 October 2026**, with its spec, by issue #12: one spec for the engine, English by
+> default and content to B1. Kept as history: implement from #12 and the phase plans that follow it.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Make new vocabulary appear every day, replace the mastery numbers with honest counts, surface the mistakes the app already records, and lock the content quality in CI.

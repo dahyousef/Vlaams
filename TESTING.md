@@ -11,22 +11,39 @@ n'y a qu'une seule liste. Il faut Node et un `sh` (sous Windows, celui de Git).
 
 | Test | Ce qu'il vérifie |
 | --- | --- |
-| `smoke.js` | Le contenu, l'échelle, chaque type d'exercice, la notation, la qualité des leurres, l'orthographe, et qu'aucune chaîne anglaise ne survit dans le build |
+| `smoke.js` | Le contenu, l'échelle, chaque type d'exercice, la notation, la qualité des leurres, l'orthographe, qu'aucune chaîne anglaise ne survit dans le build, et qu'aucune source listée dans `build.sh` n'emploie `var` ni le chaînage optionnel `?.` (les chaînes, les commentaires et les regex ne comptent pas) |
 | `dehet.js` | Chaque nom du cours confronté au Wiktionnaire : `de` ou `het`, sur la fiche **et** dans ses phrases d'exemple |
 | `content.js` | L'orthographe contre 410 000 formes néerlandaises, que chaque exercice promis se construise vraiment, qu'une phrase d'exemple n'emprunte pas de vocabulaire à une unité ultérieure, et les éléments enseignés deux fois |
 | `engine.js` | Ce qu'une séance contient et quand un élément revient, horloge en marche : la panne d'octobre, deux jours de suite, ce qui revient le lendemain à la même heure, l'heure de la réponse à Bruxelles (minuit, 23 h 50, les deux nuits de changement d'heure), le renforcement dans la séance, la réserve de nouveautés, le seuil des unités, la première demande à voix haute et l'exercice écrit qui la suit, l'écrit de l'échelon 3 toujours tapé, « je ne peux pas parler » |
 | `screens.js` | Chaque écran dans quatre états, relu comme du texte : ni pourcentage, ni maîtrise ; les comptes, le nom de l'unité, ce qui résiste, le bouton « je ne peux pas parler », le journal d'erreurs |
-| `typed.js` | Ce qu'une réponse tapée accepte, tapée à l'écran : la cible, la variante flamande, les autres façons de dire (`also`), et la réponse d'un élément au même sens ; la note qu'elle laisse, « Presque » mesuré contre chaque réponse acceptée, la dictée qui garde sa seule cible, les leurres qui ne sont jamais une réponse juste, et le panneau : « Ici on dit » sans répétition, les mots flamands en gras, « On dit aussi » |
+| `typed.js` | Ce qu'une réponse tapée accepte, tapée à l'écran : la cible, la variante flamande, les autres façons de dire (`also`), et la réponse d'un élément au même sens ; la note qu'elle laisse, « Presque » mesuré contre chaque réponse acceptée, la dictée qui garde sa seule cible, les leurres qui ne sont jamais une réponse juste, et le panneau : « Ici on dit » sans répétition, les mots flamands en gras, « On dit aussi » ; et tout le cours : pour chaque élément, sa cible puis chaque forme que le panneau présente comme juste (« Ici on dit », `also`), tapées à l'écran, justes et notées comme la cible |
 | `sim.js` | Chaque écran, une séance, un scénario, une série d'écoute |
 | `firstrun.js` | Une base vide : premier écran, première séance, le défi, la sauvegarde |
 | `sync.js` | Deux appareils et un faux Supabase : adoption, conflits, panne, comptes, la remise à zéro sur deux appareils (dont un hors ligne qui revient), la migration unique, un appareil resté sur l'ancienne version et un serveur qui garde la remise à zéro la plus récente |
 | `hooks.js` | Le rappel de reprise : `.claude/settings.json` le branche sur SessionStart (`compact\|resume`), il imprime où une exécution de plan garde son état, même sans `CLAUDE_PROJECT_DIR`, et le garde-fou git reste branché |
 | `journey.js` | Le parcours complet d'un utilisateur, pour une voix et un navigateur donnés |
-| `pace.js` | 200 jours simulés, pour trois apprenants (budget épuisé chaque jour ; une seule séance par jour ; une seule séance, dont une sur cinq là où l’on ne peut pas parler) : charge quotidienne, variété, exigence — aucune journée sans élément nouveau tant qu’il en reste, des éléments laissés à un jour qui reviennent le lendemain, un élément du premier jour demandé à voix haute en dix jours et jamais après trois semaines, l’échelon de l’écrit passé en écrivant, et « je ne peux pas parler » qui ne note rien, ne coûte rien et ne fait rien sauter. L’horloge avance pendant la journée |
+| `pace.js` | 200 jours simulés, pour quatre apprenants (budget épuisé chaque jour ; une seule séance par jour ; une seule séance, dont une sur cinq là où l’on ne peut pas parler ; une seule séance, commencée à 21 h puis vingt minutes plus tôt chaque jour jusqu’à 7 h, et qui remonte, à l’heure de Bruxelles) : charge quotidienne, variété, exigence — aucune journée sans élément nouveau tant qu’il en reste, des éléments laissés à un jour qui reviennent le lendemain, y compris les jours où la séance commence plus tôt que la veille, un élément du premier jour demandé à voix haute en dix jours et jamais après trois semaines, l’échelon de l’écrit passé en écrivant, et « je ne peux pas parler » qui ne note rien, ne coûte rien et ne fait rien sauter. L’horloge avance pendant la journée |
 
 `journey.js` tourne huit fois : trois voix (flamande, néerlandaise du nord,
 aucune) sous Opera et Edge, plus Chrome et Safari sur iPhone. Les tests sont
 déterministes : la graine est fixe, `SEED=...` en rejoue une autre.
+
+Le balayage de `typed.js` passe par l'écran, pas par le juge : mesuré le 18
+octobre 2026, une réponse tapée coûte 11 ms, et les 439 cibles et 98 formes du
+cours se tapent en quelques secondes, loin de la minute qu'il ne devait pas
+dépasser. Par l'écran, il voit aussi ce que la séance fait de la réponse :
+l'échelon, la rechute, le panneau. Il lit les formes dans le panneau lui-même
+(`hereLine`) et non dans le contenu : ce qu'il vérifie est ce que la personne
+voit présenté comme juste.
+
+L'apprenant qui dérive tient à part le compte du lendemain pour les jours où sa
+séance commence plus tôt que la veille. Sur la règle d'avant #28, qui faisait
+revenir un élément vingt-quatre heures pile après la réponse, l'apprenant à
+heure fixe ne revoyait aucun des 722 éléments laissés à un jour. Celui qui
+dérive en revoyait encore 27 sur 772, tous venus des jours où il commençait
+plus tard, et aucun des 521 des jours où il commençait plus tôt : son compte
+global seul n'aurait rien vu. Ce qu'il garde, c'est un lendemain qui ne dépend
+pas de l'heure à laquelle on commence.
 
 Chaque bug corrigé laisse un test qui échoue sur l'ancien code.
 
@@ -66,6 +83,17 @@ Trois de ces contrôles portent un budget plutôt qu'une exigence de zéro, parc
 que le contenu actuel enfreint déjà la règle : 62 phrases d'exemple empruntent du
 vocabulaire à une unité ultérieure, 9 éléments sont enseignés deux fois, 4
 échelons n'ont aucun exercice possible. Un budget ne peut que baisser.
+
+Le balayage de `typed.js` ne tape que les formes que le contenu tient : une
+façon juste de dire que ni `be` ni `also` ne connaît reste refusée, et aucun
+test ne le saura. Il tape chaque forme exactement, sans faute de frappe, et ne
+regarde ni la dictée ni les réponses parlées. L'apprenant qui dérive commence
+une fois par jour, chaque jour, entre 7 h et 21 h, toujours à Bruxelles : il
+ne voit ni une séance qui passe minuit, ni plusieurs séances à des heures qui
+changent, ni des heures au hasard, ni un jour sauté. En deux cents jours, il ne
+traverse que le passage à l'heure d'été du 29 mars ; celui d'octobre, c'est
+`engine.js` qui le vérifie. Et comme tous les apprenants simulés, il n'oublie
+rien : il répond juste 85 fois sur 100, quoi qu'il arrive.
 
 Et ce qu'aucun d'eux ne voit : l'idiome, le registre, l'ordre des mots, si une
 phrase vaut la peine d'être apprise. Les scénarios et les antisèches ne passent

@@ -1,5 +1,8 @@
 # Plan de reprise — un moteur minimal, des garde-fous, et du contenu jusqu'au B1
 
+> **Remplacée le 9 octobre 2026** par l'issue #12, une seule spécification pour le moteur,
+> l'anglais par défaut et le contenu jusqu'au B1. Gardée pour l'histoire : on implémente à partir de #12.
+
 Spécification du 8 octobre 2026. Elle remplace l'intention du 30 septembre
 (« geler, tester une semaine »). Les constats qui la motivent sont dans
 `CONSTATS-2026-10-06.md` ; ce document dit quoi faire, dans quel ordre, et

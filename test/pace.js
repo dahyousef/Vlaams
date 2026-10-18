@@ -6,6 +6,14 @@ const browser = require('./lib/browser');
 const ROOT = process.argv[2];
 const DAYS = Number(process.argv[3] || 400);
 const T0 = Date.parse('2026-01-05T08:00:00Z');
+/* Chaque apprenant tourne dans son propre processus (test/run-all.sh) : les
+   mots qui suivent le nombre de jours disent lequel. */
+const MODE = process.argv.slice(4);
+/* Le quatrième compte son lendemain à l'heure de Bruxelles (#28). Le fuseau
+   vaut pour tout le processus : contrairement au bloc de test/engine.js, rien
+   ne tourne après lui qui devrait retrouver le sien. */
+const DRIFT = MODE.indexOf('drift') >= 0;
+if (DRIFT) process.env.TZ = 'Europe/Brussels';
 
 let fails = 0, checks = 0;
 const ok = (c, m) => { checks++; if (!c) { console.log('   ✗ ' + m); fails++; } };
@@ -18,9 +26,14 @@ const NL = B.NL, U = NL.util, RAND = B.random;
 const answer = require('./lib/answer')(B);
 const MIN = 60000, DAY = 86400000;
 /* Un deuxième apprenant, moins assidu : une seule séance par jour. */
-const ONE_A_DAY = process.argv[4] === 'one';
+const ONE_A_DAY = MODE.indexOf('one') >= 0;
 /* Un troisième : une séance sur cinq se passe là où l'on ne peut pas parler. */
-const QUIET = process.argv[5] === 'quiet';
+const QUIET = MODE.indexOf('quiet') >= 0;
+/* Un quatrième, une seule séance aussi, commence sa journée à 21 h, puis vingt
+   minutes plus tôt chaque jour jusqu'à 7 h, et remonte : douze semaines par
+   aller-retour. Les autres commencent chaque jour au même instant. */
+const startMin = day => { const k = (day - 1) % 84; return k <= 42 ? 21 * 60 - 20 * k : 7 * 60 + 20 * (k - 42); };
+const startOf = day => DRIFT ? new Date(2026, 0, 5 + day - 1, 0, startMin(day)).getTime() : T0 + (day - 1) * DAY;
 
 /* Combien de secondes coûte chaque type — pour traduire la charge en minutes. */
 const SECS = { match: 22, pick: 7, recall: 7, intrus: 9, article: 6, vlaams: 9,
@@ -39,10 +52,10 @@ NL.state.open().then(() => {
   const owed = {};
   let sessions = 0, taps = 0, touched = 0, spokeAfter = 0, detour = 0, putOff = 0, early = 0;
   /* Ce que la veille a laissé à un jour, et ce qui en revient le lendemain. */
-  let oneDay = [], leftOneDay = 0, nextDay = 0;
+  let oneDay = [], leftOneDay = 0, nextDay = 0, leftEarlier = 0, nextEarlier = 0;
 
   for (let day = 1; day <= DAYS; day++) {
-    B.clock.set(T0 + (day - 1) * DAY);
+    B.clock.set(startOf(day));
     NL.state.touchDay();
     maxBacklog = Math.max(maxBacklog, NL.srs.dueItems().length);
     const unmetAtDawn = total - NL.srs.counts().seen;
@@ -118,7 +131,14 @@ NL.state.open().then(() => {
        demain, à quelque heure que l'on étudie (#28). */
     leftOneDay += oneDay.length;
     nextDay += oneDay.filter(id => asked.has(id)).length;
-    const today = U.dayKey(T0 + (day - 1) * DAY);
+    /* Le jour qui commence plus tôt que la veille est celui que la règle d'avant
+       #28 privait de tout : rien de la veille n'était encore dû quand la séance
+       se composait. */
+    if (DRIFT && day > 1 && startMin(day) < startMin(day - 1)) {
+      leftEarlier += oneDay.length;
+      nextEarlier += oneDay.filter(id => asked.has(id)).length;
+    }
+    const today = U.dayKey(startOf(day));
     oneDay = NL.state.allRecs().filter(r => r.interval === DAY && U.dayKey(r.last) === today).map(r => r.id);
     const spent = NL.state.meta().exToday || 0;
     const met = NL.srs.counts().seen;
@@ -156,6 +176,15 @@ NL.state.open().then(() => {
      sa séance se composait. Cette suite ne voit pas l'oubli : elle compte. */
   ok(nextDay > 0, 'aucun des ' + leftOneDay + ' éléments laissés à un jour n’est revenu le lendemain');
   P('revenus le lendemain', nextDay + ' sur ' + leftOneDay + ' laissés à un jour');
+  /* L'apprenant qui dérive : son lendemain se compte à l'heure locale, et les
+     jours où il commence plus tôt que la veille sont ceux qu'aucun autre ne
+     voit. */
+  if (DRIFT) {
+    const offsets = [Date.UTC(2026, 0, 15), Date.UTC(2026, 6, 15)].map(t => new Date(t).getTimezoneOffset()).join(' / ');
+    ok(offsets === '-60 / -120', 'l’apprenant qui dérive tourne aux décalages ' + offsets + ' (janvier / juillet), pas à ceux de Bruxelles (-60 / -120) : son lendemain ne se compte pas à l’heure locale');
+    ok(nextEarlier > 0, 'aucun des ' + leftEarlier + ' éléments laissés à un jour n’est revenu le lendemain, les jours où la séance commence plus tôt que la veille');
+    P('  dont les jours commencés plus tôt', nextEarlier + ' sur ' + leftEarlier);
+  }
   /* Dire tôt : un mot ou une phrase rencontré le premier jour est demandé à voix
      haute en une dizaine de jours, et jamais après trois semaines. Avec « dis-le »
      au seul échelon 5, c'était cinq semaines. */
