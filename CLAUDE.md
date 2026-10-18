@@ -30,6 +30,15 @@ own suite; the older `test/smoke.js` and `test/sync.js` do it too. Any suite may
 
 Every fix leaves a test that fails on the old code. Write it, watch it fail, then fix it.
 
+## Running a plan
+
+A plan runs with `docs/agents/plan-runs/`. Each sitting is a new session started with the
+prompt in `run-controller.md`: never `--resume` a run. The run controller hands one task at
+a time to a task controller and reads only the ledger's status table and rulings, and
+returns of at most 10 lines. Every task in a plan carries `Class: engine` or
+`Class: mechanical`, which sets the models. Design never happens inside an implementer: it
+goes to a design sitting (`design-sitting.md`).
+
 ## Conventions you can't infer from the code
 
 - User-facing text lives in `src/core/fr.js`. `test/smoke.js` fails the build if an
