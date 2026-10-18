@@ -38,12 +38,15 @@ NL.state.open().then(() => {
   let backToBack = 0, prevEx = null, exhausted = null, maxBacklog = 0, tasks = 0, lateRecog = 0;
   const owed = {};
   let sessions = 0, taps = 0, touched = 0, spokeAfter = 0, detour = 0, putOff = 0, early = 0;
+  /* Ce que la veille a laissé à un jour, et ce qui en revient le lendemain. */
+  let oneDay = [], leftOneDay = 0, nextDay = 0;
 
   for (let day = 1; day <= DAYS; day++) {
     B.clock.set(T0 + (day - 1) * DAY);
     NL.state.touchDay();
     maxBacklog = Math.max(maxBacklog, NL.srs.dueItems().length);
     const unmetAtDawn = total - NL.srs.counts().seen;
+    const asked = new Set();
 
     let dayTasks = 0, daySecs = 0, dayNew = 0, guard = 0;
     /* Autant de séances que le budget du jour l'autorise — ou une seule. */
@@ -79,7 +82,7 @@ NL.state.open().then(() => {
         }
         /* Ce qui a été mis de côté revient à voix haute, pas autrement. */
         if (!wasMatch && owed[c.items[0].id]) { if (c.ex !== 'speak') detour++; delete owed[c.items[0].id]; }
-        if (!wasMatch) answeredHere.add(c.items[0].id);
+        if (!wasMatch) { answeredHere.add(c.items[0].id); asked.add(c.items[0].id); }
         tasks++; dayTasks++;
         daySecs += SECS[c.ex] || 15;
         mix[c.ex] = (mix[c.ex] || 0) + 1;
@@ -111,6 +114,12 @@ NL.state.open().then(() => {
       B.clock.advance(10 * MIN);          // une pause entre deux séances
     }
     if (unmetAtDawn > 0 && dayNew === 0) dry.push(day);
+    /* Un élément répondu aujourd'hui et laissé à un jour doit pouvoir revenir
+       demain, à quelque heure que l'on étudie (#28). */
+    leftOneDay += oneDay.length;
+    nextDay += oneDay.filter(id => asked.has(id)).length;
+    const today = U.dayKey(T0 + (day - 1) * DAY);
+    oneDay = NL.state.allRecs().filter(r => r.interval === DAY && U.dayKey(r.last) === today).map(r => r.id);
     const spent = NL.state.meta().exToday || 0;
     const met = NL.srs.counts().seen;
     if (!exhausted && met >= total) exhausted = day;
@@ -141,6 +150,12 @@ NL.state.open().then(() => {
      qu'il reste du cours à rencontrer. */
   ok(dry.length === 0, dry.length + ' jour(s) sans aucun élément nouveau alors qu’il en restait à rencontrer — le premier : jour ' + dry[0]);
   P('jours sans rien de neuf', dry.length === 0 ? 'aucun' : dry.length + ' (jours ' + dry.slice(0, 8).join(', ') + '…)');
+  /* Un élément rencontré aujourd'hui revient demain. Quand chaque retour tombait
+     vingt-quatre heures pile après la réponse, celui qui étudie à la même heure
+     chaque jour n'en revoyait aucun le lendemain : rien n'était encore dû quand
+     sa séance se composait. Cette suite ne voit pas l'oubli : elle compte. */
+  ok(nextDay > 0, 'aucun des ' + leftOneDay + ' éléments laissés à un jour n’est revenu le lendemain');
+  P('revenus le lendemain', nextDay + ' sur ' + leftOneDay + ' laissés à un jour');
   /* Dire tôt : un mot ou une phrase rencontré le premier jour est demandé à voix
      haute en une dizaine de jours, et jamais après trois semaines. Avec « dis-le »
      au seul échelon 5, c'était cinq semaines. */

@@ -8,7 +8,7 @@
 const browser = require('./lib/browser');
 const ROOT = process.argv[2];
 const T0 = Date.parse('2026-10-05T08:00:00Z');
-const MIN = 60000, DAY = 86400000;
+const MIN = 60000, HOUR = 3600000, DAY = 86400000;
 /* Ce que la spécification promet, écrit ici plutôt que relu dans le code : au
    moins 30 % des 22 places d'une séance, et jamais moins de quatre, vont au neuf. */
 const FEW = 4, RESERVED = Math.max(FEW, Math.ceil(22 * 0.3));
@@ -19,6 +19,14 @@ const ok = (c, m) => { checks++; if (!c) { console.log('  FAIL: ' + m); fails++;
 const B = browser.open({ root: ROOT, seed: browser.SEED, now: T0, ua: browser.UA.OPR, byId: 'stub' });
 const NL = B.NL, S = NL.screens.sessie;
 const answer = require('./lib/answer')(B);
+
+/* Un retour prévu par une réponse tombe un autre jour que la réponse, et au
+   moins huit heures après elle (#28). Le jour se lit à l'heure locale, comme
+   l'appli le lit ; `last` est l'instant de la réponse. */
+const dayOf = t => NL.util.dayKey(t);
+const dayAfter = t => { const d = new Date(t); return dayOf(new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime()); };
+const laterDay = r => !!r && dayOf(r.due) > dayOf(r.last) && r.due - r.last >= 8 * HOUR;
+const tomorrow = r => laterDay(r) && dayOf(r.due) === dayAfter(r.last);
 
 const met = it => !!NL.state.rec(it.id);
 const isWord = it => it.kind !== 'pattern';
@@ -93,6 +101,26 @@ NL.state.open().then(() => {
   }
 
   /* ------------------------------------------------------------------ */
+  console.log('\nÀ LA MÊME HEURE LE LENDEMAIN — ce qui revient demain est dû (#28)');
+  /* Une séance à l'heure habituelle, et celle du lendemain à la même heure. Un
+     retour prévu vingt-quatre heures pile après chaque réponse tombait quelques
+     minutes après le début de la séance du lendemain, l'horloge ayant avancé
+     pendant celle de la veille : rien de la veille n'était dû quand la séance se
+     composait, et un élément rencontré aujourd'hui revenait après-demain. */
+  {
+    fresh();
+    play();
+    const oneDay = NL.state.allRecs().filter(r => r.interval === DAY).map(r => r.id);
+    B.clock.set(T0 + DAY);
+    NL.state.touchDay();
+    const due = new Set(NL.srs.compose('vandaag').due.map(it => it.id));
+    const missed = oneDay.filter(id => !due.has(id));
+    console.log('  ' + oneDay.length + ' élément(s) laissés à un jour, ' + (oneDay.length - missed.length) + ' dus le lendemain à la même heure');
+    ok(oneDay.length > 0, 'the fixture is wrong: a first session left nothing on a one-day step');
+    ok(missed.length === 0, 'at the same hour the next day, ' + missed.length + ' of ' + oneDay.length + ' items left on a one-day step are not in the session');
+  }
+
+  /* ------------------------------------------------------------------ */
   console.log('\nLE RENFORCEMENT VIT DANS LA SÉANCE, PAS DANS LE CALENDRIER');
   {
     fresh();
@@ -109,33 +137,64 @@ NL.state.open().then(() => {
     console.log('  ' + meetings.length + ' rencontres, chacune revue dans la séance, ' + Math.min.apply(null, gaps) + ' exercices plus tard au minimum');
 
     /* Rien de ce qui vient d'être répondu ne retombe dû dans la journée. */
-    const soon = NL.state.allRecs().filter(r => r.due - B.clock.now() < DAY - 30 * MIN);
-    ok(soon.length === 0, soon.length + ' item(s) are scheduled to return in less than a day (soonest: ' +
-      Math.round(Math.min.apply(null, soon.map(r => r.due - B.clock.now())) / MIN) + ' min)');
+    const soon = NL.state.allRecs().filter(r => !laterDay(r));
+    ok(soon.length === 0, soon.length + ' item(s) are scheduled to return the day they were answered or within 8 hours (soonest: ' +
+      Math.round(Math.min.apply(null, soon.map(r => r.due - r.last)) / MIN) + ' min after the answer)');
     B.clock.advance(13 * MIN);
     ok(NL.srs.plan().due === 0, 'thirteen minutes after a session, ' + NL.srs.plan().due + ' items are due again');
     console.log('  treize minutes plus tard : ' + NL.srs.plan().due + ' à revoir');
   }
 
   /* ------------------------------------------------------------------ */
-  console.log('\nAUCUN INTERVALLE SOUS UN JOUR, À AUCUN ÉCHELON');
+  console.log('\nAUCUN RETOUR LE JOUR DE LA RÉPONSE, À AUCUN ÉCHELON');
   {
     fresh();
     const it = NL.content.allItems().find(i => i.kind === 'word' && !i.cognate);
-    let shortest = Infinity, where = '';
+    let shortest = Infinity;
+    const early = [];
+    const look = (r, where) => {
+      shortest = Math.min(shortest, r.due - r.last);
+      if (!laterDay(r)) early.push(where + ' : ' + Math.round((r.due - r.last) / MIN) + ' min, ' + dayOf(r.due));
+    };
     for (let rung = 0; rung <= NL.srs.MAX_STAGE; rung++) {
       [true, false].forEach(right => {
         put(it, rung, T0);
-        const r = NL.srs.grade(it, right, { ex: 'type' });
-        if (r.due - B.clock.now() < shortest) { shortest = r.due - B.clock.now(); where = 'rung ' + rung + (right ? ', right' : ', wrong'); }
+        look(NL.srs.grade(it, right, { ex: 'type' }), 'rung ' + rung + (right ? ', right' : ', wrong'));
       });
     }
     /* Une toute première réponse fausse aussi. */
     fresh();
-    const first = NL.srs.grade(it, false, { ex: 'pick' });
-    shortest = Math.min(shortest, first.due - B.clock.now());
-    ok(shortest >= DAY, 'an answer schedules a return in ' + Math.round(shortest / MIN) + ' min (' + where + ')');
-    console.log('  intervalle le plus court après une réponse : ' + Math.round(shortest / 3600000) + ' h');
+    look(NL.srs.grade(it, false, { ex: 'pick' }), 'first answer, wrong');
+    ok(early.length === 0, 'an answer schedules a return the day it was given or within 8 hours: ' + early.join(' ; '));
+    console.log('  attente la plus courte après une réponse : ' + Math.round(shortest / HOUR) + ' h');
+  }
+
+  /* ------------------------------------------------------------------ */
+  console.log('\nL’HEURE DE LA RÉPONSE — à Bruxelles, changements d’heure compris (#28)');
+  /* Un élément revient au début du jour local situé `interval` jours après la
+     réponse, et jamais moins de huit heures après elle. Les instants sont écrits
+     en UTC, et ce qu'on en attend aussi, relevé sur le calendrier de Bruxelles.
+     Le fuseau est fixé pour ce bloc seul : la CI, qui tourne en UTC, voit ainsi
+     les mêmes nuits de changement d'heure. */
+  {
+    const zone = process.env.TZ;
+    process.env.TZ = 'Europe/Brussels';
+    fresh();
+    const it = NL.content.allItems().find(i => i.kind === 'word' && !i.cognate);
+    [
+      ['10 March 2026, 08:00', '2026-03-10T07:00:00Z', 0, '2026-03-10T23:00:00Z'],      // minuit, le 11
+      ['10 March 2026, 23:50', '2026-03-10T22:50:00Z', 0, '2026-03-11T06:50:00Z'],      // 7 h 50, le 11
+      ['25 October 2026, 00:30', '2026-10-24T22:30:00Z', 0, '2026-10-25T23:00:00Z'],    // minuit, le 26 : on recule d'une heure la nuit du 25
+      ['28 March 2026, 23:50', '2026-03-28T22:50:00Z', 0, '2026-03-29T06:50:00Z'],      // 8 h 50, le 29 : on avance d'une heure cette nuit-là
+      ['20 October 2026, 08:00, rung 3', '2026-10-20T06:00:00Z', 3, '2026-10-27T23:00:00Z'] // huit jours : minuit, le 28
+    ].forEach(([when, at, rung, want]) => {
+      B.clock.set(Date.parse(at));
+      put(it, rung, Date.parse(at));
+      const r = NL.srs.grade(it, true, { ex: 'type' });
+      ok(r.due === Date.parse(want), 'answered on ' + when + ' in Brussels, an item is due ' + new Date(r.due).toISOString() + ', not ' + want);
+    });
+    if (zone === undefined) delete process.env.TZ; else process.env.TZ = zone;
+    console.log('  8 h → minuit ; 23 h 50 → huit heures plus tard ; les deux nuits de changement d’heure ; huit jours → minuit');
   }
 
   /* ------------------------------------------------------------------ */
@@ -287,7 +346,7 @@ NL.state.open().then(() => {
     S.abandon();
     const half = NL.state.allRecs();
     ok(half.length >= 4, 'the fixture is wrong: an abandoned session should have met a few items');
-    ok(half.every(r => r.due - B.clock.now() >= DAY - 30 * MIN), 'an item met in an abandoned session is due again today');
+    ok(half.every(laterDay), 'an item met in an abandoned session is due again the same day or within 8 hours');
     B.clock.advance(DAY);
     NL.state.touchDay();
     const back = NL.srs.compose('vandaag').due.length;
@@ -342,7 +401,6 @@ NL.state.open().then(() => {
     const words = NL.content.allItems().filter(isWord);
     const it = words.find(i => !i.cognate);
     const draw = n => { const seen = {}; for (let k = 0; k < n; k++) seen[NL.srs.exerciseFor(it)] = 1; return Object.keys(seen); };
-    const inDays = r => Math.round((r.due - B.clock.now()) / DAY * 10) / 10;
 
     /* Jamais dit : dès que l'échelon le propose, c'est ce qui est demandé. */
     const mute = words.filter(w => { put(w, 3, T0); return NL.srs.exerciseFor(w) !== 'speak'; });
@@ -354,7 +412,7 @@ NL.state.open().then(() => {
     put(it, 3, T0);
     let r = NL.srs.grade(it, false, { ex: 'speak' });
     ok(r.stage === 3, 'a wrong first spoken answer sends the item from rung 3 to rung ' + r.stage);
-    ok(r.due - B.clock.now() === DAY, 'after a wrong first spoken answer the item is due in ' + inDays(r) + ' day(s), not 1');
+    ok(tomorrow(r), 'after a wrong first spoken answer on ' + dayOf(r.last) + ' the item is due on ' + dayOf(r.due) + ', not the next day');
     ok(draw(20).join() === 'speak', 'after a wrong first spoken answer the item is asked: ' + draw(20).join(', '));
     /* Une faute à l'écrit, elle, coûte toujours deux échelons. */
     put(it, 3, T0);
@@ -366,7 +424,7 @@ NL.state.open().then(() => {
     put(it, 3, T0);
     r = NL.srs.grade(it, true, { ex: 'speak', spoken: true });
     ok(r.said === true && r.stage === 3, 'a first right spoken answer should leave the item said and on rung 3: it is on rung ' + r.stage + ', said ' + r.said);
-    ok(r.due - B.clock.now() === DAY, 'after a first right spoken answer the item is due in ' + inDays(r) + ' day(s), not 1');
+    ok(tomorrow(r), 'after a first right spoken answer on ' + dayOf(r.last) + ' the item is due on ' + dayOf(r.due) + ', not the next day');
     const then = draw(30);
     ok(then.indexOf('speak') < 0, 'an item that has just been said for the first time is asked: ' + then.join(', '));
     r = NL.srs.grade(it, true, { ex: then[0] });
@@ -485,7 +543,7 @@ NL.state.open().then(() => {
     answer.right(); answer.next(false);
     S.abandon();
     const half = NL.state.rec(left.id);
-    ok(half.said === true && half.stage === 3 && half.due - B.clock.now() >= DAY - 30 * MIN, 'an item said in a session left before its second exercise is said ' + half.said + ', on rung ' + half.stage + ', due in ' + Math.round((half.due - B.clock.now()) / 3600000) + ' h');
+    ok(half.said === true && half.stage === 3 && laterDay(half), 'an item said in a session left before its second exercise is said ' + half.said + ', on rung ' + half.stage + ', due ' + Math.round((half.due - half.last) / HOUR) + ' h after the answer, on ' + dayOf(half.due));
     B.clock.advance(DAY);
     NL.state.touchDay();
     ok(NL.srs.exerciseFor(left) !== 'speak', 'the day after it was said, the item is asked aloud again');
@@ -831,7 +889,6 @@ NL.state.open().then(() => {
     }).filter(g => g !== null);
     const shape = served => served.map(x => x.ex === 'match' ? 'B' : x.second ? '2' : x.retry ? 'x' : x.unmet ? 'M' : x.ex === 'speak' ? 'S' : 'R').join('');
     const held = served => served.filter(x => x.ex !== 'match').length;
-    const tomorrow = r => !!r && r.due - B.clock.now() >= DAY - 30 * MIN && r.due - B.clock.now() <= DAY + 30 * MIN;
     /* Tout est rencontré et loin, sauf `unmet` ; `say` éléments jamais dits à
        l'échelon 3 et `plain` ordinaires à l'échelon 2 sont dus. */
     const only = (unmet, say, plain) => {
@@ -878,7 +935,7 @@ NL.state.open().then(() => {
       ok(p.fresh === n && held(s) === p.tasks, n + ' new item(s) alone: home announced ' + p.fresh + ' new / ' + p.tasks + ' exercises, the session served ' + held(s));
       if (n < 4) {
         const recs = unmet.map(it => NL.state.rec(it.id));
-        ok(recs.every(r => r && r.stage === 1 && tomorrow(r)), n + ' new item(s) met without their second exercise should be on rung 1, due tomorrow: ' + JSON.stringify(recs.map(r => r && [r.stage, Math.round((r.due - B.clock.now()) / 3600000)])));
+        ok(recs.every(r => r && r.stage === 1 && tomorrow(r)), n + ' new item(s) met without their second exercise should be on rung 1, due tomorrow: ' + JSON.stringify(recs.map(r => r && [r.stage, dayOf(r.last), dayOf(r.due)])));
       }
     });
 
