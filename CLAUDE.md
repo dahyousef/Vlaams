@@ -42,10 +42,9 @@ Every fix leaves a test that fails on the old code. Write it, watch it fail, the
   `ease`, `reps`, `lapses`, `said`, `retired`, `base`. Records are stored and synced whole, so a
   rename orphans them exactly as a key rename would. `GLOSSARY.md` says to call a stage a
   **rung** in prose and in new names; it is not an instruction to rename the stored field.
-- Values are `const`, or `let` where they change, never `var`; no optional chaining. Both
-  arrow functions and `function` declarations are in use: arrows for short helpers and
-  callbacks, declarations for longer named functions. New code follows the same split;
-  existing code is not converted.
+- `const`, or `let` where it changes; no optional chaining (`test/smoke.js` checks both).
+  Arrows for short helpers and callbacks, `function` declarations for longer named
+  functions; existing code is not converted.
 - The repo is **public**. Personal data stays out of tracked files; content personalises
   through `{naam}`, `{stad}` and `{bedrijf}`, substituted once at load.
 - `SUPABASE_URL` and `SUPABASE_ANON_KEY` must exist for **Production and Preview**.
