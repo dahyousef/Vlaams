@@ -169,10 +169,15 @@ NL.state.open().then(() => {
   ].forEach(([src, want]) => ok(JSON.stringify(found(src)) === JSON.stringify(want),
     'syntax check on ' + JSON.stringify(src) + ' found ' + JSON.stringify(found(src)) + ', wanted ' + JSON.stringify(want)));
   const sources = browser.sources(ROOT);
+  const why = { 'var': 'a var declaration, use const, or let where it changes', '?.': 'optional chaining (?.)' };
+  let seen = 0;
   ok(sources.length > 0, 'the syntax check read no source file from build.sh');
-  sources.forEach(f => syntaxFindings(fs.readFileSync(path.join(ROOT, f), 'utf8')).forEach(x =>
-    ok(false, f + ':' + x.line + ': ' + x.what + (x.what === 'var' ? ': const, or let where it changes' : ''))));
-  console.log('  syntax          ' + sources.length + ' sources from build.sh: no var, no ?.');
+  sources.forEach(f => syntaxFindings(fs.readFileSync(path.join(ROOT, f), 'utf8')).forEach(x => {
+    ok(false, f + ':' + x.line + ': ' + (why[x.what] || x.what + ', as the syntax check reads it'));
+    seen++;
+  }));
+  console.log('  syntax          ' + sources.length + ' sources from build.sh: ' +
+    (seen ? seen + ' finding(s)' : 'no var, no ?.'));
 
   items.filter(i => i.art).forEach(i =>
     ok(i.nl.startsWith(i.art + ' '), 'article mismatch: ' + i.nl + ' / ' + i.art));
