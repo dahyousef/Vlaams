@@ -29,12 +29,16 @@ for c in "nl-BE OPR" "nl-NL OPR" "none OPR" "nl-BE EDG" "nl-NL EDG" "none EDG" "
   node test/journey.js "$ROOT" "$1" "$2"
 done
 
-# Trois apprenants : celui qui épuise le budget du jour, celui qui ne fait
-# qu'une séance, et celui qui, une séance sur cinq, ne peut pas parler. Le
-# défaut d'octobre ne se voyait que chez le deuxième.
+# Quatre apprenants : celui qui épuise le budget du jour, celui qui ne fait
+# qu'une séance, celui qui, une séance sur cinq, ne peut pas parler, et celui
+# dont la séance commence chaque jour vingt minutes plus tôt, de 21 h à 7 h,
+# puis remonte. Le défaut d'octobre ne se voyait que chez le deuxième. Le
+# quatrième voit ce qu'aucun autre ne voit : un lendemain qui dépendrait de
+# l'heure à laquelle on commence (#32).
 node test/pace.js "$ROOT" "${PACE_DAYS:-200}"
 node test/pace.js "$ROOT" "${PACE_DAYS:-200}" one
 node test/pace.js "$ROOT" "${PACE_DAYS:-200}" one quiet
+node test/pace.js "$ROOT" "${PACE_DAYS:-200}" one drift
 
 # Le build versionné doit correspondre à ses sources : index.html et
 # artifact.html sont ce que Vercel et l'artefact servent. En CI, un écart est
