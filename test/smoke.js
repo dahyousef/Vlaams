@@ -17,6 +17,11 @@ const NL = B.NL;
 let fails = 0;
 const ok = (cond, msg) => { if (!cond) { console.log('  FAIL: ' + msg); fails++; } };
 
+/* Les `var` et les `?.` d'une source, chacun avec sa ligne. Pas encore écrite. */
+function syntaxFindings(src) {
+  return [];
+}
+
 NL.state.open().then(() => {
   NL.content.refresh();
   const items = NL.content.allItems();
@@ -71,6 +76,30 @@ NL.state.open().then(() => {
       ok(html.indexOf(s) < 0, 'untranslated interface string in build: ' + s));
     console.log('  french sweep    build is clean of known EN/NL interface strings');
   }
+
+  /* Ni `var` ni chaînage optionnel (`?.`) dans les sources. La liste est celle de
+     build.sh : un fichier ajouté plus tard est relu lui aussi. Les sources actuelles
+     n'en ont aucun ; les cas ci-dessous prouvent que la relecture voit encore quelque
+     chose, et qu'elle ne compte ni les chaînes ni les commentaires. */
+  const found = src => syntaxFindings(src).map(f => f.line + ' ' + f.what);
+  [['var x = 1;', ['1 var']],
+   ['const a = 1;\nconst b = a?.c;', ['2 ?.']],
+   ['f?.(); a?.[0];', ['1 ?.', '1 ?.']],
+   ['const s = "Quoi ?. var x";', []],
+   ['// a?.b var y\n/* var z;\n a?.b */ const n = 1;', []],
+   ['const r = /["?.]/g; var q;', ['1 var']],
+   ["if (n) return /'/.test(s) ? 1 : 2;", []],
+   ['const d = a / b; const s = "?.";', []],
+   ['const n = c?.5:1; o.var = 2; const variable = 3;', []],
+   ['const t = `a ?. var ${x?.y} b`;', ['1 ?.']],
+   ['const s = "abc\nvar x;', ['1 unclosed string', '2 var']]
+  ].forEach(([src, want]) => ok(JSON.stringify(found(src)) === JSON.stringify(want),
+    'syntax check on ' + JSON.stringify(src) + ' found ' + JSON.stringify(found(src)) + ', wanted ' + JSON.stringify(want)));
+  const sources = browser.sources(ROOT);
+  ok(sources.length > 0, 'the syntax check read no source file from build.sh');
+  sources.forEach(f => syntaxFindings(fs.readFileSync(path.join(ROOT, f), 'utf8')).forEach(x =>
+    ok(false, f + ':' + x.line + ': ' + x.what + (x.what === 'var' ? ': const, or let where it changes' : ''))));
+  console.log('  syntax          ' + sources.length + ' sources from build.sh: no var, no ?.');
 
   items.filter(i => i.art).forEach(i =>
     ok(i.nl.startsWith(i.art + ' '), 'article mismatch: ' + i.nl + ' / ' + i.art));
