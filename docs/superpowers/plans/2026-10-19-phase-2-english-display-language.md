@@ -228,12 +228,23 @@ index.html artifact.html text eol=lf
 The launch command. Run it from the run's worktree, so the new session starts inside a worktree:
 
 ```powershell
-& "$env:USERPROFILE\.local\bin\claude.exe" --bg --remote-control "<name>" -n "<name>" --model opus --settings '{"env":{"CLAUDE_CODE_AUTO_COMPACT_WINDOW":"200000"}}' -- "<prompt>"
+& "$env:USERPROFILE\.local\bin\claude.exe" --bg --remote-control "<name>" -n "<name>" --model opus --settings '{\"env\":{\"CLAUDE_CODE_AUTO_COMPACT_WINDOW\":\"200000\"}}' -- "<prompt>"
 ```
 
 - `<name>` takes the form `Vlaams phase 2 — <what it is> <n>`.
 - `<prompt>` is the run's start prompt, a design sitting's prompt, or « Read `<WS>/briefs/task-<N>.md` and
   follow it. Run file: `<WS>/run.md`. ».
+- The quotes inside `--settings` are escaped because Windows PowerShell 5.1 drops unescaped ones from an
+  argument it passes to a program: measured 19 Oct, `'{"env":…}'` arrived as
+  `{env:{CLAUDE_CODE_AUTO_COMPACT_WINDOW:200000}}`, which is not JSON.
+- The launch prints `backgrounded · <id> · <name>`. Right after it, open a window attached to the new session,
+  so the maintainer can follow it on the desktop:
+
+```powershell
+Start-Process powershell.exe -ArgumentList '-NoExit', '-Command', '& "$env:USERPROFILE\.local\bin\claude.exe" attach <id>'
+```
+
+Below, « the command » means both: the launch, then its window.
 
 - [ ] **Step 1: Branch.** Open a branch from `phase-2-english` after Task A has merged:
 
@@ -266,14 +277,19 @@ The launch command. Run it from the run's worktree, so the new session starts in
 - [ ] **Step 4: Change `ledger-template.md`.** A Status row's class may be `engine`, `mechanical` or
   `sitting`.
 
-- [ ] **Step 5: Check that a launch really starts.** From `.claude/worktrees/sittings`:
+- [ ] **Step 5: Check that a launch really starts, with its setting and its window.** From
+  `.claude/worktrees/sittings`:
   - launch a throwaway session with the command, `--model haiku` in place of `opus`, and the prompt « Write the
-    word ok to `.superpowers/launch-check.txt`, then stop. »;
+    value of the environment variable CLAUDE_CODE_AUTO_COMPACT_WINDOW to `.superpowers/launch-check.txt`, then
+    stop. »;
+  - check that a `claude.exe attach <id>` process exists (`Get-CimInstance Win32_Process -Filter "Name='claude.exe'"`
+    lists each one's command line);
   - wait for it to end;
-  - check that the file holds `ok`;
-  - delete the file.
+  - check that the file holds `200000`;
+  - delete the file, and stop the session with `claude.exe stop <id>`.
 
-  Expected: the file exists, and the session's transcript shows no call to EnterWorktree.
+  Expected: the file holds `200000`, the attach process existed, and the session's transcript shows no call to
+  EnterWorktree.
 
 - [ ] **Step 6: Commit, push, open the pull request.** The commit subject is
   `docs(plan-runs): sittings launch the next sitting themselves`. Open the pull request into
