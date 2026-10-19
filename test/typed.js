@@ -257,7 +257,7 @@ NL.state.open().then(() => {
     if (ja) ok(ja.be !== null && U.norm(ja.be) === U.norm(t.hereThey + ' jaja'), '`ja` shows « ' + (ja.be || '(no line)') + ' », not « ' + t.hereThey + ' jaja »');
 
     const dank = typed('dank u wel', 'dank u wel');
-    if (dank) ok(dank.text.indexOf('On dit aussi : dank u, bedankt') >= 0, '`dank u wel` does not show « On dit aussi : dank u, bedankt »: ' + dank.text);
+    if (dank) ok(dank.text.indexOf(t.alsoSaid + ' dank u, bedankt') >= 0, '`dank u wel` does not show « ' + t.alsoSaid + ' dank u, bedankt »: ' + dank.text);
     console.log('  ici on dit     rien pour « Op welk spoor? », « hè », « da nie », « jaja » ; on dit aussi');
   }
 

@@ -11,7 +11,7 @@ const B = browser.open({
   files: ['src/core/util.js', 'src/core/gloss.js', 'src/core/fr.js', 'src/core/state.js', 'src/core/srs.js', 'src/core/speech.js',
     'src/core/audio.js', 'src/content/lexicon.a1.js', 'src/content/lexicon.a1b.js', 'src/content/grammar.js',
     'src/content/open.js', 'src/content/reference.js', 'src/content/scenarios.js', 'src/content/index.js',
-    'src/ex/index.js']
+    'src/core/lang.js', 'src/ex/index.js']
 });
 const NL = B.NL;
 let fails = 0;
@@ -393,24 +393,31 @@ NL.state.open().then(() => {
     const byNl = {};
     all.forEach(x => { (byNl[UU.norm(UU.bare(x.nl))] = byNl[UU.norm(UU.bare(x.nl))] || []).push(x); });
     let built = 0, second = 0, example = '';
+    /* Le sens se lit par NL.gloss, dans chaque langue lue. */
+    const was = NL.gloss.current();
+    ['fr', 'en'].forEach(l => {
+    NL.gloss.use(l);
     /* Les mots qui ont un jumeau de sens sont rares : on les tire bien plus
        souvent, sinon le hasard ne les met presque jamais face à face. */
-    const hasTwin = it => all.some(x => x !== it && x.kind === it.kind && overlap(UU.bareFr(x.fr), UU.bareFr(it.fr)));
+    const hasTwin = it => all.some(x => x !== it && x.kind === it.kind && overlap(NL.gloss.bare(x), NL.gloss.bare(it)));
     all.forEach(it => {
       const reps = hasTwin(it) ? 60 : 3;
       for (let k = 0; k < reps; k++) {
         const p = NL.ex.get('pick').build(it), r = NL.ex.get('recall').build(it);
         built += 2;
         p.opts.filter(o => !o.ok).forEach(o => {
-          if ((byNl[UU.norm(o.label)] || []).some(x => overlap(UU.bareFr(x.fr), UU.bareFr(it.fr)))) {
-            second++; example = example || UU.bareFr(it.fr) + ' → ' + o.label;
+          if ((byNl[UU.norm(o.label)] || []).some(x => overlap(NL.gloss.bare(x), NL.gloss.bare(it)))) {
+            second++; example = example || NL.gloss.bare(it) + ' → ' + o.label;
           }
         });
         r.opts.filter(o => !o.ok).forEach(o => {
-          if (overlap(o.label, UU.bareFr(it.fr))) { second++; example = example || it.nl + ' → ' + o.label; }
+          if (overlap(o.label, NL.gloss.bare(it))) { second++; example = example || it.nl + ' → ' + o.label; }
         });
       }
     });
+    });
+    NL.gloss.use(was);
+
     /* « Comment le dit-on ici ? » : une phrase face à deux mots isolés se devine. */
     let mixed = 0, vl = 0;
     all.filter(i => i.kind === 'phrase' && i.be && UU.norm(i.be) !== UU.norm(i.nl)).forEach(it => {
@@ -479,6 +486,7 @@ NL.state.open().then(() => {
   /* Deux mots, une même traduction : à l'écran les deux cartes « bonjour » sont
      identiques, donc l'une ou l'autre doit être acceptée. */
   {
+    NL.state.setMeta({ displayLang: 'fr' }); NL.lang.apply(true);
     const hallo = items.find(i => U.bare(i.nl) === 'hallo'), goeiedag = items.find(i => U.bare(i.nl) === 'goeiedag');
     const dag = items.find(i => U.bare(i.nl) === 'dag');
     ok(hallo && goeiedag && U.norm(U.bareFr(hallo.fr)) === U.norm(U.bareFr(goeiedag.fr)),

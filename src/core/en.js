@@ -236,6 +236,9 @@ NL.tables.en = {
   /* --- réglages --- */
   setTitle: 'Settings',
   setTheme: 'Theme', setSystem: 'System', setLight: 'Light', setDark: 'Dark',
+  setLang: 'Language',
+  langOther: 'French',
+  langNotice: 'Reading in English. The reference sheets are under More; each says which language it helps with.',
   setPractice: 'Practice',
   setFlemish: 'Show the Flemish variant',
   setAutoplay: 'Play audio automatically',

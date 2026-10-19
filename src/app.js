@@ -6,6 +6,7 @@
     NL.errlog.watch();
     NL.state.open().then(() => {
       const wiped = NL.state.migrate();
+      NL.lang.apply(true);
       NL.content.refresh();
       NL.state.touchDay();
       NL.ui.bind(root);

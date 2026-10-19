@@ -171,7 +171,7 @@ function open(opts) {
     location: Object.assign({ hash: '', protocol: 'https:', origin: 'https://vlaams.example', pathname: '/' }, opts.location || {}),
     document: {
       readyState: 'complete', visibilityState: 'visible',
-      documentElement: { setAttribute() {}, removeAttribute() {} },
+      documentElement: { attrs: {}, setAttribute(k, v) { this.attrs[k] = v; }, removeAttribute(k) { delete this.attrs[k]; } },
       getElementById: id => (id === 'app' ? app : opts.byId === 'stub' ? mkEl('input') : null),
       querySelector: () => null, querySelectorAll: () => [],
       addEventListener: listen,

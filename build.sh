@@ -32,6 +32,7 @@ src/content/open.js
 src/content/reference.js
 src/content/scenarios.js
 src/content/index.js
+src/core/lang.js
 src/ex/index.js
 src/ui/shell.js
 src/ui/session.js

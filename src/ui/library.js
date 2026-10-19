@@ -83,7 +83,7 @@
         const en = (document.getElementById('add-en') || {}).value || '';
         const be = (document.getElementById('add-be') || {}).value || '';
         if (!nl.trim() || !en.trim()) { NL.ui.toast(NL.t.wordsNeedBoth); return; }
-        NL.state.addCustom({ nl: nl.trim(), fr: en.trim(), be: be.trim() || null, kind: nl.trim().split(/\s+/).length > 2 ? 'phrase' : 'word' });
+        NL.state.addCustom({ nl: nl.trim(), [NL.lang.current()]: en.trim(), be: be.trim() || null, kind: nl.trim().split(/\s+/).length > 2 ? 'phrase' : 'word' });
         NL.content.refresh(); adding = false; NL.ui.render(); NL.ui.toast(NL.t.wordsAdded);
         return;
       }

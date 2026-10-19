@@ -311,8 +311,185 @@ function tableCheck(NL) {
   Object.keys(SAME).forEach(k => ok(Object.prototype.hasOwnProperty.call(fr, k), 'SAME : « ' + k + ' » n\'est pas une clé'));
 }
 
+/* 5. La langue d'affichage : le réglage, le changement qui attend la fin de la
+   séance, l'avis, les mots à soi, ce que la restauration et la remise à zéro gardent. */
+const French = B => { B.NL.state.setMeta({ displayLang: 'fr' }); B.NL.lang.apply(true); };
+const English = B => { B.NL.state.setMeta({ displayLang: 'en' }); B.NL.lang.apply(true); };
+const tapOn = (B, d) => B.listeners.click.forEach(f => f({ target: { closest: () => ({ dataset: d }) } }));
+const htmlLang = B => B.ctx.document.documentElement.attrs.lang;
+const count = (s, sub) => s.split(sub).length - 1;
+
+/* Les feuilles d'une table deviennent ⟦préfixe:clé⟧ ; `keep` garde id et nl (la navigation). */
+function markLeaves(v, p, keep) {
+  if (typeof v === 'string') return '⟦' + p + '⟧';
+  if (typeof v === 'function') return () => '⟦' + p + '⟧';
+  if (Array.isArray(v)) return v.map((x, i) => markLeaves(x, p + '.' + i, keep));
+  if (v && typeof v === 'object') {
+    Object.keys(v).forEach(k => { if (!(keep && (k === 'id' || k === 'nl'))) v[k] = markLeaves(v[k], p + '.' + k, keep); });
+    return v;
+  }
+  return v;
+}
+/* 5f : le cours apparié, puis le français du cours en ⟪n⟫ et les deux tables en ⟦fr:clé⟧ et ⟦en:clé⟧. */
+function markedBoth(NL) {
+  pairUp(NL.content);
+  let n = 0;
+  const walk = (v, key) => {
+    if (Array.isArray(v)) return v.map(x => walk(x, key));
+    if (v && typeof v === 'object') { Object.keys(v).forEach(k => { v[k] = walk(v[k], k); }); return v; }
+    return typeof v === 'string' && key === 'fr' ? '⟪' + (n++) + '⟫' : v;
+  };
+  COLLECTIONS.forEach(k => { NL.content[k] = walk(NL.content[k], k); });
+  ['fr', 'en'].forEach(l => {
+    const tb = NL.tables[l];
+    Object.keys(tb).forEach(k => { tb[k] = markLeaves(tb[k], l + ':' + k, k === 'nav'); });
+  });
+  Object.keys(NL.t).forEach(k => { NL.t[k] = markLeaves(NL.t[k], 'fr:' + k, k === 'nav'); });
+}
+
+function langChecks() {
+  /* 5a. Un appareil qui n'a jamais choisi ne défait pas un choix. */
+  const A = boot(null);
+  return A.NL.state.open().then(() => {
+    const NL = A.NL;
+    ok(NL.sync.mergeMeta({ displayLang: 'fr', updatedAt: 1 }, { updatedAt: 2 }).displayLang === 'fr', '5a : la fusion perd displayLang: fr');
+    ok(!Object.prototype.hasOwnProperty.call(NL.state.meta(), 'displayLang'), '5a : un appareil neuf porte déjà displayLang');
+    ok(NL.lang.current() === 'en', '5a : sans choix, la langue n\'est pas l\'anglais');
+    ok(htmlLang(A) === 'en-GB', '5a : <html lang> vaut « ' + htmlLang(A) + ' » au lieu de en-GB');
+    ok(NL.t.nav[1].label === NL.tables.en.nav[1].label, '5a : NL.t n\'est pas la table anglaise');
+
+    /* 5b. Un changement qui arrive en pleine séance ou conversation attend le premier écran d'après. */
+    const B = boot(null);
+    return B.NL.state.open().then(() => {
+      const N = B.NL, S = N.screens.sessie, html = () => B.app.innerHTML;
+      const fr = N.tables.fr, en = N.tables.en;
+      N.content.allItems().filter(it => it.unit !== 'eigen').slice(0, 12).forEach((it, i) => {
+        N.srs.seed(it, 1); const r = N.state.rec(it.id); r.due = 1700000000000 - 1000 * (i + 1); N.state.setRec(r);
+      });
+      const waits = (what, enter) => {
+        enter();
+        const before = text(html());
+        N.state.setMeta({ displayLang: 'fr' }, true);   // ce que fait une synchro
+        N.ui.render();                                  // sans le garde de app.js : render() se garde seul
+        ok(text(html()) === before, '5b ' + what + ' : l\'écran a changé en pleine séance');
+        ok(htmlLang(B) === 'en-GB', '5b ' + what + ' : <html lang> a changé en pleine séance (' + htmlLang(B) + ')');
+        if (what === 'séance') tapOn(B, { quitYes: '1' }); else N.ui.go('vandaag');
+        const t = text(html());
+        ok(t.indexOf(fr.nav[1].label) >= 0 && t.indexOf(en.nav[1].label) < 0, '5b ' + what + ' : l\'écran d\'après n\'est pas en français');
+        ok(htmlLang(B) === 'fr', '5b ' + what + ' : <html lang> vaut « ' + htmlLang(B) + ' » après la sortie');
+        ok(count(t, fr.langNotice) === 1, '5b ' + what + ' : l\'avis s\'affiche ' + count(t, fr.langNotice) + ' fois au lieu d\'une');
+        N.ui.go('leerpad');
+        ok(count(text(html()), fr.langNotice) === 0, '5b ' + what + ' : l\'avis revient au go() suivant');
+        English(B); N.ui.go('vandaag');
+      };
+      waits('séance', () => { ok(S.begin('vandaag'), '5b : aucune séance à démarrer'); N.ui.go('sessie'); });
+      waits('conversation', () => N.ui.go('scenario', N.content.scenarios[0].id));
+
+      /* 5c. Un mot à soi garde la langue où il a été tapé, et se lit dans cette langue. */
+      const C = boot(null);
+      return C.NL.state.open().then(() => {
+        const NL = C.NL, vals = {};
+        French(C);
+        C.ctx.document.getElementById = id => ({ value: vals[id] || '' });
+        const add = (nl, gl) => {
+          const t0 = Date.now(); while (Date.now() === t0) { /* un identifiant par milliseconde */ }
+          vals['add-nl'] = nl; vals['add-en'] = gl;
+          NL.ui.go('woorden');
+          NL.screens.woorden.click({ dataset: {} }, { act: 'addform' });
+          NL.screens.woorden.click({ dataset: {} }, { act: 'addsave' });
+        };
+        add('de vergaderzaal', 'salle de réunion');
+        NL.lang.set('en');
+        add('ik ben te laat', "I'm late");
+        const mine = NL.state.customs();
+        const wf = mine.find(w => w.nl === 'de vergaderzaal'), we = mine.find(w => w.nl === 'ik ben te laat');
+        ok(mine.length === 2 && wf && we, '5c : les deux mots à soi ne sont pas enregistrés');
+        if (!(wf && we)) return;
+        ok(wf.fr === 'salle de réunion' && wf.en === undefined, '5c : en français, le mot est enregistré { nl, fr }');
+        ok(we.en === "I'm late" && we.fr === undefined, '5c : en anglais, le mot est enregistré { nl, en }');
+        mine.forEach(w => { NL.content.refresh(); NL.srs.seed(NL.content.byId(w.id), 2); });
+        const glosses = [wf.fr, we.en];
+        ['en', 'fr'].forEach(l => {
+          if (l === 'fr') NL.lang.set('fr');
+          NL.content.refresh();
+          mine.forEach(w => {
+            const it = NL.content.byId(w.id), want = w.fr || w.en;
+            for (let i = 0; i < 30; i++) {
+              const p = NL.ex.get('pick').build(it), r = NL.ex.get('recall').build(it);
+              ok(p.prompt === want, '5c (' + l + ') : pick demande « ' + p.prompt + ' » au lieu de « ' + want + ' »');
+              const right = r.opts.find(o => o.ok);
+              ok(right && right.label === want, '5c (' + l + ') : recall : la bonne option est « ' + (right && right.label) + ' »');
+              p.opts.concat(r.opts).forEach(o => ok(o.label !== '' && o.label !== 'undefined', '5c (' + l + ') : option vide pour ' + it.nl));
+            }
+          });
+          NL.content.itemsOf(NL.content.units[0].id).forEach(it => {
+            for (let i = 0; i < 20; i++) NL.ex.get('recall').build(it).opts.forEach(o =>
+              ok(glosses.indexOf(o.label) < 0, '5c (' + l + ') : un mot à soi est offert en faux : ' + o.label));
+          });
+        });
+      }).then(() => {
+        /* 5d. Une restauration d'avant la phase 2, une remise à zéro et un changement de compte gardent le choix. */
+        const D = boot(null);
+        return D.NL.state.open().then(() => {
+          const NL = D.NL;
+          French(D);
+          NL.state.importAll({ app: 'vlaams-onderweg', v: 1, at: Date.now(), meta: { xp: 5 }, srs: [], custom: [], log: [] });
+          ok(NL.state.meta().displayLang === 'fr', '5d : importAll d\'une sauvegarde sans displayLang l\'efface');
+          NL.state.resetProgress();
+          ok(NL.state.meta().displayLang === 'fr', '5d : resetProgress efface displayLang');
+          return NL.state.clearAll().then(() => ok(NL.state.meta().displayLang === 'fr', '5d : clearAll efface displayLang'));
+        });
+      }).then(() => {
+        /* 5e. ADR 0004 : un mot est transparent dans la langue lue ; le changement le recalcule. */
+        const E = boot(NL => NL.content.units.forEach(u => u.words.forEach(w => { if (w.nl === 'hallo') w.en = 'hello'; })));
+        return E.NL.state.open().then(() => {
+          const NL = E.NL, hallo = () => NL.content.allItems().find(it => it.nl === 'hallo');
+          ok(hallo() && hallo().en === 'hello', '5e : le mot de l\'essai n\'a pas d\'anglais');
+          ok(hallo().cognate === true, '5e : hallo n\'est pas transparent en anglais');
+          NL.lang.set('fr');
+          ok(hallo().cognate === false, '5e : hallo est transparent en français');
+          NL.lang.set('en');
+          ok(hallo().cognate === true, '5e : hallo n\'est plus transparent au retour en anglais');
+        });
+      }).then(() => {
+        /* 5f. Dans chaque langue, aucun texte de l'autre à l'écran. */
+        const pass = (l, bad) => {
+          const F = boot(markedBoth);
+          return F.NL.state.open().then(() => {
+            if (l === 'fr') French(F);
+            const hits = new Map();
+            views(F, (n, h) => {
+              if (n === 'klanken' || n === 'register') return;   // les trois pages françaises : tâche 13
+              const m = text(h).match(bad);
+              if (m && !hits.has(m[0])) hits.set(m[0], n);
+            });
+            hits.forEach((n, w) => ok(false, '5f (' + l + ') : « ' + w + ' » à l\'écran (vue ' + n + ')'));
+          });
+        };
+        /* Un navigateur par langue : l'écran d'écoute garde l'état de sa dernière visite. */
+        return pass('en', /⟪|⟦fr:/).then(() => pass('fr', /\bEN\d+|⟦en:/));
+      }).then(() => {
+        /* 5g. Le réglage nomme l'autre langue, et un clic change sans recharger. */
+        const G = boot(null);
+        return G.NL.state.open().then(() => {
+          const NL = G.NL, label = () => (G.app.innerHTML.match(/data-display-lang="[a-z]+"[^>]*>([^<]*)</) || [])[1];
+          NL.ui.go('vandaag'); NL.ui.openSheet('instellingen');
+          ok(label() === NL.tables.en.langOther, '5g : en anglais, le réglage dit « ' + label() + ' »');
+          ok(G.app.innerHTML.indexOf('data-display-lang="fr"') >= 0, '5g : le bouton ne vise pas le français');
+          tapOn(G, { displayLang: 'fr' });
+          ok(NL.lang.current() === 'fr' && htmlLang(G) === 'fr', '5g : le clic ne change pas la langue');
+          ok(label() === NL.tables.fr.langOther, '5g : en français, le réglage dit « ' + label() + ' »');
+          ok(G.app.innerHTML.indexOf('data-display-lang="en"') >= 0, '5g : le bouton ne vise pas l\'anglais');
+          ok(text(G.app.innerHTML).indexOf(NL.tables.fr.setLang) >= 0, '5g : le titre du bloc n\'est pas en français');
+        });
+      });
+    });
+  });
+}
+
 const plain = boot(null), paired = boot(NL => pairUp(NL.content));
 Promise.all([plain.NL.state.open(), paired.NL.state.open()]).then(() => {
+  French(plain); French(paired);
   /* 2a. Apparié, en français, l'écran est celui d'aujourd'hui. Les deux démarrent
      avec la même graine : une différence est une vraie différence. */
   const a = [], b = [];
@@ -335,6 +512,7 @@ Promise.all([plain.NL.state.open(), paired.NL.state.open()]).then(() => {
     u.words[0].en = 'shared'; u.words[1].en = 'shared';
   });
   return Promise.all([own.NL.state.open(), lib.NL.state.open()]).then(() => {
+    French(own);
     const NL = own.NL, G = NL.gloss;
     const items = [
       { id: 'x-own-1', nl: 'de vergaderzaal', en: 'meeting room', kind: 'word' },
@@ -413,6 +591,8 @@ Promise.all([plain.NL.state.open(), paired.NL.state.open()]).then(() => {
       ok(nn.app.innerHTML.indexOf('<em></em>') < 0, 'registre : un <em></em> vide');
       ok(seenNote > 0 && N.content.register.some(r => r.note), 'aucune note à tester : le contrôle est creux');
 
+      return langChecks();
+    }).then(() => {
       tableCheck(plain.NL);
       return interfaceCheck();
     }).then(() => {

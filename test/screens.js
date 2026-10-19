@@ -28,7 +28,7 @@ function read(name, html, state) {
   ok(txt.length > 60, where + ' rendered almost nothing');
   ok(!/undefined|NaN|\[object/.test(txt), where + ' printed a hole: ' + (txt.match(/.{0,30}(undefined|NaN|\[object).{0,20}/) || [''])[0]);
   ok(!/\d\s?%/.test(txt), where + ' shows a percentage: « ' + (txt.match(/.{0,40}\d\s?%.{0,15}/) || [''])[0] + ' »');
-  ok(!/ma[iî]tris/i.test(txt), where + ' still speaks of mastery: « ' + (txt.match(/.{0,30}ma[iî]tris.{0,20}/i) || [''])[0] + ' »');
+  ok(!/ma[iî]tris|\bmaster/i.test(txt), where + ' still speaks of mastery: « ' + (txt.match(/.{0,30}(ma[iî]tris|\bmaster).{0,20}/i) || [''])[0] + ' »');
   ok(!/test de niveau/i.test(txt) && html.indexOf('placement') < 0, where + ' still offers the placement test');
   return txt;
 }
@@ -142,7 +142,7 @@ NL.state.open().then(() => {
     const day = n => NL.util.dayKey(T0 + n * DAY);
     const streakOnHome = () => {
       const h = text(NL.screens.vandaag.render());
-      return (h.match(/(\d+)\s+jours? d.affilée/) || [])[1];
+      return (h.match(new RegExp('(\\d+)\\s+(?:' + t.statStreak(1) + '|' + t.statStreak(2) + ')')) || [])[1];
     };
     fresh();
     NL.state.setMeta({ lastDay: day(-10), streak: 2 });
@@ -167,11 +167,11 @@ NL.state.open().then(() => {
     NL.state.setMeta({ streak: 1 });
     NL.ui.render();
     const one = text(B.app.innerHTML);
-    ok(/\b1 Jour\b(?!s)/.test(one) && !/\b1 Jours\b/.test(one), 'le bilan avec une série de 1 ne lit pas « 1 Jour » : « ' + (one.match(/.{0,20}Jours?.{0,10}/) || [''])[0] + ' »');
+    ok(one.indexOf('1 ' + t.tallyDays(1)) >= 0 && one.indexOf('1 ' + t.tallyDays(2)) < 0, 'le bilan avec une série de 1 ne lit pas « 1 ' + t.tallyDays(1) + ' » : « ' + (one.match(new RegExp('.{0,20}' + t.tallyDays(1) + '.{0,10}')) || [''])[0] + ' »');
     NL.state.setMeta({ streak: 2 });
     NL.ui.render();
     const two = text(B.app.innerHTML);
-    ok(/\b2 Jours\b/.test(two), 'le bilan avec une série de 2 ne lit pas « 2 Jours »');
+    ok(two.indexOf('2 ' + t.tallyDays(2)) >= 0, 'le bilan avec une série de 2 ne lit pas « 2 ' + t.tallyDays(2) + ' »');
     S.abandon();
   }
 
@@ -299,7 +299,7 @@ NL.state.open().then(() => {
     ok(cell(t.statMet) === cp.met, 'the strip does not give ' + cp.met + ' « ' + t.statMet + ' », it gives ' + cell(t.statMet));
     ok(cell(t.statProduced) === cp.produce, 'the strip does not give ' + cp.produce + ' « ' + t.statProduced + ' », it gives ' + cell(t.statProduced));
     ok(home.indexOf(cp.met + ' ' + t.statMet) >= 0 && home.indexOf(cp.produce + ' ' + t.statProduce) >= 0, 'the home screen does not give the same two numbers');
-    ok(cell('à toi') === 3 && (plus.match(/à toi/g) || []).length === 1, 'the own words do not appear once as « 3 à toi »: ' + cell('à toi') + ' / ' + (plus.match(/à toi/g) || []).length);
+    ok(cell(t.statMine) === 3 && plus.split(t.statMine).length - 1 === 1, 'the own words do not appear once as « 3 ' + t.statMine + ' »: ' + cell(t.statMine) + ' / ' + (plus.split(t.statMine).length - 1));
     ['vandaag', 'leerpad', 'meer', 'woorden'].forEach(n => ok(!/solides|<b>\d+<\/b> en cours</.test(NL.screens[n].render()) && !/solides/.test(text(NL.screens[n].render())), n + ' still says « solides » or « en cours »'));
     SCREENS.forEach(n => { let h = null, err = null; try { h = text(NL.screens[n].render()); } catch (e) { err = e; } ok(!err && !/solides/.test(h), n + (err ? ' throws: ' + err.message : ' says « solides »')); });
     NL.screens.woorden.click({ dataset: { f: 'sterk' } }, { act: 'filter' });

@@ -1101,6 +1101,9 @@ NL.tables.fr = {
   /* --- réglages --- */
   setTitle: 'Réglages',
   setTheme: 'Thème', setSystem: 'Système', setLight: 'Clair', setDark: 'Sombre',
+  setLang: 'Langue',
+  langOther: 'Anglais',
+  langNotice: 'Lecture en français. Les fiches de référence sont dans Plus ; chacune dit pour quelle langue elle est faite.',
   setPractice: 'Exercice',
   setFlemish: 'Montrer la variante flamande',
   setAutoplay: 'Lire l’audio automatiquement',
@@ -1495,6 +1498,9 @@ NL.tables.en = {
   /* --- réglages --- */
   setTitle: 'Settings',
   setTheme: 'Theme', setSystem: 'System', setLight: 'Light', setDark: 'Dark',
+  setLang: 'Language',
+  langOther: 'French',
+  langNotice: 'Reading in English. The reference sheets are under More; each says which language it helps with.',
   setPractice: 'Practice',
   setFlemish: 'Show the Flemish variant',
   setAutoplay: 'Play audio automatically',
@@ -1839,7 +1845,10 @@ NL.state = (function () {
     return new Promise(res => { const r = tx(store, 'readwrite').put(val); r.onsuccess = res; r.onerror = res; });
   }
   function clearAll() {
+    /* La langue d'affichage est un choix de l'appareil, pas de la progression : elle reste. */
+    const lang = meta.displayLang;
     mem.srs.clear(); mem.custom.clear(); mem.log = []; meta = defaults();
+    if (lang) meta.displayLang = lang;
     if (!useIDB) { try { localStorage.removeItem(LS); } catch (e) {} return Promise.resolve(); }
     return Promise.all(STORES.map(s => new Promise(res => {
       const r = db.transaction(s, 'readwrite').objectStore(s).clear(); r.onsuccess = res; r.onerror = res;
@@ -1948,7 +1957,8 @@ NL.state = (function () {
        annonçant que le moteur avait changé ; un mot ajouté après la sauvegarde
        revenait de même. */
     rewrite(true);
-    if (data.meta) meta = Object.assign(defaults(), data.meta);
+    /* Une sauvegarde d'avant la langue d'affichage n'efface pas le choix de l'appareil. */
+    if (data.meta) { const lang = meta.displayLang; meta = Object.assign(defaults(), data.meta); if (!data.meta.displayLang && lang) meta.displayLang = lang; }
     setMeta(Object.assign({ resetAt: stamp, updatedAt: stamp },
       old ? { dataVersion: 3, reached: 0, scenariosDone: [], listenDone: [] } : {}), true);
     emit('reset', stamp);
@@ -5205,6 +5215,42 @@ NL.content = NL.content || {};
 })();
 </script>
 <script>
+/* La langue d'affichage : un seul endroit la décide, un seul endroit l'applique.
+   Absente des réglages, c'est l'anglais. Un changement ne s'applique jamais en
+   pleine séance ni en pleine conversation : le shell n'appelle `apply` qu'en
+   dehors d'elles, au premier écran dessiné ensuite. Le bandeau d'avis n'est pas
+   enregistré : il se dit une fois, puis `seen` l'efface. */
+NL.lang = (function () {
+  'use strict';
+  let applied = null, notice = false;
+
+  const current = () => NL.state.meta().displayLang === 'fr' ? 'fr' : 'en';
+
+  function apply(quiet) {
+    const l = current();
+    if (l === applied) return false;
+    Object.keys(NL.t).forEach(k => { delete NL.t[k]; });
+    Object.assign(NL.t, NL.tables[l]);
+    NL.gloss.use(l);
+    NL.content.refresh();
+    document.documentElement.setAttribute('lang', l === 'en' ? 'en-GB' : 'fr');
+    applied = l;
+    if (!quiet) notice = true;
+    return true;
+  }
+
+  function set(lang) {
+    NL.state.setMeta({ displayLang: lang });
+    return apply(false);
+  }
+
+  const text = () => notice ? NL.t.langNotice : '';
+  const seen = () => { notice = false; };
+
+  return { current, apply, set, notice: text, seen };
+})();
+</script>
+<script>
 /* The exercise types. Each exposes the same five functions so the session runner
    never needs to know which one it is holding. */
 NL.ex = (function () {
@@ -5844,6 +5890,7 @@ NL.ui = (function () {
   function go(to, a) {
     if (route === 'sessie' && to !== 'sessie' && NL.screens.sessie.active()) { sheet = 'quit-session'; return render(); }
     NL.speech.stop(); NL.speech.abort();
+    NL.lang.seen();
     route = to; arg = a == null ? null : a; sheet = null;
     try { location.hash = '#' + to + (a ? '/' + a : ''); } catch (e) {}
     render();
@@ -5890,11 +5937,14 @@ NL.ui = (function () {
 
   function render() {
     applyTheme();
+    /* Un changement de langue n'entre jamais en pleine séance ni en pleine conversation. */
+    if (route !== 'sessie' && route !== 'scenario') NL.lang.apply(false);
     const S = NL.screens[route] || NL.screens.vandaag;
     const full = !!FULLSCREEN[route];
+    const note = NL.lang.notice();
     const html = full
       ? '<div class="screen full">' + S.render(arg) + '</div>'
-      : topbar() + '<main class="screen">' + S.render(arg) + '</main>' + nav();
+      : topbar() + '<main class="screen">' + (note ? '<div class="notice"><p>' + esc(note) + '</p></div>' : '') + S.render(arg) + '</main>' + nav();
     root.innerHTML = html + (sheet ? sheetHtml() : '') + (toastMsg ? '<div class="toast">' + esc(toastMsg) + '</div>' : '');
     if (S.after) S.after(arg);
   }
@@ -5928,6 +5978,9 @@ NL.ui = (function () {
         [['system', t.setSystem], ['light', t.setLight], ['dark', t.setDark]].map(([k, label]) =>
           '<button class="seg-btn' + (m.theme === k ? ' on' : '') + '" data-theme="' + k + '">' + label + '</button>').join('') +
         '</div></div>' +
+
+        '<div class="set-block"><h4>' + t.setLang + '</h4>' +
+        '<button class="btn wide" data-display-lang="' + (NL.lang.current() === 'en' ? 'fr' : 'en') + '">' + t.langOther + '</button></div>' +
 
         '<div class="set-block"><h4>' + t.setPace + '</h4><div class="seg">' +
         ['calme', 'normal', 'intensif'].map(k =>
@@ -6104,7 +6157,7 @@ NL.ui = (function () {
 
     root.addEventListener('click', e => {
       let hit = e.target.closest('[data-say],[data-go],[data-sheet],[data-close],[data-backdrop],[data-theme],' +
-        '[data-toggle],[data-reset],[data-reset-yes],[data-quit-yes],[data-export],[data-import],[data-pace],[data-act]');
+        '[data-toggle],[data-reset],[data-reset-yes],[data-quit-yes],[data-export],[data-import],[data-pace],[data-act],[data-display-lang]');
       /* Avec le thème Sombre ou Clair, <html> porte data-theme : closest()
          remontait jusqu'à lui, chaque clic devenait « choisir le thème », et plus
          aucune réponse ne passait. On ne garde que ce qui est dans l'app. */
@@ -6120,6 +6173,7 @@ NL.ui = (function () {
         if (d.sheet) { openSheet(d.sheet); return; }
         if (d.theme) { NL.state.setMeta({ theme: d.theme }); render(); return; }
         if (d.pace) { NL.state.setMeta({ pace: d.pace }); render(); return; }
+        if (d.displayLang) { NL.lang.set(d.displayLang); render(); return; }
         if (d.toggle) { const m = NL.state.meta(); NL.state.setMeta({ [d.toggle]: m[d.toggle] === false }); render(); return; }
         if (d.export !== undefined) { doExport(); return; }
         if (d.import !== undefined) { doImport(); return; }
@@ -7588,7 +7642,7 @@ NL.screens.luisteren = (function () {
         const en = (document.getElementById('add-en') || {}).value || '';
         const be = (document.getElementById('add-be') || {}).value || '';
         if (!nl.trim() || !en.trim()) { NL.ui.toast(NL.t.wordsNeedBoth); return; }
-        NL.state.addCustom({ nl: nl.trim(), fr: en.trim(), be: be.trim() || null, kind: nl.trim().split(/\s+/).length > 2 ? 'phrase' : 'word' });
+        NL.state.addCustom({ nl: nl.trim(), [NL.lang.current()]: en.trim(), be: be.trim() || null, kind: nl.trim().split(/\s+/).length > 2 ? 'phrase' : 'word' });
         NL.content.refresh(); adding = false; NL.ui.render(); NL.ui.toast(NL.t.wordsAdded);
         return;
       }
@@ -8017,6 +8071,7 @@ NL.screens.compte = (function () {
     NL.errlog.watch();
     NL.state.open().then(() => {
       const wiped = NL.state.migrate();
+      NL.lang.apply(true);
       NL.content.refresh();
       NL.state.touchDay();
       NL.ui.bind(root);

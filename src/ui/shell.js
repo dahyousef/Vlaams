@@ -28,6 +28,7 @@ NL.ui = (function () {
   function go(to, a) {
     if (route === 'sessie' && to !== 'sessie' && NL.screens.sessie.active()) { sheet = 'quit-session'; return render(); }
     NL.speech.stop(); NL.speech.abort();
+    NL.lang.seen();
     route = to; arg = a == null ? null : a; sheet = null;
     try { location.hash = '#' + to + (a ? '/' + a : ''); } catch (e) {}
     render();
@@ -74,11 +75,14 @@ NL.ui = (function () {
 
   function render() {
     applyTheme();
+    /* Un changement de langue n'entre jamais en pleine séance ni en pleine conversation. */
+    if (route !== 'sessie' && route !== 'scenario') NL.lang.apply(false);
     const S = NL.screens[route] || NL.screens.vandaag;
     const full = !!FULLSCREEN[route];
+    const note = NL.lang.notice();
     const html = full
       ? '<div class="screen full">' + S.render(arg) + '</div>'
-      : topbar() + '<main class="screen">' + S.render(arg) + '</main>' + nav();
+      : topbar() + '<main class="screen">' + (note ? '<div class="notice"><p>' + esc(note) + '</p></div>' : '') + S.render(arg) + '</main>' + nav();
     root.innerHTML = html + (sheet ? sheetHtml() : '') + (toastMsg ? '<div class="toast">' + esc(toastMsg) + '</div>' : '');
     if (S.after) S.after(arg);
   }
@@ -112,6 +116,9 @@ NL.ui = (function () {
         [['system', t.setSystem], ['light', t.setLight], ['dark', t.setDark]].map(([k, label]) =>
           '<button class="seg-btn' + (m.theme === k ? ' on' : '') + '" data-theme="' + k + '">' + label + '</button>').join('') +
         '</div></div>' +
+
+        '<div class="set-block"><h4>' + t.setLang + '</h4>' +
+        '<button class="btn wide" data-display-lang="' + (NL.lang.current() === 'en' ? 'fr' : 'en') + '">' + t.langOther + '</button></div>' +
 
         '<div class="set-block"><h4>' + t.setPace + '</h4><div class="seg">' +
         ['calme', 'normal', 'intensif'].map(k =>
@@ -288,7 +295,7 @@ NL.ui = (function () {
 
     root.addEventListener('click', e => {
       let hit = e.target.closest('[data-say],[data-go],[data-sheet],[data-close],[data-backdrop],[data-theme],' +
-        '[data-toggle],[data-reset],[data-reset-yes],[data-quit-yes],[data-export],[data-import],[data-pace],[data-act]');
+        '[data-toggle],[data-reset],[data-reset-yes],[data-quit-yes],[data-export],[data-import],[data-pace],[data-act],[data-display-lang]');
       /* Avec le thème Sombre ou Clair, <html> porte data-theme : closest()
          remontait jusqu'à lui, chaque clic devenait « choisir le thème », et plus
          aucune réponse ne passait. On ne garde que ce qui est dans l'app. */
@@ -304,6 +311,7 @@ NL.ui = (function () {
         if (d.sheet) { openSheet(d.sheet); return; }
         if (d.theme) { NL.state.setMeta({ theme: d.theme }); render(); return; }
         if (d.pace) { NL.state.setMeta({ pace: d.pace }); render(); return; }
+        if (d.displayLang) { NL.lang.set(d.displayLang); render(); return; }
         if (d.toggle) { const m = NL.state.meta(); NL.state.setMeta({ [d.toggle]: m[d.toggle] === false }); render(); return; }
         if (d.export !== undefined) { doExport(); return; }
         if (d.import !== undefined) { doImport(); return; }
