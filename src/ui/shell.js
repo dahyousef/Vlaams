@@ -94,7 +94,7 @@ NL.ui = (function () {
   function unitLabel(span) {
     if (span.from !== span.to) return t.unitsRange(span.from, span.to);
     const u = NL.content.units.find(x => x.n === span.from);
-    return t.unitOne(span.from) + (u ? ' · ' + u.name : '');
+    return t.unitOne(span.from) + (u ? ' · ' + NL.gloss.of(u.name) : '');
   }
 
   function sheetHtml() {

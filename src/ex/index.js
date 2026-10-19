@@ -63,12 +63,8 @@ NL.ex = (function () {
      On compare chaque sens (« s'il vous plaît / voilà » en a deux), dans les
      deux langues. Le lexique sépare les sens par « / » ; une virgule, elle,
      appartient à la phrase et ne sépare rien. */
-  const senses = s => String(s || '').split(/\s*\/\s*/).map(U.norm).filter(Boolean);
-  function sameSense(a, b) {
-    const fa = senses(U.bareFr(a.fr)), fb = senses(U.bareFr(b.fr));
-    if (fa.some(x => fb.indexOf(x) >= 0)) return true;
-    return U.norm(U.bare(a.nl)) === U.norm(U.bare(b.nl));
-  }
+  /* La comparaison vit dans NL.gloss ; NL.ex.sameSense la re-exporte. */
+  const sameSense = NL.gloss.sameSense;
 
   /* Ce que la réponse tapée accepte pour un élément : la cible, ses variantes
      flamandes (une par virgule pour un mot, la phrase entière pour une phrase) et
@@ -85,38 +81,32 @@ NL.ex = (function () {
   /* Les réponses acceptées (`list`) comprennent-elles le néerlandais de `b` ? */
   const accepts = (list, b) => list.indexOf(U.norm(U.bare(b.nl))) >= 0;
 
-  /* La nature du mot, grossièrement : « oui » face à « sorry / spreken / ja » se
-     résout sans connaître le mot, parce qu'un verbe ne répond pas à « oui ». */
-  function wordClass(x) {
-    if (x.kind !== 'word') return x.kind;
-    if (x.art) return 'noun';
-    const fr = U.bareFr(x.fr).split(/\s*\/\s*/)[0];
-    if (/^\S+(er|ir|re|oir)$/.test(fr) && fr.indexOf('-') < 0 && /en$/.test(U.bare(x.nl))) return 'verb';
-    return 'other';
-  }
-
+  /* "field" : 'nl' pour des mots néerlandais, 'gloss' pour des sens. Les sens se
+     jugent dans la langue lue de l'élément : on ne pose jamais contre des
+     éléments qui n'ont rien dans cette langue. */
   function others(item, n, field) {
-    const label = x => field === 'fr' ? U.bareFr(x.fr) : U.bare(x.nl);
-    const cls = wordClass(item);
+    const lang = NL.gloss.langOf(item);
+    const label = x => field === 'gloss' ? NL.gloss.bare(x, lang) : U.bare(x.nl);
+    const cls = NL.gloss.wordClass(item, lang);
     const target = label(item), tn = U.norm(target), len = target.length;
 
-    let pool = NL.content.itemsOf(item.unit).filter(x => x.id !== item.id && x.kind === item.kind);
+    let pool = NL.content.itemsOf(item.unit).filter(x => x.id !== item.id && x.kind === item.kind && NL.gloss.has(x, lang));
     /* Unité trop maigre : on élargit aux éléments déjà rencontrés ailleurs,
        jamais à ceux qui n'ont pas encore été introduits. */
     if (pool.length < n + 3) {
       pool = pool.concat(NL.content.allItems().filter(x =>
-        x.kind === item.kind && x.unit !== item.unit && x.id !== item.id && NL.srs.isSeen(x)));
+        x.kind === item.kind && x.unit !== item.unit && x.id !== item.id && NL.gloss.has(x, lang) && NL.srs.isSeen(x)));
     }
     /* Ni un synonyme, ni une réponse que l'un des deux accepte : « dag » face à
        « bonjour » ne doit pas offrir « hallo » comme faux. */
     const mine = accepted(item);
-    pool = pool.filter(x => U.norm(label(x)) !== tn && !sameSense(x, item) && !accepts(mine, x) && !accepts(accepted(x), item));
+    pool = pool.filter(x => U.norm(label(x)) !== tn && !NL.gloss.sameMeaning(x, item) && !accepts(mine, x) && !accepts(accepted(x), item));
 
     const score = x => {
       const s = label(x);
       let sc = 0;
       if (item.art && x.art && x.art === item.art) sc += 3;        // pas de tri par de/het
-      if (wordClass(x) === cls) sc += 3;                             // pas de tri par nature
+      if (NL.gloss.wordClass(x, lang) === cls) sc += 3;                             // pas de tri par nature
       const gap = Math.abs(s.length - len) / Math.max(len, 1);
       sc += gap < 0.2 ? 3 : gap < 0.45 ? 2 : gap < 0.7 ? 1 : 0;    // pas de tri par longueur
       const d = U.lev(U.norm(s), tn);
@@ -163,7 +153,7 @@ NL.ex = (function () {
       /* Quatre options, pas trois : au hasard on tombe juste une fois sur quatre. */
       const opts = U.shuffle([{ label: right, ok: true }].concat(
         others(item, 3, 'nl').map(l => ({ label: l, ok: false }))));
-      return { type: 'pick', item, prompt: U.bareFr(item.fr), opts };
+      return { type: 'pick', item, prompt: NL.gloss.bare(item), opts };
     },
     view(t, L, phase) {
       return '<p class="sentence prompt">' + esc(t.prompt) + '</p>' + optList(t.opts, L, phase);
@@ -176,8 +166,8 @@ NL.ex = (function () {
   R.recall = {
     id: 'recall', kicker: NL.t.exRecall,
     build(item) {
-      const opts = U.shuffle([{ label: U.bareFr(item.fr), ok: true }].concat(
-        others(item, 3, 'fr').map(l => ({ label: l, ok: false }))));
+      const opts = U.shuffle([{ label: NL.gloss.bare(item), ok: true }].concat(
+        others(item, 3, 'gloss').map(l => ({ label: l, ok: false }))));
       return { type: 'recall', item, opts };
     },
     view(t, L, phase) {
@@ -186,7 +176,7 @@ NL.ex = (function () {
     auto: t => U.bare(t.item.nl),
     ready: (t, L) => !!L.sel,
     judge: (t, L) => ({ ok: !!(L.sel && (t.opts[L.sel.i] || {}).ok) }),
-    answer: t => U.bareFr(t.item.fr)
+    answer: t => NL.gloss.bare(t.item)
   };
 
   R.article = {
@@ -196,7 +186,7 @@ NL.ex = (function () {
       const n = U.bare(t.item.nl);
       return '<div class="speaker-row">' +
         '<button class="speaker" data-say="' + esc(t.item.art + ' ' + n) + '" aria-label="Écouter">' + ICON.speaker(26) + '</button>' +
-        '<div class="sentence">&hellip;&nbsp;' + esc(n) + '<span class="gloss">' + esc(U.bareFr(t.item.fr)) + '</span></div></div>' +
+        '<div class="sentence">&hellip;&nbsp;' + esc(n) + '<span class="gloss">' + esc(NL.gloss.bare(t.item)) + '</span></div></div>' +
         optList(t.opts, L, phase);
     },
     ready: (t, L) => !!L.sel,
@@ -207,11 +197,11 @@ NL.ex = (function () {
   R.bank = {
     id: 'bank', kicker: NL.t.exBank,
     build(item) {
-      const d = (item.drills && item.drills.length) ? U.one(item.drills) : { nl: item.nl, fr: item.fr };
+      const d = (item.drills && item.drills.length) ? U.one(item.drills) : { nl: item.nl, fr: item.fr, en: item.en };
       return { type: 'bank', item, drill: d, target: d.nl, bank: bankFor(d.nl, item) };
     },
     view(t, L, phase) {
-      return '<div class="sentence prompt">' + esc(t.drill.fr) + '</div>' + tileArea(t, L, phase);
+      return '<div class="sentence prompt">' + esc(NL.gloss.of(t.drill)) + '</div>' + tileArea(t, L, phase);
     },
     ready: (t, L) => L.picked.length > 0,
     judge: (t, L) => ({ ok: U.norm(said(t, L)) === U.norm(t.target) }),
@@ -221,12 +211,12 @@ NL.ex = (function () {
   R.order = {
     id: 'order', kicker: NL.t.exOrder,
     build(item) {
-      const d = U.one(item.drills || [{ nl: item.nl, fr: item.fr }]);
+      const d = U.one(item.drills || [{ nl: item.nl, fr: item.fr, en: item.en }]);
       return { type: 'order', item, drill: d, target: d.nl, bank: U.shuffle(U.tiles(d.nl)) };
     },
     view(t, L, phase) {
-      return '<div class="sentence prompt">' + esc(t.drill.fr) + '</div>' +
-        '<div class="rule-chip">' + esc(t.item.rule || '') + '</div>' + tileArea(t, L, phase);
+      return '<div class="sentence prompt">' + esc(NL.gloss.of(t.drill)) + '</div>' +
+        '<div class="rule-chip">' + esc(NL.gloss.of(t.item.rule)) + '</div>' + tileArea(t, L, phase);
     },
     ready: (t, L) => L.picked.length > 0,
     judge: (t, L) => ({ ok: U.norm(said(t, L)) === U.norm(t.target) }),
@@ -236,7 +226,7 @@ NL.ex = (function () {
   R.cloze = {
     id: 'cloze', kicker: NL.t.exCloze,
     build(item) {
-      const d = item.drills ? U.one(item.drills) : { nl: item.nl, fr: item.fr };
+      const d = item.drills ? U.one(item.drills) : { nl: item.nl, fr: item.fr, en: item.en };
       /* Pour un mot, le trou tombe sur le mot enseigné, pas sur le plus long de
          la phrase : sinon on drille « gemeentehuis » en cachant « morgen ». */
       const forced = d.gap ||
@@ -261,7 +251,7 @@ NL.ex = (function () {
     },
     view(t, L, phase) {
       return '<div class="sentence cloze-line">' + esc(t.shown).replace(/ +/, '<span class="gap">' + (phase === 'ask' ? '' : esc(t.gap)) + '</span>') + '</div>' +
-        '<div class="gloss-line">' + esc(t.drill.fr) + '</div>' + optList(t.opts, L, phase);
+        '<div class="gloss-line">' + esc(NL.gloss.of(t.drill)) + '</div>' + optList(t.opts, L, phase);
     },
     ready: (t, L) => !!L.sel,
     judge: (t, L) => ({ ok: !!(L.sel && (t.opts[L.sel.i] || {}).ok) }),
@@ -294,7 +284,7 @@ NL.ex = (function () {
   R.type = {
     id: 'type', kicker: NL.t.exType,
     build(item) {
-      return { type: 'type', item, target: item.kind === 'word' ? U.bare(item.nl) : (item.drills ? item.nl : item.nl), prompt: item.kind === 'word' ? U.bareFr(item.fr) : item.fr };
+      return { type: 'type', item, target: item.kind === 'word' ? U.bare(item.nl) : (item.drills ? item.nl : item.nl), prompt: item.kind === 'word' ? NL.gloss.bare(item) : NL.gloss.of(item) };
     },
     view(t, L, phase) {
       return '<div class="sentence prompt">' + esc(t.prompt) + '</div>' +
@@ -322,7 +312,7 @@ NL.ex = (function () {
   R.speak = {
     id: 'speak', kicker: NL.t.exSpeak,
     build(item) {
-      return { type: 'speak', item, target: item.kind === 'word' ? U.bare(item.nl) : item.nl, prompt: item.kind === 'word' ? U.bareFr(item.fr) : item.fr };
+      return { type: 'speak', item, target: item.kind === 'word' ? U.bare(item.nl) : item.nl, prompt: item.kind === 'word' ? NL.gloss.bare(item) : NL.gloss.of(item) };
     },
     view(t, L, phase) {
       const sp = L.speech;
@@ -474,7 +464,7 @@ NL.ex = (function () {
       return { type: 'corrige', item, bad, faulty: i, other: j, target: item.nl };
     },
     view(t, L, phase) {
-      return '<div class="gloss-line">' + esc(t.item.fr) + '</div>' +
+      return '<div class="gloss-line">' + esc(NL.gloss.of(t.item)) + '</div>' +
         '<div class="corrige">' + t.bad.map((w, i) => {
           let cls = '';
           if (phase !== 'ask') { if (i === t.faulty || i === t.other) cls = ' bad'; }
@@ -505,7 +495,7 @@ NL.ex = (function () {
     },
     view(t, L, phase) {
       return '<div class="sentence prompt">' + esc(t.item.nl) + '</div>' +
-        '<div class="gloss-line">' + esc(t.item.fr) + '</div>' + optList(t.opts, L, phase);
+        '<div class="gloss-line">' + esc(NL.gloss.of(t.item)) + '</div>' + optList(t.opts, L, phase);
     },
     ready: (t, L) => !!L.sel,
     judge: (t, L) => ({ ok: !!(L.sel && (t.opts[L.sel.i] || {}).ok) }),
@@ -528,13 +518,13 @@ NL.ex = (function () {
     build: item => ({ type: 'open', item, task: item.open }),
     view(t, L, phase) {
       const met = phase === 'ask' ? null : rubric(t.task, L.input);
-      return '<p class="sentence prompt">' + esc(t.task.ask) + '</p>' +
+      return '<p class="sentence prompt">' + esc(NL.gloss.of(t.task.ask)) + '</p>' +
         '<textarea class="textin open-box" rows="3" spellcheck="false" ' +
         'placeholder="' + esc(NL.t.openPlaceholder) + '"' + (phase === 'ask' ? '' : ' disabled') + '>' +
         esc(L.input) + '</textarea>' +
         '<div class="need-list">' + (t.task.need || []).map(n => {
           const on = met ? met.indexOf(n.what) >= 0 : null;
-          return '<span class="need' + (on === null ? '' : on ? ' ok' : ' no') + '">' + esc(n.what) + '</span>';
+          return '<span class="need' + (on === null ? '' : on ? ' ok' : ' no') + '">' + esc(NL.gloss.of(n.what)) + '</span>';
         }).join('') + '</div>' +
         (phase !== 'ask' ? '<p class="model-answer"><i>' + NL.t.openModel + '</i> ' + esc(t.task.model) + '</p>' : '');
     },
@@ -546,11 +536,11 @@ NL.ex = (function () {
   R.match = {
     id: 'match', kicker: NL.t.exMatch,
     build(items) {
-      const pairs = items.slice(0, 5).map(it => ({ id: it.id, nl: U.bare(it.nl), fr: U.bareFr(it.fr), item: it }));
+      const pairs = items.slice(0, 5).map(it => ({ id: it.id, nl: U.bare(it.nl), gloss: NL.gloss.bare(it), lang: NL.gloss.langOf(it), item: it }));
       return {
         type: 'match', pairs, items,
         left: U.shuffle(pairs.map((p, i) => ({ t: p.nl, k: i, s: 'l' }))),
-        right: U.shuffle(pairs.map((p, i) => ({ t: p.fr, k: i, s: 'r' })))
+        right: U.shuffle(pairs.map((p, i) => ({ t: p.gloss, k: i, s: 'r' })))
       };
     },
     view(t, L) {
@@ -559,7 +549,7 @@ NL.ex = (function () {
         const sel = L.matchSel && L.matchSel.id === id, bad = L.matchBad === id;
         return '<button class="pair' + (gone ? ' gone' : '') + (sel ? ' sel' : '') + (bad ? ' shake' : '') + '"' +
           ' data-match="' + id + '" data-k="' + c.k + '" data-side="' + c.s + '"' + (gone ? ' disabled' : '') + '>' +
-          '<span class="pair-n">' + (c.s === 'l' ? 'NL' : 'FR') + '</span>' + esc(c.t) + '</button>';
+          '<span class="pair-n">' + (c.s === 'l' ? 'NL' : t.pairs[c.k].lang.toUpperCase()) + '</span>' + esc(c.t) + '</button>';
       };
       let rows = '';
       for (let i = 0; i < t.pairs.length; i++) rows += cell(t.left[i]) + cell(t.right[i]);
@@ -571,13 +561,13 @@ NL.ex = (function () {
     ready: (t, L) => L.matchGone.length >= t.pairs.length * 2,
     judge: () => ({ ok: true }),
     /* Affiché si l'on passe : les paires elles-mêmes, pas un pied vide. */
-    answer: t => t.pairs.map(p => p.nl + ' = ' + p.fr).join(' · '),
+    answer: t => t.pairs.map(p => p.nl + ' = ' + p.gloss).join(' · '),
     /* Deux cartes vont ensemble si leurs TEXTES correspondent : « goeiedag » et
        « hallo » disent tous deux « bonjour », et l'écran ne permet pas de savoir
        quel « bonjour » était le sien. */
     fits(t, lk, rk) {
       const a = t.pairs[lk], b = t.pairs[rk];
-      return lk === rk || U.norm(a.fr) === U.norm(b.fr) || U.norm(a.nl) === U.norm(b.nl);
+      return lk === rk || U.norm(a.gloss) === U.norm(b.gloss) || U.norm(a.nl) === U.norm(b.nl);
     }
   };
 

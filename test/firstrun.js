@@ -67,7 +67,7 @@ NL.state.open().then(() => {
          donc c'est ce qu'un vrai utilisateur fait une fois sur deux. */
       const pairs = S.peek().task.pairs, done = new Set();
       for (let a = 0; a < pairs.length; a++) for (let b = a + 1; b < pairs.length; b++) {
-        if (done.has(a) || done.has(b) || U.norm(pairs[a].fr) !== U.norm(pairs[b].fr)) continue;
+        if (done.has(a) || done.has(b) || U.norm(pairs[a].gloss) !== U.norm(pairs[b].gloss)) continue;
         S.click({ dataset: {} }, { match: 'l' + a, k: String(a), side: 'l' });
         S.click({ dataset: {} }, { match: 'r' + b, k: String(b), side: 'r' });
         S.click({ dataset: {} }, { match: 'l' + b, k: String(b), side: 'l' });

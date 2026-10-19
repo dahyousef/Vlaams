@@ -8,7 +8,7 @@ const ROOT = process.argv[2];
    phrases d'exemple. */
 const B = browser.open({
   root: ROOT, seed: browser.SEED, timers: 'real', location: { protocol: 'file:' },
-  files: ['src/core/util.js', 'src/core/fr.js', 'src/core/state.js', 'src/core/srs.js', 'src/core/speech.js',
+  files: ['src/core/util.js', 'src/core/gloss.js', 'src/core/fr.js', 'src/core/state.js', 'src/core/srs.js', 'src/core/speech.js',
     'src/core/audio.js', 'src/content/lexicon.a1.js', 'src/content/lexicon.a1b.js', 'src/content/grammar.js',
     'src/content/open.js', 'src/content/reference.js', 'src/content/scenarios.js', 'src/content/index.js',
     'src/ex/index.js']

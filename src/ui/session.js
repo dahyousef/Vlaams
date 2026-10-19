@@ -436,7 +436,7 @@ NL.screens.sessie = (function () {
       '<div><h5>' + note + '</h5>' +
       (vl ? '' : asked || (ans ? '<p><b>' + esc(ans) + '</b></p>' : '')) +
       be + also +
-      (it && it.note ? '<p class="v-note">' + esc(it.note) + '</p>' : '') +
+      (it && NL.gloss.of(it.note) ? '<p class="v-note">' + esc(NL.gloss.of(it.note)) + '</p>' : '') +
       '</div></div>' +
       '<button class="btn ' + (ok ? 'btn-good' : 'btn-bad') + ' push" data-next="1">' + NL.t.next + '</button>' +
       '</div></div>';

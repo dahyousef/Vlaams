@@ -24,7 +24,7 @@
         : filter === 'zwak' ? seen.filter(it => missed.has(it.id))
           : filter === 'sterk' ? all.filter(it => it.unit !== 'eigen' && NL.content.produced(it))   // l'ensemble et le prédicat du compteur « produits »
             : seen);
-      if (q) list = all.filter(it => U.norm(it.nl).indexOf(q) >= 0 || U.norm(it.fr).indexOf(q) >= 0 || (it.be && U.norm(it.be).indexOf(q) >= 0));
+      if (q) list = all.filter(it => U.norm(it.nl).indexOf(q) >= 0 || U.norm(NL.gloss.of(it)).indexOf(q) >= 0 || (it.be && U.norm(it.be).indexOf(q) >= 0));
 
       const groups = {};
       list.forEach(it => { (groups[it.unit] = groups[it.unit] || []).push(it); });
@@ -56,7 +56,7 @@
       } else {
         Object.keys(groups).forEach(uid => {
           const u = NL.content.unit(uid);
-          html += '<div class="voc-head">' + esc(u ? u.name : 'Mes mots') + '</div>';
+          html += '<div class="voc-head">' + esc(u ? NL.gloss.of(u.name) : 'Mes mots') + '</div>';
           groups[uid].forEach(it => {
             const s = NL.srs.stageOf(it);
             html += '<div class="vrow">' +
@@ -65,7 +65,7 @@
               esc(U.bare(it.nl)) +
               (it.be && NL.state.meta().showFlemish !== false ? '<span class="v-be">' + NL.t.wordsHere + ' ' + esc(it.be) + '</span>' : '') +
               '</span>' +
-              '<span class="v-en">' + esc(U.bareFr(it.fr)) + '</span>' +
+              '<span class="v-en">' + esc(NL.gloss.bare(it)) + '</span>' +
               pips(s) +
               (it.unit === 'eigen' ? '<button class="iconbtn tiny" data-del="' + it.id + '" aria-label="' + NL.t.del + '">' + NL.ui.I.x + '</button>' : '') +
               '</div>';
@@ -102,12 +102,12 @@
           return '<div class="wrap">' +
             '<button class="backlink" data-go="spiek">' + NL.ui.I.back + ' ' + NL.t.sheetsAll + '</button>' +
             '<section class="card lead slim"><span class="eyebrow">' + NL.t.sheetsEyebrow + '</span>' +
-            '<h1>' + s.icon + ' ' + esc(s.title) + '</h1><p>' + esc(s.blurb) + '</p></section>' +
-            s.groups.map(g => '<div class="sheet-group"><h4>' + esc(g.h) + '</h4>' +
+            '<h1>' + s.icon + ' ' + esc(NL.gloss.of(s.title)) + '</h1><p>' + esc(NL.gloss.of(s.blurb)) + '</p></section>' +
+            s.groups.map(g => '<div class="sheet-group"><h4>' + esc(NL.gloss.of(g.h)) + '</h4>' +
               g.rows.map(r => '<button class="sheet-row" data-say="' + esc(r.nl) + '">' +
                 '<span class="sr-say">' + ICON.speaker(16) + '</span>' +
-                '<span class="sr-body"><b>' + esc(r.nl) + '</b><i>' + esc(r.fr) + '</i>' +
-                (r.note ? '<em>' + esc(r.note) + '</em>' : '') + '</span></button>').join('') +
+                '<span class="sr-body"><b>' + esc(r.nl) + '</b><i>' + esc(NL.gloss.of(r)) + '</i>' +
+                (r.note ? '<em>' + esc(NL.gloss.of(r.note)) + '</em>' : '') + '</span></button>').join('') +
               '</div>').join('') +
             '</div>';
         }
@@ -119,7 +119,7 @@
         '<div class="cards">' + sheets.map(s =>
           '<button class="tile-card" data-sheetid="' + s.id + '">' +
           '<span class="tc-icon">' + s.icon + '</span>' +
-          '<span class="tc-body"><b>' + esc(s.title) + '</b><i>' + esc(s.blurb) + '</i></span>' +
+          '<span class="tc-body"><b>' + esc(NL.gloss.of(s.title)) + '</b><i>' + esc(NL.gloss.of(s.blurb)) + '</i></span>' +
           '<span class="tc-cta">' + NL.t.open + '</span></button>').join('') + '</div></div>';
     },
     click(el, d) { if (d.sheetid) NL.ui.go('spiek', d.sheetid); }
@@ -137,7 +137,7 @@
           '<div class="reg-row">' +
           '<button class="reg-cell std" data-say="' + esc(r.std) + '">' + esc(r.std) + '</button>' +
           '<button class="reg-cell be" data-say="' + esc(r.be) + '">' + esc(r.be) +
-          (r.note ? '<em>' + esc(r.note) + '</em>' : '') + '</button>' +
+          (r.note ? '<em>' + esc(NL.gloss.of(r.note)) + '</em>' : '') + '</button>' +
           '</div>').join('') +
         '</div>' +
 
@@ -147,8 +147,8 @@
         NL.content.loans.map(r =>
           '<div class="reg-row">' +
           '<button class="reg-cell be" data-say="' + esc(r.nl) + '">' + esc(r.nl) + '</button>' +
-          '<span class="reg-cell std">' + esc(r.fr) +
-          (r.note ? '<em>' + esc(r.note) + '</em>' : '') + '</span>' +
+          '<span class="reg-cell std">' + esc(NL.gloss.of(r)) +
+          (r.note ? '<em>' + esc(NL.gloss.of(r.note)) + '</em>' : '') + '</span>' +
           '</div>').join('') +
         '</div>' +
 
@@ -158,7 +158,7 @@
         NL.content.faux.map(r =>
           '<div class="reg-row">' +
           '<button class="reg-cell be" data-say="' + esc(r.nl) + '">' + esc(r.nl) + '</button>' +
-          '<span class="reg-cell std">' + esc(r.fr) + '<em>' + esc(r.trap) + '</em></span>' +
+          '<span class="reg-cell std">' + esc(NL.gloss.of(r)) + '<em>' + esc(r.trap) + '</em></span>' +
           '</div>').join('') +
         '</div></div>';
     }
@@ -170,7 +170,7 @@
       const col = (title, rules, cls) =>
         '<h3 class="sec">' + title + '</h3>' +
         rules.map(r => '<div class="rule-row ' + cls + '">' +
-          '<b>' + esc(r.rule) + (r.sure ? '<span class="sure-tag">' + NL.t.dehetSure + '</span>' : '') + '</b>' +
+          '<b>' + esc(NL.gloss.of(r.rule)) + (r.sure ? '<span class="sure-tag">' + NL.t.dehetSure + '</span>' : '') + '</b>' +
           '<button class="rule-ex" data-say="' + esc(r.ex) + '">' + esc(r.ex) + '</button></div>').join('');
       return '<div class="wrap">' +
         '<section class="card lead slim"><span class="eyebrow">de / het</span>' +

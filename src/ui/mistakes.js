@@ -21,7 +21,7 @@ NL.screens.fouten = (function () {
       html += '<div class="vrow">' +
         '<button class="speaker tiny" data-say="' + esc(U.bare(it.nl)) + '" aria-label="' + t.listen + '">' + NL.ex.ICON.speaker(17) + '</button>' +
         '<span class="v-nl">' + (it.art ? '<span class="art ' + it.art + '">' + it.art + '</span>' : '') + esc(U.bare(it.nl)) + '</span>' +
-        '<span class="v-en">' + esc(U.bareFr(it.fr)) + '</span>' +
+        '<span class="v-en">' + esc(NL.gloss.bare(it)) + '</span>' +
         '<span class="muted small">' + t.missRow(x.wrong, x.wrong + x.right) + '</span>' +
         '</div>';
     });

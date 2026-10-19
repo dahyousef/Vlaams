@@ -25,9 +25,9 @@
           html += '<button class="scn-card' + (isDone ? ' done' : '') + '" data-scn="' + s.id + '">' +
             '<span class="scn-icon">' + s.icon + '</span>' +
             '<span class="scn-body">' +
-            '<span class="eyebrow">' + esc(s.place) + '</span>' +
-            '<b>' + esc(s.title) + '</b>' +
-            '<i>' + esc(s.blurb) + '</i></span>' +
+            '<span class="eyebrow">' + esc(NL.gloss.of(s.place)) + '</span>' +
+            '<b>' + esc(NL.gloss.of(s.title)) + '</b>' +
+            '<i>' + esc(NL.gloss.of(s.blurb)) + '</i></span>' +
             '<span class="scn-go">' + (isDone ? NL.t.talkDone : NL.t.start) + '</span></button>';
         });
       });
@@ -51,7 +51,7 @@
   function advanceThem() {
     if (P.at < P.scn.steps.length && P.scn.steps[P.at].them) {
       const t = P.scn.steps[P.at].them;
-      P.log.push({ who: 'them', nl: t.nl, be: t.be, fr: t.fr });
+      P.log.push({ who: 'them', nl: t.nl, be: t.be, fr: t.fr, en: t.en });
       P.at++;
       say(t.be || t.nl);
     }
@@ -86,10 +86,10 @@
             '<button class="bub-say" data-say="' + esc(b.be || b.nl) + '" aria-label="' + NL.t.replay + '">' + ICON.speaker(17) + '</button>' +
             '<div><p class="bub-nl">' + esc(b.be || b.nl) + '</p>' +
             (b.be && U.norm(b.be) !== U.norm(b.nl) ? '<p class="bub-std">' + NL.t.scnStd + ' ' + esc(b.nl) + '</p>' : '') +
-            '<p class="bub-en">' + esc(b.fr) + '</p></div></div>';
+            '<p class="bub-en">' + esc(NL.gloss.of(b)) + '</p></div></div>';
         }
         return '<div class="bub you"><div><p class="bub-nl">' + esc(b.nl) + '</p>' +
-          '<p class="bub-en">' + esc(b.fr) + '</p>' +
+          '<p class="bub-en">' + esc(NL.gloss.of(b)) + '</p>' +
           (b.score ? '<p class="bub-score">' + esc(b.score) + '</p>' : '') + '</div></div>';
       }).join('');
 
@@ -97,21 +97,21 @@
       if (P.phase === 'them') {
         panel = '<button class="btn btn-blue wide" data-step="next">' + NL.t.next + '</button>';
       } else if (P.phase === 'choose') {
-        panel = '<p class="ask">' + esc(step.you.ask) + '</p>' +
-          (step.you.hint ? '<p class="ask-hint">' + esc(step.you.hint) + '</p>' : '') +
+        panel = '<p class="ask">' + esc(NL.gloss.of(step.you.ask)) + '</p>' +
+          (NL.gloss.of(step.you.hint) ? '<p class="ask-hint">' + esc(NL.gloss.of(step.you.hint)) + '</p>' : '') +
           '<div class="choices">' + step.you.choices.map((c, i) =>
-            '<button class="choice" data-choice="' + i + '"><b>' + esc(c.nl) + '</b><i>' + esc(c.fr) + '</i></button>').join('') +
+            '<button class="choice" data-choice="' + i + '"><b>' + esc(c.nl) + '</b><i>' + esc(NL.gloss.of(c)) + '</i></button>').join('') +
           '</div>';
       } else if (P.phase === 'speak') {
         const c = step.you.choices[P.choice];
         panel = '<div class="say-now"><p class="say-target">' + esc(c.nl) + '</p>' +
-          '<p class="say-en">' + esc(c.fr) + '</p>' +
+          '<p class="say-en">' + esc(NL.gloss.of(c)) + '</p>' +
           '<button class="speaker slow inline" data-say="' + esc(c.nl) + '" data-slow="1" aria-label="' + NL.t.slow + '">' + ICON.turtle() + '</button></div>' +
           micPanel(P.speech, c.nl) +
-          (c.note ? '<p class="say-note">' + esc(c.note) + '</p>' : '');
+          (NL.gloss.of(c.note) ? '<p class="say-note">' + esc(NL.gloss.of(c.note)) + '</p>' : '');
       } else if (P.phase === 'done') {
         panel = '<div class="scn-done"><h2>' + NL.t.scnOver + '</h2>' +
-          '<p>' + esc(s.outro) + '</p>' +
+          '<p>' + esc(NL.gloss.of(s.outro)) + '</p>' +
           '<div class="tally"><div class="tally-box gold"><div class="t-n">+12</div><div class="t-l">XP</div></div>' +
           '<div class="tally-box blue"><div class="t-n">' + P.spoken + '/' + P.tried + '</div><div class="t-l">' + NL.t.micSaidIt + '</div></div></div>' +
           '<button class="btn btn-primary wide" data-step="again">' + NL.t.replay + '</button>' +
@@ -121,7 +121,7 @@
       return '<div class="lesson">' +
         '<div class="lesson-head">' +
         '<button class="iconbtn" data-step="back" aria-label="' + NL.t.back + '">' + NL.ui.I.back + '</button>' +
-        '<div class="head-title"><b>' + esc(s.title) + '</b><i>' + esc(s.place) + '</i></div>' +
+        '<div class="head-title"><b>' + esc(NL.gloss.of(s.title)) + '</b><i>' + esc(NL.gloss.of(s.place)) + '</i></div>' +
         '<span class="pill">' + Math.min(P.at + 1, s.steps.length) + '/' + s.steps.length + '</span>' +
         '</div>' +
         '<div class="lesson-body"><div class="stage chat">' + transcript + '</div></div>' +
@@ -165,10 +165,10 @@
     if (!step || !step.you || P.choice == null) return;
     const c = step.you.choices[P.choice];
     if (ok) P.spoken++;
-    P.log.push({ who: 'you', nl: c.nl, fr: c.fr, score: score });
+    P.log.push({ who: 'you', nl: c.nl, fr: c.fr, en: c.en, score: score });
     P.at++;
     if (c.reply) {
-      P.log.push({ who: 'them', nl: c.reply.nl, be: c.reply.be, fr: c.reply.fr });
+      P.log.push({ who: 'them', nl: c.reply.nl, be: c.reply.be, fr: c.reply.fr, en: c.reply.en });
       say(c.reply.be || c.reply.nl);
       P.phase = P.at < P.scn.steps.length ? (P.scn.steps[P.at].them ? 'them' : 'choose') : 'done';
       if (P.phase === 'done') finish();
