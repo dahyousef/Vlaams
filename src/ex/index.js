@@ -14,14 +14,14 @@ NL.ex = (function () {
   const speakerRow = (text, opts) => {
     opts = opts || {};
     return '<div class="speaker-row">' +
-      '<button class="speaker" data-say="' + esc(text) + '" aria-label="Écouter">' + ICON.speaker(26) + '</button>' +
-      '<button class="speaker slow" data-say="' + esc(text) + '" data-slow="1" aria-label="Lentement">' + ICON.turtle() + '</button>' +
+      '<button class="speaker" data-say="' + esc(text) + '" aria-label="' + NL.t.listen + '">' + ICON.speaker(26) + '</button>' +
+      '<button class="speaker slow" data-say="' + esc(text) + '" data-slow="1" aria-label="' + NL.t.slow + '">' + ICON.turtle() + '</button>' +
       (opts.show ? '<div class="sentence">' + esc(text) + flemish(opts.be, text) + '</div>' : '') +
       '</div>';
   };
 
   const flemish = (be, std) => (be && NL.state.meta().showFlemish !== false && U.norm(be) !== U.norm(std))
-    ? '<span class="be-line"><span class="be-tag">ici</span>' + esc(be) + '</span>' : '';
+    ? '<span class="be-line"><span class="be-tag">' + NL.t.beTag + '</span>' + esc(be) + '</span>' : '';
 
   function optList(opts, L, phase) {
     return '<div class="opts">' + opts.map((o, i) => {
@@ -147,7 +147,7 @@ NL.ex = (function () {
   const R = {};
 
   R.pick = {
-    id: 'pick', kicker: NL.t.exPick,
+    id: 'pick', get kicker() { return NL.t.exPick; },
     build(item) {
       const right = U.bare(item.nl);
       /* Quatre options, pas trois : au hasard on tombe juste une fois sur quatre. */
@@ -164,7 +164,7 @@ NL.ex = (function () {
   };
 
   R.recall = {
-    id: 'recall', kicker: NL.t.exRecall,
+    id: 'recall', get kicker() { return NL.t.exRecall; },
     build(item) {
       const opts = U.shuffle([{ label: NL.gloss.bare(item), ok: true }].concat(
         others(item, 3, 'gloss').map(l => ({ label: l, ok: false }))));
@@ -180,12 +180,12 @@ NL.ex = (function () {
   };
 
   R.article = {
-    id: 'article', kicker: NL.t.exArticle,
+    id: 'article', get kicker() { return NL.t.exArticle; },
     build: item => ({ type: 'article', item, opts: [{ label: 'de', ok: item.art === 'de' }, { label: 'het', ok: item.art === 'het' }] }),
     view(t, L, phase) {
       const n = U.bare(t.item.nl);
       return '<div class="speaker-row">' +
-        '<button class="speaker" data-say="' + esc(t.item.art + ' ' + n) + '" aria-label="Écouter">' + ICON.speaker(26) + '</button>' +
+        '<button class="speaker" data-say="' + esc(t.item.art + ' ' + n) + '" aria-label="' + NL.t.listen + '">' + ICON.speaker(26) + '</button>' +
         '<div class="sentence">&hellip;&nbsp;' + esc(n) + '<span class="gloss">' + esc(NL.gloss.bare(t.item)) + '</span></div></div>' +
         optList(t.opts, L, phase);
     },
@@ -195,7 +195,7 @@ NL.ex = (function () {
   };
 
   R.bank = {
-    id: 'bank', kicker: NL.t.exBank,
+    id: 'bank', get kicker() { return NL.t.exBank; },
     build(item) {
       const d = (item.drills && item.drills.length) ? U.one(item.drills) : { nl: item.nl, fr: item.fr, en: item.en };
       return { type: 'bank', item, drill: d, target: d.nl, bank: bankFor(d.nl, item) };
@@ -209,7 +209,7 @@ NL.ex = (function () {
   };
 
   R.order = {
-    id: 'order', kicker: NL.t.exOrder,
+    id: 'order', get kicker() { return NL.t.exOrder; },
     build(item) {
       const d = U.one(item.drills || [{ nl: item.nl, fr: item.fr, en: item.en }]);
       return { type: 'order', item, drill: d, target: d.nl, bank: U.shuffle(U.tiles(d.nl)) };
@@ -224,7 +224,7 @@ NL.ex = (function () {
   };
 
   R.cloze = {
-    id: 'cloze', kicker: NL.t.exCloze,
+    id: 'cloze', get kicker() { return NL.t.exCloze; },
     build(item) {
       const d = item.drills ? U.one(item.drills) : { nl: item.nl, fr: item.fr, en: item.en };
       /* Pour un mot, le trou tombe sur le mot enseigné, pas sur le plus long de
@@ -259,7 +259,7 @@ NL.ex = (function () {
   };
 
   R.dictation = {
-    id: 'dictation', kicker: NL.t.exDictation,
+    id: 'dictation', get kicker() { return NL.t.exDictation; },
     build(item) {
       const target = item.kind === 'word' ? U.bare(item.nl) : item.nl;
       return { type: 'dictation', item, target, bank: item.kind === 'word' ? null : bankFor(target, item, 3) };
@@ -282,7 +282,7 @@ NL.ex = (function () {
   };
 
   R.type = {
-    id: 'type', kicker: NL.t.exType,
+    id: 'type', get kicker() { return NL.t.exType; },
     build(item) {
       return { type: 'type', item, target: item.kind === 'word' ? U.bare(item.nl) : (item.drills ? item.nl : item.nl), prompt: item.kind === 'word' ? NL.gloss.bare(item) : NL.gloss.of(item) };
     },
@@ -310,7 +310,7 @@ NL.ex = (function () {
   };
 
   R.speak = {
-    id: 'speak', kicker: NL.t.exSpeak,
+    id: 'speak', get kicker() { return NL.t.exSpeak; },
     build(item) {
       return { type: 'speak', item, target: item.kind === 'word' ? U.bare(item.nl) : item.nl, prompt: item.kind === 'word' ? NL.gloss.bare(item) : NL.gloss.of(item) };
     },
@@ -415,10 +415,10 @@ NL.ex = (function () {
     : '<p class="mic-verdict">' + (sp.selfRated ? NL.t.micNotedOk : NL.t.micNotedNo) + '</p>';
 
   const recErr = k => k === 'framed'
-    ? 'Le micro est bloqué parce que cette page tourne dans un cadre intégré. Ouvre la version hébergée pour t’enregistrer — ici, évalue-toi.'
+    ? NL.t.recErrFramed
     : k === 'denied' ? NL.t.micDenied
-      : k === 'nomic' ? 'Aucun micro détecté. Dis la phrase à voix haute et évalue-toi.'
-        : 'L’enregistrement n’est pas possible ici. Dis-la à voix haute et évalue-toi.';
+      : k === 'nomic' ? NL.t.recErrNoMic
+        : NL.t.recErrOther;
 
   function micError(kind) {
     return kind === 'denied' ? NL.t.micDenied
@@ -432,7 +432,7 @@ NL.ex = (function () {
   /* Trois mots partagent un article, un non. Transforme de/het en raisonnement
      au lieu d'un pile ou face. */
   R.intrus = {
-    id: 'intrus', kicker: NL.t.exIntrus,
+    id: 'intrus', get kicker() { return NL.t.exIntrus; },
     build(item) {
       const pool = NL.content.allItems().filter(x => x.kind === 'word' && x.art && x.id !== item.id);
       const same = U.sample(pool.filter(x => x.art === item.art), 2);
@@ -443,7 +443,7 @@ NL.ex = (function () {
       return { type: 'intrus', item, opts, art: item.art };
     },
     view(t, L, phase) {
-      return '<p class="sentence prompt">Trois de ces mots prennent <b>' + t.art + '</b>. Lequel non&nbsp;?</p>' +
+      return '<p class="sentence prompt">' + NL.t.intrusAsk(t.art) + '</p>' +
         optList(t.opts, L, phase);
     },
     ready: (t, L) => !!L.sel,
@@ -454,7 +454,7 @@ NL.ex = (function () {
   /* Une faute est plantée dans la phrase : trouve-la. Le transfert vers la
      relecture de tes propres mails est direct. */
   R.corrige = {
-    id: 'corrige', kicker: NL.t.exCorrige,
+    id: 'corrige', get kicker() { return NL.t.exCorrige; },
     build(item) {
       const toks = U.tiles(item.nl);
       const i = 1 + ((Math.random() * Math.max(1, toks.length - 2)) | 0);
@@ -481,7 +481,7 @@ NL.ex = (function () {
   /* La phrase standard est donnée : comment la dit-on ici ? Unique à cette app,
      et la donnée existe déjà sur chaque élément. */
   R.vlaams = {
-    id: 'vlaams', kicker: NL.t.exVlaams,
+    id: 'vlaams', get kicker() { return NL.t.exVlaams; },
     build(item) {
       const any = NL.content.allItems().filter(x =>
         x.be && x.id !== item.id && U.norm(x.be) !== U.norm(x.nl) && U.norm(x.be) !== U.norm(item.be));
@@ -514,7 +514,7 @@ NL.ex = (function () {
     return met;
   }
   R.open = {
-    id: 'open', kicker: NL.t.exOpen,
+    id: 'open', get kicker() { return NL.t.exOpen; },
     build: item => ({ type: 'open', item, task: item.open }),
     view(t, L, phase) {
       const met = phase === 'ask' ? null : rubric(t.task, L.input);
@@ -534,7 +534,7 @@ NL.ex = (function () {
   };
 
   R.match = {
-    id: 'match', kicker: NL.t.exMatch,
+    id: 'match', get kicker() { return NL.t.exMatch; },
     build(items) {
       const pairs = items.slice(0, 5).map(it => ({ id: it.id, nl: U.bare(it.nl), gloss: NL.gloss.bare(it), lang: NL.gloss.langOf(it), item: it }));
       return {

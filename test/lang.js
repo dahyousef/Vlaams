@@ -137,6 +137,129 @@ function views(B, visit) {
   }
 }
 
+/* 3. Toute l'interface vit dans la table de texte. Deux contrôles :
+   3a. des marqueurs — chaque feuille de NL.t devient ⟦clé⟧, chaque texte du cours ⟪n⟫ ;
+       ce qui reste à l'écran est du néerlandais, un chiffre, ou un nom propre de ALLOW ;
+   3b. un balayage de src/ — aucun littéral français hors de fr.js, en.js et du cours. */
+const FR = /[éèêàâçùûôîœ’]|\b(le|la|les|un|une|des|du|de|et|pas|ou|ton|ta|tes|tu|te|toi|ici|dans|avec|sur|pour|qui|que|ne|nord)\b/i;
+
+/* Les mots qui peuvent rester à l'écran sans passer par la table, avec la raison. */
+const ALLOW = {
+  /* le nom des voix et des navigateurs : ce que le système en dit */
+  microsoft: 'nom de voix', bart: 'nom de voix', dutch: 'nom de voix', belgium: 'nom de voix',
+  opera: 'nom de navigateur', chrome: 'nom de navigateur', edge: 'nom de navigateur',
+  safari: 'nom de navigateur', firefox: 'nom de navigateur', brave: 'nom de navigateur',
+  /* les moteurs de stockage, tels que le navigateur les nomme */
+  indexeddb: 'moteur de stockage', localstorage: 'moteur de stockage',
+  /* le nom de l'app, et l'article néerlandais présenté tel quel */
+  vlaams: 'nom de l’app', de: 'de / het, présenté tel quel', het: 'de / het, présenté tel quel',
+  /* la phrase du test de voix : du néerlandais */
+  goeiemorgen: 'phrase de test en néerlandais', alles: 'phrase de test en néerlandais',
+  goed: 'phrase de test en néerlandais', met: 'phrase de test en néerlandais', u: 'phrase de test en néerlandais',
+  /* les codes de langue des voix, tels que le navigateur les donne (nl-BE) */
+  nl: 'code de langue', be: 'code de langue',
+  /* la touche « ij » du clavier de lettres spéciales : un digraphe néerlandais */
+  ij: 'digraphe néerlandais'
+};
+/* Les littéraux de src/ qui passent le balayage, exacts, avec la raison. */
+const ALLOW_LITERALS = {
+  'de / het': 'l’article néerlandais, présenté tel quel',
+  'Goeiemorgen, alles goed met u?': 'la phrase du test de voix : du néerlandais'
+};
+
+function marked(NL) {
+  pairUp(NL.content);
+  let n = 0;
+  const mk = () => '⟪' + (n++) + '⟫';
+  const walk = (v, key) => {
+    if (Array.isArray(v)) return v.map(x => walk(x, key));
+    if (v && typeof v === 'object') { Object.keys(v).forEach(k => { v[k] = walk(v[k], k); }); return v; }
+    if (typeof v === 'string' && (key === 'fr' || key === 'en' || PROSE.indexOf(key) >= 0)) return mk();
+    return v;
+  };
+  COLLECTIONS.forEach(k => { NL.content[k] = walk(NL.content[k], k); });
+  /* Les trois pages françaises : tout ce qui n'est pas du néerlandais. */
+  ['sounds', 'loans', 'faux'].forEach(k => {
+    NL.content[k].forEach(r => Object.keys(r).forEach(f => { if (f !== 'nl' && typeof r[f] === 'string') r[f] = mk(); }));
+  });
+  const leaf = (v, p, keep) => {
+    if (typeof v === 'string') return '⟦' + p + '⟧';
+    if (typeof v === 'function') return () => '⟦' + p + '⟧';
+    if (Array.isArray(v)) return v.map((x, i) => leaf(x, p + '.' + i, keep));
+    if (v && typeof v === 'object') {
+      Object.keys(v).forEach(k => { if (!(keep && (k === 'id' || k === 'nl'))) v[k] = leaf(v[k], p + '.' + k, keep); });
+      return v;
+    }
+    return v;
+  };
+  const T = NL.t;
+  Object.keys(T).forEach(k => { T[k] = leaf(T[k], k, k === 'nav'); });
+  if (NL.tables) Object.keys(NL.tables).forEach(l => {
+    const tb = NL.tables[l];
+    if (tb !== T) Object.keys(tb).forEach(k => { tb[k] = leaf(tb[k], l + '.' + k, k === 'nav'); });
+  });
+}
+
+/* Les mots néerlandais du cours : nl, be, les phrases, les colonnes du registre
+   (std), les exemples des règles (ex), les modèles de réponse (model) et les
+   identifiants d'unité, qui sont des mots néerlandais. */
+const DUTCH_KEYS = ['nl', 'be', 'std', 'ex', 'model', 'id', 'nlName'];
+function dutchWords(NL) {
+  const set = new Set();
+  const add = s => String(s).toLowerCase().split(/[^\p{L}\p{N}]+/u).forEach(w => { if (w) set.add(w); });
+  const walk = v => {
+    if (Array.isArray(v)) v.forEach(walk);
+    else if (v && typeof v === 'object') Object.keys(v).forEach(k => {
+      if (DUTCH_KEYS.indexOf(k) >= 0 && typeof v[k] === 'string') add(v[k]); else walk(v[k]);
+    });
+  };
+  Object.keys(NL.content).forEach(k => { if (typeof NL.content[k] === 'object') walk(NL.content[k]); });
+  NL.t.nav.forEach(n => add(n.nl));
+  Object.keys(NL.content.DEFAULTS).forEach(k => add(NL.content.DEFAULTS[k]));
+  return set;
+}
+
+function srcFiles(dir) {
+  return fs.readdirSync(dir, { withFileTypes: true }).reduce((acc, e) => {
+    const f = path.join(dir, e.name);
+    if (e.isDirectory()) return e.name === 'content' ? acc : acc.concat(srcFiles(f));
+    return /\.js$/.test(e.name) && e.name !== 'fr.js' && e.name !== 'en.js' ? acc.concat(f) : acc;
+  }, []);
+}
+
+function interfaceCheck() {
+  const m = boot(marked);
+  return m.NL.state.open().then(() => {
+    const dutch = dutchWords(m.NL), seen = new Map();
+    /* Les mots qu'une personne a tapés elle-même sont ses données, pas l'interface. */
+    ['de vergaderzaal', 'la salle de réunion'].forEach(s => s.split(/[^\p{L}]+/u).forEach(w => dutch.add(w)));
+    views(m, (n, h) => {
+      /* Le texte d'une sauvegarde exportée est une donnée, pas l'interface ; les entités
+         (&middot;) sont de la ponctuation ; un mot d'une lettre ou un chiffre n'est pas un mot. */
+      text(String(h).replace(/<textarea[\s\S]*?<\/textarea>/g, ' ').replace(/&[a-z]+;/g, ' ')).replace(/⟦[^⟧]*⟧|⟪[^⟫]*⟫/g, ' ').split(/[^\p{L}\p{N}]+/u).forEach(w => {
+        w = w.toLowerCase();
+        if (w.length > 1 && !/\p{N}/u.test(w) && !dutch.has(w) && !Object.prototype.hasOwnProperty.call(ALLOW, w) && !seen.has(w)) seen.set(w, n);
+      });
+    });
+    seen.forEach((n, w) => ok(false, 'mot hors table à l’écran : « ' + w + ' » (vue ' + n + ')'));
+    ok(m.NL.t.nav.every(x => x.id && x.nl && x.label && x.fr === undefined), 'nav : chaque entrée est { id, label, nl }');
+  }).then(() => {
+    srcFiles(path.join(ROOT, 'src')).forEach(f => {
+      const code = fs.readFileSync(f, 'utf8').replace(/\r\n/g, '\n')
+        .replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:\\'"`])\/\/.*$/gm, '$1');
+      const lit = /'((?:[^'\\\n]|\\.)*)'|"((?:[^"\\\n]|\\.)*)"|`((?:[^`\\]|\\.)*)`/g;
+      let x;
+      while ((x = lit.exec(code))) {
+        const s = x[1] !== undefined ? x[1] : x[2] !== undefined ? x[2] : x[3];
+        if ((s.match(/\p{L}/gu) || []).length < 3) continue;
+        if (FR.test(s) && !Object.prototype.hasOwnProperty.call(ALLOW_LITERALS, s)) {
+          ok(false, 'littéral français hors de fr.js : ' + path.relative(ROOT, f) + ' « ' + s.slice(0, 60) + ' »');
+        }
+      }
+    });
+  });
+}
+
 const plain = boot(null), paired = boot(NL => pairUp(NL.content));
 Promise.all([plain.NL.state.open(), paired.NL.state.open()]).then(() => {
   /* 2a. Apparié, en français, l'écran est celui d'aujourd'hui. Les deux démarrent
@@ -239,8 +362,10 @@ Promise.all([plain.NL.state.open(), paired.NL.state.open()]).then(() => {
       ok(nn.app.innerHTML.indexOf('<em></em>') < 0, 'registre : un <em></em> vide');
       ok(seenNote > 0 && N.content.register.some(r => r.note), 'aucune note à tester : le contrôle est creux');
 
+      return interfaceCheck();
+    }).then(() => {
       console.log('\n' + checks + ' contrôles, ' + (fails === 0 ? 'LANGUE CONFORME' : fails + ' ÉCHEC(S)'));
-    process.exit(fails ? 1 : 0);
+      process.exit(fails ? 1 : 0);
     });
   });
 }).catch(e => { console.log('CRASH ' + (e && e.stack || e)); process.exit(1); });

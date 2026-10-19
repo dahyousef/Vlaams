@@ -2,16 +2,19 @@
    table plate plutôt qu'un système i18n complet — ça garde le ton cohérent et
    rend un basculement vers le néerlandais possible plus tard. */
 NL.t = {
-  /* --- navigation : le libellé français, avec le mot néerlandais dessous --- */
+  /* --- navigation : le libellé, avec le mot néerlandais dessous --- */
   nav: [
-    { id: 'vandaag', fr: 'Aujourd’hui', nl: 'vandaag' },
-    { id: 'leerpad', fr: 'Parcours', nl: 'leerpad' },
-    { id: 'praten', fr: 'Parler', nl: 'praten' },
-    { id: 'luisteren', fr: 'Écouter', nl: 'luisteren' },
-    { id: 'meer', fr: 'Plus', nl: 'meer' }
+    { id: 'vandaag', label: 'Aujourd’hui', nl: 'vandaag' },
+    { id: 'leerpad', label: 'Parcours', nl: 'leerpad' },
+    { id: 'praten', label: 'Parler', nl: 'praten' },
+    { id: 'luisteren', label: 'Écouter', nl: 'luisteren' },
+    { id: 'meer', label: 'Plus', nl: 'meer' }
   ],
 
   brandSub: '{stad} · {bedrijf}',
+
+  /* --- l'étiquette « ici » d'une variante flamande --- */
+  beTag: 'ici',
 
   /* --- boutons et mots partout --- */
   check: 'Vérifier', next: 'Continuer', skip: 'Passer', close: 'Fermer',
@@ -108,6 +111,7 @@ NL.t = {
   specialLetters: 'Lettres spéciales',
   typeHere: 'Tape en néerlandais',
   heardWhat: 'Qu’as-tu entendu ?',
+  intrusAsk: art => 'Trois de ces mots prennent <b>' + art + '</b>. Lequel non&nbsp;?',
 
   /* --- micro --- */
   micTap: 'Touche et dis la phrase.',
@@ -135,6 +139,9 @@ NL.t = {
   recYours: 'Ta version',
   recBoth: 'Écouter les deux',
   recAgain: 'Réenregistrer',
+  recErrFramed: 'Le micro est bloqué parce que cette page tourne dans un cadre intégré. Ouvre la version hébergée pour t’enregistrer — ici, évalue-toi.',
+  recErrNoMic: 'Aucun micro détecté. Dis la phrase à voix haute et évalue-toi.',
+  recErrOther: 'L’enregistrement n’est pas possible ici. Dis-la à voix haute et évalue-toi.',
   recHint: 'Écoute le modèle, enregistre-toi, compare. C’est ainsi qu’on travaillait en laboratoire de langues pendant cinquante ans.',
 
   /* --- parler / scénarios --- */
@@ -149,6 +156,7 @@ NL.t = {
   scnAgain: 'Refaire',
   scnBack: 'Retour aux conversations',
   scnStd: 'standard :',
+  scnMissing: 'Cette conversation n’existe pas.',
 
   /* --- écouter --- */
   listenEyebrow: 'Écouter',
@@ -194,6 +202,9 @@ NL.t = {
   wordsNeedBoth: 'Le néerlandais et le français sont nécessaires.',
   wordsAdded: 'Ajouté — il reviendra tout seul.',
   wordsHere: 'ici :',
+  wordsPhNl: 'de vergaderzaal',
+  wordsPhFr: 'la salle de réunion',
+  wordsMineGroup: 'Mes mots',
 
   /* --- fiches --- */
   sheetsEyebrow: 'Antisèches',
@@ -205,6 +216,8 @@ NL.t = {
   regEyebrow: 'Standard et flamand',
   regTitle: 'Dis à gauche. Comprends à droite.',
   regBody: 'Produis la colonne de gauche et tu es correct partout, y compris à l’écrit au travail. Reconnais celle de droite ou tu perds la moitié de ce qu’on te dit autour de toi. C’est la séparation qu’aucun cours de néerlandais des Pays-Bas ne te montre.',
+  loansColBe: 'Flamand', loansColFr: 'Français',
+  fauxColNl: 'Néerlandais', fauxColMeaning: 'Sens réel',
   regStd: 'Néerlandais standard', regBe: 'Ce que tu entends ici',
   loansTitle: 'Le français caché dans le flamand',
   loansBody: 'Un francophone a une longueur d’avance qu’un anglophone n’a pas : une part du flamand vient directement du français. Voici ce que tu sais déjà sans le savoir.',
@@ -244,6 +257,12 @@ NL.t = {
   setVoice: 'Voix et micro',
   setDoctor: 'Tester le son et le micro',
   setStorage: 'Stockage :',
+  setBackupNote: 'Une sauvegarde te suit d’un navigateur à l’autre, et reste utile même connecté : c’est la seule copie que tu tiens en main.',
+  copyText: 'Copier le texte', copy: 'Copier', pasteBackup: 'Coller une sauvegarde',
+  copyHow: imp => 'Copie ce texte et garde-le. C’est toute ta progression : colle-le dans « ' + imp + ' » sur l’autre appareil.',
+  pasteHow: 'Colle ici la sauvegarde exportée depuis l’autre appareil.',
+  micRefusedLine: 'Micro refusé par le navigateur : autorise-le avec le cadenas de la barre d’adresse.',
+  micActiveLine: 'Reconnaissance vocale active (nl-BE).',
   setExport: 'Exporter ma progression',
   setImport: 'Importer une sauvegarde',
   setReset: 'Remettre la progression à zéro',
@@ -273,6 +292,7 @@ NL.t = {
   docRun: 'Lancer le test',
   docRecheck: 'Revérifier',
   docBrowser: 'Navigateur',
+  browserYours: 'ton navigateur',
   docFrame: 'Page intégrée',
   docVoices: 'Voix trouvées',
   docNoVoice: 'Aucune voix néerlandaise installée.',
@@ -280,6 +300,43 @@ NL.t = {
   docPlayTest: 'Jouer la phrase test',
   docMicTest: 'Tester le micro',
   docTierTitle: 'Ton niveau actuel',
+  docVoiceBe: 'flamande', docVoiceNl: 'nord',
+  docFramed: 'Cette page tourne dans un cadre intégré. Certains navigateurs refusent le micro dans ce cas, quelle que soit ton autorisation : ouvre l’app dans son propre onglet.',
+  docNoServiceOpera: 'pas de service de reconnaissance vocale. Ce n’est pas réparable côté code.',
+  docNoServiceIos: 'sur iPhone, seul Safari a ce service. Ouvre l’app dans Safari pour être noté.',
+  docVoicesTotal: n => n + ' au total',
+  docHeardYes: 'Bien — la synthèse vocale fonctionne.',
+  docHeardNo: 'Aucun son : vérifie le volume, puis installe la voix ci-dessous.',
+  docMic: 'Micro',
+  docFixDone: 'Voix flamande installée',
+  docFixDoneBody: name => 'Rien à faire : ' + name + ' est prête.',
+  docRechecked: 'Revérifié.',
+  docSpeakNow: 'Parle maintenant…',
+  docRecOk: 'Enregistrement réussi. Écoute-le pour vérifier le son.',
+  docRecNone: 'Rien n’a été capté.',
+  docRecFramed: 'Le micro est bloqué parce que la page est intégrée dans un cadre. Ouvre la version hébergée pour l’utiliser.',
+  docRecDenied: 'Autorisation refusée. Clique sur l’icône de cadenas dans la barre d’adresse pour l’accorder.',
+  docRecNoMic: 'Aucun micro détecté sur cette machine.',
+  docRecOther: 'Le micro n’est pas disponible ici.',
+  tierFull: 'Complet',
+  tierFullNote: 'Voix flamande et reconnaissance vocale : tout fonctionne, y compris la notation automatique de ce que tu dis.',
+  tierScored: 'Noté, accent du nord',
+  tierScoredNote: 'La reconnaissance fonctionne, mais la voix est néerlandaise du nord. Installe la voix flamande ci-dessous et tu passes au niveau complet.',
+  tierNoVoice: 'Noté, sans voix néerlandaise',
+  tierNoVoiceNote: 'La reconnaissance est disponible, mais aucune voix néerlandaise n’est installée : les modèles audio ne sonneront pas néerlandais. Installe la voix flamande ci-dessous.',
+  tierRefused: 'Micro refusé',
+  tierRefusedNote: 'Le navigateur a refusé l’accès au micro. Autorise-le avec l’icône de cadenas dans la barre d’adresse, puis teste le micro ci-dessous. En attendant, les exercices oraux te demandent de t’évaluer toi-même.',
+  tierCompare: 'Enregistre et compare',
+  tierCompareNote: 'Pas de reconnaissance vocale ici. Tu peux quand même t’enregistrer et te comparer au modèle, ce qui est une vraie méthode de travail.',
+  tierSelf: 'Auto-évaluation',
+  tierSelfNote: 'Ni reconnaissance ni enregistrement disponibles. Les exercices oraux te demandent de dire la phrase puis de te juger honnêtement. Ça marche, mais une page hébergée hors d’un cadre te donnerait mieux.',
+  /* le rapport de voix : speech.voiceInfo() rend la clé, l'écran la lit au dessin */
+  voiceNoteBe: 'Voix flamande trouvée.',
+  voiceNoteNl: 'Seule une voix des Pays-Bas est installée : l’audio a donc l’accent du nord, avec un g raclé là où la Flandre utilise un g doux.',
+  voiceNoteNone: 'Aucune voix néerlandaise trouvée. L’audio retombe sur la voix par défaut du navigateur et ne sonnera pas néerlandais.',
+  voiceNorthTitle: 'Voix du nord des Pays-Bas',
+  voiceNoneTitle: 'Aucune voix néerlandaise',
+  voiceFix: 'Touche ici pour tester et corriger.',
   errTitle: 'Ce qui a cassé sur cet appareil',
   errNone: 'Aucune erreur enregistrée.',
   errCount: n => n === 1 ? 'Une erreur enregistrée. Rien ne quitte cet appareil : copie le texte pour l’envoyer.' : n + ' erreurs enregistrées. Rien ne quitte cet appareil : copie le texte pour l’envoyer.',
@@ -297,6 +354,7 @@ NL.t = {
   accTitle: 'Connecte-toi',
   accBody: 'Ta progression est enregistrée dans ton compte et te suit sur le téléphone, le portable et le PC. Pas de mot de passe : on t’envoie un lien par mail.',
   accEmail: 'Ton adresse mail',
+  accEmailPh: 'prenom@exemple.be',
   accSend: 'Recevoir le lien',
   accSending: 'Envoi…',
   accSkip: 'Continuer sans compte',

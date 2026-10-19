@@ -32,8 +32,8 @@
 
       if (v.quality !== 'be') {
         html += '<button class="notice" data-go="doctor">' +
-          '<b>' + (v.quality === 'nl' ? 'Voix du nord des Pays-Bas' : 'Aucune voix néerlandaise') + '</b>' +
-          '<p>' + esc(v.note) + ' Touche ici pour tester et corriger.</p></button>';
+          '<b>' + (v.quality === 'nl' ? t.voiceNorthTitle : t.voiceNoneTitle) + '</b>' +
+          '<p>' + esc(t[v.note]) + ' ' + t.voiceFix + '</p></button>';
       }
 
       /* La série enregistrée ne change qu'à la séance suivante : un jour sauté, elle est déjà coupée.
@@ -105,7 +105,7 @@
           (isNow ? '<span class="now-tag">' + t.currentUnit + '</span>' : '') +
           '<div class="uc-head">' +
           '<span class="uc-icon">' + u.icon + '</span>' +
-          '<div class="uc-title"><span class="eyebrow">Unité ' + u.n + ' · ' + u.level + ' · ' + trackName(u.track) + '</span>' +
+          '<div class="uc-title"><span class="eyebrow">' + t.unitOne(u.n) + ' · ' + u.level + ' · ' + trackName(u.track) + '</span>' +
           '<h2>' + esc(NL.gloss.of(u.name)) + '<i class="uc-nl">' + esc(u.nlName || '') + '</i></h2></div>' +
           '<span class="uc-pct">' + p.met + '/' + p.total + '</span>' +
           '</div>' +
@@ -179,7 +179,7 @@
         '<span><b>' + (m.best || 0) + '</b> ' + t.statBest + '</span>' +
         '<span><b>' + (m.bestCombo || 0) + '</b> ' + t.statCombo + '</span>' +
         '<span><b>' + (m.defiBest || 0) + '</b> ' + t.statDefi + '</span>' +
-        '<span><b>' + m.xp + '</b> XP</span>' +
+        '<span><b>' + m.xp + '</b> ' + t.tallyXp + '</span>' +
         '</div></section></div>';
     },
     click(el, d) {

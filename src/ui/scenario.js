@@ -76,7 +76,7 @@
 
   NL.screens.scenario = {
     render(id) {
-      if (!P || (id && P.scn.id !== id)) { if (!open(id)) return '<div class="wrap"><p class="empty">Cette conversation n’existe pas.</p></div>'; }
+      if (!P || (id && P.scn.id !== id)) { if (!open(id)) return '<div class="wrap"><p class="empty">' + NL.t.scnMissing + '</p></div>'; }
       const s = P.scn;
       const step = P.scn.steps[P.at];
 
@@ -112,7 +112,7 @@
       } else if (P.phase === 'done') {
         panel = '<div class="scn-done"><h2>' + NL.t.scnOver + '</h2>' +
           '<p>' + esc(NL.gloss.of(s.outro)) + '</p>' +
-          '<div class="tally"><div class="tally-box gold"><div class="t-n">+12</div><div class="t-l">XP</div></div>' +
+          '<div class="tally"><div class="tally-box gold"><div class="t-n">+12</div><div class="t-l">' + NL.t.tallyXp + '</div></div>' +
           '<div class="tally-box blue"><div class="t-n">' + P.spoken + '/' + P.tried + '</div><div class="t-l">' + NL.t.micSaidIt + '</div></div></div>' +
           '<button class="btn btn-primary wide" data-step="again">' + NL.t.replay + '</button>' +
           '<button class="btn btn-ghost wide" data-step="back">' + NL.t.scnBack + '</button></div>';

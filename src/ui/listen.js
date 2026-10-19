@@ -155,7 +155,7 @@ NL.screens.luisteren = (function () {
         : NL.t.listenShadowDone) + '</p>' +
       '<div class="tally">' +
       (S.mode === 'begrijpen' ? '<div class="tally-box blue"><div class="t-n">' + S.right + '/' + S.clips.length + '</div><div class="t-l">' + NL.t.listenUnderstood + '</div></div>' : '') +
-      '<div class="tally-box gold"><div class="t-n">+8</div><div class="t-l">XP</div></div></div>' +
+      '<div class="tally-box gold"><div class="t-n">+8</div><div class="t-l">' + NL.t.tallyXp + '</div></div></div>' +
       '<button class="btn btn-primary wide" data-act="menu">' + NL.t.listenMore + '</button>' +
       '<button class="btn btn-ghost wide" data-go="vandaag">' + NL.t.back + '</button>' +
       '</div></div></div>';

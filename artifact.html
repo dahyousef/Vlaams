@@ -841,8 +841,8 @@ NL.errlog = (function () {
     (e.stack ? '\n' + e.stack : '')).join('\n\n');
 
   function watch() {
-    window.addEventListener('error', e => note((e && e.error) || (e && e.message), 'fenêtre'));
-    window.addEventListener('unhandledrejection', e => note(e && e.reason, 'promesse'));
+    window.addEventListener('error', e => note((e && e.error) || (e && e.message), 'window'));
+    window.addEventListener('unhandledrejection', e => note(e && e.reason, 'promise'));
   }
 
   return { note, all, clear, text, watch, KEEP };
@@ -853,16 +853,19 @@ NL.errlog = (function () {
    table plate plutôt qu'un système i18n complet — ça garde le ton cohérent et
    rend un basculement vers le néerlandais possible plus tard. */
 NL.t = {
-  /* --- navigation : le libellé français, avec le mot néerlandais dessous --- */
+  /* --- navigation : le libellé, avec le mot néerlandais dessous --- */
   nav: [
-    { id: 'vandaag', fr: 'Aujourd’hui', nl: 'vandaag' },
-    { id: 'leerpad', fr: 'Parcours', nl: 'leerpad' },
-    { id: 'praten', fr: 'Parler', nl: 'praten' },
-    { id: 'luisteren', fr: 'Écouter', nl: 'luisteren' },
-    { id: 'meer', fr: 'Plus', nl: 'meer' }
+    { id: 'vandaag', label: 'Aujourd’hui', nl: 'vandaag' },
+    { id: 'leerpad', label: 'Parcours', nl: 'leerpad' },
+    { id: 'praten', label: 'Parler', nl: 'praten' },
+    { id: 'luisteren', label: 'Écouter', nl: 'luisteren' },
+    { id: 'meer', label: 'Plus', nl: 'meer' }
   ],
 
   brandSub: '{stad} · {bedrijf}',
+
+  /* --- l'étiquette « ici » d'une variante flamande --- */
+  beTag: 'ici',
 
   /* --- boutons et mots partout --- */
   check: 'Vérifier', next: 'Continuer', skip: 'Passer', close: 'Fermer',
@@ -959,6 +962,7 @@ NL.t = {
   specialLetters: 'Lettres spéciales',
   typeHere: 'Tape en néerlandais',
   heardWhat: 'Qu’as-tu entendu ?',
+  intrusAsk: art => 'Trois de ces mots prennent <b>' + art + '</b>. Lequel non&nbsp;?',
 
   /* --- micro --- */
   micTap: 'Touche et dis la phrase.',
@@ -986,6 +990,9 @@ NL.t = {
   recYours: 'Ta version',
   recBoth: 'Écouter les deux',
   recAgain: 'Réenregistrer',
+  recErrFramed: 'Le micro est bloqué parce que cette page tourne dans un cadre intégré. Ouvre la version hébergée pour t’enregistrer — ici, évalue-toi.',
+  recErrNoMic: 'Aucun micro détecté. Dis la phrase à voix haute et évalue-toi.',
+  recErrOther: 'L’enregistrement n’est pas possible ici. Dis-la à voix haute et évalue-toi.',
   recHint: 'Écoute le modèle, enregistre-toi, compare. C’est ainsi qu’on travaillait en laboratoire de langues pendant cinquante ans.',
 
   /* --- parler / scénarios --- */
@@ -1000,6 +1007,7 @@ NL.t = {
   scnAgain: 'Refaire',
   scnBack: 'Retour aux conversations',
   scnStd: 'standard :',
+  scnMissing: 'Cette conversation n’existe pas.',
 
   /* --- écouter --- */
   listenEyebrow: 'Écouter',
@@ -1045,6 +1053,9 @@ NL.t = {
   wordsNeedBoth: 'Le néerlandais et le français sont nécessaires.',
   wordsAdded: 'Ajouté — il reviendra tout seul.',
   wordsHere: 'ici :',
+  wordsPhNl: 'de vergaderzaal',
+  wordsPhFr: 'la salle de réunion',
+  wordsMineGroup: 'Mes mots',
 
   /* --- fiches --- */
   sheetsEyebrow: 'Antisèches',
@@ -1056,6 +1067,8 @@ NL.t = {
   regEyebrow: 'Standard et flamand',
   regTitle: 'Dis à gauche. Comprends à droite.',
   regBody: 'Produis la colonne de gauche et tu es correct partout, y compris à l’écrit au travail. Reconnais celle de droite ou tu perds la moitié de ce qu’on te dit autour de toi. C’est la séparation qu’aucun cours de néerlandais des Pays-Bas ne te montre.',
+  loansColBe: 'Flamand', loansColFr: 'Français',
+  fauxColNl: 'Néerlandais', fauxColMeaning: 'Sens réel',
   regStd: 'Néerlandais standard', regBe: 'Ce que tu entends ici',
   loansTitle: 'Le français caché dans le flamand',
   loansBody: 'Un francophone a une longueur d’avance qu’un anglophone n’a pas : une part du flamand vient directement du français. Voici ce que tu sais déjà sans le savoir.',
@@ -1095,6 +1108,12 @@ NL.t = {
   setVoice: 'Voix et micro',
   setDoctor: 'Tester le son et le micro',
   setStorage: 'Stockage :',
+  setBackupNote: 'Une sauvegarde te suit d’un navigateur à l’autre, et reste utile même connecté : c’est la seule copie que tu tiens en main.',
+  copyText: 'Copier le texte', copy: 'Copier', pasteBackup: 'Coller une sauvegarde',
+  copyHow: imp => 'Copie ce texte et garde-le. C’est toute ta progression : colle-le dans « ' + imp + ' » sur l’autre appareil.',
+  pasteHow: 'Colle ici la sauvegarde exportée depuis l’autre appareil.',
+  micRefusedLine: 'Micro refusé par le navigateur : autorise-le avec le cadenas de la barre d’adresse.',
+  micActiveLine: 'Reconnaissance vocale active (nl-BE).',
   setExport: 'Exporter ma progression',
   setImport: 'Importer une sauvegarde',
   setReset: 'Remettre la progression à zéro',
@@ -1124,6 +1143,7 @@ NL.t = {
   docRun: 'Lancer le test',
   docRecheck: 'Revérifier',
   docBrowser: 'Navigateur',
+  browserYours: 'ton navigateur',
   docFrame: 'Page intégrée',
   docVoices: 'Voix trouvées',
   docNoVoice: 'Aucune voix néerlandaise installée.',
@@ -1131,6 +1151,43 @@ NL.t = {
   docPlayTest: 'Jouer la phrase test',
   docMicTest: 'Tester le micro',
   docTierTitle: 'Ton niveau actuel',
+  docVoiceBe: 'flamande', docVoiceNl: 'nord',
+  docFramed: 'Cette page tourne dans un cadre intégré. Certains navigateurs refusent le micro dans ce cas, quelle que soit ton autorisation : ouvre l’app dans son propre onglet.',
+  docNoServiceOpera: 'pas de service de reconnaissance vocale. Ce n’est pas réparable côté code.',
+  docNoServiceIos: 'sur iPhone, seul Safari a ce service. Ouvre l’app dans Safari pour être noté.',
+  docVoicesTotal: n => n + ' au total',
+  docHeardYes: 'Bien — la synthèse vocale fonctionne.',
+  docHeardNo: 'Aucun son : vérifie le volume, puis installe la voix ci-dessous.',
+  docMic: 'Micro',
+  docFixDone: 'Voix flamande installée',
+  docFixDoneBody: name => 'Rien à faire : ' + name + ' est prête.',
+  docRechecked: 'Revérifié.',
+  docSpeakNow: 'Parle maintenant…',
+  docRecOk: 'Enregistrement réussi. Écoute-le pour vérifier le son.',
+  docRecNone: 'Rien n’a été capté.',
+  docRecFramed: 'Le micro est bloqué parce que la page est intégrée dans un cadre. Ouvre la version hébergée pour l’utiliser.',
+  docRecDenied: 'Autorisation refusée. Clique sur l’icône de cadenas dans la barre d’adresse pour l’accorder.',
+  docRecNoMic: 'Aucun micro détecté sur cette machine.',
+  docRecOther: 'Le micro n’est pas disponible ici.',
+  tierFull: 'Complet',
+  tierFullNote: 'Voix flamande et reconnaissance vocale : tout fonctionne, y compris la notation automatique de ce que tu dis.',
+  tierScored: 'Noté, accent du nord',
+  tierScoredNote: 'La reconnaissance fonctionne, mais la voix est néerlandaise du nord. Installe la voix flamande ci-dessous et tu passes au niveau complet.',
+  tierNoVoice: 'Noté, sans voix néerlandaise',
+  tierNoVoiceNote: 'La reconnaissance est disponible, mais aucune voix néerlandaise n’est installée : les modèles audio ne sonneront pas néerlandais. Installe la voix flamande ci-dessous.',
+  tierRefused: 'Micro refusé',
+  tierRefusedNote: 'Le navigateur a refusé l’accès au micro. Autorise-le avec l’icône de cadenas dans la barre d’adresse, puis teste le micro ci-dessous. En attendant, les exercices oraux te demandent de t’évaluer toi-même.',
+  tierCompare: 'Enregistre et compare',
+  tierCompareNote: 'Pas de reconnaissance vocale ici. Tu peux quand même t’enregistrer et te comparer au modèle, ce qui est une vraie méthode de travail.',
+  tierSelf: 'Auto-évaluation',
+  tierSelfNote: 'Ni reconnaissance ni enregistrement disponibles. Les exercices oraux te demandent de dire la phrase puis de te juger honnêtement. Ça marche, mais une page hébergée hors d’un cadre te donnerait mieux.',
+  /* le rapport de voix : speech.voiceInfo() rend la clé, l'écran la lit au dessin */
+  voiceNoteBe: 'Voix flamande trouvée.',
+  voiceNoteNl: 'Seule une voix des Pays-Bas est installée : l’audio a donc l’accent du nord, avec un g raclé là où la Flandre utilise un g doux.',
+  voiceNoteNone: 'Aucune voix néerlandaise trouvée. L’audio retombe sur la voix par défaut du navigateur et ne sonnera pas néerlandais.',
+  voiceNorthTitle: 'Voix du nord des Pays-Bas',
+  voiceNoneTitle: 'Aucune voix néerlandaise',
+  voiceFix: 'Touche ici pour tester et corriger.',
   errTitle: 'Ce qui a cassé sur cet appareil',
   errNone: 'Aucune erreur enregistrée.',
   errCount: n => n === 1 ? 'Une erreur enregistrée. Rien ne quitte cet appareil : copie le texte pour l’envoyer.' : n + ' erreurs enregistrées. Rien ne quitte cet appareil : copie le texte pour l’envoyer.',
@@ -1148,6 +1205,7 @@ NL.t = {
   accTitle: 'Connecte-toi',
   accBody: 'Ta progression est enregistrée dans ton compte et te suit sur le téléphone, le portable et le PC. Pas de mot de passe : on t’envoie un lien par mail.',
   accEmail: 'Ton adresse mail',
+  accEmailPh: 'prenom@exemple.be',
   accSend: 'Recevoir le lien',
   accSending: 'Envoi…',
   accSkip: 'Continuer sans compte',
@@ -2045,9 +2103,9 @@ NL.speech = (function () {
     quality,                                  // 'be' | 'nl' | 'none' | 'unknown'
     name: voiceNow() ? voiceNow().name : null,
     lang: voiceNow() ? voiceNow().lang : null,
-    note: quality === 'be' ? 'Voix flamande trouvée.'
-      : quality === 'nl' ? 'Seule une voix des Pays-Bas est installée : l’audio a donc l’accent du nord, avec un g raclé là où la Flandre utilise un g doux.'
-        : 'Aucune voix néerlandaise trouvée. L’audio retombe sur la voix par défaut du navigateur et ne sonnera pas néerlandais.'
+    note: quality === 'be' ? 'voiceNoteBe'
+      : quality === 'nl' ? 'voiceNoteNl'
+        : 'voiceNoteNone'
   });
 
   let lastSpoken = 0;
@@ -2098,7 +2156,7 @@ NL.speech = (function () {
     if (/Firefox\//.test(UA)) return 'Firefox';
     if (/Chrome\//.test(UA)) return 'Chrome';
     if (/Safari\//.test(UA)) return 'Safari';
-    return 'ton navigateur';
+    return NL.t.browserYours;
   }
 
   const canListen = () => !!SR && !NO_SERVICE && navigator.onLine !== false;
@@ -4755,14 +4813,14 @@ NL.ex = (function () {
   const speakerRow = (text, opts) => {
     opts = opts || {};
     return '<div class="speaker-row">' +
-      '<button class="speaker" data-say="' + esc(text) + '" aria-label="Écouter">' + ICON.speaker(26) + '</button>' +
-      '<button class="speaker slow" data-say="' + esc(text) + '" data-slow="1" aria-label="Lentement">' + ICON.turtle() + '</button>' +
+      '<button class="speaker" data-say="' + esc(text) + '" aria-label="' + NL.t.listen + '">' + ICON.speaker(26) + '</button>' +
+      '<button class="speaker slow" data-say="' + esc(text) + '" data-slow="1" aria-label="' + NL.t.slow + '">' + ICON.turtle() + '</button>' +
       (opts.show ? '<div class="sentence">' + esc(text) + flemish(opts.be, text) + '</div>' : '') +
       '</div>';
   };
 
   const flemish = (be, std) => (be && NL.state.meta().showFlemish !== false && U.norm(be) !== U.norm(std))
-    ? '<span class="be-line"><span class="be-tag">ici</span>' + esc(be) + '</span>' : '';
+    ? '<span class="be-line"><span class="be-tag">' + NL.t.beTag + '</span>' + esc(be) + '</span>' : '';
 
   function optList(opts, L, phase) {
     return '<div class="opts">' + opts.map((o, i) => {
@@ -4888,7 +4946,7 @@ NL.ex = (function () {
   const R = {};
 
   R.pick = {
-    id: 'pick', kicker: NL.t.exPick,
+    id: 'pick', get kicker() { return NL.t.exPick; },
     build(item) {
       const right = U.bare(item.nl);
       /* Quatre options, pas trois : au hasard on tombe juste une fois sur quatre. */
@@ -4905,7 +4963,7 @@ NL.ex = (function () {
   };
 
   R.recall = {
-    id: 'recall', kicker: NL.t.exRecall,
+    id: 'recall', get kicker() { return NL.t.exRecall; },
     build(item) {
       const opts = U.shuffle([{ label: NL.gloss.bare(item), ok: true }].concat(
         others(item, 3, 'gloss').map(l => ({ label: l, ok: false }))));
@@ -4921,12 +4979,12 @@ NL.ex = (function () {
   };
 
   R.article = {
-    id: 'article', kicker: NL.t.exArticle,
+    id: 'article', get kicker() { return NL.t.exArticle; },
     build: item => ({ type: 'article', item, opts: [{ label: 'de', ok: item.art === 'de' }, { label: 'het', ok: item.art === 'het' }] }),
     view(t, L, phase) {
       const n = U.bare(t.item.nl);
       return '<div class="speaker-row">' +
-        '<button class="speaker" data-say="' + esc(t.item.art + ' ' + n) + '" aria-label="Écouter">' + ICON.speaker(26) + '</button>' +
+        '<button class="speaker" data-say="' + esc(t.item.art + ' ' + n) + '" aria-label="' + NL.t.listen + '">' + ICON.speaker(26) + '</button>' +
         '<div class="sentence">&hellip;&nbsp;' + esc(n) + '<span class="gloss">' + esc(NL.gloss.bare(t.item)) + '</span></div></div>' +
         optList(t.opts, L, phase);
     },
@@ -4936,7 +4994,7 @@ NL.ex = (function () {
   };
 
   R.bank = {
-    id: 'bank', kicker: NL.t.exBank,
+    id: 'bank', get kicker() { return NL.t.exBank; },
     build(item) {
       const d = (item.drills && item.drills.length) ? U.one(item.drills) : { nl: item.nl, fr: item.fr, en: item.en };
       return { type: 'bank', item, drill: d, target: d.nl, bank: bankFor(d.nl, item) };
@@ -4950,7 +5008,7 @@ NL.ex = (function () {
   };
 
   R.order = {
-    id: 'order', kicker: NL.t.exOrder,
+    id: 'order', get kicker() { return NL.t.exOrder; },
     build(item) {
       const d = U.one(item.drills || [{ nl: item.nl, fr: item.fr, en: item.en }]);
       return { type: 'order', item, drill: d, target: d.nl, bank: U.shuffle(U.tiles(d.nl)) };
@@ -4965,7 +5023,7 @@ NL.ex = (function () {
   };
 
   R.cloze = {
-    id: 'cloze', kicker: NL.t.exCloze,
+    id: 'cloze', get kicker() { return NL.t.exCloze; },
     build(item) {
       const d = item.drills ? U.one(item.drills) : { nl: item.nl, fr: item.fr, en: item.en };
       /* Pour un mot, le trou tombe sur le mot enseigné, pas sur le plus long de
@@ -5000,7 +5058,7 @@ NL.ex = (function () {
   };
 
   R.dictation = {
-    id: 'dictation', kicker: NL.t.exDictation,
+    id: 'dictation', get kicker() { return NL.t.exDictation; },
     build(item) {
       const target = item.kind === 'word' ? U.bare(item.nl) : item.nl;
       return { type: 'dictation', item, target, bank: item.kind === 'word' ? null : bankFor(target, item, 3) };
@@ -5023,7 +5081,7 @@ NL.ex = (function () {
   };
 
   R.type = {
-    id: 'type', kicker: NL.t.exType,
+    id: 'type', get kicker() { return NL.t.exType; },
     build(item) {
       return { type: 'type', item, target: item.kind === 'word' ? U.bare(item.nl) : (item.drills ? item.nl : item.nl), prompt: item.kind === 'word' ? NL.gloss.bare(item) : NL.gloss.of(item) };
     },
@@ -5051,7 +5109,7 @@ NL.ex = (function () {
   };
 
   R.speak = {
-    id: 'speak', kicker: NL.t.exSpeak,
+    id: 'speak', get kicker() { return NL.t.exSpeak; },
     build(item) {
       return { type: 'speak', item, target: item.kind === 'word' ? U.bare(item.nl) : item.nl, prompt: item.kind === 'word' ? NL.gloss.bare(item) : NL.gloss.of(item) };
     },
@@ -5156,10 +5214,10 @@ NL.ex = (function () {
     : '<p class="mic-verdict">' + (sp.selfRated ? NL.t.micNotedOk : NL.t.micNotedNo) + '</p>';
 
   const recErr = k => k === 'framed'
-    ? 'Le micro est bloqué parce que cette page tourne dans un cadre intégré. Ouvre la version hébergée pour t’enregistrer — ici, évalue-toi.'
+    ? NL.t.recErrFramed
     : k === 'denied' ? NL.t.micDenied
-      : k === 'nomic' ? 'Aucun micro détecté. Dis la phrase à voix haute et évalue-toi.'
-        : 'L’enregistrement n’est pas possible ici. Dis-la à voix haute et évalue-toi.';
+      : k === 'nomic' ? NL.t.recErrNoMic
+        : NL.t.recErrOther;
 
   function micError(kind) {
     return kind === 'denied' ? NL.t.micDenied
@@ -5173,7 +5231,7 @@ NL.ex = (function () {
   /* Trois mots partagent un article, un non. Transforme de/het en raisonnement
      au lieu d'un pile ou face. */
   R.intrus = {
-    id: 'intrus', kicker: NL.t.exIntrus,
+    id: 'intrus', get kicker() { return NL.t.exIntrus; },
     build(item) {
       const pool = NL.content.allItems().filter(x => x.kind === 'word' && x.art && x.id !== item.id);
       const same = U.sample(pool.filter(x => x.art === item.art), 2);
@@ -5184,7 +5242,7 @@ NL.ex = (function () {
       return { type: 'intrus', item, opts, art: item.art };
     },
     view(t, L, phase) {
-      return '<p class="sentence prompt">Trois de ces mots prennent <b>' + t.art + '</b>. Lequel non&nbsp;?</p>' +
+      return '<p class="sentence prompt">' + NL.t.intrusAsk(t.art) + '</p>' +
         optList(t.opts, L, phase);
     },
     ready: (t, L) => !!L.sel,
@@ -5195,7 +5253,7 @@ NL.ex = (function () {
   /* Une faute est plantée dans la phrase : trouve-la. Le transfert vers la
      relecture de tes propres mails est direct. */
   R.corrige = {
-    id: 'corrige', kicker: NL.t.exCorrige,
+    id: 'corrige', get kicker() { return NL.t.exCorrige; },
     build(item) {
       const toks = U.tiles(item.nl);
       const i = 1 + ((Math.random() * Math.max(1, toks.length - 2)) | 0);
@@ -5222,7 +5280,7 @@ NL.ex = (function () {
   /* La phrase standard est donnée : comment la dit-on ici ? Unique à cette app,
      et la donnée existe déjà sur chaque élément. */
   R.vlaams = {
-    id: 'vlaams', kicker: NL.t.exVlaams,
+    id: 'vlaams', get kicker() { return NL.t.exVlaams; },
     build(item) {
       const any = NL.content.allItems().filter(x =>
         x.be && x.id !== item.id && U.norm(x.be) !== U.norm(x.nl) && U.norm(x.be) !== U.norm(item.be));
@@ -5255,7 +5313,7 @@ NL.ex = (function () {
     return met;
   }
   R.open = {
-    id: 'open', kicker: NL.t.exOpen,
+    id: 'open', get kicker() { return NL.t.exOpen; },
     build: item => ({ type: 'open', item, task: item.open }),
     view(t, L, phase) {
       const met = phase === 'ask' ? null : rubric(t.task, L.input);
@@ -5275,7 +5333,7 @@ NL.ex = (function () {
   };
 
   R.match = {
-    id: 'match', kicker: NL.t.exMatch,
+    id: 'match', get kicker() { return NL.t.exMatch; },
     build(items) {
       const pairs = items.slice(0, 5).map(it => ({ id: it.id, nl: U.bare(it.nl), gloss: NL.gloss.bare(it), lang: NL.gloss.langOf(it), item: it }));
       return {
@@ -5418,7 +5476,7 @@ NL.ui = (function () {
       const on = route === n.id || (n.id === 'meer' && UNDER_MEER.indexOf(route) >= 0);
       return '<button class="nav-btn' + (on ? ' on' : '') + '" data-go="' + n.id + '">' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + NAV_ICON[n.id] + '</svg>' +
-        '<span class="nav-fr">' + n.fr + '</span><span class="nav-nl">' + n.nl + '</span></button>';
+        '<span class="nav-fr">' + n.label + '</span><span class="nav-nl">' + n.nl + '</span></button>';
     }).join('') + '</div></nav>';
   }
 
@@ -5487,17 +5545,17 @@ NL.ui = (function () {
         (NL.sync.enabled ? accountBlock() : '') +
 
         '<div class="set-block"><h4>' + t.setVoice + '</h4>' +
-        '<p class="set-note ' + (v.quality === 'be' ? 'good' : 'warn') + '">' + esc(v.note) +
+        '<p class="set-note ' + (v.quality === 'be' ? 'good' : 'warn') + '">' + esc(t[v.note]) +
         (v.name ? ' <span class="muted">(' + esc(v.name) + ')</span>' : '') + '</p>' +
         '<p class="set-note ' + (mic ? 'warn' : 'good') + '">' + esc(micLine(mic)) + '</p>' +
         '<button class="btn btn-blue wide" data-go="doctor">' + t.setDoctor + '</button></div>' +
 
         '<div class="set-block"><h4>' + t.setExport + '</h4>' +
-        '<p class="set-note muted">' + t.setStorage + ' ' + NL.state.storage + '. Une sauvegarde te suit d’un navigateur à l’autre, et reste utile même connecté : c’est la seule copie que tu tiens en main.</p>' +
+        '<p class="set-note muted">' + t.setStorage + ' ' + NL.state.storage + '. ' + t.setBackupNote + '</p>' +
         '<div class="row"><button class="btn" data-export="1">' + t.setExport + '</button>' +
         '<button class="btn" data-import="1">' + t.setImport + '</button></div>' +
-        '<div class="row"><button class="btn btn-ghost" data-act="copy-show">Copier le texte</button>' +
-        '<button class="btn btn-ghost" data-act="paste-show">Coller une sauvegarde</button></div>' +
+        '<div class="row"><button class="btn btn-ghost" data-act="copy-show">' + t.copyText + '</button>' +
+        '<button class="btn btn-ghost" data-act="paste-show">' + t.pasteBackup + '</button></div>' +
         '<input type="file" id="import-file" accept="application/json" hidden></div>',
 
         '<button class="btn btn-ghost wide" data-close="1">' + t.close + '</button>' +
@@ -5540,8 +5598,8 @@ NL.ui = (function () {
   const micLine = kind => kind === 'browser' ? (NL.speech.noService() === 'ios' ? t.micNoBrowserIOS : t.micNoBrowser)
     : kind === 'offline' ? t.micOffline
       /* Même règle que le docteur audio : après un refus, ne pas dire « active ». */
-      : kind === 'refused' ? 'Micro refusé par le navigateur : autorise-le avec le cadenas de la barre d’adresse.'
-        : 'Reconnaissance vocale active (nl-BE).';
+      : kind === 'refused' ? t.micRefusedLine
+        : t.micActiveLine;
 
   const toggle = (k, label, on) =>
     '<label class="tog"><span>' + label + '</span>' +
@@ -5593,15 +5651,15 @@ NL.ui = (function () {
 
   function openCopy(text) {
     openSheet({ custom: card(t.setExport,
-      '<p>Copie ce texte et garde-le. C’est toute ta progression : colle-le dans « ' + t.setImport + ' » sur l’autre appareil.</p>' +
+      '<p>' + t.copyHow(t.setImport) + '</p>' +
       '<textarea class="backup-box" id="backup-out" readonly spellcheck="false">' + esc(text) + '</textarea>',
-      '<button class="btn btn-blue wide" data-act="copy-backup">Copier</button>' +
+      '<button class="btn btn-blue wide" data-act="copy-backup">' + t.copy + '</button>' +
       '<button class="btn btn-ghost wide" data-close="1">' + t.close + '</button>') });
   }
 
   function openPaste() {
     openSheet({ custom: card(t.setImport,
-      '<p>Colle ici la sauvegarde exportée depuis l’autre appareil.</p>' +
+      '<p>' + t.pasteHow + '</p>' +
       '<textarea class="backup-box" id="backup-in" spellcheck="false" placeholder="{ &quot;app&quot;: &quot;vlaams-onderweg&quot; … }"></textarea>',
       '<button class="btn btn-good wide" data-act="paste-backup">' + t.setImport + '</button>' +
       '<button class="btn btn-ghost wide" data-close="1">' + t.cancel + '</button>') });
@@ -5666,7 +5724,7 @@ NL.ui = (function () {
             const ok = navigator.clipboard
               ? navigator.clipboard.writeText(box.value).then(() => true).catch(() => false)
               : Promise.resolve(document.execCommand && document.execCommand('copy'));
-            Promise.resolve(ok).then(good => toast(good ? 'Copié.' : 'Sélectionne le texte et copie-le à la main.'));
+            Promise.resolve(ok).then(good => toast(good ? t.errCopied : t.errCopyByHand));
           }
           return;
         }
@@ -6426,8 +6484,8 @@ NL.screens.sessie = (function () {
 
       if (v.quality !== 'be') {
         html += '<button class="notice" data-go="doctor">' +
-          '<b>' + (v.quality === 'nl' ? 'Voix du nord des Pays-Bas' : 'Aucune voix néerlandaise') + '</b>' +
-          '<p>' + esc(v.note) + ' Touche ici pour tester et corriger.</p></button>';
+          '<b>' + (v.quality === 'nl' ? t.voiceNorthTitle : t.voiceNoneTitle) + '</b>' +
+          '<p>' + esc(t[v.note]) + ' ' + t.voiceFix + '</p></button>';
       }
 
       /* La série enregistrée ne change qu'à la séance suivante : un jour sauté, elle est déjà coupée.
@@ -6499,7 +6557,7 @@ NL.screens.sessie = (function () {
           (isNow ? '<span class="now-tag">' + t.currentUnit + '</span>' : '') +
           '<div class="uc-head">' +
           '<span class="uc-icon">' + u.icon + '</span>' +
-          '<div class="uc-title"><span class="eyebrow">Unité ' + u.n + ' · ' + u.level + ' · ' + trackName(u.track) + '</span>' +
+          '<div class="uc-title"><span class="eyebrow">' + t.unitOne(u.n) + ' · ' + u.level + ' · ' + trackName(u.track) + '</span>' +
           '<h2>' + esc(NL.gloss.of(u.name)) + '<i class="uc-nl">' + esc(u.nlName || '') + '</i></h2></div>' +
           '<span class="uc-pct">' + p.met + '/' + p.total + '</span>' +
           '</div>' +
@@ -6573,7 +6631,7 @@ NL.screens.sessie = (function () {
         '<span><b>' + (m.best || 0) + '</b> ' + t.statBest + '</span>' +
         '<span><b>' + (m.bestCombo || 0) + '</b> ' + t.statCombo + '</span>' +
         '<span><b>' + (m.defiBest || 0) + '</b> ' + t.statDefi + '</span>' +
-        '<span><b>' + m.xp + '</b> XP</span>' +
+        '<span><b>' + m.xp + '</b> ' + t.tallyXp + '</span>' +
         '</div></section></div>';
     },
     click(el, d) {
@@ -6662,7 +6720,7 @@ NL.screens.sessie = (function () {
 
   NL.screens.scenario = {
     render(id) {
-      if (!P || (id && P.scn.id !== id)) { if (!open(id)) return '<div class="wrap"><p class="empty">Cette conversation n’existe pas.</p></div>'; }
+      if (!P || (id && P.scn.id !== id)) { if (!open(id)) return '<div class="wrap"><p class="empty">' + NL.t.scnMissing + '</p></div>'; }
       const s = P.scn;
       const step = P.scn.steps[P.at];
 
@@ -6698,7 +6756,7 @@ NL.screens.sessie = (function () {
       } else if (P.phase === 'done') {
         panel = '<div class="scn-done"><h2>' + NL.t.scnOver + '</h2>' +
           '<p>' + esc(NL.gloss.of(s.outro)) + '</p>' +
-          '<div class="tally"><div class="tally-box gold"><div class="t-n">+12</div><div class="t-l">XP</div></div>' +
+          '<div class="tally"><div class="tally-box gold"><div class="t-n">+12</div><div class="t-l">' + NL.t.tallyXp + '</div></div>' +
           '<div class="tally-box blue"><div class="t-n">' + P.spoken + '/' + P.tried + '</div><div class="t-l">' + NL.t.micSaidIt + '</div></div></div>' +
           '<button class="btn btn-primary wide" data-step="again">' + NL.t.replay + '</button>' +
           '<button class="btn btn-ghost wide" data-step="back">' + NL.t.scnBack + '</button></div>';
@@ -6986,7 +7044,7 @@ NL.screens.luisteren = (function () {
         : NL.t.listenShadowDone) + '</p>' +
       '<div class="tally">' +
       (S.mode === 'begrijpen' ? '<div class="tally-box blue"><div class="t-n">' + S.right + '/' + S.clips.length + '</div><div class="t-l">' + NL.t.listenUnderstood + '</div></div>' : '') +
-      '<div class="tally-box gold"><div class="t-n">+8</div><div class="t-l">XP</div></div></div>' +
+      '<div class="tally-box gold"><div class="t-n">+8</div><div class="t-l">' + NL.t.tallyXp + '</div></div></div>' +
       '<button class="btn btn-primary wide" data-act="menu">' + NL.t.listenMore + '</button>' +
       '<button class="btn btn-ghost wide" data-go="vandaag">' + NL.t.back + '</button>' +
       '</div></div></div>';
@@ -7076,8 +7134,8 @@ NL.screens.luisteren = (function () {
 
       if (adding) {
         html += '<section class="card add-form">' +
-          '<label>' + NL.t.wordsNl + '<input class="textin" id="add-nl" placeholder="de vergaderzaal"></label>' +
-          '<label>' + NL.t.wordsFr + '<input class="textin" id="add-en" placeholder="la salle de réunion"></label>' +
+          '<label>' + NL.t.wordsNl + '<input class="textin" id="add-nl" placeholder="' + NL.t.wordsPhNl + '"></label>' +
+          '<label>' + NL.t.wordsFr + '<input class="textin" id="add-en" placeholder="' + NL.t.wordsPhFr + '"></label>' +
           '<label>' + NL.t.wordsBe + ' <span class="muted">' + NL.t.wordsOptional + '</span><input class="textin" id="add-be" placeholder=""></label>' +
           '<div class="row"><button class="btn btn-good" data-act="addsave">' + NL.t.save + '</button>' +
           '<button class="btn btn-ghost" data-act="addcancel">' + NL.t.cancel + '</button></div></section>';
@@ -7095,7 +7153,7 @@ NL.screens.luisteren = (function () {
       } else {
         Object.keys(groups).forEach(uid => {
           const u = NL.content.unit(uid);
-          html += '<div class="voc-head">' + esc(u ? NL.gloss.of(u.name) : 'Mes mots') + '</div>';
+          html += '<div class="voc-head">' + esc(u ? NL.gloss.of(u.name) : NL.t.wordsMineGroup) + '</div>';
           groups[uid].forEach(it => {
             const s = NL.srs.stageOf(it);
             html += '<div class="vrow">' +
@@ -7182,7 +7240,7 @@ NL.screens.luisteren = (function () {
 
         '<h3 class="sec">' + NL.t.loansTitle + '</h3>' +
         '<section class="card lead slim"><p>' + NL.t.loansBody + '</p></section>' +
-        '<div class="reg-table"><div class="reg-head"><span>Flamand</span><span>Français</span></div>' +
+        '<div class="reg-table"><div class="reg-head"><span>' + NL.t.loansColBe + '</span><span>' + NL.t.loansColFr + '</span></div>' +
         NL.content.loans.map(r =>
           '<div class="reg-row">' +
           '<button class="reg-cell be" data-say="' + esc(r.nl) + '">' + esc(r.nl) + '</button>' +
@@ -7193,7 +7251,7 @@ NL.screens.luisteren = (function () {
 
         '<h3 class="sec">' + NL.t.fauxTitle + '</h3>' +
         '<section class="card lead slim"><p>' + NL.t.fauxBody + '</p></section>' +
-        '<div class="reg-table"><div class="reg-head"><span>Néerlandais</span><span>Sens réel</span></div>' +
+        '<div class="reg-table"><div class="reg-head"><span>' + NL.t.fauxColNl + '</span><span>' + NL.t.fauxColMeaning + '</span></div>' +
         NL.content.faux.map(r =>
           '<div class="reg-row">' +
           '<button class="reg-cell be" data-say="' + esc(r.nl) + '">' + esc(r.nl) + '</button>' +
@@ -7212,7 +7270,7 @@ NL.screens.luisteren = (function () {
           '<b>' + esc(NL.gloss.of(r.rule)) + (r.sure ? '<span class="sure-tag">' + NL.t.dehetSure + '</span>' : '') + '</b>' +
           '<button class="rule-ex" data-say="' + esc(r.ex) + '">' + esc(r.ex) + '</button></div>').join('');
       return '<div class="wrap">' +
-        '<section class="card lead slim"><span class="eyebrow">de / het</span>' +
+        '<section class="card lead slim"><span class="eyebrow">' + 'de / het' + '</span>' +
         '<h1>' + NL.t.dehetTitle + '</h1><p>' + NL.t.dehetBody + '</p></section>' +
         col(NL.t.dehetHet, NL.content.hetRules, 'het') +
         col(NL.t.dehetDe, NL.content.deRules, 'de') +
@@ -7287,12 +7345,12 @@ NL.screens.doctor = (function () {
   let S = { heard: null, mic: null, micMsg: '', rec: 'idle' };
 
   const TIERS = {
-    full: { label: 'Complet', note: 'Voix flamande et reconnaissance vocale : tout fonctionne, y compris la notation automatique de ce que tu dis.' },
-    scored: { label: 'Noté, accent du nord', note: 'La reconnaissance fonctionne, mais la voix est néerlandaise du nord. Installe la voix flamande ci-dessous et tu passes au niveau complet.' },
-    novoice: { label: 'Noté, sans voix néerlandaise', note: 'La reconnaissance est disponible, mais aucune voix néerlandaise n’est installée : les modèles audio ne sonneront pas néerlandais. Installe la voix flamande ci-dessous.' },
-    refused: { label: 'Micro refusé', note: 'Le navigateur a refusé l’accès au micro. Autorise-le avec l’icône de cadenas dans la barre d’adresse, puis teste le micro ci-dessous. En attendant, les exercices oraux te demandent de t’évaluer toi-même.' },
-    compare: { label: 'Enregistre et compare', note: 'Pas de reconnaissance vocale ici. Tu peux quand même t’enregistrer et te comparer au modèle, ce qui est une vraie méthode de travail.' },
-    self: { label: 'Auto-évaluation', note: 'Ni reconnaissance ni enregistrement disponibles. Les exercices oraux te demandent de dire la phrase puis de te juger honnêtement. Ça marche, mais une page hébergée hors d’un cadre te donnerait mieux.' }
+    full: { get label() { return t.tierFull; }, get note() { return t.tierFullNote; } },
+    scored: { get label() { return t.tierScored; }, get note() { return t.tierScoredNote; } },
+    novoice: { get label() { return t.tierNoVoice; }, get note() { return t.tierNoVoiceNote; } },
+    refused: { get label() { return t.tierRefused; }, get note() { return t.tierRefusedNote; } },
+    compare: { get label() { return t.tierCompare; }, get note() { return t.tierCompareNote; } },
+    self: { get label() { return t.tierSelf; }, get note() { return t.tierSelfNote; } }
   };
 
   function voiceRows() {
@@ -7300,7 +7358,7 @@ NL.screens.doctor = (function () {
     if (!vs.length) return '<p class="doc-bad">' + t.docNoVoice + '</p>';
     return '<ul class="doc-list">' + vs.map(v =>
       '<li class="' + (/BE/i.test(v.lang) ? 'good' : '') + '"><b>' + esc(v.name) + '</b><span>' + esc(v.lang) +
-      (/BE/i.test(v.lang) ? ' · flamande' : ' · nord') + '</span></li>').join('') + '</ul>';
+      ' · ' + (/BE/i.test(v.lang) ? t.docVoiceBe : t.docVoiceNl) + '</span></li>').join('') + '</ul>';
   }
 
   /* Ce que l'app a vu casser sur CET appareil. Sur un téléphone il n'y a pas de
@@ -7330,29 +7388,29 @@ NL.screens.doctor = (function () {
       '<section class="doc-tier ' + tier.id + '">' +
       '<span class="eyebrow">' + t.docTierTitle + '</span>' +
       '<h2>' + info.label + '</h2><p>' + info.note + '</p>' +
-      (tier.framed ? '<p class="doc-framed">Cette page tourne dans un cadre intégré. Certains navigateurs refusent le micro dans ce cas, quelle que soit ton autorisation : ouvre l’app dans son propre onglet.</p>' : '') +
+      (tier.framed ? '<p class="doc-framed">' + t.docFramed + '</p>' : '') +
       '</section>' +
 
       '<section class="doc-block">' +
       '<h4>' + t.docBrowser + '</h4>' +
       '<p class="doc-line"><b>' + esc(NL.speech.browserName()) + '</b>' +
-      (NL.speech.noService() === 'opera' ? ' — pas de service de reconnaissance vocale. Ce n’est pas réparable côté code.'
-        : NL.speech.noService() === 'ios' ? ' — sur iPhone, seul Safari a ce service. Ouvre l’app dans Safari pour être noté.' : '') + '</p>' +
+      (NL.speech.noService() === 'opera' ? ' — ' + t.docNoServiceOpera
+        : NL.speech.noService() === 'ios' ? ' — ' + t.docNoServiceIos : '') + '</p>' +
       '</section>' +
 
       '<section class="doc-block">' +
-      '<h4>' + t.docVoices + ' <span class="muted">(' + allVoices + ' au total)</span></h4>' +
+      '<h4>' + t.docVoices + ' <span class="muted">(' + t.docVoicesTotal(allVoices) + ')</span></h4>' +
       voiceRows() +
       '<div class="row"><button class="btn btn-blue" data-act="play">' + t.docPlayTest + '</button>' +
       '<button class="btn" data-act="recheck">' + t.docRecheck + '</button></div>' +
       (S.heard === null
         ? '<p class="doc-ask">' + t.docHeard + ' <button class="chip" data-act="heard-yes">' + t.yes + '</button> <button class="chip" data-act="heard-no">' + t.no + '</button></p>'
         : '<p class="doc-verdict ' + (S.heard ? 'good' : 'bad') + '">' +
-        (S.heard ? 'Bien — la synthèse vocale fonctionne.' : 'Aucun son : vérifie le volume, puis installe la voix ci-dessous.') + '</p>') +
+        (S.heard ? t.docHeardYes : t.docHeardNo) + '</p>') +
       '</section>' +
 
       '<section class="doc-block">' +
-      '<h4>Micro</h4>' +
+      '<h4>' + t.docMic + '</h4>' +
       '<div class="row">' +
       '<button class="btn btn-blue" data-act="' + (S.rec === 'rec' ? 'recstop' : 'rec') + '">' +
       (S.rec === 'rec' ? t.recStop : t.docMicTest) + '</button>' +
@@ -7370,8 +7428,8 @@ NL.screens.doctor = (function () {
         '<p class="muted small">' + t.docFixNote + '</p>' +
         '<button class="btn btn-primary wide" data-act="recheck">' + t.docRecheck + '</button>' +
         '</section>'
-        : '<section class="doc-fix good"><h4>Voix flamande installée</h4>' +
-        '<p class="muted small">Rien à faire : ' + esc(v.name || '') + ' est prête.</p></section>') +
+        : '<section class="doc-fix good"><h4>' + t.docFixDone + '</h4>' +
+        '<p class="muted small">' + t.docFixDoneBody(esc(v.name || '')) + '</p></section>') +
 
       '</div></div></div>';
   }
@@ -7383,7 +7441,7 @@ NL.screens.doctor = (function () {
       if (d.act === 'play') { S.heard = null; NL.speech.say(TEST); NL.ui.render(); return; }
       if (d.act === 'heard-yes') { S.heard = true; NL.ui.render(); return; }
       if (d.act === 'heard-no') { S.heard = false; NL.ui.render(); return; }
-      if (d.act === 'recheck') { NL.speech.rescanVoices(); S.heard = null; NL.ui.render(); NL.ui.toast('Revérifié.'); return; }
+      if (d.act === 'recheck') { NL.speech.rescanVoices(); S.heard = null; NL.ui.render(); NL.ui.toast(t.docRechecked); return; }
       if (d.act === 'playrec') { NL.speech.playRecording(); return; }
       if (d.act === 'errclear') { NL.errlog.clear(); NL.ui.render(); return; }
       if (d.act === 'errcopy') {
@@ -7397,22 +7455,22 @@ NL.screens.doctor = (function () {
       }
       if (d.act === 'recstop') { NL.speech.stopRecord(); return; }
       if (d.act === 'rec') {
-        S.rec = 'rec'; S.micMsg = 'Parle maintenant…'; S.mic = null; NL.ui.render();
+        S.rec = 'rec'; S.micMsg = t.docSpeakNow; S.mic = null; NL.ui.render();
         NL.speech.record({
           onstart: () => { setTimeout(() => { if (S.rec === 'rec') NL.speech.stopRecord(); }, 3000); },
           onstop: url => {
             S.rec = 'idle';
             S.mic = !!url;
-            S.micMsg = url ? 'Enregistrement réussi. Écoute-le pour vérifier le son.' : 'Rien n’a été capté.';
+            S.micMsg = url ? t.docRecOk : t.docRecNone;
             NL.ui.render();
           },
           onerror: kind => {
             S.rec = 'idle'; S.mic = false;
             S.micMsg = kind === 'framed'
-              ? 'Le micro est bloqué parce que la page est intégrée dans un cadre. Ouvre la version hébergée pour l’utiliser.'
-              : kind === 'denied' ? 'Autorisation refusée. Clique sur l’icône de cadenas dans la barre d’adresse pour l’accorder.'
-                : kind === 'nomic' ? 'Aucun micro détecté sur cette machine.'
-                  : 'Le micro n’est pas disponible ici.';
+              ? t.docRecFramed
+              : kind === 'denied' ? t.docRecDenied
+                : kind === 'nomic' ? t.docRecNoMic
+                  : t.docRecOther;
             NL.ui.render();
           }
         });
@@ -7477,7 +7535,7 @@ NL.screens.compte = (function () {
         '<h1>' + t.accTitle + '</h1>' +
         '<p>' + t.accBody + '</p>' +
         '<label class="acc-field"><span>' + t.accEmail + '</span>' +
-        '<input class="textin" id="acc-email" type="email" autocomplete="email" value="' + esc(email) + '" placeholder="prenom@exemple.be"></label>' +
+        '<input class="textin" id="acc-email" type="email" autocomplete="email" value="' + esc(email) + '" placeholder="' + NL.t.accEmailPh + '"></label>' +
         (msg ? '<p class="acc-err">' + esc(msg) + '</p>' : '') +
         '<div class="acc-actions">' +
         '<button class="btn btn-primary wide" data-act="send"' + (busy ? ' disabled' : '') + '>' + (busy ? t.accSending : t.accSend) + '</button>' +

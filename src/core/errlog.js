@@ -29,8 +29,8 @@ NL.errlog = (function () {
     (e.stack ? '\n' + e.stack : '')).join('\n\n');
 
   function watch() {
-    window.addEventListener('error', e => note((e && e.error) || (e && e.message), 'fenêtre'));
-    window.addEventListener('unhandledrejection', e => note(e && e.reason, 'promesse'));
+    window.addEventListener('error', e => note((e && e.error) || (e && e.message), 'window'));
+    window.addEventListener('unhandledrejection', e => note(e && e.reason, 'promise'));
   }
 
   return { note, all, clear, text, watch, KEEP };

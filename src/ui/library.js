@@ -37,8 +37,8 @@
 
       if (adding) {
         html += '<section class="card add-form">' +
-          '<label>' + NL.t.wordsNl + '<input class="textin" id="add-nl" placeholder="de vergaderzaal"></label>' +
-          '<label>' + NL.t.wordsFr + '<input class="textin" id="add-en" placeholder="la salle de réunion"></label>' +
+          '<label>' + NL.t.wordsNl + '<input class="textin" id="add-nl" placeholder="' + NL.t.wordsPhNl + '"></label>' +
+          '<label>' + NL.t.wordsFr + '<input class="textin" id="add-en" placeholder="' + NL.t.wordsPhFr + '"></label>' +
           '<label>' + NL.t.wordsBe + ' <span class="muted">' + NL.t.wordsOptional + '</span><input class="textin" id="add-be" placeholder=""></label>' +
           '<div class="row"><button class="btn btn-good" data-act="addsave">' + NL.t.save + '</button>' +
           '<button class="btn btn-ghost" data-act="addcancel">' + NL.t.cancel + '</button></div></section>';
@@ -56,7 +56,7 @@
       } else {
         Object.keys(groups).forEach(uid => {
           const u = NL.content.unit(uid);
-          html += '<div class="voc-head">' + esc(u ? NL.gloss.of(u.name) : 'Mes mots') + '</div>';
+          html += '<div class="voc-head">' + esc(u ? NL.gloss.of(u.name) : NL.t.wordsMineGroup) + '</div>';
           groups[uid].forEach(it => {
             const s = NL.srs.stageOf(it);
             html += '<div class="vrow">' +
@@ -143,7 +143,7 @@
 
         '<h3 class="sec">' + NL.t.loansTitle + '</h3>' +
         '<section class="card lead slim"><p>' + NL.t.loansBody + '</p></section>' +
-        '<div class="reg-table"><div class="reg-head"><span>Flamand</span><span>Français</span></div>' +
+        '<div class="reg-table"><div class="reg-head"><span>' + NL.t.loansColBe + '</span><span>' + NL.t.loansColFr + '</span></div>' +
         NL.content.loans.map(r =>
           '<div class="reg-row">' +
           '<button class="reg-cell be" data-say="' + esc(r.nl) + '">' + esc(r.nl) + '</button>' +
@@ -154,7 +154,7 @@
 
         '<h3 class="sec">' + NL.t.fauxTitle + '</h3>' +
         '<section class="card lead slim"><p>' + NL.t.fauxBody + '</p></section>' +
-        '<div class="reg-table"><div class="reg-head"><span>Néerlandais</span><span>Sens réel</span></div>' +
+        '<div class="reg-table"><div class="reg-head"><span>' + NL.t.fauxColNl + '</span><span>' + NL.t.fauxColMeaning + '</span></div>' +
         NL.content.faux.map(r =>
           '<div class="reg-row">' +
           '<button class="reg-cell be" data-say="' + esc(r.nl) + '">' + esc(r.nl) + '</button>' +
@@ -173,7 +173,7 @@
           '<b>' + esc(NL.gloss.of(r.rule)) + (r.sure ? '<span class="sure-tag">' + NL.t.dehetSure + '</span>' : '') + '</b>' +
           '<button class="rule-ex" data-say="' + esc(r.ex) + '">' + esc(r.ex) + '</button></div>').join('');
       return '<div class="wrap">' +
-        '<section class="card lead slim"><span class="eyebrow">de / het</span>' +
+        '<section class="card lead slim"><span class="eyebrow">' + 'de / het' + '</span>' +
         '<h1>' + NL.t.dehetTitle + '</h1><p>' + NL.t.dehetBody + '</p></section>' +
         col(NL.t.dehetHet, NL.content.hetRules, 'het') +
         col(NL.t.dehetDe, NL.content.deRules, 'de') +
