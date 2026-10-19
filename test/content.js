@@ -152,7 +152,7 @@ NL.state.open().then(() => {
      mot donne son historique à un autre. Ajouter en fin d'unité passe ; une
      correction du néerlandais met à jour test/data/ids.tsv dans le même commit. */
   const IDS = path.join(__dirname, 'data', 'ids.tsv');
-  const pinned = fs.existsSync(IDS) ? fs.readFileSync(IDS, 'utf8').split('\n').filter(Boolean).map(l => l.split('\t')) : [];
+  const pinned = fs.existsSync(IDS) ? fs.readFileSync(IDS, 'utf8').split(/\r?\n/).filter(Boolean).map(l => l.split('\t')) : [];
   ok(pinned.length > 0, 'test/data/ids.tsv absent ou vide');
   let moved = 0;
   pinned.forEach(([id, nl]) => {
