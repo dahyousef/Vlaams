@@ -220,7 +220,27 @@ Promise.all([plain.NL.state.open(), paired.NL.state.open()]).then(() => {
     ok(screens >= 50 && dup === 0, 'écoute : ' + dup + ' écrans sur ' + screens + ' n\'ont pas trois options différentes');
     ok(G.current() === 'fr', 'la langue lue par défaut n\'est pas le français');
 
-    console.log('\n' + checks + ' contrôles, ' + (fails === 0 ? 'LANGUE CONFORME' : fails + ' ÉCHEC(S)'));
+    /* 2e. Une note sans anglais (en: null) ne laisse pas de <em></em> vide. */
+    const nn = boot(NL => {
+      pairUp(NL.content);
+      NL.content.sheets.forEach(s => s.groups.forEach(g => g.rows.forEach(r => { if (r.note) r.note.en = null; })));
+      NL.content.register.forEach(r => { if (r.note) r.note.en = null; });
+    });
+    return nn.NL.state.open().then(() => {
+      const N = nn.NL;
+      N.gloss.use('en');
+      let seenNote = 0;
+      N.content.sheets.forEach(s => {
+        N.ui.go('spiek', s.id);
+        ok(nn.app.innerHTML.indexOf('<em></em>') < 0, 'fiche ' + s.id + ' : un <em></em> vide');
+        s.groups.forEach(g => g.rows.forEach(r => { if (r.note) seenNote++; }));
+      });
+      N.ui.go('register');
+      ok(nn.app.innerHTML.indexOf('<em></em>') < 0, 'registre : un <em></em> vide');
+      ok(seenNote > 0 && N.content.register.some(r => r.note), 'aucune note à tester : le contrôle est creux');
+
+      console.log('\n' + checks + ' contrôles, ' + (fails === 0 ? 'LANGUE CONFORME' : fails + ' ÉCHEC(S)'));
     process.exit(fails ? 1 : 0);
+    });
   });
 }).catch(e => { console.log('CRASH ' + (e && e.stack || e)); process.exit(1); });
