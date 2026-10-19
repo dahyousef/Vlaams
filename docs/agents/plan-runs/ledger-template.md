@@ -14,6 +14,9 @@ Log.
 |---|---|---|---|---|---|---|
 | 1 | mechanical | #<n> | pending | | | |
 
+Class: `engine`, `mechanical` or `sitting` (a `sitting` task is launched as a session of its own, and stops
+the run).
+
 States: `pending`, `in progress`, `done`, `fallback`, `needs ruling`, `needs design`, `failed`, `replaced by <id>`.
 
 ## Rulings
