@@ -1,4 +1,4 @@
-/* Quatre contrôles mécaniques sur le contenu. Le cours va être multiplié par dix
+/* Cinq contrôles mécaniques sur le contenu. Le cours va être multiplié par dix
    et il n'y a pas de relecteur néerlandophone : tout ce qu'une machine peut
    vérifier, elle le vérifie, à chaque changement.
 
@@ -146,6 +146,20 @@ NL.state.open().then(() => {
   ok(dupes <= DUPE_BUDGET, dupes + ' éléments enseignés deux fois, budget ' + DUPE_BUDGET + ' — baisser le budget quand on en retire, jamais le lever');
   ok(dupes >= DUPE_BUDGET, 'seulement ' + dupes + ' doublons : baisser DUPE_BUDGET à ' + dupes + ' pour verrouiller le gain');
   console.log('  doublons        ' + dupes + ' (budget ' + DUPE_BUDGET + ')');
+
+  /* ====================================== 5. chaque id garde son néerlandais */
+  /* Les ids sont des positions (« overleven:w3 ») : insérer, retirer ou déplacer un
+     mot donne son historique à un autre. Ajouter en fin d'unité passe ; une
+     correction du néerlandais met à jour test/data/ids.tsv dans le même commit. */
+  const IDS = path.join(__dirname, 'data', 'ids.tsv');
+  const pinned = fs.existsSync(IDS) ? fs.readFileSync(IDS, 'utf8').split('\n').filter(Boolean).map(l => l.split('\t')) : [];
+  ok(pinned.length > 0, 'test/data/ids.tsv absent ou vide');
+  let moved = 0;
+  pinned.forEach(([id, nl]) => {
+    const it = NL.content.byId(id);
+    if (!it || it.nl !== nl) { moved++; ok(false, id + ' devait être « ' + nl + ' », est ' + (it ? '« ' + it.nl + ' »' : 'absent')); }
+  });
+  console.log('  ids             ' + (pinned.length - moved) + ' / ' + pinned.length + ' à leur place');
 
   console.log('\n' + checks + ' contrôles, ' + (fails === 0 ? 'CONTENU CONFORME' : fails + ' ÉCHEC(S)'));
   process.exit(fails ? 1 : 0);

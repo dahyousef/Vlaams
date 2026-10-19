@@ -1,0 +1,439 @@
+overleven:w0	hallo
+overleven:w1	goeiedag
+overleven:w2	dag
+overleven:w3	tot ziens
+overleven:w4	alstublieft
+overleven:w5	dank u wel
+overleven:w6	sorry
+overleven:w7	ja
+overleven:w8	nee
+overleven:w9	misschien
+overleven:w10	graag
+overleven:w11	goed
+overleven:w12	niet
+overleven:w13	een beetje
+overleven:w14	nog eens
+overleven:w15	trager
+overleven:w16	verstaan
+overleven:w17	herhalen
+overleven:w18	betekenen
+overleven:w19	proberen
+overleven:w20	spreken
+overleven:w21	leren
+overleven:w22	zeggen
+overleven:w23	helpen
+overleven:w24	natuurlijk
+overleven:w25	geen probleem
+overleven:p0	Ik ben Nederlands aan het leren.
+overleven:p1	Mag ik het in het Nederlands proberen?
+overleven:p2	Kunt u wat trager spreken, alstublieft?
+overleven:p3	Sorry, ik heb dat niet verstaan.
+overleven:p4	Kunt u dat herhalen?
+overleven:p5	Hoe zeg je dat in het Nederlands?
+overleven:p6	Wat betekent dat?
+overleven:p7	Ik spreek nog niet goed Nederlands.
+overleven:p8	Ik versta een beetje Nederlands.
+overleven:p9	Kunt u mij helpen?
+overleven:p10	Nog eens, alstublieft.
+overleven:p11	Dat is goed, merci.
+g-v2	Morgen ga ik naar Brussel.
+ikengij:w0	ik
+ikengij:w1	jij
+ikengij:w2	u
+ikengij:w3	hij
+ikengij:w4	zij
+ikengij:w5	wij
+ikengij:w6	zijn
+ikengij:w7	hebben
+ikengij:w8	heten
+ikengij:w9	wonen
+ikengij:w10	komen
+ikengij:w11	werken
+ikengij:w12	de naam
+ikengij:w13	het jaar
+ikengij:w14	oud
+ikengij:w15	getrouwd
+ikengij:w16	samen
+ikengij:w17	hier
+ikengij:w18	daar
+ikengij:w19	al
+ikengij:w20	ook
+ikengij:w21	mijn
+ikengij:w22	uw
+ikengij:w23	het Nederlands
+ikengij:w24	het Engels
+ikengij:w25	het Frans
+ikengij:p0	Ik heet Tom.
+ikengij:p1	Hoe heet je?
+ikengij:p2	Ik woon in Gent.
+ikengij:p3	Wij wonen hier al vijf jaar.
+ikengij:p4	Ik werk bij Novatech.
+ikengij:p5	Hoe oud ben je?
+ikengij:p6	Ik ben veertig jaar.
+ikengij:p7	Ik ben getrouwd en ik heb twee kinderen.
+ikengij:p8	Spreekt u Frans?
+ikengij:p9	Aangenaam.
+g-present	Ik werk bij Novatech.
+g-gegij	Hebt ge dat verstaan?
+tijd:w0	nul
+tijd:w1	een
+tijd:w2	twee
+tijd:w3	drie
+tijd:w4	vier
+tijd:w5	vijf
+tijd:w6	zes
+tijd:w7	zeven
+tijd:w8	acht
+tijd:w9	negen
+tijd:w10	tien
+tijd:w11	elf
+tijd:w12	twaalf
+tijd:w13	twintig
+tijd:w14	dertig
+tijd:w15	veertig
+tijd:w16	vijftig
+tijd:w17	zeventig
+tijd:w18	negentig
+tijd:w19	honderd
+tijd:w20	het uur
+tijd:w21	half
+tijd:w22	het kwart
+tijd:w23	de minuut
+tijd:w24	de dag
+tijd:w25	de week
+tijd:w26	de maand
+tijd:w27	vandaag
+tijd:w28	morgen
+tijd:w29	gisteren
+tijd:w30	maandag
+tijd:w31	dinsdag
+tijd:w32	woensdag
+tijd:w33	donderdag
+tijd:w34	vrijdag
+tijd:w35	zaterdag
+tijd:w36	zondag
+tijd:w37	vroeg
+tijd:w38	laat
+tijd:w39	straks
+tijd:p0	Hoe laat is het?
+tijd:p1	Het is half drie.
+tijd:p2	Het is kwart voor acht.
+tijd:p3	Om negen uur.
+tijd:p4	Ik kom om tien uur.
+tijd:p5	Tot straks!
+tijd:p6	Tot maandag.
+tijd:p7	Ik heb tijd op dinsdag.
+tijd:p8	Dat duurt een half uur.
+tijd:p9	Ik ben te laat.
+g-getallen	Het kost eenentwintig euro.
+g-halfuur	De vergadering begint om half drie.
+bakker:w0	het brood
+bakker:w1	de pistolet
+bakker:w2	de koffiekoek
+bakker:w3	een half wit
+bakker:w4	gesneden
+bakker:w5	de bakker
+bakker:w6	de beenhouwer
+bakker:w7	de hesp
+bakker:w8	de kaas
+bakker:w9	de choco
+bakker:w10	de boter
+bakker:w11	het broodje
+bakker:w12	de taart
+bakker:w13	de koffie
+bakker:w14	het water
+bakker:w15	de pint
+bakker:w16	de frieten
+bakker:w17	lekker
+bakker:w18	de honger
+bakker:w19	de dorst
+bakker:w20	kosten
+bakker:w21	alles
+bakker:w22	meenemen
+bakker:p0	Een half wit, gesneden alstublieft.
+bakker:p1	Mag ik twee pistolets?
+bakker:p2	Is dat alles?
+bakker:p3	Ja, dat is alles, merci.
+bakker:p4	Hoeveel is het?
+bakker:p5	Ik zou graag een koffiekoek hebben.
+bakker:p6	Een pintje, alstublieft.
+bakker:p7	Voor hier of om mee te nemen?
+bakker:p8	Ik heb honger.
+bakker:p9	Dat is lekker.
+g-dehet	Het grote huis staat in de straat.
+thuis:w0	het huis
+thuis:w1	de straat
+thuis:w2	de tuin
+thuis:w3	de buurman
+thuis:w4	de buurvrouw
+thuis:w5	de buren
+thuis:w6	de keuken
+thuis:w7	de living
+thuis:w8	de badkamer
+thuis:w9	de slaapkamer
+thuis:w10	de garage
+thuis:w11	de brievenbus
+thuis:w12	het gemeentehuis
+thuis:w13	de gemeente
+thuis:w14	het dorp
+thuis:w15	de kerk
+thuis:w16	het containerpark
+thuis:w17	het vuil
+thuis:w18	het pakje
+thuis:w19	de sleutel
+thuis:w20	de deur
+thuis:w21	binnen
+thuis:w22	buiten
+thuis:w23	vriendelijk
+thuis:w24	rustig
+thuis:p0	Ik woon in de Kloosterstraat.
+thuis:p1	De buren zijn heel vriendelijk.
+thuis:p2	Waar is het gemeentehuis?
+thuis:p3	Ik moet naar het containerpark.
+thuis:p4	Er ligt een pakje bij de buren.
+thuis:p5	Mag ik uw pakje aannemen?
+thuis:p6	Het is hier heel rustig.
+thuis:p7	Ik ben nieuw in de straat.
+familie:w0	de vrouw
+familie:w1	de man
+familie:w2	de zoon
+familie:w3	de dochter
+familie:w4	het kind
+familie:w5	de kinderen
+familie:w6	de ouders
+familie:w7	de mama
+familie:w8	de papa
+familie:w9	de zus
+familie:w10	de broer
+familie:w11	de vriend
+familie:w12	de vriendin
+familie:w13	de collega
+familie:w14	de baas
+familie:w15	de mensen
+familie:w16	iedereen
+familie:w17	niemand
+familie:w18	de school
+familie:w19	jong
+familie:w20	lief
+familie:w21	streng
+familie:w22	onze
+familie:w23	hun
+familie:p0	Dit is mijn vrouw.
+familie:p1	Wij hebben twee kinderen.
+familie:p2	Mijn dochter gaat naar school in Gent.
+familie:p3	Hoe gaat het met de familie?
+familie:p4	Mijn collega’s spreken allemaal Nederlands.
+familie:p5	Hij is een collega van mij.
+familie:p6	Onze zoon is zes jaar.
+familie:p7	Ik ken hier nog niet veel mensen.
+g-bezit	Ons huis staat naast onze tuin.
+onderweg:w0	de fiets
+onderweg:w1	de auto
+onderweg:w2	de trein
+onderweg:w3	de bus
+onderweg:w4	de tram
+onderweg:w5	het station
+onderweg:w6	het perron
+onderweg:w7	het spoor
+onderweg:w8	de halte
+onderweg:w9	de vertraging
+onderweg:w10	de file
+onderweg:w11	het kaartje
+onderweg:w12	de rit
+onderweg:w13	vertrekken
+onderweg:w14	aankomen
+onderweg:w15	overstappen
+onderweg:w16	rijden
+onderweg:w17	links
+onderweg:w18	rechts
+onderweg:w19	rechtdoor
+onderweg:w20	ver
+onderweg:w21	dichtbij
+onderweg:w22	de richting
+onderweg:w23	duren
+onderweg:p0	Ik neem de trein naar Brussel.
+onderweg:p1	De trein heeft tien minuten vertraging.
+onderweg:p2	Op welk spoor?
+onderweg:p3	Ik moet overstappen in Dendermonde.
+onderweg:p4	Hoe lang duurt het?
+onderweg:p5	Ik sta in de file.
+onderweg:p6	Ik kom een beetje later, sorry.
+onderweg:p7	Rijdt deze bus naar Aalst?
+onderweg:p8	Is het ver van hier?
+onderweg:p9	Ga rechtdoor en dan links.
+werkbasis:w0	het werk
+werkbasis:w1	de collega
+werkbasis:w2	de klant
+werkbasis:w3	de vergadering
+werkbasis:w4	het project
+werkbasis:w5	de code
+werkbasis:w6	de test
+werkbasis:w7	de fout
+werkbasis:w8	het probleem
+werkbasis:w9	de oplossing
+werkbasis:w10	het ticket
+werkbasis:w11	de deadline
+werkbasis:w12	de planning
+werkbasis:w13	de omgeving
+werkbasis:w14	de databank
+werkbasis:w15	de server
+werkbasis:w16	de mail
+werkbasis:w17	het verslag
+werkbasis:w18	het thuiswerk
+werkbasis:w19	het kantoor
+werkbasis:w20	de afspraak
+werkbasis:w21	klaar
+werkbasis:w22	bezig
+werkbasis:w23	dringend
+werkbasis:w24	sturen
+werkbasis:w25	uitleggen
+werkbasis:w26	oplossen
+werkbasis:w27	draaien
+werkbasis:w28	afwerken
+werkbasis:p0	Ik werk bij Novatech.
+werkbasis:p1	Ik ben Java-ontwikkelaar.
+werkbasis:p2	Ik werk aan een project voor een klant.
+werkbasis:p3	Ik heb een vergadering om tien uur.
+werkbasis:p4	Ik werk vandaag van thuis.
+werkbasis:p5	Ik stuur u een mail.
+werkbasis:p6	Ik ben er nog mee bezig.
+werkbasis:p7	Dat is klaar.
+werkbasis:p8	Kunt u dat even uitleggen?
+werkbasis:p9	De testen draaien nog.
+werkbasis:p10	Sorry, mijn Nederlands is nog niet zo goed.
+dedag:w0	opstaan
+dedag:w1	ontbijten
+dedag:w2	vertrekken
+dedag:w3	thuiskomen
+dedag:w4	meenemen
+dedag:w5	afspreken
+dedag:w6	opbellen
+dedag:w7	uitleggen
+dedag:w8	slapen
+dedag:w9	eten
+dedag:w10	drinken
+dedag:w11	douchen
+dedag:w12	koken
+dedag:w13	wandelen
+dedag:w14	de voormiddag
+dedag:w15	de namiddag
+dedag:w16	de avond
+dedag:w17	moe
+dedag:w18	druk
+dedag:w19	altijd
+dedag:w20	soms
+dedag:w21	nooit
+dedag:w22	meestal
+dedag:w23	eerst
+dedag:w24	daarna
+dedag:p0	Ik sta om zes uur op.
+dedag:p1	Ik vertrek om kwart voor acht.
+dedag:p2	Ik neem mijn laptop mee.
+dedag:p3	Ik kom om zes uur thuis.
+dedag:p4	We spreken morgen af.
+dedag:p5	Eerst werk ik, daarna kook ik.
+dedag:p6	Het was een drukke dag.
+dedag:p7	Ik ben moe.
+dedag:p8	Wat doe je meestal in het weekend?
+g-scheidbaar	Ik sta elke dag om zes uur op.
+winkel:w0	de winkel
+winkel:w1	de kassa
+winkel:w2	het geld
+winkel:w3	de euro
+winkel:w4	de kaart
+winkel:w5	cash
+winkel:w6	de korting
+winkel:w7	de bon
+winkel:w8	het zakje
+winkel:w9	de winkelkar
+winkel:w10	de maat
+winkel:w11	de kleur
+winkel:w12	duur
+winkel:w13	goedkoop
+winkel:w14	gratis
+winkel:w15	kopen
+winkel:w16	betalen
+winkel:w17	ruilen
+winkel:w18	passen
+winkel:w19	zoeken
+winkel:w20	vinden
+winkel:w21	open
+winkel:w22	gesloten
+winkel:w23	genoeg
+winkel:p0	Hoeveel kost dat?
+winkel:p1	Kan ik met de kaart betalen?
+winkel:p2	Mag ik een zakje, alstublieft?
+winkel:p3	Heeft u dat in een andere maat?
+winkel:p4	Dat is te duur voor mij.
+winkel:p5	Ik ben op zoek naar brood.
+winkel:p6	Waar is de kassa?
+winkel:p7	Tot hoe laat zijn jullie open?
+winkel:p8	Ik kijk alleen even, merci.
+dokter:w0	ziek
+dokter:w1	de pijn
+dokter:w2	het hoofd
+dokter:w3	de keel
+dokter:w4	de buik
+dokter:w5	de rug
+dokter:w6	de hand
+dokter:w7	de voet
+dokter:w8	de tand
+dokter:w9	de koorts
+dokter:w10	de hoest
+dokter:w11	de dokter
+dokter:w12	de apotheek
+dokter:w13	het medicijn
+dokter:w14	het voorschrift
+dokter:w15	de afspraak
+dokter:w16	de wachtzaal
+dokter:w17	het ziekenhuis
+dokter:w18	beter
+dokter:w19	slecht
+dokter:w20	sinds
+dokter:w21	voelen
+dokter:w22	rusten
+dokter:w23	langskomen
+dokter:p0	Ik ben ziek.
+dokter:p1	Ik voel me niet goed.
+dokter:p2	Ik heb pijn aan mijn rug.
+dokter:p3	Ik heb koorts sinds gisteren.
+dokter:p4	Ik wil graag een afspraak maken.
+dokter:p5	Kan ik vandaag nog langskomen?
+dokter:p6	Heeft u een voorschrift nodig?
+dokter:p7	Het gaat al wat beter.
+dokter:p8	Ik ben allergisch voor noten.
+weekend:w0	het weer
+weekend:w1	de regen
+weekend:w2	de zon
+weekend:w3	de wind
+weekend:w4	koud
+weekend:w5	warm
+weekend:w6	nat
+weekend:w7	het weekend
+weekend:w8	het verlof
+weekend:w9	het voetbal
+weekend:w10	de match
+weekend:w11	plezant
+weekend:w12	gezellig
+weekend:w13	ambetant
+weekend:w14	amai
+weekend:w15	goesting
+weekend:w16	rustig
+weekend:w17	wandelen
+weekend:w18	kijken
+weekend:w19	gedaan
+weekend:w20	niks
+weekend:w21	speciaal
+weekend:w22	lang
+weekend:w23	volgende
+weekend:p0	Wat een weer!
+weekend:p1	Het regent weer.
+weekend:p2	Hoe was uw weekend?
+weekend:p3	Niks speciaals, en bij u?
+weekend:p4	We hebben gewandeld.
+weekend:p5	Ik heb de match gezien.
+weekend:p6	Dat was plezant.
+weekend:p7	Ik heb er geen goesting in.
+weekend:p8	Een goed weekend nog!
+weekend:p9	Tot maandag!
+g-perfect-intro	Ik heb dit weekend gewandeld.

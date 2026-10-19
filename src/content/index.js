@@ -1,5 +1,7 @@
 /* Flattens the curriculum into addressable items and answers questions about
-   progress. Every learnable thing gets a stable id; the scheduler works in ids. */
+   progress. An item's id is its unit and its position in it (`overleven:w3`):
+   words and phrases are only ever appended, and `test/content.js` pins every id
+   to its Dutch. */
 NL.content = NL.content || {};
 (function () {
   'use strict';
