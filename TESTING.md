@@ -11,7 +11,7 @@ n'y a qu'une seule liste. Il faut Node et un `sh` (sous Windows, celui de Git).
 
 | Test | Ce qu'il vérifie |
 | --- | --- |
-| `smoke.js` | Le contenu, l'échelle, chaque type d'exercice, la notation, la qualité des leurres, l'orthographe, qu'aucune chaîne anglaise ne survit dans le build, et qu'aucune source listée dans `build.sh` n'emploie `var` ni le chaînage optionnel `?.` (les chaînes, les commentaires et les regex ne comptent pas) |
+| `smoke.js` | Le contenu, l'échelle, chaque type d'exercice, la notation, la qualité des leurres, l'orthographe, qu'aucune chaîne anglaise ne survit dans le build, et qu'aucune source listée dans `build.sh` n'emploie `var` ni le chaînage optionnel `?.` (les chaînes, les commentaires et les regex ne comptent pas), et que `index.html` et `artifact.html` sortent du build en LF, sans retour chariot |
 | `dehet.js` | Chaque nom du cours confronté au Wiktionnaire : `de` ou `het`, sur la fiche **et** dans ses phrases d'exemple |
 | `content.js` | L'orthographe contre 410 000 formes néerlandaises, que chaque exercice promis se construise vraiment, qu'une phrase d'exemple n'emprunte pas de vocabulaire à une unité ultérieure, et les éléments enseignés deux fois |
 | `engine.js` | Ce qu'une séance contient et quand un élément revient, horloge en marche : la panne d'octobre, deux jours de suite, ce qui revient le lendemain à la même heure, l'heure de la réponse à Bruxelles (minuit, 23 h 50, les deux nuits de changement d'heure), le renforcement dans la séance, la réserve de nouveautés, le seuil des unités, la première demande à voix haute et l'exercice écrit qui la suit, l'écrit de l'échelon 3 toujours tapé, « je ne peux pas parler » |
