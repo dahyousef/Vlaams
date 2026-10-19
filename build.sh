@@ -57,6 +57,8 @@ emit_scripts() {
   done
 }
 
+# Les sources sont en CRLF dans une copie de travail (core.autocrlf=true) : le « tr » garde les deux
+# sorties en LF, comme .gitattributes les veut, sinon git les montre modifiées après chaque build.
 # ---- index.html : the real page ----
 {
   echo '<!doctype html>'
@@ -88,7 +90,7 @@ emit_scripts() {
   emit_scripts
   echo '</body>'
   echo '</html>'
-} > index.html
+} | tr -d '\015' > index.html
 
 # ---- artifact.html : head/body skeleton supplied by the host ----
 {
@@ -99,7 +101,7 @@ emit_scripts() {
   echo '</style>'
   echo '<div id="app"></div>'
   emit_scripts
-} > artifact.html
+} | tr -d '\015' > artifact.html
 
 # ---- dist/ : the deployable site ----
 rm -rf dist

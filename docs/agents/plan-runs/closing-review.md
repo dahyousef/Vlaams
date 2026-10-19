@@ -12,7 +12,7 @@ Your dispatch names the run file and the run's base commit.
    `git diff -U5 BASE..HEAD -- . ':(exclude)index.html' ':(exclude)artifact.html'`. Do not read it whole.
 3. Dispatch at most four area reviewers (`sonnet`), one for each area the diff's stat touches:
    - engine: `src/core/srs.js` and the code that calls it;
-   - screens: `src/ui/`, `src/core/fr.js`;
+   - screens: `src/ui/`, `src/core/fr.js`, `src/core/en.js`, `src/core/gloss.js`, `src/core/lang.js`;
    - storage and sync: `src/core/state.js`, `src/core/sync.js`;
    - tests: `test/`.
    Each gets the area's paths, the diff file, `reviewer.md`'s Part 2 and Calibration, the checklist below,
@@ -30,8 +30,8 @@ Your dispatch names the run file and the run's base commit.
 - Stored record field names are unchanged: `stage`, `due`, `interval`, `ease`, `reps`, `lapses`, `said`,
   `retired`, `base`.
 - `NL.srs.compose()` is still the only place a session's content is decided.
-- No English interface string reaches `index.html`: `test/smoke.js` checks it; confirm it ran in the
-  verifier lines of the log.
+- Both interface tables have the same keys, and every text with a French version has an English one:
+  `test/lang.js` checks it; confirm it ran in the verifier lines of the log.
 - `index.html` and `artifact.html` are committed and match their sources.
 - `resetAt` only grows; `ENGINE_EPOCH` is unchanged unless the plan says otherwise; reset and sync still agree
   with ADR 0006.

@@ -150,6 +150,13 @@ NL.state.open().then(() => {
     console.log('  french sweep    build is clean of known EN/NL interface strings');
   }
 
+  /* Les deux sorties du build sont en LF, quelle que soit la fin de ligne des sources dans la copie de
+     travail (core.autocrlf=true les y met en CRLF) : sinon git les montre modifiées après chaque build. */
+  ['index.html', 'artifact.html'].forEach(f => {
+    const p = path.join(ROOT, f);
+    if (fs.existsSync(p)) ok(fs.readFileSync(p, 'utf8').indexOf('\r') < 0, f + ' contient un retour chariot : build.sh doit écrire du LF');
+  });
+
   /* Ni `var` ni chaînage optionnel (`?.`) dans les sources. Les listes sont celles de
      build.sh : un fichier ajouté plus tard est relu lui aussi. Les sources actuelles
      n'en ont aucun ; les cas ci-dessous prouvent que la relecture voit encore quelque
