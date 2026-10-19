@@ -20,6 +20,9 @@ task controllers' notices.
 1. In a normal sitting, take the first `fallback` task, in plan order, if there is one: it was committed
    unpushed, and now gets its review and its push. Otherwise (and always in a fallback sitting) take the first
    task, in plan order, whose state is not `done`, `fallback` or `replaced by <id>`.
+1b. A task whose class is `sitting` is not dispatched to a task controller. Set its Status row to
+   `in progress`, launch a session with the brief prompt (see « Launching a sitting », model `opus`), and stop
+   the run.
 2. Set its Status row to `in progress`. A row already `in progress` is a stopped task: dispatch it as usual; the
    task controller recovers.
 3. Dispatch one task controller (a background subagent) with the prompt below. Model by the task's class:
@@ -32,8 +35,9 @@ task controllers' notices.
    - `needs ruling`: ask the maintainer the question as given. Add a line to **Rulings** (date, task,
      question, answer). Dispatch the same task again with the ruling in its prompt. Whenever you dispatch a task
      for which Rulings has a line, put that line's answer in the prompt.
-   - `needs design`: stop the run. The task waits for a design sitting (`design-sitting.md`); its brief
-     comes back as a new task with its own Status row.
+   - `needs design`: launch a design sitting (see « Launching a sitting », with `design-sitting.md`'s
+     prompt), tell the maintainer its name, and stop the run. The task waits for that sitting; its brief comes
+     back as a new task with its own Status row.
    - `failed`: stop the run and tell the maintainer, with the report paths from the return.
 
 The dispatch prompt:
@@ -53,12 +57,34 @@ The dispatch prompt:
   there is none, write `Sitting: <date and time> — no transcript on disk at <path>`; if the hook printed no line,
   write `Sitting: <date and time> — transcript unknown (no hook line)`. A sitting that is cut off is then recorded too.
   The sitting ends at the maintainer's word, at a limit stop, or at the first task
-  boundary after you have dispatched 10 tasks in it. Then tell the maintainer to start the next sitting with the
-  start prompt below, in a new session.
+  boundary after you have dispatched 10 tasks in it. Then launch the next sitting (see « Launching a sitting »)
+  with the start prompt, tell the maintainer the new session's name, and stop. You never ask the maintainer to
+  paste anything.
+- A launched session starts in the run's worktree, so the background-session guard does not move it.
 - Never continue a run with `--resume` or `--continue`: a resumed run rewrites its whole context into the
   cache. A new sitting starts from the files.
 - After a compaction or a resume, a hook reminds you to re-read this file and the Status table. Do it before
   the next dispatch.
+
+## Launching a sitting
+
+A sitting, a design sitting and a `sitting`-class task are each launched as a Remote Control session, from
+the run's worktree, with this command (PowerShell):
+
+    & "$env:USERPROFILE\.local\bin\claude.exe" --bg --remote-control "<name>" -n "<name>" --model opus --settings '{\"env\":{\"CLAUDE_CODE_AUTO_COMPACT_WINDOW\":\"200000\"}}' -- "<prompt>"
+
+- `<name>` takes the form `Vlaams phase 2 — <what it is> <n>`.
+- `<prompt>` is the start prompt (below), a design sitting's prompt, or « Read `<WS>/briefs/task-<N>.md` and
+  follow it. Run file: `<WS>/run.md`. ».
+- The quotes inside `--settings` are escaped because Windows PowerShell 5.1 drops unescaped ones from an
+  argument it passes to a program: `'{"env":…}'` arrives as `{env:{CLAUDE_CODE_AUTO_COMPACT_WINDOW:200000}}`,
+  which is not JSON.
+- The launch prints `backgrounded · <id> · <name>`. Right after it, open a window attached to the new session,
+  so the maintainer can follow it on the desktop:
+
+      Start-Process powershell.exe -ArgumentList '-NoExit', '-Command', '& "$env:USERPROFILE\.local\bin\claude.exe" attach <id>'
+
+« The command » means both: the launch, then its window.
 
 ## After the last task
 
@@ -107,17 +133,16 @@ Once per plan, in the run's worktree, create `<WS>` = `.superpowers/sdd/<plan na
     Plan: <path>
     Sittings: (the run controller appends one `Sitting:` line per sitting below)
 
-Starting a sitting — in a PowerShell window opened for the run (the setting stays in that window), in the
-worktree:
-
-    $env:CLAUDE_CODE_AUTO_COMPACT_WINDOW = '200000'; claude --model opus
+The first sitting is launched with the command, from the run's worktree, by whichever Claude session the
+maintainer is talking to. The maintainer never starts a sitting by hand, and never pastes a prompt.
 
 After a cut-off, wait six minutes first: closing a session's window does not stop a suite its verifier started,
 and `sh test/run-all.sh` runs on for up to six minutes, rewriting `<WS>/tmp/suite.txt` and the build outputs.
-Then paste:
+Then that session launches the next sitting with the command. The start prompt is:
 
     Run the plan in <WS>/run.md. Read docs/agents/plan-runs/run-controller.md, then the Status table of
     <WS>/progress.md, and continue from the first task that is not done (the loop above puts `fallback` tasks first).
 
-A fallback sitting, when Claude's limit is reached and OmniRoute is set up with a profile: start it with
-`omniroute launch --profile <name>` and paste the same prompt followed by `This is a fallback sitting.`
+A fallback sitting, when Claude's limit is reached and OmniRoute is set up with a profile, is the one sitting
+that does not use the command: start it with `omniroute launch --profile <name>` and give it the same prompt
+followed by `This is a fallback sitting.`
