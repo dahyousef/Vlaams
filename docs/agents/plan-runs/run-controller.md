@@ -71,7 +71,7 @@ The dispatch prompt:
 A sitting, a design sitting and a `sitting`-class task are each launched as a Remote Control session, from
 the run's worktree, with this command (PowerShell):
 
-    & "$env:USERPROFILE.localinclaude.exe" --bg --remote-control "<name>" -n "<name>" --model opus --settings '{\"env\":{\"CLAUDE_CODE_AUTO_COMPACT_WINDOW\":\"200000\"}}' -- "<prompt>"
+    & "$env:USERPROFILE\.local\bin\claude.exe" --bg --remote-control "<name>" -n "<name>" --model opus --settings '{\"env\":{\"CLAUDE_CODE_AUTO_COMPACT_WINDOW\":\"200000\"}}' -- "<prompt>"
 
 - `<name>` takes the form `Vlaams phase 2 — <what it is> <n>`.
 - `<prompt>` is the start prompt (below), a design sitting's prompt, or « Read `<WS>/briefs/task-<N>.md` and
@@ -82,7 +82,7 @@ the run's worktree, with this command (PowerShell):
 - The launch prints `backgrounded · <id> · <name>`. Right after it, open a window attached to the new session,
   so the maintainer can follow it on the desktop:
 
-      Start-Process powershell.exe -ArgumentList '-NoExit', '-Command', '& "$env:USERPROFILE.localinclaude.exe" attach <id>'
+      Start-Process powershell.exe -ArgumentList '-NoExit', '-Command', '& "$env:USERPROFILE\.local\bin\claude.exe" attach <id>'
 
 « The command » means both: the launch, then its window.
 
