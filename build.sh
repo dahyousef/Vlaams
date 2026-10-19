@@ -17,6 +17,7 @@ SRC="src/core/util.js
 src/core/gloss.js
 src/core/errlog.js
 src/core/fr.js
+src/core/en.js
 src/core/state.js
 src/core/srs.js
 src/core/speech.js

@@ -145,7 +145,7 @@ NL.state.open().then(() => {
   if (fs.existsSync(built)) {
     const html = fs.readFileSync(built, 'utf8');
     ['>Overslaan<', '>Nakijken<', '>Start de sessie<', '>Terug naar Vandaag<',
-     'Everything you have met', 'Welke is het?', 'Tik de woorden hieronder'].forEach(s =>
+     'Welke is het?', 'Tik de woorden hieronder'].forEach(s =>
       ok(html.indexOf(s) < 0, 'untranslated interface string in build: ' + s));
     console.log('  french sweep    build is clean of known EN/NL interface strings');
   }

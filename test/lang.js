@@ -260,6 +260,57 @@ function interfaceCheck() {
   });
 }
 
+/* 4. Les deux tables d'interface : mêmes clés, même forme, mêmes chiffres et mêmes {…}. */
+/* Les clés dont l'anglais s'écrit comme le français, exactes, avec la raison. */
+const SAME = {
+  brandSub: 'deux espaces réservés et un point : aucun mot à traduire',
+  stop: 'le même mot dans les deux langues',
+  tallyXp: 'sigle identique',
+  tallyScore: 'le même mot dans les deux langues (score)',
+  tallyRecord: 'le même mot dans les deux langues (record)',
+  paceNormal: 'le même mot dans les deux langues (normal)',
+  sessionOf: 'deux chiffres et une barre : aucun mot à traduire',
+  talkEyebrow: 'conversations : le même mot dans les deux langues',
+  wordsPhNl: 'exemple en néerlandais : la même chose dans les deux langues'
+};
+function tableCheck(NL) {
+  const fr = NL.tables && NL.tables.fr, en = NL.tables && NL.tables.en;
+  ok(fr && en, 'NL.tables.fr et NL.tables.en existent');
+  if (!(fr && en)) return;
+  const kind = v => Array.isArray(v) ? 'array' : typeof v;
+  const holes = s => (String(s).match(/[0-9]+|\{[^}]*\}/g) || []).sort().join('|');
+  const flat = v => Array.isArray(v) ? v.join(' ') : String(v);
+  Object.keys(fr).forEach(k => {
+    ok(Object.prototype.hasOwnProperty.call(en, k), 'en : la clé « ' + k + ' » manque');
+    if (!Object.prototype.hasOwnProperty.call(en, k)) return;
+    const f = fr[k], e = en[k];
+    ok(kind(f) === kind(e), 'en.' + k + ' : type ' + kind(e) + ' au lieu de ' + kind(f));
+    if (kind(f) !== kind(e)) return;
+    if (typeof f === 'function') {
+      ok(f.length === e.length, 'en.' + k + ' : ' + e.length + ' argument(s) au lieu de ' + f.length);
+      const rf = f(3, 7), re = e(3, 7);
+      ok(typeof rf === 'string' && typeof re === 'string', k + ' : une fonction doit rendre une chaîne');
+      if (typeof rf === 'string' && typeof re === 'string') {
+        ok(holes(rf) === holes(re), 'en.' + k + ' : chiffres ou {…} différents (« ' + rf + ' » / « ' + re + ' »)');
+        ok(rf !== re || SAME[k], 'en.' + k + ' : identique au français');
+      }
+    } else if (Array.isArray(f)) {
+      ok(f.length === e.length, 'en.' + k + ' : ' + e.length + ' entrées au lieu de ' + f.length);
+      if (k === 'nav') {
+        f.forEach((x, i) => ok(e[i] && e[i].id === x.id && e[i].nl === x.nl, 'en.nav[' + i + '] : id et nl changés'));
+      } else {
+        ok(holes(flat(f)) === holes(flat(e)), 'en.' + k + ' : chiffres ou {…} différents');
+        f.forEach((x, i) => ok(x !== e[i] || SAME[k], 'en.' + k + '[' + i + '] : identique au français'));
+      }
+    } else {
+      ok(holes(f) === holes(e), 'en.' + k + ' : chiffres ou {…} différents (« ' + f + ' » / « ' + e + ' »)');
+      ok(f !== e || SAME[k], 'en.' + k + ' : identique au français');
+    }
+  });
+  Object.keys(en).forEach(k => ok(Object.prototype.hasOwnProperty.call(fr, k), 'en : la clé « ' + k + ' » n\'est pas dans fr'));
+  Object.keys(SAME).forEach(k => ok(Object.prototype.hasOwnProperty.call(fr, k), 'SAME : « ' + k + ' » n\'est pas une clé'));
+}
+
 const plain = boot(null), paired = boot(NL => pairUp(NL.content));
 Promise.all([plain.NL.state.open(), paired.NL.state.open()]).then(() => {
   /* 2a. Apparié, en français, l'écran est celui d'aujourd'hui. Les deux démarrent
@@ -362,6 +413,7 @@ Promise.all([plain.NL.state.open(), paired.NL.state.open()]).then(() => {
       ok(nn.app.innerHTML.indexOf('<em></em>') < 0, 'registre : un <em></em> vide');
       ok(seenNote > 0 && N.content.register.some(r => r.note), 'aucune note à tester : le contrôle est creux');
 
+      tableCheck(plain.NL);
       return interfaceCheck();
     }).then(() => {
       console.log('\n' + checks + ' contrôles, ' + (fails === 0 ? 'LANGUE CONFORME' : fails + ' ÉCHEC(S)'));

@@ -1,7 +1,8 @@
-/* Toute l'interface, en un seul endroit. Une seule langue d'interface, donc une
-   table plate plutôt qu'un système i18n complet — ça garde le ton cohérent et
-   rend un basculement vers le néerlandais possible plus tard. */
-NL.t = {
+/* Toute l'interface, en un seul endroit. Deux tables plates, fr.js et en.js, avec
+   les mêmes clés — plutôt qu'un système i18n complet : ça garde le ton cohérent.
+   NL.t reste la table française jusqu'à ce que la langue d'affichage la choisisse. */
+NL.tables = NL.tables || {};
+NL.tables.fr = {
   /* --- navigation : le libellé, avec le mot néerlandais dessous --- */
   nav: [
     { id: 'vandaag', label: 'Aujourd’hui', nl: 'vandaag' },
@@ -389,3 +390,4 @@ NL.t = {
   syncLocalOnly: 'Progression enregistrée sur cet appareil uniquement.',
   docFixNote: 'Ça installe une voix système que tous les navigateurs voient, Opera compris. Pas besoin de redémarrer.'
 };
+NL.t = Object.assign({}, NL.tables.fr);
