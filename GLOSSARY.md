@@ -27,7 +27,17 @@ _Avoid_: dialect, regional form, Belgicism
 
 **Reference sheet**:
 A page of material meant to be consulted, never drilled.
-_Avoid_: cheat sheet, cribsheet
+_Avoid_: cheat sheet, cribsheet, reference page
+
+**Anchor**:
+The language a reference sheet's help depends on. A sheet anchored to Dutch is put into
+the display language; a sheet anchored to the learner's native language stays in it.
+_Avoid_: base language, source language
+
+**Own word**:
+An item the learner adds themselves, with the gloss they wrote, in the language they
+wrote it in.
+_Avoid_: custom word, personal word
 
 ### How far a learner has got
 
@@ -141,6 +151,12 @@ A second listing of an item that is already taught elsewhere, sharing the origin
 progress rather than keeping its own.
 _Avoid_: duplicate, copy, repeat
 
+**Sibling**:
+An item that would also be a right answer to another item's exercise: the same Dutch, or
+a meaning the two share in the learner's native language. Unlike an alias, each sibling
+keeps its own progress.
+_Avoid_: synonym, equivalent, variant
+
 ### Who the learner is
 
 **Display language**:
@@ -154,8 +170,8 @@ while French is still what makes a word easy.
 _Avoid_: mother tongue, first language, L1
 
 **Cognate**:
-An item whose meaning is free to a learner because it resembles the word they already
-know for it.
+An item whose meaning is obvious because it resembles its gloss in the language the
+learner reads.
 _Avoid_: transparent word, loanword, mot transparent
 
 ### Free production
