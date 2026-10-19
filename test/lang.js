@@ -502,6 +502,44 @@ function langChecks() {
   });
 }
 
+/* 6. Chaque passage qui est du néerlandais du cours déclare le néerlandais : un
+   lecteur d'écran ne lit pas « vandaag » à l'anglaise. Vues du cours simple, dans les deux langues. */
+function langAttrCheck(B) {
+  const NL = B.NL, U = NL.util, runs = require('./lib/langs').runs, dutch = new Set();
+  const walk = v => {
+    if (Array.isArray(v)) v.forEach(walk);
+    else if (v && typeof v === 'object') Object.keys(v).forEach(k => {
+      if ((k === 'nl' || k === 'be') && typeof v[k] === 'string') dutch.add(U.norm(v[k])); else walk(v[k]);
+    });
+  };
+  Object.keys(NL.content).forEach(k => { if (typeof NL.content[k] === 'object') walk(NL.content[k]); });
+  NL.t.nav.forEach(n => dutch.add(U.norm(n.nl)));
+  dutch.delete('');
+  /* Un texte français ou anglais qui s'écrit comme un mot néerlandais (merci, hier, open) ne prouve rien : on l'écarte. */
+  const gloss = new Set();
+  const gl = v => {
+    if (typeof v === 'string') gloss.add(U.norm(v));
+    else if (Array.isArray(v)) v.forEach(gl);
+    else if (v && typeof v === 'object') Object.keys(v).forEach(k => gl(v[k]));
+  };
+  const glWalk = v => {
+    if (Array.isArray(v)) v.forEach(glWalk);
+    else if (v && typeof v === 'object') Object.keys(v).forEach(k => { if (k === 'fr' || k === 'en') gl(v[k]); else glWalk(v[k]); });
+  };
+  Object.keys(NL.content).forEach(k => { if (typeof NL.content[k] === 'object') glWalk(NL.content[k]); });
+  ['fr', 'en'].forEach(l => Object.keys(NL.tables[l]).forEach(k => { if (typeof NL.tables[l][k] !== 'function') gl(NL.tables[l][k]); }));
+  gloss.forEach(g => dutch.delete(g));
+  ok(dutch.size > 100, '6 : trop peu de mots néerlandais à chercher (' + dutch.size + ')');
+  const bad = new Map();
+  ['fr', 'en'].forEach(l => {
+    (l === 'fr' ? French : English)(B);
+    views(B, (n, h) => runs(h, htmlLang(B)).forEach(r => {
+      if (dutch.has(U.norm(r.text)) && !/^nl/i.test(r.lang)) { const key = l + ' « ' + r.text + ' » (' + (r.lang || 'sans lang') + ')'; if (!bad.has(key)) bad.set(key, n); }
+    }));
+  });
+  bad.forEach((n, k) => ok(false, '6 : néerlandais sans lang="nl" : ' + k + ' (vue ' + n + ')'));
+}
+
 const plain = boot(null), paired = boot(NL => pairUp(NL.content));
 Promise.all([plain.NL.state.open(), paired.NL.state.open()]).then(() => {
   French(plain); French(paired);
@@ -609,7 +647,8 @@ Promise.all([plain.NL.state.open(), paired.NL.state.open()]).then(() => {
       return langChecks();
     }).then(() => {
       tableCheck(plain.NL);
-      return interfaceCheck();
+      const L6 = boot(null);
+      return L6.NL.state.open().then(() => langAttrCheck(L6)).then(interfaceCheck);
     }).then(() => {
       console.log('\n' + checks + ' contrôles, ' + (fails === 0 ? 'LANGUE CONFORME' : fails + ' ÉCHEC(S)'));
       process.exit(fails ? 1 : 0);

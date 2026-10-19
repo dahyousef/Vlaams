@@ -27,7 +27,7 @@ NL.content.patterns = (function () {
       title: 'Le présent : radical, radical+t, radical+en',
       rule: 'ik werk / jij werkt / hij werkt / wij werken.',
       nl: 'Ik werk bij {bedrijf}.', fr: 'Je travaille chez {bedrijf}.',
-      explain: 'Trois formes et tu as tout le présent : <span class="ex">ik werk</span>, <span class="ex">jij/hij werkt</span>, <span class="ex">wij/jullie/zij werken</span>. Bien plus simple que le français, qui en a cinq. Un seul piège : quand <b>jij</b> passe derrière le verbe — dans une question, ou après un complément de temps — le <span class="ex">-t</span> disparaît. <span class="ex">Werk jij morgen?</span>, pas <i>werkt jij</i>. Uniquement avec jij, jamais avec hij.',
+      explain: 'Trois formes et tu as tout le présent : <span class="ex">ik werk</span>, <span class="ex">jij/hij werkt</span>, <span class="ex">wij/jullie/zij werken</span>. Bien plus simple que le français, qui en a cinq. Un seul piège : quand <b lang="nl-BE">jij</b> passe derrière le verbe — dans une question, ou après un complément de temps — le <span class="ex">-t</span> disparaît. <span class="ex">Werk jij morgen?</span>, pas <i>werkt jij</i>. Uniquement avec jij, jamais avec hij.',
       drills: [
         D('Ik werk bij {bedrijf}.', 'Je travaille chez {bedrijf}.', 'werk'),
         D('Hij woont in Aalst.', 'Il habite à Alost.', 'woont'),
@@ -79,7 +79,7 @@ NL.content.patterns = (function () {
       title: 'De ou het, et le -e en plus',
       rule: 'een groot huis, mais het grote huis.',
       nl: 'Het grote huis staat in de straat.', fr: 'La grande maison est dans la rue.',
-      explain: 'Environ trois noms sur quatre prennent <span class="ex">de</span>, le reste prend <span class="ex">het</span>. <b>Ne traduis jamais depuis le français</b> : <span class="ex">het huis</span> est neutre alors que « la maison » est féminine, <span class="ex">de tafel</span> est un de-mot alors que « le bureau » est masculin. Les genres ne se correspondent pas du tout. Bonne nouvelle : ce n’est pas totalement arbitraire — voir la fiche <i>Les familles de het</i>. Le gain vient avec l’adjectif : il prend <span class="ex">-e</span> partout — <span class="ex">de grote fiets</span>, <span class="ex">het grote huis</span>, <span class="ex">een grote fiets</span> — sauf après <b>een</b> devant un mot <b>het</b> : <span class="ex">een groot huis</span>. Après le verbe, toujours nu : <span class="ex">het huis is groot</span>.',
+      explain: 'Environ trois noms sur quatre prennent <span class="ex">de</span>, le reste prend <span class="ex">het</span>. <b>Ne traduis jamais depuis le français</b> : <span class="ex">het huis</span> est neutre alors que « la maison » est féminine, <span class="ex">de tafel</span> est un de-mot alors que « le bureau » est masculin. Les genres ne se correspondent pas du tout. Bonne nouvelle : ce n’est pas totalement arbitraire — voir la fiche <i>Les familles de het</i>. Le gain vient avec l’adjectif : il prend <span class="ex">-e</span> partout — <span class="ex">de grote fiets</span>, <span class="ex">het grote huis</span>, <span class="ex">een grote fiets</span> — sauf après <b lang="nl-BE">een</b> devant un mot <b>het</b> : <span class="ex">een groot huis</span>. Après le verbe, toujours nu : <span class="ex">het huis is groot</span>.',
       drills: [
         D('Het grote huis staat in de straat.', 'La grande maison est dans la rue.', 'grote'),
         D('Wij hebben een groot huis.', 'Nous avons une grande maison.', 'groot'),
@@ -118,7 +118,7 @@ NL.content.patterns = (function () {
       title: 'Le passé composé avec hebben',
       rule: 'hebben + ge...t/d, participe à la fin.',
       nl: 'Ik heb dit weekend gewandeld.', fr: 'Je me suis promené ce week-end.',
-      explain: 'Sans ça, impossible de répondre à <i>hoe was uw weekend?</i>. Le néerlandais raconte le passé avec <span class="ex">hebben</span> (ou <span class="ex">zijn</span>) plus un participe garé <b>tout à la fin</b> de la phrase — c’est la différence avec le français, où le participe suit immédiatement l’auxiliaire : <span class="ex">Ik <b>heb</b> dit weekend <b>gewandeld</b></span>. Construis le participe avec <b>ge-</b> + radical + <b>-t</b> ou <b>-d</b> : werken → gewerkt, wandelen → gewandeld. Les verbes de mouvement et de changement prennent <span class="ex">zijn</span>, exactement comme le français prend « être » : <span class="ex">ik <b>ben</b> naar Brussel <b>geweest</b></span>.',
+      explain: 'Sans ça, impossible de répondre à <i lang="nl-BE">hoe was uw weekend?</i>. Le néerlandais raconte le passé avec <span class="ex">hebben</span> (ou <span class="ex">zijn</span>) plus un participe garé <b>tout à la fin</b> de la phrase — c’est la différence avec le français, où le participe suit immédiatement l’auxiliaire : <span class="ex">Ik <b>heb</b> dit weekend <b>gewandeld</b></span>. Construis le participe avec <b>ge-</b> + radical + <b>-t</b> ou <b>-d</b> : werken → gewerkt, wandelen → gewandeld. Les verbes de mouvement et de changement prennent <span class="ex">zijn</span>, exactement comme le français prend « être » : <span class="ex">ik <b>ben</b> naar Brussel <b>geweest</b></span>.',
       drills: [
         D('Ik heb dit weekend gewandeld.', 'Je me suis promené ce week-end.', 'gewandeld'),
         D('Ik heb de match gezien.', 'J’ai vu le match.', 'gezien'),

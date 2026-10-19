@@ -69,7 +69,7 @@ NL.ui = (function () {
       const on = route === n.id || (n.id === 'meer' && UNDER_MEER.indexOf(route) >= 0);
       return '<button class="nav-btn' + (on ? ' on' : '') + '" data-go="' + n.id + '">' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + NAV_ICON[n.id] + '</svg>' +
-        '<span class="nav-fr">' + n.label + '</span><span class="nav-nl">' + n.nl + '</span></button>';
+        '<span class="nav-fr">' + n.label + '</span><span class="nav-nl" lang="nl-BE">' + n.nl + '</span></button>';
     }).join('') + '</div></nav>';
   }
 

@@ -16,31 +16,32 @@ NL.ex = (function () {
     return '<div class="speaker-row">' +
       '<button class="speaker" data-say="' + esc(text) + '" aria-label="' + NL.t.listen + '">' + ICON.speaker(26) + '</button>' +
       '<button class="speaker slow" data-say="' + esc(text) + '" data-slow="1" aria-label="' + NL.t.slow + '">' + ICON.turtle() + '</button>' +
-      (opts.show ? '<div class="sentence">' + esc(text) + flemish(opts.be, text) + '</div>' : '') +
+      (opts.show ? '<div class="sentence"><span lang="nl-BE">' + esc(text) + '</span>' + flemish(opts.be, text) + '</div>' : '') +
       '</div>';
   };
 
   const flemish = (be, std) => (be && NL.state.meta().showFlemish !== false && U.norm(be) !== U.norm(std))
-    ? '<span class="be-line"><span class="be-tag">' + NL.t.beTag + '</span>' + esc(be) + '</span>' : '';
+    ? '<span class="be-line"><span class="be-tag">' + NL.t.beTag + '</span><span lang="nl-BE">' + esc(be) + '</span></span>' : '';
 
-  function optList(opts, L, phase) {
+  /* `nl` : les libellés sont du néerlandais (sinon des sens, dans la langue lue). */
+  function optList(opts, L, phase, nl) {
     return '<div class="opts">' + opts.map((o, i) => {
       let cls = '';
       if (phase === 'ask') cls = (L.sel && L.sel.i === i) ? ' sel' : '';
       else if (o.ok) cls = ' ok';
       else if (L.sel && L.sel.i === i) cls = ' no';
       return '<button class="opt' + cls + '" data-opt="' + i + '"' + (phase === 'ask' ? '' : ' disabled') + '>' +
-        '<span class="opt-key">' + (i + 1) + '</span><span>' + esc(o.label) + '</span></button>';
+        '<span class="opt-key">' + (i + 1) + '</span><span' + (nl ? ' lang="nl-BE"' : '') + '>' + esc(o.label) + '</span></button>';
     }).join('') + '</div>';
   }
 
   function tileArea(task, L, phase) {
     const src = task.bank;
     const chosen = L.picked.map(i =>
-      '<button class="tile" data-unpick="' + i + '"' + (phase === 'ask' ? '' : ' disabled') + '>' + esc(src[i]) + '</button>').join('');
+      '<button class="tile" lang="nl-BE" data-unpick="' + i + '"' + (phase === 'ask' ? '' : ' disabled') + '>' + esc(src[i]) + '</button>').join('');
     const bank = src.map((w, i) => {
       const used = L.picked.indexOf(i) >= 0;
-      return '<button class="tile' + (used ? ' spent' : '') + '" data-pick="' + i + '"' +
+      return '<button class="tile' + (used ? ' spent' : '') + '" lang="nl-BE" data-pick="' + i + '"' +
         (phase === 'ask' && !used ? '' : ' disabled') + '>' + esc(w) + '</button>';
     }).join('');
     return '<div class="answer-area' + (L.picked.length ? '' : ' hint') + '">' + chosen + '</div>' +
@@ -156,7 +157,7 @@ NL.ex = (function () {
       return { type: 'pick', item, prompt: NL.gloss.bare(item), opts };
     },
     view(t, L, phase) {
-      return '<p class="sentence prompt">' + esc(t.prompt) + '</p>' + optList(t.opts, L, phase);
+      return '<p class="sentence prompt">' + esc(t.prompt) + '</p>' + optList(t.opts, L, phase, true);
     },
     ready: (t, L) => !!L.sel,
     judge: (t, L) => ({ ok: !!(L.sel && (t.opts[L.sel.i] || {}).ok) }),
@@ -186,8 +187,8 @@ NL.ex = (function () {
       const n = U.bare(t.item.nl);
       return '<div class="speaker-row">' +
         '<button class="speaker" data-say="' + esc(t.item.art + ' ' + n) + '" aria-label="' + NL.t.listen + '">' + ICON.speaker(26) + '</button>' +
-        '<div class="sentence">&hellip;&nbsp;' + esc(n) + '<span class="gloss">' + esc(NL.gloss.bare(t.item)) + '</span></div></div>' +
-        optList(t.opts, L, phase);
+        '<div class="sentence">&hellip;&nbsp;<span lang="nl-BE">' + esc(n) + '</span><span class="gloss">' + esc(NL.gloss.bare(t.item)) + '</span></div></div>' +
+        optList(t.opts, L, phase, true);
     },
     ready: (t, L) => !!L.sel,
     judge: (t, L) => ({ ok: !!(L.sel && (t.opts[L.sel.i] || {}).ok) }),
@@ -250,8 +251,8 @@ NL.ex = (function () {
       return { type: 'cloze', item, drill: d, gap, opts, shown: d.nl.replace(new RegExp('(^|\\s)' + gap.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?=\\s|$|[.,!?])'), '$1     ') };
     },
     view(t, L, phase) {
-      return '<div class="sentence cloze-line">' + esc(t.shown).replace(/ +/, '<span class="gap">' + (phase === 'ask' ? '' : esc(t.gap)) + '</span>') + '</div>' +
-        '<div class="gloss-line">' + esc(NL.gloss.of(t.drill)) + '</div>' + optList(t.opts, L, phase);
+      return '<div class="sentence cloze-line" lang="nl-BE">' + esc(t.shown).replace(/ +/, '<span class="gap">' + (phase === 'ask' ? '' : esc(t.gap)) + '</span>') + '</div>' +
+        '<div class="gloss-line">' + esc(NL.gloss.of(t.drill)) + '</div>' + optList(t.opts, L, phase, true);
     },
     ready: (t, L) => !!L.sel,
     judge: (t, L) => ({ ok: !!(L.sel && (t.opts[L.sel.i] || {}).ok) }),
@@ -349,7 +350,7 @@ NL.ex = (function () {
         sp.recState !== 'rec' && sp.recState !== 'done';
       const hush = untried ? '<div class="mic-actions"><button class="btn btn-ghost" data-quiet="1">' + NL.t.cantSpeak + '</button></div>' : '';
 
-      return '<div class="sentence prompt">' + esc(t.target) + flemish(t.item.be, t.target) + '</div>' +
+      return '<div class="sentence prompt"><span lang="nl-BE">' + esc(t.target) + '</span>' + flemish(t.item.be, t.target) + '</div>' +
         '<div class="gloss-line">' + esc(t.prompt) + '</div>' +
         speakerRow(t.target, {}) + panel + hush;
     },
@@ -444,7 +445,7 @@ NL.ex = (function () {
     },
     view(t, L, phase) {
       return '<p class="sentence prompt">' + NL.t.intrusAsk(t.art) + '</p>' +
-        optList(t.opts, L, phase);
+        optList(t.opts, L, phase, true);
     },
     ready: (t, L) => !!L.sel,
     judge: (t, L) => ({ ok: !!(L.sel && (t.opts[L.sel.i] || {}).ok) }),
@@ -469,9 +470,9 @@ NL.ex = (function () {
           let cls = '';
           if (phase !== 'ask') { if (i === t.faulty || i === t.other) cls = ' bad'; }
           else if (L.sel && L.sel.i === i) cls = ' sel';
-          return '<button class="ctok' + cls + '" data-opt="' + i + '"' + (phase === 'ask' ? '' : ' disabled') + '>' + esc(w) + '</button>';
+          return '<button class="ctok' + cls + '" lang="nl-BE" data-opt="' + i + '"' + (phase === 'ask' ? '' : ' disabled') + '>' + esc(w) + '</button>';
         }).join('') + '</div>' +
-        (phase !== 'ask' ? '<p class="corrige-fix">' + esc(t.target) + '</p>' : '');
+        (phase !== 'ask' ? '<p class="corrige-fix" lang="nl-BE">' + esc(t.target) + '</p>' : '');
     },
     ready: (t, L) => !!L.sel,
     judge: (t, L) => ({ ok: !!L.sel && (L.sel.i === t.faulty || L.sel.i === t.other) }),
@@ -494,8 +495,8 @@ NL.ex = (function () {
       return { type: 'vlaams', item, opts };
     },
     view(t, L, phase) {
-      return '<div class="sentence prompt">' + esc(t.item.nl) + '</div>' +
-        '<div class="gloss-line">' + esc(NL.gloss.of(t.item)) + '</div>' + optList(t.opts, L, phase);
+      return '<div class="sentence prompt" lang="nl-BE">' + esc(t.item.nl) + '</div>' +
+        '<div class="gloss-line">' + esc(NL.gloss.of(t.item)) + '</div>' + optList(t.opts, L, phase, true);
     },
     ready: (t, L) => !!L.sel,
     judge: (t, L) => ({ ok: !!(L.sel && (t.opts[L.sel.i] || {}).ok) }),
@@ -526,7 +527,7 @@ NL.ex = (function () {
           const on = met ? met.indexOf(n.what) >= 0 : null;
           return '<span class="need' + (on === null ? '' : on ? ' ok' : ' no') + '">' + esc(NL.gloss.of(n.what)) + '</span>';
         }).join('') + '</div>' +
-        (phase !== 'ask' ? '<p class="model-answer"><i>' + NL.t.openModel + '</i> ' + esc(t.task.model) + '</p>' : '');
+        (phase !== 'ask' ? '<p class="model-answer"><i>' + NL.t.openModel + '</i> <span lang="nl-BE">' + esc(t.task.model) + '</span></p>' : '');
     },
     ready: (t, L) => U.words(L.input).length >= 3,
     judge: (t, L) => ({ ok: rubric(t.task, L.input).length === (t.task.need || []).length }),
@@ -549,7 +550,7 @@ NL.ex = (function () {
         const sel = L.matchSel && L.matchSel.id === id, bad = L.matchBad === id;
         return '<button class="pair' + (gone ? ' gone' : '') + (sel ? ' sel' : '') + (bad ? ' shake' : '') + '"' +
           ' data-match="' + id + '" data-k="' + c.k + '" data-side="' + c.s + '"' + (gone ? ' disabled' : '') + '>' +
-          '<span class="pair-n">' + (c.s === 'l' ? 'NL' : t.pairs[c.k].lang.toUpperCase()) + '</span>' + esc(c.t) + '</button>';
+          '<span class="pair-n">' + (c.s === 'l' ? 'NL' : t.pairs[c.k].lang.toUpperCase()) + '</span>' + (c.s === 'l' ? '<span lang="nl-BE">' + esc(c.t) + '</span>' : esc(c.t)) + '</button>';
       };
       let rows = '';
       for (let i = 0; i < t.pairs.length; i++) rows += cell(t.left[i]) + cell(t.right[i]);
@@ -600,7 +601,7 @@ NL.ex = (function () {
     const own = U.norm(U.bare(item.nl)), seen = U.norm(shown);
     const forms = variants(item).filter(f => keepSame || (U.norm(U.bare(f)) !== own && U.norm(U.bare(f)) !== seen));
     if (!forms.length) return '';
-    return '<p class="v-be">' + NL.t.hereThey + ' ' + forms.map(f => boldForm(item, f)).join(', ') + '</p>';
+    return '<p class="v-be">' + NL.t.hereThey + ' ' + forms.map(f => '<span lang="nl-BE">' + boldForm(item, f) + '</span>').join(', ') + '</p>';
   }
 
   return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, recordPanel, selfRate, sameSense, wordScore, hereLine };

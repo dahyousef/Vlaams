@@ -84,11 +84,11 @@
         if (b.who === 'them') {
           return '<div class="bub them">' +
             '<button class="bub-say" data-say="' + esc(b.be || b.nl) + '" aria-label="' + NL.t.replay + '">' + ICON.speaker(17) + '</button>' +
-            '<div><p class="bub-nl">' + esc(b.be || b.nl) + '</p>' +
-            (b.be && U.norm(b.be) !== U.norm(b.nl) ? '<p class="bub-std">' + NL.t.scnStd + ' ' + esc(b.nl) + '</p>' : '') +
+            '<div><p class="bub-nl" lang="nl-BE">' + esc(b.be || b.nl) + '</p>' +
+            (b.be && U.norm(b.be) !== U.norm(b.nl) ? '<p class="bub-std">' + NL.t.scnStd + ' <span lang="nl-BE">' + esc(b.nl) + '</span></p>' : '') +
             '<p class="bub-en">' + esc(NL.gloss.of(b)) + '</p></div></div>';
         }
-        return '<div class="bub you"><div><p class="bub-nl">' + esc(b.nl) + '</p>' +
+        return '<div class="bub you"><div><p class="bub-nl" lang="nl-BE">' + esc(b.nl) + '</p>' +
           '<p class="bub-en">' + esc(NL.gloss.of(b)) + '</p>' +
           (b.score ? '<p class="bub-score">' + esc(b.score) + '</p>' : '') + '</div></div>';
       }).join('');
@@ -100,11 +100,11 @@
         panel = '<p class="ask">' + esc(NL.gloss.of(step.you.ask)) + '</p>' +
           (NL.gloss.of(step.you.hint) ? '<p class="ask-hint">' + esc(NL.gloss.of(step.you.hint)) + '</p>' : '') +
           '<div class="choices">' + step.you.choices.map((c, i) =>
-            '<button class="choice" data-choice="' + i + '"><b>' + esc(c.nl) + '</b><i>' + esc(NL.gloss.of(c)) + '</i></button>').join('') +
+            '<button class="choice" data-choice="' + i + '"><b lang="nl-BE">' + esc(c.nl) + '</b><i>' + esc(NL.gloss.of(c)) + '</i></button>').join('') +
           '</div>';
       } else if (P.phase === 'speak') {
         const c = step.you.choices[P.choice];
-        panel = '<div class="say-now"><p class="say-target">' + esc(c.nl) + '</p>' +
+        panel = '<div class="say-now"><p class="say-target" lang="nl-BE">' + esc(c.nl) + '</p>' +
           '<p class="say-en">' + esc(NL.gloss.of(c)) + '</p>' +
           '<button class="speaker slow inline" data-say="' + esc(c.nl) + '" data-slow="1" aria-label="' + NL.t.slow + '">' + ICON.turtle() + '</button></div>' +
           micPanel(P.speech, c.nl) +

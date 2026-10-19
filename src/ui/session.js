@@ -425,16 +425,18 @@ NL.screens.sessie = (function () {
     const vl = c.ex === 'vlaams' ? EX.hereLine(it, '', true) : '';
     const be = vl || (NL.state.meta().showFlemish !== false ? EX.hereLine(it, ans, false) : '');
     /* Un autre élément au même sens a été tapé : on dit quel mot était demandé. */
-    const asked = ok && L.other ? '<p>' + NL.t.askedFor + ' <b>' + esc(ans) + '</b></p>' : '';
+    /* La réponse est du néerlandais partout, sauf en « recall » (un sens) et en « match » (des paires). */
+    const ansLang = c.ex === 'recall' || c.ex === 'match' ? '' : ' lang="nl-BE"';
+    const asked = ok && L.other ? '<p>' + NL.t.askedFor + ' <b' + ansLang + '>' + esc(ans) + '</b></p>' : '';
     const also = it && it.also && it.also.length
-      ? '<p class="v-also">' + NL.t.alsoSaid + ' ' + esc(it.also.join(', ')) + '</p>' : '';
+      ? '<p class="v-also">' + NL.t.alsoSaid + ' <span lang="nl-BE">' + esc(it.also.join(', ')) + '</span></p>' : '';
     return '<div class="foot ' + (ok ? 'ok' : 'no') + '"><div class="foot-in">' +
       '<div class="verdict ' + (ok ? 'ok' : 'no') + '">' +
       '<span class="v-icon">' + (ok
         ? '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7"/></svg>'
         : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>') + '</span>' +
       '<div><h5>' + note + '</h5>' +
-      (vl ? '' : asked || (ans ? '<p><b>' + esc(ans) + '</b></p>' : '')) +
+      (vl ? '' : asked || (ans ? '<p><b' + ansLang + '>' + esc(ans) + '</b></p>' : '')) +
       be + also +
       (it && NL.gloss.of(it.note) ? '<p class="v-note">' + esc(NL.gloss.of(it.note)) + '</p>' : '') +
       '</div></div>' +
