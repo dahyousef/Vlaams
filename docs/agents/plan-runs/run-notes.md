@@ -5,8 +5,9 @@ Where they differ from a command in your brief, these notes win.
 
 ## Where you work
 
-- In the run's worktree, named in `<WS>/run.md`, and nowhere else. Its parent folders hold another
-  checkout: never read, write or run anything there.
+- In the run's worktree, named in `<WS>/run.md`, and nowhere else. It lies inside the clone at
+  `%USERPROFILE%\dev\vlaams-phase-2`, whose own checkout stays on `main`: never read, write or run anything
+  outside the run's worktree.
 - `<WS>` is the run's workspace, `.superpowers/sdd/<plan name>/` inside the worktree, git-ignored. Scratch
   files (shell scripts, captured output, commit message files) go in `<WS>/tmp/`. Nothing stray under `src/`
   or `test/`. Where the brief writes `/tmp/x`, use `<WS>/tmp/x`.
@@ -16,9 +17,8 @@ Where they differ from a command in your brief, these notes win.
 - PowerShell is the shell; `sh`, `node` and `git` are on PATH. The brief's commands are `sh` commands.
 - PowerShell mangles double quotes inside an argument and non-ASCII characters in a pipe. For anything beyond
   a plain command (a pipe, a redirection, quotes, `;`, `$?`, an accent), write the command lines to a `.sh`
-  file in `<WS>/tmp/` with the Write tool and run `sh "<that file>"`. The worktree path contains spaces:
-  quote it. A risky git command (`git push`, `reset`, `clean`, `checkout --`, `restore`, `branch -D`) always
-  runs as a plain command, never inside a `.sh` file: the guardrail reads only the command string.
+  file in `<WS>/tmp/` with the Write tool and run `sh "<that file>"`. A risky git command (`git push`,
+  `reset`, `clean`, `checkout --`, `restore`, `branch -D`) always runs as a plain command, never inside a `.sh` file: the guardrail reads only the command string.
 - Name the repository root `.`, never `"$(pwd)"`.
 - Sources in the working tree have CRLF line endings and commits have LF (`core.autocrlf=true`). Match on
   content, not on line endings; `git diff` is the judge of what you changed.
@@ -40,9 +40,9 @@ Where they differ from a command in your brief, these notes win.
   holds. Never weaken a test to make it pass.
 - If the brief leaves a decision open, do not decide it: stop with status `NEEDS_RULING` and the question in
   one or two lines.
-- Comments match the file you edit (mostly French). User-facing text is French and lives in
-  `src/core/fr.js`. `const`, or `let` where a value changes, never `var`; no optional chaining; arrows for short
-  helpers and callbacks, `function` declarations for longer named functions.
+- Comments match the file you edit (mostly French). User-facing text lives in
+  `src/core/fr.js` and `src/core/en.js`, under the same keys; one is never changed without the other. `const`, or `let` where a value changes, never `var`; no optional chaining;
+  arrows for short helpers and callbacks, `function` declarations for longer named functions.
 
 ## Git
 
