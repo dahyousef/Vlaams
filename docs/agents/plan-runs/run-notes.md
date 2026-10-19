@@ -18,7 +18,8 @@ Where they differ from a command in your brief, these notes win.
 - PowerShell mangles double quotes inside an argument and non-ASCII characters in a pipe. For anything beyond
   a plain command (a pipe, a redirection, quotes, `;`, `$?`, an accent), write the command lines to a `.sh`
   file in `<WS>/tmp/` with the Write tool and run `sh "<that file>"`. A risky git command (`git push`,
-  `reset`, `clean`, `checkout --`, `restore`, `branch -D`) always runs as a plain command, never inside a `.sh` file: the guardrail reads only the command string.
+  `reset`, `clean`, `checkout --`, `restore`, `branch -D`) always runs as a plain command, never inside a `.sh` file: the guardrail reads only the command
+  string.
 - Name the repository root `.`, never `"$(pwd)"`.
 - Sources in the working tree have CRLF line endings and commits have LF (`core.autocrlf=true`). Match on
   content, not on line endings; `git diff` is the judge of what you changed.
