@@ -23,8 +23,8 @@ function pairUp(C) {
   COLLECTIONS.forEach(k => { C[k] = walk(C[k], k); });
   return n;
 }
-function boot(prepare) {
-  const B = browser.open({ root: ROOT, seed: browser.SEED, byId: 'stub', media: true, skip: ['src/app.js'],
+function boot(prepare, store) {
+  const B = browser.open({ root: ROOT, seed: browser.SEED, store: store || undefined, byId: 'stub', media: true, skip: ['src/app.js'],
     voices: [{ name: 'Microsoft Bart - Dutch (Belgium)', lang: 'nl-BE', localService: true }] });
   if (prepare) prepare(B.NL);
   vm.runInContext(fs.readFileSync(path.join(ROOT, 'src/app.js'), 'utf8'), B.ctx);
@@ -438,6 +438,21 @@ function langChecks() {
           NL.state.resetProgress();
           ok(NL.state.meta().displayLang === 'fr', '5d : resetProgress efface displayLang');
           return NL.state.clearAll().then(() => ok(NL.state.meta().displayLang === 'fr', '5d : clearAll efface displayLang'));
+        });
+      }).then(() => {
+        /* 5d bis. Après une déconnexion (clearAll) et un rechargement sur le même stockage, l'affichage reste en français. */
+        const D = boot(null);
+        return D.NL.state.open().then(() => {
+          French(D);
+          return D.NL.state.clearAll();
+        }).then(() => {
+          const R = boot(null, D.store);
+          return R.NL.state.open().then(() => {
+            ok(R.NL.state.meta().displayLang === 'fr', '5d : après déconnexion et rechargement, meta().displayLang vaut « ' + R.NL.state.meta().displayLang + ' »');
+            ok(R.NL.lang.current() === 'fr', '5d : après rechargement, NL.lang.current() vaut « ' + R.NL.lang.current() + ' »');
+            R.NL.ui.go('vandaag'); R.NL.ui.openSheet('instellingen');
+            ok(text(R.app.innerHTML).indexOf(R.NL.tables.fr.setLang) >= 0 && htmlLang(R) === 'fr', '5d : après rechargement, la page n\'est pas dessinée en français');
+          });
         });
       }).then(() => {
         /* 5e. ADR 0004 : un mot est transparent dans la langue lue ; le changement le recalcule. */

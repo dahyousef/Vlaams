@@ -1836,10 +1836,13 @@ NL.state = (function () {
     const lang = meta.displayLang;
     mem.srs.clear(); mem.custom.clear(); mem.log = []; meta = defaults();
     if (lang) meta.displayLang = lang;
-    if (!useIDB) { try { localStorage.removeItem(LS); } catch (e) {} return Promise.resolve(); }
+    /* Elle reste aussi sur l'appareil, pour le rechargement qui suit une déconnexion. Écrite
+       en silence : sans emit ni updatedAt, elle ne passe pas devant les réglages d'un compte. */
+    const keep = () => { if (lang) setMeta({ displayLang: lang }, true); };
+    if (!useIDB) { try { localStorage.removeItem(LS); } catch (e) {} keep(); return Promise.resolve(); }
     return Promise.all(STORES.map(s => new Promise(res => {
       const r = db.transaction(s, 'readwrite').objectStore(s).clear(); r.onsuccess = res; r.onerror = res;
-    })));
+    }))).then(keep);
   }
 
   /* ---- abonnés aux écritures ----
