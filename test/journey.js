@@ -266,7 +266,7 @@ function view(screen, arg) {
   head('10. Audio doctor');
   const d0 = view('doctor');
   if (VOICE === 'nl-BE') ok(d0.indexOf(NL.t.docFixDone) >= 0, 'doctor does not confirm the installed Flemish voice');
-  else ok(d0.indexOf('docFix') >= 0 || d0.indexOf(NL.t.docFixSteps[0]) >= 0, 'doctor does not offer the install steps');
+  else ok(d0.indexOf('docFix') >= 0 || d0.indexOf(NL.util.esc(NL.t.docFixSteps[0])) >= 0, 'doctor does not offer the install steps');
   tap('doctor', { act: 'play' });
   tap('doctor', { act: 'heard-yes' });
   tap('doctor', { act: 'recheck' });

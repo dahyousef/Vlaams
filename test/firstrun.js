@@ -21,8 +21,8 @@ NL.state.open().then(() => {
   NL.ui.go('vandaag');
   const home = app.innerHTML;
   ok(!/test de niveau/i.test(home) && home.indexOf('placement') < 0, 'a blank account is still offered the placement test');
-  ok(home.includes('Démarrer la session'), 'no session button on a blank account');
-  ok(!/[^a-z]the [a-z]/.test(home), 'English leaked onto the home screen');
+  ok(home.includes(NL.t.todayStart), 'no session button on a blank account');
+  Object.keys(NL.tables.fr).forEach(k => { const f = NL.tables.fr[k], e = NL.tables.en[k]; if (typeof f === 'string' && f.length >= 12 && f !== e) ok(home.indexOf(f) < 0, 'the other language leaked onto the home screen: ' + k); });
   console.log('  home screen     ' + home.length + ' chars, session offered');
   console.log('  voice report    ' + NL.speech.voiceInfo().note.slice(0, 60) + '…');
   console.log('  mic verdict     listenBlocked=' + NL.speech.listenBlocked() + ', tier=' + NL.speech.tier().id);
