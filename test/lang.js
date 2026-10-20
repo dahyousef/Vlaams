@@ -477,7 +477,7 @@ function langChecks() {
           const F = boot(markedBoth);
           return F.NL.state.open().then(() => {
             if (l === 'fr') French(F);
-            const hits = new Map(), badFr = /ENd+|⟦en:/, badEn = /⟪|⟦fr:/;
+            const hits = new Map(), badFr = /\bEN\d+|⟦en:/, badEn = /⟪|⟦fr:/;
             views(F, (n, h) => {
               if (n === 'klanken' || n === 'register') {
                 /* Un passage sous lang="fr" ou lang="en" est jugé dans cette langue ; les autres, dans la langue lue. */
