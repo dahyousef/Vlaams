@@ -29,6 +29,16 @@ n'y a qu'une seule liste. Il faut Node et un `sh` (sous Windows, celui de Git).
 aucune) sous Opera et Edge, plus Chrome et Safari sur iPhone. Les tests sont
 déterministes : la graine est fixe, `SEED=...` en rejoue une autre.
 
+`test/tools/check-files.js` n'est pas un test, et `run-all.sh` ne le lance pas.
+`node test/tools/check-files.js . <dossier>` écrit les fichiers que lit une
+séance de contrôle de l'anglais : `glosses.tsv` (chaque élément, son français et
+son anglais), `blind.tsv` (les mêmes sans l'anglais), `sentences.tsv` (phrases
+d'exemple et répliques de scénario), `prose.tsv` (toute autre paire de texte du
+cours) et `interface.tsv` (chaque clé des deux tables). Il sort avec 1 si
+`glosses.tsv` et `owed()` ne comptent pas les mêmes gloses, ou si une ligne a un
+côté vide que le contenu n'explique pas (seule une note dont l'anglais est
+`null` exprès en laisse un), ou lit « undefined ».
+
 Le balayage de `typed.js` passe par l'écran, pas par le juge : mesuré le 18
 octobre 2026, une réponse tapée coûte 11 ms, et les 439 cibles et 98 formes du
 cours se tapent en quelques secondes, loin de la minute qu'il ne devait pas

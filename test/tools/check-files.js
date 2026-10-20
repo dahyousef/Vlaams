@@ -4,8 +4,10 @@
    blind.tsv     les mêmes lignes sans `en`, pour la passe à l'aveugle
    sentences.tsv where nl fr en              (phrases d'exemple et répliques de scénario)
    prose.tsv     where fr en                 (toute autre paire de texte)
-   interface.tsv key fr en                   (chaque clé des deux tables ; une fonction est essayée à (3, 7))
-   Chaque `where` est le chemin que donne owed() dans test/lib/prose.js. */
+   interface.tsv key fr en                   (chaque clé de l'une ou l'autre table)
+   Chaque `where` est le chemin que donne owed() dans test/lib/prose.js. Sort avec 1 si
+   glosses.tsv et owed() ne comptent pas les mêmes gloses, ou si une ligne de prose.tsv ou
+   d'interface.tsv a un côté vide que le contenu n'explique pas, ou lit « undefined ». */
 const fs = require('fs'), path = require('path');
 const browser = require('../lib/browser');
 const { COLLECTIONS, owed, at } = require('../lib/prose');
@@ -35,6 +37,8 @@ NL.state.open().then(() => {
   COLLECTIONS.forEach(k => owed(RAW[k], k, '', places));
 
   const files = { 'glosses.tsv': [], 'blind.tsv': [], 'sentences.tsv': [], 'prose.tsv': [], 'interface.tsv': [] };
+  /* Les lignes dont un côté est vide sans que le contenu le veuille, ou qui lisent « undefined ». */
+  const holes = [];
 
   NL.content.allItems().filter(it => it.unit !== 'eigen').forEach(it => {
     files['glosses.tsv'].push(line([it.id, it.kind, it.unit, it.nl, it.be, it.fr, it.en]));
@@ -49,18 +53,29 @@ NL.state.open().then(() => {
       files['sentences.tsv'].push(line([r.where, o.nl, o.fr, o.en]));
       return;
     }
-    const v = at(RAW, r.where);
+    /* Un `where` en `.fr` désigne le français d'un objet qui porte aussi l'anglais : on lit l'objet. */
+    const v = at(RAW, r.where.replace(/\.fr$/, ''));
     files['prose.tsv'].push(line([r.where, side(v, 'fr'), side(v, 'en')]));
+    /* Un anglais vide n'est voulu que là où le contenu le met à `null` (une note sans rien pour un lecteur anglais). */
+    if (!cell(side(v, 'fr')) || (!cell(side(v, 'en')) && !(v && v.en === null))) holes.push('prose.tsv ' + r.where);
   });
 
   const T = NL.tables;
+  /* Une fonction reçoit autant de nombres qu'elle prend d'arguments ; paceNote, ce que l'écran lui passe. */
+  const NUMS = [3, 7, 12];
+  const ARGS = { paceNote: [NL.srs.pace()] };
   const show = (t, k) => {
     const v = t[k];
-    if (typeof v === 'function') return v(3, 7);
+    if (typeof v === 'function') return v.apply(null, ARGS[k] || NUMS.slice(0, v.length));
     if (typeof v === 'string') return v;
     return JSON.stringify(v);
   };
-  Object.keys(T.fr).forEach(k => files['interface.tsv'].push(line([k, show(T.fr, k), show(T.en, k)])));
+  const own = (t, k) => Object.prototype.hasOwnProperty.call(t, k);
+  Object.keys(T.fr).concat(Object.keys(T.en).filter(k => !own(T.fr, k))).forEach(k => {
+    const fr = cell(show(T.fr, k)), en = cell(show(T.en, k));
+    files['interface.tsv'].push(line([k, fr, en]));
+    if (!fr || !en || /undefined/.test(fr + en)) holes.push('interface.tsv ' + k);
+  });
 
   fs.mkdirSync(OUT, { recursive: true });
   Object.keys(files).forEach(f => {
@@ -72,5 +87,6 @@ NL.state.open().then(() => {
   /* Chaque endroit hors gloses donne sa ligne : seules les gloses se comptent de deux côtés. */
   const glosses = files['glosses.tsv'].length;
   if (glosses !== glossPlaces) console.log('ÉCART : glosses.tsv a ' + glosses + ' lignes, owed() ' + glossPlaces + ' endroits de gloses');
-  process.exit(glosses === glossPlaces ? 0 : 1);
+  holes.forEach(h => console.log('TROU : ' + h));
+  process.exit(glosses === glossPlaces && !holes.length ? 0 : 1);
 }).catch(e => { console.log('CRASH ' + (e && e.stack || e)); process.exit(1); });
