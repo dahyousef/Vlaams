@@ -7,7 +7,7 @@
    que le mot drillé. Voir TESTING.md. */
 const fs = require('fs'), path = require('path'), zlib = require('zlib');
 const browser = require('./lib/browser');
-const { COLLECTIONS, owed } = require('./lib/prose');
+const { COLLECTIONS, owed, at } = require('./lib/prose');
 const ROOT = process.argv[2] || path.join(__dirname, '..');
 
 let fails = 0, checks = 0;
@@ -181,6 +181,14 @@ NL.state.open().then(() => {
   Object.keys(batches).forEach(b => batches[b].filter(r => !r.ok).forEach(r => left.push(b + ' ' + r.where)));
   ok(left.length === 0, 'rien n’est dû : ' + left.length + ' anglais manquent   [' + left.slice(0, 3).join(', ') + ']');
   console.log('  anglais dû     ' + left.length + ' (rien n’est dû)');
+  /* La séance de contrôle relit chaque endroit par son `where` (test/tools/check-files.js) : chacun
+     désigne quelque chose, et un chemin qui ne désigne rien s'arrête au lieu de donner une ligne vide. */
+  const lost = [];
+  Object.keys(batches).forEach(b => batches[b].forEach(r => { try { at(RAW, r.where); } catch (e) { lost.push(r.where); } }));
+  ok(lost.length === 0, 'where : ' + lost.length + ' chemins de owed() ne désignent rien   [' + lost.slice(0, 3).join(', ') + ']');
+  let refused = '';
+  try { at(RAW, 'units[0].nowhere[3]'); } catch (e) { refused = e.message; }
+  ok(refused.indexOf('units[0].nowhere[3]') >= 0, 'where : at() rend une valeur pour un chemin qui ne désigne rien');
 
   /* Parcours de RAW : tout objet qui porte `fr` ou `en`. */
   const pairs6 = [];
