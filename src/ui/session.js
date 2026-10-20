@@ -425,8 +425,9 @@ NL.screens.sessie = (function () {
     const vl = c.ex === 'vlaams' ? EX.hereLine(it, '', true) : '';
     const be = vl || (NL.state.meta().showFlemish !== false ? EX.hereLine(it, ans, false) : '');
     /* Un autre élément au même sens a été tapé : on dit quel mot était demandé. */
-    /* La réponse est du néerlandais partout, sauf en « recall » (un sens) et en « match » (des paires). */
-    const ansLang = c.ex === 'recall' || c.ex === 'match' ? '' : ' lang="nl-BE"';
+    /* La réponse est du néerlandais partout, sauf en « recall », un sens dans sa langue, et en « match »,
+       des paires où les deux se mêlent. */
+    const ansLang = c.ex === 'recall' ? NL.gloss.langAttr(it) : c.ex === 'match' ? '' : ' lang="nl-BE"';
     const asked = ok && L.other ? '<p>' + NL.t.askedFor + ' <b' + ansLang + '>' + esc(ans) + '</b></p>' : '';
     const also = it && it.also && it.also.length
       ? '<p class="v-also">' + NL.t.alsoSaid + ' <span lang="nl-BE">' + esc(it.also.join(', ')) + '</span></p>' : '';

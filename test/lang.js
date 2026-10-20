@@ -4,6 +4,7 @@
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const browser = require('./lib/browser');
 const { PROSE, COLLECTIONS } = require('./lib/prose');
+const { runs } = require('./lib/langs');
 const ROOT = process.argv[2] || path.join(__dirname, '..');
 let fails = 0, checks = 0;
 const ok = (c, m) => { checks++; if (!c) { console.log('  FAIL: ' + m); fails++; } };
@@ -500,7 +501,7 @@ function langChecks() {
         /* 5f. Dans chaque langue, aucun texte de l'autre à l'écran. */
         const OTHER = { fr: /\bEN\d+|⟦en:/, en: /⟪|⟦fr:/ };
         const key = l => (/^fr/i.test(l) ? 'fr' : /^en/i.test(l) ? 'en' : null);
-        const foreign = (h, page) => require('./lib/langs').runs(h, page)
+        const foreign = (h, page) => runs(h, page)
           .map(r => r.text.match(OTHER[key(r.lang) || key(page)])).filter(Boolean).map(m => m[0]);
         const planted = foreign('<p lang="fr">EN12</p><p lang="en">⟪3⟫</p>', 'en-GB');
         ok(planted.join(' ') === 'EN12 ⟪', '5f : sur la vue plantée, le juge ne trouve que « ' + planted.join(' ') + ' »');
@@ -545,7 +546,7 @@ function langChecks() {
 /* 6. Chaque passage qui est du néerlandais du cours déclare le néerlandais : un
    lecteur d'écran ne lit pas « vandaag » à l'anglaise. Vues du cours simple, dans les deux langues. */
 function langAttrFind(B, each) {
-  const NL = B.NL, U = NL.util, runs = require('./lib/langs').runs, dutch = new Set();
+  const NL = B.NL, U = NL.util, dutch = new Set();
   const walk = v => {
     if (Array.isArray(v)) v.forEach(walk);
     else if (v && typeof v === 'object') Object.keys(v).forEach(k => {
@@ -646,6 +647,14 @@ function displayChecks() {
   const c1 = () => open(NL => {
     NL.content.units.forEach(u => u.words.forEach(w => { if (w.nl === 'het brood') delete w.en; }));
     delete NL.content.scenarios.find(s => s.id === 's-bakker').steps.filter(st => st.them)[3].them.en;
+    /* Une phrase et une règle sans anglais non plus : certains exercices ne montrent qu'elles. */
+    const frOnly = v => {
+      if (Array.isArray(v)) v.forEach(frOnly);
+      else if (v && typeof v === 'object') { if (typeof v.fr === 'string') delete v.en; Object.keys(v).forEach(k => frOnly(v[k])); }
+    };
+    frOnly(NL.content.units.find(u => u.id === 'overleven').phrases[0]);
+    frOnly(NL.content.patterns.find(g => g.id === 'g-v2'));
+    frOnly(NL.content.openTasks['g-v2']);
   }).then(B => {
     const NL = B.NL, html = () => B.app.innerHTML, pages = {};
     English(B);
@@ -670,10 +679,52 @@ function displayChecks() {
     ok(pages.woorden.indexOf(bare) >= 0 && pages.fouten.indexOf(bare) >= 0, '69.1 : en anglais, le sens français de het brood n’est pas marqué lang="fr" (woorden, fouten)');
     ok(/class="bub-en" lang="fr"/.test(pages.scenario), '69.1 : la réplique sans anglais n’est pas marquée lang="fr"');
     ok(tags.some(t => t.indexOf(' lang="en-GB"') >= 0), '69.1 : aucun sens anglais marqué lang="en-GB"');
-    /* L'exercice montre le même sens : il porte la même langue. */
-    const shownIn = id => { const E = NL.ex.get(id), t = E.build(brood); return E.view(t, { sel: null, input: '' }, 'ask'); };
-    ['pick', 'type'].forEach(id => ok(shownIn(id).indexOf('lang="fr">' + NL.util.esc(NL.gloss.bare(brood))) >= 0,
-      '69.1 : l’exercice ' + id + ' montre le sens français de het brood sans lang="fr"'));
+    /* L'exercice montre le même sens : il porte la même langue. Chaque exercice du registre, sur le mot,
+       la phrase et la règle sans anglais, posé puis corrigé : un exercice ajouté est contrôlé d'office.
+       Seuls la dictée et l'intrus ne montrent aucun sens ; un autre qui n'en montre pas rend le contrôle creux. */
+    const NO_MEANING = ['dictation', 'intrus'];
+    const items = NL.content.allItems(), phrase = items.find(it => it.id === 'overleven:p0'), rule = items.find(it => it.id === 'g-v2');
+    const flat = s => NL.util.esc(s).replace(/&nbsp;/g, ' ').replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ').trim();
+    const french = new Set([flat(NL.gloss.bare(brood))]);
+    const walk = v => {
+      if (Array.isArray(v)) v.forEach(walk);
+      else if (v && typeof v === 'object') { if (typeof v.fr === 'string') french.add(flat(v.fr)); Object.keys(v).forEach(k => walk(v[k])); }
+    };
+    [brood, phrase, rule].forEach(walk);
+    const words = items.filter(it => it.kind === 'word' && it.id !== brood.id && NL.gloss.has(it, 'en')).slice(0, 4);
+    const fresh = () => ({ sel: null, picked: [], input: '', close: false, other: false, matchSel: null, matchGone: [], matchBad: null,
+      speech: { phase: 'idle', tries: 0, selfRated: null } });
+    const showed = new Set(), unmarked = [];
+    Object.keys(NL.ex.registry).forEach(id => {
+      const E = NL.ex.registry[id];
+      (id === 'match' ? [[brood].concat(words)] : [brood, phrase, rule]).forEach(x => {
+        let t; try { t = E.build(x); } catch (e) { return; }
+        ['ask', 'no'].forEach(phase => {
+          let shown; try { shown = E.view(t, fresh(), phase); } catch (e) { return; }
+          runs(shown, 'en-GB').filter(r => french.has(r.text)).forEach(r => {
+            showed.add(id);
+            if (r.lang !== 'fr') unmarked.push(id + ' « ' + r.text + ' » (' + r.lang + ')');
+          });
+        });
+      });
+    });
+    const silent = Object.keys(NL.ex.registry).filter(id => NO_MEANING.indexOf(id) < 0 && !showed.has(id));
+    ok(silent.length === 0, '69.1 : ' + silent.join(', ') + ' ne montre(nt) aucun sens sans anglais, le contrôle est creux');
+    ok(unmarked.length === 0, '69.1 : ' + unmarked.length + ' sens français sans lang="fr" dans les exercices, dont ' + unmarked.slice(0, 8).join(' ; '));
+    /* Le pied d'un « recall » passé redit ce sens : même langue. */
+    const S = NL.screens.sessie, answer = require('./lib/answer')(B);
+    NL.srs.seed(brood, 0);
+    const r = NL.state.rec(brood.id); r.due = B.clock.now() - 3600 * 1000; r.lastEx = 'pick'; NL.state.setRec(r);
+    let asked = false;
+    for (let k = 0; k < 40 && !asked; k++) {
+      S.abandon(); NL.screens.fouten.click({ dataset: {} }, { act: 'start' });
+      const c = S.peek(); asked = !!c && c.ex === 'recall' && c.items[0].id === brood.id;
+    }
+    ok(asked, '69.1 : het brood n’est jamais posé en recall, le contrôle du pied est creux');
+    if (asked) {
+      answer.wrong();
+      ok(html().indexOf('<b lang="fr">' + NL.util.esc(NL.gloss.bare(brood)) + '</b>') >= 0, '69.1 : le pied d’un recall passé montre le sens français sans lang="fr"');
+    }
   });
 
   /* 69.1 bis. Un mot à soi écrit en anglais, relu en français, garde lang="en-GB". */

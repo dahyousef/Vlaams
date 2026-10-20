@@ -23,15 +23,16 @@ NL.ex = (function () {
   const flemish = (be, std) => (be && NL.state.meta().showFlemish !== false && U.norm(be) !== U.norm(std))
     ? '<span class="be-line"><span class="be-tag">' + NL.t.beTag + '</span><span lang="nl-BE">' + esc(be) + '</span></span>' : '';
 
-  /* `nl` : les libellés sont du néerlandais (sinon des sens, dans la langue lue). */
-  function optList(opts, L, phase, nl) {
+  /* `lang` : l'attribut de la langue des libellés, NL_BE pour du néerlandais, NL.gloss.langAttr pour des sens. */
+  const NL_BE = ' lang="nl-BE"';
+  function optList(opts, L, phase, lang) {
     return '<div class="opts">' + opts.map((o, i) => {
       let cls = '';
       if (phase === 'ask') cls = (L.sel && L.sel.i === i) ? ' sel' : '';
       else if (o.ok) cls = ' ok';
       else if (L.sel && L.sel.i === i) cls = ' no';
       return '<button class="opt' + cls + '" data-opt="' + i + '"' + (phase === 'ask' ? '' : ' disabled') + '>' +
-        '<span class="opt-key">' + (i + 1) + '</span><span' + (nl ? ' lang="nl-BE"' : '') + '>' + esc(o.label) + '</span></button>';
+        '<span class="opt-key">' + (i + 1) + '</span><span' + lang + '>' + esc(o.label) + '</span></button>';
     }).join('') + '</div>';
   }
 
@@ -157,7 +158,7 @@ NL.ex = (function () {
       return { type: 'pick', item, prompt: NL.gloss.bare(item), opts };
     },
     view(t, L, phase) {
-      return '<p class="sentence prompt"' + NL.gloss.langAttr(t.item) + '>' + esc(t.prompt) + '</p>' + optList(t.opts, L, phase, true);
+      return '<p class="sentence prompt"' + NL.gloss.langAttr(t.item) + '>' + esc(t.prompt) + '</p>' + optList(t.opts, L, phase, NL_BE);
     },
     ready: (t, L) => !!L.sel,
     judge: (t, L) => ({ ok: !!(L.sel && (t.opts[L.sel.i] || {}).ok) }),
@@ -172,7 +173,7 @@ NL.ex = (function () {
       return { type: 'recall', item, opts };
     },
     view(t, L, phase) {
-      return speakerRow(U.bare(t.item.nl), { show: true, be: t.item.be }) + optList(t.opts, L, phase);
+      return speakerRow(U.bare(t.item.nl), { show: true, be: t.item.be }) + optList(t.opts, L, phase, NL.gloss.langAttr(t.item));
     },
     auto: t => U.bare(t.item.nl),
     ready: (t, L) => !!L.sel,
@@ -188,7 +189,7 @@ NL.ex = (function () {
       return '<div class="speaker-row">' +
         '<button class="speaker" data-say="' + esc(t.item.art + ' ' + n) + '" aria-label="' + NL.t.listen + '">' + ICON.speaker(26) + '</button>' +
         '<div class="sentence">&hellip;&nbsp;<span lang="nl-BE">' + esc(n) + '</span><span class="gloss"' + NL.gloss.langAttr(t.item) + '>' + esc(NL.gloss.bare(t.item)) + '</span></div></div>' +
-        optList(t.opts, L, phase, true);
+        optList(t.opts, L, phase, NL_BE);
     },
     ready: (t, L) => !!L.sel,
     judge: (t, L) => ({ ok: !!(L.sel && (t.opts[L.sel.i] || {}).ok) }),
@@ -202,7 +203,7 @@ NL.ex = (function () {
       return { type: 'bank', item, drill: d, target: d.nl, bank: bankFor(d.nl, item) };
     },
     view(t, L, phase) {
-      return '<div class="sentence prompt">' + esc(NL.gloss.of(t.drill)) + '</div>' + tileArea(t, L, phase);
+      return '<div class="sentence prompt"' + NL.gloss.langAttr(t.drill) + '>' + esc(NL.gloss.of(t.drill)) + '</div>' + tileArea(t, L, phase);
     },
     ready: (t, L) => L.picked.length > 0,
     judge: (t, L) => ({ ok: U.norm(said(t, L)) === U.norm(t.target) }),
@@ -216,8 +217,8 @@ NL.ex = (function () {
       return { type: 'order', item, drill: d, target: d.nl, bank: U.shuffle(U.tiles(d.nl)) };
     },
     view(t, L, phase) {
-      return '<div class="sentence prompt">' + esc(NL.gloss.of(t.drill)) + '</div>' +
-        '<div class="rule-chip">' + esc(NL.gloss.of(t.item.rule)) + '</div>' + tileArea(t, L, phase);
+      return '<div class="sentence prompt"' + NL.gloss.langAttr(t.drill) + '>' + esc(NL.gloss.of(t.drill)) + '</div>' +
+        '<div class="rule-chip"' + NL.gloss.langAttr(t.item.rule) + '>' + esc(NL.gloss.of(t.item.rule)) + '</div>' + tileArea(t, L, phase);
     },
     ready: (t, L) => L.picked.length > 0,
     judge: (t, L) => ({ ok: U.norm(said(t, L)) === U.norm(t.target) }),
@@ -252,7 +253,7 @@ NL.ex = (function () {
     },
     view(t, L, phase) {
       return '<div class="sentence cloze-line" lang="nl-BE">' + esc(t.shown).replace(/ +/, '<span class="gap">' + (phase === 'ask' ? '' : esc(t.gap)) + '</span>') + '</div>' +
-        '<div class="gloss-line">' + esc(NL.gloss.of(t.drill)) + '</div>' + optList(t.opts, L, phase, true);
+        '<div class="gloss-line"' + NL.gloss.langAttr(t.drill) + '>' + esc(NL.gloss.of(t.drill)) + '</div>' + optList(t.opts, L, phase, NL_BE);
     },
     ready: (t, L) => !!L.sel,
     judge: (t, L) => ({ ok: !!(L.sel && (t.opts[L.sel.i] || {}).ok) }),
@@ -445,7 +446,7 @@ NL.ex = (function () {
     },
     view(t, L, phase) {
       return '<p class="sentence prompt">' + NL.t.intrusAsk(t.art) + '</p>' +
-        optList(t.opts, L, phase, true);
+        optList(t.opts, L, phase, NL_BE);
     },
     ready: (t, L) => !!L.sel,
     judge: (t, L) => ({ ok: !!(L.sel && (t.opts[L.sel.i] || {}).ok) }),
@@ -496,7 +497,7 @@ NL.ex = (function () {
     },
     view(t, L, phase) {
       return '<div class="sentence prompt" lang="nl-BE">' + esc(t.item.nl) + '</div>' +
-        '<div class="gloss-line"' + NL.gloss.langAttr(t.item) + '>' + esc(NL.gloss.of(t.item)) + '</div>' + optList(t.opts, L, phase, true);
+        '<div class="gloss-line"' + NL.gloss.langAttr(t.item) + '>' + esc(NL.gloss.of(t.item)) + '</div>' + optList(t.opts, L, phase, NL_BE);
     },
     ready: (t, L) => !!L.sel,
     judge: (t, L) => ({ ok: !!(L.sel && (t.opts[L.sel.i] || {}).ok) }),
@@ -519,13 +520,13 @@ NL.ex = (function () {
     build: item => ({ type: 'open', item, task: item.open }),
     view(t, L, phase) {
       const met = phase === 'ask' ? null : rubric(t.task, L.input);
-      return '<p class="sentence prompt">' + esc(NL.gloss.of(t.task.ask)) + '</p>' +
+      return '<p class="sentence prompt"' + NL.gloss.langAttr(t.task.ask) + '>' + esc(NL.gloss.of(t.task.ask)) + '</p>' +
         '<textarea class="textin open-box" rows="3" spellcheck="false" ' +
         'placeholder="' + esc(NL.t.openPlaceholder) + '"' + (phase === 'ask' ? '' : ' disabled') + '>' +
         esc(L.input) + '</textarea>' +
         '<div class="need-list">' + (t.task.need || []).map(n => {
           const on = met ? met.indexOf(n.what) >= 0 : null;
-          return '<span class="need' + (on === null ? '' : on ? ' ok' : ' no') + '">' + esc(NL.gloss.of(n.what)) + '</span>';
+          return '<span class="need' + (on === null ? '' : on ? ' ok' : ' no') + '"' + NL.gloss.langAttr(n.what) + '>' + esc(NL.gloss.of(n.what)) + '</span>';
         }).join('') + '</div>' +
         (phase !== 'ask' ? '<p class="model-answer"><i>' + NL.t.openModel + '</i> <span lang="nl-BE">' + esc(t.task.model) + '</span></p>' : '');
     },
@@ -550,7 +551,7 @@ NL.ex = (function () {
         const sel = L.matchSel && L.matchSel.id === id, bad = L.matchBad === id;
         return '<button class="pair' + (gone ? ' gone' : '') + (sel ? ' sel' : '') + (bad ? ' shake' : '') + '"' +
           ' data-match="' + id + '" data-k="' + c.k + '" data-side="' + c.s + '"' + (gone ? ' disabled' : '') + '>' +
-          '<span class="pair-n">' + (c.s === 'l' ? 'NL' : t.pairs[c.k].lang.toUpperCase()) + '</span>' + (c.s === 'l' ? '<span lang="nl-BE">' + esc(c.t) + '</span>' : esc(c.t)) + '</button>';
+          '<span class="pair-n">' + (c.s === 'l' ? 'NL' : t.pairs[c.k].lang.toUpperCase()) + '</span>' + '<span' + (c.s === 'l' ? NL_BE : NL.gloss.langAttr(t.pairs[c.k].item)) + '>' + esc(c.t) + '</span></button>';
       };
       let rows = '';
       for (let i = 0; i < t.pairs.length; i++) rows += cell(t.left[i]) + cell(t.right[i]);
