@@ -268,11 +268,9 @@ NL.sync = (function () {
   }
 
   /* Les réglages fusionnés prennent la place de ceux d'ici. Une langue d'affichage
-     qui change ainsi vient d'un autre appareil : NL.lang le dira dans l'avis. */
+     qui change ainsi vient d'un autre appareil : NL.lang le voit, et le dira dans l'avis. */
   function takeMeta(merged) {
-    const before = NL.lang.current();
-    NL.state.setMeta(merged, true);
-    if (NL.lang.current() !== before) NL.lang.synced();
+    NL.lang.fromAccount(() => NL.state.setMeta(merged, true));
   }
 
   /* Une ligne du serveur qui descend d'une remise à zéro antérieure à la nôtre
