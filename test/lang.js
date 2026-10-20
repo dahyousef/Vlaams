@@ -687,10 +687,11 @@ function displayChecks() {
     ok(B.app.innerHTML.indexOf(want) >= 0, '69.1 bis : en français, le sens anglais d’un mot à soi n’est pas marqué lang="en-GB"');
   });
 
-  /* 69.2. Un changement appliqué sur doctor ou compte s'y annonce. */
+  /* 69.2. Un changement appliqué sur n'importe quel écran s'y annonce, une fois ;
+     la séance et la conversation, où il attend, sont le contrôle 5b. */
   const c2 = () => open(null).then(B => {
     const NL = B.NL, fr = NL.tables.fr;
-    ['doctor', 'compte'].forEach(r => {
+    Object.keys(NL.screens).filter(r => r !== 'sessie' && r !== 'scenario').forEach(r => {
       English(B); NL.ui.go(r);
       NL.state.setMeta({ displayLang: 'fr' }, true);   // ce que fait une synchro
       NL.ui.render();

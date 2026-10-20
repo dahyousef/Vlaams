@@ -5957,6 +5957,8 @@ NL.ui = (function () {
   };
   const UNDER_MEER = ['woorden', 'spiek', 'register', 'klanken', 'doctor', 'dehet', 'fouten'];
   const FULLSCREEN = { sessie: 1, scenario: 1, doctor: 1, compte: 1 };
+  /* Les écrans où un changement de langue attend, et son avis avec lui. */
+  const LANG_WAITS = { sessie: 1, scenario: 1 };
 
   function go(to, a) {
     if (route === 'sessie' && to !== 'sessie' && NL.screens.sessie.active()) { sheet = 'quit-session'; return render(); }
@@ -6009,14 +6011,14 @@ NL.ui = (function () {
   function render() {
     applyTheme();
     /* Un changement de langue n'entre jamais en pleine séance ni en pleine conversation. */
-    if (route !== 'sessie' && route !== 'scenario') NL.lang.apply(false);
+    if (!LANG_WAITS[route]) NL.lang.apply(false);
     const S = NL.screens[route] || NL.screens.vandaag;
     const full = !!FULLSCREEN[route];
-    const note = NL.lang.notice();
-    const box = note ? '<div class="notice"><p>' + esc(note) + '</p></div>' : '';
+    const note = LANG_WAITS[route] ? '' : NL.lang.notice();
+    const noticeHtml = note ? '<div class="notice"><p>' + esc(note) + '</p></div>' : '';
     const html = full
-      ? '<div class="screen full">' + (route === 'doctor' || route === 'compte' ? box : '') + S.render(arg) + '</div>'
-      : topbar() + '<main class="screen">' + box + S.render(arg) + '</main>' + nav();
+      ? '<div class="screen full">' + noticeHtml + S.render(arg) + '</div>'
+      : topbar() + '<main class="screen">' + noticeHtml + S.render(arg) + '</main>' + nav();
     root.innerHTML = html + (sheet ? sheetHtml() : '') + (toastMsg ? '<div class="toast">' + esc(toastMsg) + '</div>' : '');
     if (S.after) S.after(arg);
   }
