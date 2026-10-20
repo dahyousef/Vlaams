@@ -1,5 +1,6 @@
 /* Écrit les fichiers que la séance de contrôle de l'anglais lit.
      node test/tools/check-files.js . <dossier-de-sortie>
+     node test/tools/check-files.js .      les contrôles seuls, sans rien écrire : run-all.sh le lance ainsi
    glosses.tsv   id kind unit nl be fr en     (un élément intégré par ligne)
    blind.tsv     les mêmes lignes sans `en`, pour la passe à l'aveugle
    sentences.tsv where nl fr en              (phrases d'exemple et répliques de scénario)
@@ -13,7 +14,6 @@ const browser = require('../lib/browser');
 const { COLLECTIONS, owed, at } = require('../lib/prose');
 const ROOT = process.argv[2] || path.join(__dirname, '..', '..');
 const OUT = process.argv[3];
-if (!OUT) { console.log('usage: node test/tools/check-files.js <racine> <dossier-de-sortie>'); process.exit(1); }
 
 const B = browser.open({ root: ROOT, seed: browser.SEED, skip: ['src/app.js'] });
 const NL = B.NL;
@@ -77,9 +77,9 @@ NL.state.open().then(() => {
     if (!fr || !en || /undefined/.test(fr + en)) holes.push('interface.tsv ' + k);
   });
 
-  fs.mkdirSync(OUT, { recursive: true });
+  if (OUT) fs.mkdirSync(OUT, { recursive: true });
   Object.keys(files).forEach(f => {
-    fs.writeFileSync(path.join(OUT, f), files[f].join('\n') + '\n', 'utf8');
+    if (OUT) fs.writeFileSync(path.join(OUT, f), files[f].join('\n') + '\n', 'utf8');
     console.log(f + '  ' + files[f].length + ' lignes');
   });
   const sum = files['glosses.tsv'].length + files['sentences.tsv'].length + files['prose.tsv'].length;
