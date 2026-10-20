@@ -533,7 +533,7 @@ keeps the old language. When this task is done, each behaviour fix has a `69.n` 
 `test/lang.js` that failed first. Task 5 builds on two things from this task: `set()` only stores,
 and `render()` draws the notice on doctor and compte.
 
-Notes for both tasks: the working tree is CRLF, so multi-line matches need `\r\n`. Comments are in
+Notes: the working tree is CRLF, so multi-line matches need `\r\n`. Comments are in
 French where the file's are. Use `const`, or `let` where the value changes, and no `?.`. Task 1 (#67) runs first and
 rewrites parts of `test/lang.js`, so find every `test/` location below by its content, not its line number. If Task 1
 moved a helper (`boot`, `text`, `French`, `English`, `tapOn`, `htmlLang`, `count`) into `test/lib/`,
@@ -860,6 +860,9 @@ Finally, in `TESTING.md:15` (the `lang.js` row), just before « ; elle ne voit p
 
 **Class:** engine
 **Ticket:** #69 (item 3)
+
+Notes: the working tree is CRLF, so multi-line matches need `\r\n`. Comments are in French where the file's
+are, and `test/sync.js`'s check messages are English.
 
 A change that arrives through sync now shows the same notice as one made on this device. The
 learner can't tell why the language changed, and that is worse when the change waited out a
