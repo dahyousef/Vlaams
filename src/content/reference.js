@@ -136,14 +136,14 @@ NL.content.sheets = [
           S('Kunt u wat trager spreken?', { fr: 'Pouvez-vous parler plus lentement ?', en: 'Could you speak a bit slower? (formal)' }),
           S('Kunt u dat herhalen?', { fr: 'Pouvez-vous répéter ?', en: 'Could you repeat that? (formal)' }),
           S('Wat betekent dat?', { fr: 'Qu’est-ce que ça veut dire ?', en: 'What does that mean?' }),
-          S('Hoe zeg je dat in het Nederlands?', { fr: 'Comment dit-on ça en néerlandais ?', en: 'How do you say that in Dutch? (informal)' }),
+          S('Hoe zeg je dat in het Nederlands?', { fr: 'Comment dit-on ça en néerlandais ?', en: 'How do you say that in Dutch?' }),
           S('Kunt u het opschrijven?', { fr: 'Pouvez-vous l’écrire ?', en: 'Could you write it down? (formal)' }, { fr: 'Lire est plus facile qu’entendre', en: 'Reading is easier than listening' })
         ]
       },
       {
         h: { fr: 'Gagner du temps', en: 'Buying time' }, rows: [
           S('Een momentje.', { fr: 'Un instant.', en: 'Just a moment.' }),
-          S('Hoe zeg ik dat ook alweer...', { fr: 'Comment on dit déjà...', en: 'How do you say that again... (informal)' }, { fr: 'Trois secondes gagnées et ça sonne natif', en: 'Three seconds gained, and it sounds native' }),
+          S('Hoe zeg ik dat ook alweer...', { fr: 'Comment on dit déjà...', en: 'How do I say that again...' }, { fr: 'Trois secondes gagnées et ça sonne natif', en: 'Three seconds gained, and it sounds native' }),
           S('Ik zoek even het woord.', { fr: 'Je cherche le mot.', en: 'I am looking for the word.' }),
           S('Awel...', { fr: 'Ben...', en: 'Well...' }, { fr: 'Hésitation typiquement flamande. Utilise-la', en: 'A typically Flemish hesitation. Use it' })
         ]

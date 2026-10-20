@@ -165,7 +165,7 @@ NL.content.units = NL.content.units || [];
       W('de taart', { fr: 'la tarte', en: 'tart / cake' }, 'de'),
       W('de koffie', { fr: 'le café', en: 'coffee' }, 'de'),
       W('het water', { fr: 'l’eau', en: 'water' }, 'het'),
-      W('de pint', { fr: 'la bière', en: 'beer (a pint)' }, 'de', 'een pintje', { fr: 'Un « pintje » est la bière standard. Commander « een bier » te marque comme étranger.', en: 'A “pintje” is the standard beer. Ordering “een bier” marks you as a foreigner.' }),
+      W('de pint', { fr: 'la bière', en: 'beer (a glass of lager)' }, 'de', 'een pintje', { fr: 'Un « pintje » est la bière standard. Commander « een bier » te marque comme étranger.', en: 'A “pintje” is the standard beer. Ordering “een bier” marks you as a foreigner.' }),
       W('de frieten', { fr: 'les frites', en: 'chips / fries' }, 'de', null, { fr: 'Toujours au pluriel en Flandre, et jamais « patat ».', en: 'Always plural in Flanders, and never “patat”.' }),
       W('lekker', { fr: 'bon (au goût)', en: 'tasty' }),
       W('de honger', { fr: 'la faim', en: 'hunger' }, 'de'),

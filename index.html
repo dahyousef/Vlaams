@@ -3393,7 +3393,7 @@ NL.content.units = NL.content.units || [];
       W('de taart', { fr: 'la tarte', en: 'tart / cake' }, 'de'),
       W('de koffie', { fr: 'le café', en: 'coffee' }, 'de'),
       W('het water', { fr: 'l’eau', en: 'water' }, 'het'),
-      W('de pint', { fr: 'la bière', en: 'beer (a pint)' }, 'de', 'een pintje', { fr: 'Un « pintje » est la bière standard. Commander « een bier » te marque comme étranger.', en: 'A “pintje” is the standard beer. Ordering “een bier” marks you as a foreigner.' }),
+      W('de pint', { fr: 'la bière', en: 'beer (a glass of lager)' }, 'de', 'een pintje', { fr: 'Un « pintje » est la bière standard. Commander « een bier » te marque comme étranger.', en: 'A “pintje” is the standard beer. Ordering “een bier” marks you as a foreigner.' }),
       W('de frieten', { fr: 'les frites', en: 'chips / fries' }, 'de', null, { fr: 'Toujours au pluriel en Flandre, et jamais « patat ».', en: 'Always plural in Flanders, and never “patat”.' }),
       W('lekker', { fr: 'bon (au goût)', en: 'tasty' }),
       W('de honger', { fr: 'la faim', en: 'hunger' }, 'de'),
@@ -3589,7 +3589,7 @@ NL.content.units = NL.content.units || [];
       W('sturen', { fr: 'envoyer', en: 'to send' }),
       W('uitleggen', { fr: 'expliquer', en: 'to explain' }),
       W('oplossen', { fr: 'résoudre', en: 'to solve' }),
-      W('draaien', { fr: 'tourner / s’exécuter', en: 'to run' }),
+      W('draaien', { fr: 'tourner / s’exécuter', en: 'to turn / to run (of software)' }),
       W('afwerken', { fr: 'terminer', en: 'to finish off' })
     ],
     phrases: [
@@ -3634,7 +3634,7 @@ NL.content.units = NL.content.units || [];
       W('altijd', { fr: 'toujours', en: 'always' }),
       W('soms', { fr: 'parfois', en: 'sometimes' }),
       W('nooit', { fr: 'jamais', en: 'never' }),
-      W('meestal', { fr: 'la plupart du temps', en: 'mostly' }),
+      W('meestal', { fr: 'la plupart du temps', en: 'usually / most of the time' }),
       W('eerst', { fr: 'd’abord', en: 'first' }),
       W('daarna', { fr: 'ensuite', en: 'afterwards' })
     ],
@@ -3703,7 +3703,7 @@ NL.content.units = NL.content.units || [];
       W('de pijn', { fr: 'la douleur', en: 'pain' }, 'de'),
       W('het hoofd', { fr: 'la tête', en: 'head' }, 'het'),
       W('de keel', { fr: 'la gorge', en: 'throat' }, 'de'),
-      W('de buik', { fr: 'le ventre', en: 'stomach' }, 'de'),
+      W('de buik', { fr: 'le ventre', en: 'belly / stomach' }, 'de'),
       W('de rug', { fr: 'le dos', en: 'back' }, 'de'),
       W('de hand', { fr: 'la main', en: 'hand' }, 'de'),
       W('de voet', { fr: 'le pied', en: 'foot' }, 'de'),
@@ -3732,7 +3732,7 @@ NL.content.units = NL.content.units || [];
       P('Ik wil graag een afspraak maken.', { fr: 'Je voudrais prendre rendez-vous.', en: 'I would like to make an appointment.' }),
       P('Kan ik vandaag nog langskomen?', { fr: 'Je peux encore passer aujourd’hui ?', en: 'Can I still come by today?' }),
       P('Heeft u een voorschrift nodig?', { fr: 'Vous avez besoin d’une ordonnance ?', en: 'Do you need a prescription? (formal)' }),
-      P('Het gaat al wat beter.', { fr: 'Ça va déjà un peu mieux.', en: 'It is already going a bit better.' }),
+      P('Het gaat al wat beter.', { fr: 'Ça va déjà un peu mieux.', en: 'It is already a bit better.' }),
       P('Ik ben allergisch voor noten.', { fr: 'Je suis allergique aux noix.', en: 'I am allergic to nuts.' })
     ]
   });
@@ -3831,7 +3831,7 @@ NL.content.patterns = (function () {
       id: 'g-gegij', unit: 'ikengij', level: 'A1',
       title: { fr: 'Ge et gij : ce que tu entends vraiment', en: 'Ge and gij: what you really hear' },
       rule: { fr: 'Dis « je ». Attends-toi à « ge ». C’est la même chose.', en: 'Say “je”. Expect “ge”. It is the same thing.' },
-      nl: 'Hebt ge dat verstaan?', fr: 'Tu as compris ?', en: 'Did you understand that?',
+      nl: 'Hebt ge dat verstaan?', fr: 'Tu as compris ?', en: 'Did you understand that? (informal)',
       explain: {
         fr: 'Les manuels enseignent <span class="ex">jij/je</span>. Le Brabant flamand dit <span class="ex">gij/ge</span> — à la boulangerie, au club de foot, et en face de toi au bureau. Ce n’est ni grossier ni purement dialectal : c’est simplement le sud. Les verbes suivent : <span class="ex">gij zijt</span> (jij bent), <span class="ex">gij hebt</span>, <span class="ex">gij kunt</span>, et les questions se contractent : <span class="ex">Kunde?</span> (kun je), <span class="ex">Hebde?</span> (heb je), <span class="ex">Zijde?</span> (ben je). <b>Produis « je » et tu es toujours correct. Reconnais « ge » ou tu perds la moitié de ce qu’on te dit.</b>',
         en: 'Textbooks teach <span class="ex">jij/je</span>. Flemish Brabant says <span class="ex">gij/ge</span> — at the bakery, at the football club, and across the desk from you at work. It is neither rude nor purely dialect: it is simply the south. The verbs follow: <span class="ex">gij zijt</span> (jij bent), <span class="ex">gij hebt</span>, <span class="ex">gij kunt</span>, and questions contract: <span class="ex">Kunde?</span> (kun je), <span class="ex">Hebde?</span> (heb je), <span class="ex">Zijde?</span> (ben je). <b>Produce “je” and you are always correct. Recognise “ge” or you lose half of what is said to you.</b>'
@@ -3850,7 +3850,7 @@ NL.content.patterns = (function () {
       nl: 'Het kost eenentwintig euro.', fr: 'Ça coûte vingt-et-un euros.', en: 'It costs twenty-one euros.',
       explain: {
         fr: 'Le néerlandais dit les unités avant les dizaines : <span class="ex">eenentwintig</span> (21), <span class="ex">vierenzestig</span> (64), <span class="ex">negenennegentig</span> (99). En un seul mot, sans espace. C’est pour ça qu’un prix ou un numéro de téléphone semble mélangé : tu entends le deuxième chiffre avant le premier. Bonne nouvelle pour toi : <span class="ex">zeventig</span> = septante et <span class="ex">negentig</span> = nonante, exactement comme en Belgique. Le français de France, lui, t’aurait imposé un détour par soixante-dix.',
-        en: 'Dutch says the units before the tens: <span class="ex">eenentwintig</span> (21), <span class="ex">vierenzestig</span> (64), <span class="ex">negenennegentig</span> (99) — literally “one-and-twenty”. As a single word, with no space. That is why a price or a phone number seems jumbled: you hear the second digit before the first. Good news: <span class="ex">zeventig</span> is simply seventy and <span class="ex">negentig</span> is simply ninety.'
+        en: 'Dutch says the units before the tens: <span class="ex">eenentwintig</span> (21, literally “one-and-twenty”), <span class="ex">vierenzestig</span> (64), <span class="ex">negenennegentig</span> (99). As a single word, with no space. That is why a price or a phone number seems jumbled: you hear the second digit before the first. Good news: <span class="ex">zeventig</span> is simply seventy and <span class="ex">negentig</span> is simply ninety.'
       },
       drills: [
         D('Het kost eenentwintig euro.', { fr: 'Ça coûte vingt-et-un euros.', en: 'It costs twenty-one euros.' }, 'eenentwintig'),
@@ -4025,7 +4025,7 @@ NL.content.patterns = (function () {
     'vroeg': [S('Ik sta elke dag vroeg op.', { fr: 'Je me lève tôt tous les jours.', en: 'I get up early every day.' }, 'vroeg'),
       S('Het is nog te vroeg.', { fr: 'Il est encore trop tôt.', en: 'It’s still too early.' }, 'vroeg')],
     'laat': [S('Sorry, ik ben te laat.', { fr: 'Désolé, je suis en retard.', en: 'Sorry, I’m late.' }, 'laat'),
-      S('Het wordt laat vanavond.', { fr: 'Ça va finir tard ce soir.', en: 'It’s getting late this evening.' }, 'laat')],
+      S('Het wordt laat vanavond.', { fr: 'Ça va finir tard ce soir.', en: 'It’s going to be late tonight.' }, 'laat')],
     'straks': [S('Ik bel u straks terug.', { fr: 'Je vous rappelle tout à l’heure.', en: 'I’ll call you back later.' }, 'straks'),
       S('Tot straks!', { fr: 'À tout à l’heure !', en: 'See you later!' }, 'straks')],
 
@@ -4669,14 +4669,14 @@ NL.content.sheets = [
           S('Kunt u wat trager spreken?', { fr: 'Pouvez-vous parler plus lentement ?', en: 'Could you speak a bit slower? (formal)' }),
           S('Kunt u dat herhalen?', { fr: 'Pouvez-vous répéter ?', en: 'Could you repeat that? (formal)' }),
           S('Wat betekent dat?', { fr: 'Qu’est-ce que ça veut dire ?', en: 'What does that mean?' }),
-          S('Hoe zeg je dat in het Nederlands?', { fr: 'Comment dit-on ça en néerlandais ?', en: 'How do you say that in Dutch? (informal)' }),
+          S('Hoe zeg je dat in het Nederlands?', { fr: 'Comment dit-on ça en néerlandais ?', en: 'How do you say that in Dutch?' }),
           S('Kunt u het opschrijven?', { fr: 'Pouvez-vous l’écrire ?', en: 'Could you write it down? (formal)' }, { fr: 'Lire est plus facile qu’entendre', en: 'Reading is easier than listening' })
         ]
       },
       {
         h: { fr: 'Gagner du temps', en: 'Buying time' }, rows: [
           S('Een momentje.', { fr: 'Un instant.', en: 'Just a moment.' }),
-          S('Hoe zeg ik dat ook alweer...', { fr: 'Comment on dit déjà...', en: 'How do you say that again... (informal)' }, { fr: 'Trois secondes gagnées et ça sonne natif', en: 'Three seconds gained, and it sounds native' }),
+          S('Hoe zeg ik dat ook alweer...', { fr: 'Comment on dit déjà...', en: 'How do I say that again...' }, { fr: 'Trois secondes gagnées et ça sonne natif', en: 'Three seconds gained, and it sounds native' }),
           S('Ik zoek even het woord.', { fr: 'Je cherche le mot.', en: 'I am looking for the word.' }),
           S('Awel...', { fr: 'Ben...', en: 'Well...' }, { fr: 'Hésitation typiquement flamande. Utilise-la', en: 'A typically Flemish hesitation. Use it' })
         ]
@@ -5065,7 +5065,7 @@ NL.content.scenarios = (function () {
           C('We hebben gewandeld met de kinderen.', { fr: 'On s’est promenés avec les enfants.', en: 'We went for a walk with the children.' }),
           C('Rustig gebleven, gelukkig.', { fr: 'C’est resté calme, heureusement.', en: 'It stayed quiet, thankfully.' })
         ]),
-        T('Amai, wij zijn naar de match geweest. Zot spannend was dat.', { fr: 'Oh là là, nous on est allés au match. C’était dingue.', en: 'Oh dear, we went to the match. It was crazy exciting.' }, 'Amai, wij zijn naar de match geweest. Zot spannend was da.'),
+        T('Amai, wij zijn naar de match geweest. Zot spannend was dat.', { fr: 'Oh là là, nous on est allés au match. C’était dingue.', en: 'Wow, we went to the match. It was crazy exciting.' }, 'Amai, wij zijn naar de match geweest. Zot spannend was da.'),
         Y({ fr: 'Réagis.', en: 'React.' }, [
           C('Ah, ik heb de match ook gezien!', { fr: 'Ah, j’ai vu le match aussi !', en: 'Ah, I saw the match too!' }),
           C('Ik volg het voetbal niet zo, eerlijk gezegd.', { fr: 'Je ne suis pas trop le foot, honnêtement.', en: 'I don’t really follow football, to be honest.' }, null, { fr: 'Parfaitement acceptable. L’honnêteté fait continuer la conversation ; faire semblant, non.', en: 'Perfectly acceptable. Honesty keeps a conversation going; pretending does not.' })

@@ -81,7 +81,7 @@
     'vroeg': [S('Ik sta elke dag vroeg op.', { fr: 'Je me lève tôt tous les jours.', en: 'I get up early every day.' }, 'vroeg'),
       S('Het is nog te vroeg.', { fr: 'Il est encore trop tôt.', en: 'It’s still too early.' }, 'vroeg')],
     'laat': [S('Sorry, ik ben te laat.', { fr: 'Désolé, je suis en retard.', en: 'Sorry, I’m late.' }, 'laat'),
-      S('Het wordt laat vanavond.', { fr: 'Ça va finir tard ce soir.', en: 'It’s getting late this evening.' }, 'laat')],
+      S('Het wordt laat vanavond.', { fr: 'Ça va finir tard ce soir.', en: 'It’s going to be late tonight.' }, 'laat')],
     'straks': [S('Ik bel u straks terug.', { fr: 'Je vous rappelle tout à l’heure.', en: 'I’ll call you back later.' }, 'straks'),
       S('Tot straks!', { fr: 'À tout à l’heure !', en: 'See you later!' }, 'straks')],
 

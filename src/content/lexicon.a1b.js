@@ -84,7 +84,7 @@ NL.content.units = NL.content.units || [];
       W('sturen', { fr: 'envoyer', en: 'to send' }),
       W('uitleggen', { fr: 'expliquer', en: 'to explain' }),
       W('oplossen', { fr: 'résoudre', en: 'to solve' }),
-      W('draaien', { fr: 'tourner / s’exécuter', en: 'to run' }),
+      W('draaien', { fr: 'tourner / s’exécuter', en: 'to turn / to run (of software)' }),
       W('afwerken', { fr: 'terminer', en: 'to finish off' })
     ],
     phrases: [
@@ -129,7 +129,7 @@ NL.content.units = NL.content.units || [];
       W('altijd', { fr: 'toujours', en: 'always' }),
       W('soms', { fr: 'parfois', en: 'sometimes' }),
       W('nooit', { fr: 'jamais', en: 'never' }),
-      W('meestal', { fr: 'la plupart du temps', en: 'mostly' }),
+      W('meestal', { fr: 'la plupart du temps', en: 'usually / most of the time' }),
       W('eerst', { fr: 'd’abord', en: 'first' }),
       W('daarna', { fr: 'ensuite', en: 'afterwards' })
     ],
@@ -198,7 +198,7 @@ NL.content.units = NL.content.units || [];
       W('de pijn', { fr: 'la douleur', en: 'pain' }, 'de'),
       W('het hoofd', { fr: 'la tête', en: 'head' }, 'het'),
       W('de keel', { fr: 'la gorge', en: 'throat' }, 'de'),
-      W('de buik', { fr: 'le ventre', en: 'stomach' }, 'de'),
+      W('de buik', { fr: 'le ventre', en: 'belly / stomach' }, 'de'),
       W('de rug', { fr: 'le dos', en: 'back' }, 'de'),
       W('de hand', { fr: 'la main', en: 'hand' }, 'de'),
       W('de voet', { fr: 'le pied', en: 'foot' }, 'de'),
@@ -227,7 +227,7 @@ NL.content.units = NL.content.units || [];
       P('Ik wil graag een afspraak maken.', { fr: 'Je voudrais prendre rendez-vous.', en: 'I would like to make an appointment.' }),
       P('Kan ik vandaag nog langskomen?', { fr: 'Je peux encore passer aujourd’hui ?', en: 'Can I still come by today?' }),
       P('Heeft u een voorschrift nodig?', { fr: 'Vous avez besoin d’une ordonnance ?', en: 'Do you need a prescription? (formal)' }),
-      P('Het gaat al wat beter.', { fr: 'Ça va déjà un peu mieux.', en: 'It is already going a bit better.' }),
+      P('Het gaat al wat beter.', { fr: 'Ça va déjà un peu mieux.', en: 'It is already a bit better.' }),
       P('Ik ben allergisch voor noten.', { fr: 'Je suis allergique aux noix.', en: 'I am allergic to nuts.' })
     ]
   });

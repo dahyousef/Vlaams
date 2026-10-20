@@ -130,7 +130,7 @@ NL.content.scenarios = (function () {
           C('We hebben gewandeld met de kinderen.', { fr: 'On s’est promenés avec les enfants.', en: 'We went for a walk with the children.' }),
           C('Rustig gebleven, gelukkig.', { fr: 'C’est resté calme, heureusement.', en: 'It stayed quiet, thankfully.' })
         ]),
-        T('Amai, wij zijn naar de match geweest. Zot spannend was dat.', { fr: 'Oh là là, nous on est allés au match. C’était dingue.', en: 'Oh dear, we went to the match. It was crazy exciting.' }, 'Amai, wij zijn naar de match geweest. Zot spannend was da.'),
+        T('Amai, wij zijn naar de match geweest. Zot spannend was dat.', { fr: 'Oh là là, nous on est allés au match. C’était dingue.', en: 'Wow, we went to the match. It was crazy exciting.' }, 'Amai, wij zijn naar de match geweest. Zot spannend was da.'),
         Y({ fr: 'Réagis.', en: 'React.' }, [
           C('Ah, ik heb de match ook gezien!', { fr: 'Ah, j’ai vu le match aussi !', en: 'Ah, I saw the match too!' }),
           C('Ik volg het voetbal niet zo, eerlijk gezegd.', { fr: 'Je ne suis pas trop le foot, honnêtement.', en: 'I don’t really follow football, to be honest.' }, null, { fr: 'Parfaitement acceptable. L’honnêteté fait continuer la conversation ; faire semblant, non.', en: 'Perfectly acceptable. Honesty keeps a conversation going; pretending does not.' })
