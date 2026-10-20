@@ -57,7 +57,8 @@ The dispatch prompt:
   there is none, write `Sitting: <date and time> — no transcript on disk at <path>`; if the hook printed no line,
   write `Sitting: <date and time> — transcript unknown (no hook line)`. A sitting that is cut off is then recorded too.
   The sitting ends at the maintainer's word, at a limit stop, or at the first task
-  boundary after you have dispatched 10 tasks in it. Then launch the next sitting (see « Launching a sitting »)
+  boundary after its tenth dispatch. Every dispatch counts, a task sent again after a ruling or a crash
+  included: each one adds its return to this session's context, which is what the limit bounds. Then launch the next sitting (see « Launching a sitting »)
   with the start prompt, tell the maintainer the new session's name, and stop. You never ask the maintainer to
   paste anything.
 - A launched session starts in the run's worktree, so the background-session guard does not move it.
