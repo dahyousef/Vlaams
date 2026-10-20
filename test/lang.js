@@ -517,7 +517,7 @@ function langChecks() {
 
 /* 6. Chaque passage qui est du néerlandais du cours déclare le néerlandais : un
    lecteur d'écran ne lit pas « vandaag » à l'anglaise. Vues du cours simple, dans les deux langues. */
-function langAttrCheck(B) {
+function langAttrFind(B, each) {
   const NL = B.NL, U = NL.util, runs = require('./lib/langs').runs, dutch = new Set();
   const walk = v => {
     if (Array.isArray(v)) v.forEach(walk);
@@ -528,29 +528,39 @@ function langAttrCheck(B) {
   Object.keys(NL.content).forEach(k => { if (typeof NL.content[k] === 'object') walk(NL.content[k]); });
   NL.t.nav.forEach(n => dutch.add(U.norm(n.nl)));
   dutch.delete('');
-  /* Un texte français ou anglais qui s'écrit comme un mot néerlandais (merci, hier, open) ne prouve rien : on l'écarte. */
-  const gloss = new Set();
-  const gl = v => {
-    if (typeof v === 'string') gloss.add(U.norm(v));
-    else if (Array.isArray(v)) v.forEach(gl);
-    else if (v && typeof v === 'object') Object.keys(v).forEach(k => gl(v[k]));
+  /* Un mot néerlandais qui s'écrit aussi en français ou en anglais (merci, hier, open, direct) reste cherché :
+     on ne l'écarte que dans un passage qui se déclare français (ou anglais) ET dont le texte est un texte français
+     (ou anglais) du cours. Un élément néerlandais qui montre « merci » sans lang="nl-BE" est une faute. */
+  const gloss = { fr: new Set(), en: new Set() };
+  const gl = (set, v) => {
+    if (typeof v === 'string') set.add(U.norm(v));
+    else if (Array.isArray(v)) v.forEach(x => gl(set, x));
+    else if (v && typeof v === 'object') Object.keys(v).forEach(k => gl(set, v[k]));
   };
   const glWalk = v => {
     if (Array.isArray(v)) v.forEach(glWalk);
-    else if (v && typeof v === 'object') Object.keys(v).forEach(k => { if (k === 'fr' || k === 'en') gl(v[k]); else glWalk(v[k]); });
+    else if (v && typeof v === 'object') Object.keys(v).forEach(k => { if (k === 'fr' || k === 'en') gl(gloss[k], v[k]); else glWalk(v[k]); });
   };
   Object.keys(NL.content).forEach(k => { if (typeof NL.content[k] === 'object') glWalk(NL.content[k]); });
-  ['fr', 'en'].forEach(l => Object.keys(NL.tables[l]).forEach(k => { if (typeof NL.tables[l][k] !== 'function') gl(NL.tables[l][k]); }));
-  gloss.forEach(g => dutch.delete(g));
+  ['fr', 'en'].forEach(l => Object.keys(NL.tables[l]).forEach(k => { if (typeof NL.tables[l][k] !== 'function') gl(gloss[l], NL.tables[l][k]); }));
   ok(dutch.size > 100, '6 : trop peu de mots néerlandais à chercher (' + dutch.size + ')');
   const bad = new Map();
   ['fr', 'en'].forEach(l => {
     (l === 'fr' ? French : English)(B);
-    views(B, (n, h) => runs(h, htmlLang(B)).forEach(r => {
-      if (dutch.has(U.norm(r.text)) && !/^nl/i.test(r.lang)) { const key = l + ' « ' + r.text + ' » (' + (r.lang || 'sans lang') + ')'; if (!bad.has(key)) bad.set(key, n); }
+    each(B, (n, h) => runs(h, htmlLang(B)).forEach(r => {
+      const t = U.norm(r.text), own = /^fr/i.test(r.lang) ? 'fr' : /^en/i.test(r.lang) ? 'en' : null;
+      if (dutch.has(t) && !/^nl/i.test(r.lang) && !(own && gloss[own].has(t))) { const key = l + ' « ' + r.text + ' » (' + (r.lang || 'sans lang') + ')'; if (!bad.has(key)) bad.set(key, n); }
     }));
   });
-  bad.forEach((n, k) => ok(false, '6 : néerlandais sans lang="nl" : ' + k + ' (vue ' + n + ')'));
+  return bad;
+}
+function langAttrCheck(B) {
+  langAttrFind(B, views).forEach((n, k) => ok(false, '6 : néerlandais sans lang="nl" : ' + k + ' (vue ' + n + ')'));
+  /* Le contrôle voit un mot néerlandais qui s'écrit aussi en français ou en anglais : sur des vues plantées, il le dit. */
+  const planted = (b, visit) => { visit('plant', '<p>hier</p><p>merci</p><p lang="nl-BE">hier</p>'); };
+  const found = langAttrFind(B, planted);
+  ok(found.has('en « hier » (en-GB)') && found.has('en « merci » (en-GB)'), '6 : « hier » et « merci » sans lang="nl-BE" dans la vue anglaise ne sont pas signalés');
+  ok(!found.has('fr « hier » (fr)') && !found.has('fr « merci » (fr)'), '6 : « hier » dans un passage français est du français, pas signalé');
 }
 
 /* 6b. Chaque section de référence montre exactement une étiquette d'ancrage, la bonne, dans la langue lue. */
