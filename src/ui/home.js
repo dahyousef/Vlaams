@@ -128,7 +128,7 @@
       if (d.act === 'gram') {
         const g = (NL.content.patterns || []).find(x => x.id === el.dataset.id);
         if (g) NL.ui.openSheet({ custom: NL.ui.card(esc(NL.gloss.of(g.title)),
-          '<p class="rule">' + esc(NL.gloss.of(g.rule)) + '</p><div class="explain">' + NL.gloss.of(g.explain).replace(/<span class="ex">/g, '<span class="ex" lang="nl-BE">') + '</div>' +
+          '<p class="rule">' + esc(NL.gloss.of(g.rule)) + '</p><div class="explain">' + NL.gloss.prose(NL.gloss.of(g.explain)) + '</div>' +
           '<div class="ex-list">' + g.drills.slice(0, 3).map(d2 =>
             '<button class="ex-row" data-say="' + esc(d2.nl) + '"><b lang="nl-BE">' + esc(d2.nl) + '</b><i>' + esc(NL.gloss.of(d2)) + '</i></button>').join('') + '</div>',
           '<button class="btn btn-ghost wide" data-close="1">' + t.close + '</button>') });

@@ -700,6 +700,7 @@ Promise.all([plain.NL.state.open(), paired.NL.state.open()]).then(() => {
       { const WC = plain.NL.gloss.wordClass;
         ok(WC({ kind: 'word', nl: 'gisteren', fr: 'hier' }, 'fr') === 'other', 'wordClass : « hier » (gisteren) n’est pas un verbe');
         ok(WC({ kind: 'word', nl: 'werken', fr: 'travailler' }, 'fr') === 'verb', 'wordClass : « travailler » (werken) reste un verbe');
+        ok(plain.NL.gloss.prose('a <span class="ex">hier</span>') === 'a <span class="ex" lang="nl-BE">hier</span>', 'gloss.prose : span.ex doit porter lang="nl-BE"');
         [['tussen', 'entre'], ['tegen', 'contre'], ['eigen', 'propre']].forEach(([nl, fr]) =>
           ok(WC({ kind: 'word', nl: nl, fr: fr }, 'fr') === 'other', 'wordClass : « ' + fr + ' » (' + nl + ') n’est pas un verbe')); }
       const L6 = boot(null);

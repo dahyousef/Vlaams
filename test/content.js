@@ -243,7 +243,22 @@ NL.state.open().then(() => {
     const t = uTag(v.fr);
     ok(v.en.indexOf(t) >= 0, where + ' « ' + v.nl + ' » : « ' + v.en + ' » doit porter « ' + t + ' »');
   });
-  console.log('  gardes         ' + glossed.length + ' éléments glosés en anglais contrôlés');
+  /* Dans l'explication d'un point de grammaire, un <i> dont le texte est le même en français et en anglais est du
+     néerlandais (<i>Morgen ik ga</i>) ; <i>element</i> / <i>élément</i> diffèrent, c'est de la prose. Il porte lang="nl-BE". */
+  { let seenI = 0;
+    const iTags = s => (String(s).match(/<i(?:\s[^>]*)?>[^<]*<\/i>/g) || []);
+    const iText = t => t.replace(/<[^>]*>/g, '');
+    (RAW.patterns || []).forEach(g => {
+      const ex = g.explain;
+      if (!ex || typeof ex.fr !== 'string' || typeof ex.en !== 'string') return;
+      const en = iTags(ex.en).map(iText);
+      iTags(ex.fr).forEach(t => {
+        seenI++;
+        if (en.indexOf(iText(t)) >= 0) ok(/^<i\s[^>]*lang="nl-BE"/.test(t), g.id + ' : « ' + iText(t) + ' » est du néerlandais dans <i> : lui donner lang="nl-BE"');
+      });
+    });
+    ok(seenI > 0, 'aucun <i> dans les explications de grammaire : le contrôle est creux'); }
+  console.log('  gardes        ' + glossed.length + ' éléments glosés en anglais contrôlés');
 
   console.log('\n' + checks + ' contrôles, ' + (fails === 0 ? 'CONTENU CONFORME' : fails + ' ÉCHEC(S)'));
   process.exit(fails ? 1 : 0);

@@ -207,7 +207,7 @@
         NL.content.sounds.map(s =>
           '<div class="snd-row' + (s.good ? ' good' : s.warn ? ' warn' : '') + '"><div class="snd-head"><b lang="nl-BE">' + esc(s.g) + '</b><code>' + esc(s.ipa) + '</code>' +
           (s.good ? '<span class="snd-tag good">' + NL.t.soundsEasy + '</span>' : s.warn ? '<span class="snd-tag warn">' + NL.t.soundsWatch + '</span>' : '') + '</div>' +
-          '<p lang="fr">' + s.say.replace(/<span class="ex">/g, '<span class="ex" lang="nl-BE">') + '</p></div>').join('') +
+          '<p lang="fr">' + NL.gloss.prose(s.say) + '</p></div>').join('') +
         '</div>';
     }
   };
