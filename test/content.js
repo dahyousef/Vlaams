@@ -170,7 +170,7 @@ NL.state.open().then(() => {
   /* Chaque sens et chaque texte du cours doit finir par porter un `en`. Le reste
      à écrire se compte par lot, et le compte ne peut que baisser. */
   ok(JSON.stringify(RAW).indexOf('{naam}') >= 0, 'RAW n’a pas été pris avant la première construction : {naam} a disparu');
-  const BUDGET = { lexiqueA1: 0, lexiqueA1b: 263, exemples: 414, grammaire: 110, references: 218, scenarios: 135 };
+  const BUDGET = { lexiqueA1: 0, lexiqueA1b: 0, exemples: 414, grammaire: 110, references: 218, scenarios: 135 };
   const batches = { lexiqueA1: [], lexiqueA1b: [], exemples: [], grammaire: [], references: [], scenarios: [] };
   RAW.units.forEach((u, i) => owed(u, 'units[' + i + ']', '', []).forEach(r => {
     if (/\.drills\[/.test(r.where)) batches.exemples.push(r);
