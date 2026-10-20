@@ -152,7 +152,7 @@ NL.content.units = NL.content.units || [];
     words: [
       W('het brood', { fr: 'le pain', en: 'bread' }, 'het'),
       W('de pistolet', { fr: 'le pistolet', en: 'crusty bread roll' }, 'de', null, { fr: 'Emprunté au français, gardé en Flandre. Le nord dirait « broodje ».', en: 'Borrowed from French, kept in Flanders. The north would say “broodje”.' }),
-      W('de koffiekoek', { fr: 'la couque', en: 'sweet breakfast bun' }, 'de', null, { fr: 'La viennoiserie du matin. Le nord dit « zoet broodje ».', en: 'The morning pastry. The north says “zoet broodje”.' }),
+      W('de koffiekoek', { fr: 'la couque', en: 'breakfast pastry' }, 'de', null, { fr: 'La viennoiserie du matin. Le nord dit « zoet broodje ».', en: 'The morning pastry. The north says “zoet broodje”.' }),
       W('een half wit', { fr: 'un demi pain blanc', en: 'half a white loaf' }, null, null, { fr: 'Exactement ce qu’on dit au comptoir. Ajoute « gesneden » pour le faire trancher.', en: 'Exactly what you say at the counter. Add “gesneden” to have it sliced.' }),
       W('gesneden', { fr: 'tranché', en: 'sliced' }),
       W('de bakker', { fr: 'le boulanger', en: 'baker' }, 'de'),
@@ -180,7 +180,7 @@ NL.content.units = NL.content.units || [];
       P('Is dat alles?', { fr: 'Ce sera tout ?', en: 'Will that be all?' }, 'Is da alles?', { fr: 'C’est eux qui te le demandent. Réponse : « Ja, dat is alles ».', en: 'They are the ones who ask you. Answer: “Ja, dat is alles”.' }),
       P('Ja, dat is alles, merci.', { fr: 'Oui, c’est tout, merci.', en: 'Yes, that is all, thanks.' }),
       P('Hoeveel is het?', { fr: 'Ça fait combien ?', en: 'How much is it?' }, 'Hoeveel is ’t?'),
-      P('Ik zou graag een koffiekoek hebben.', { fr: 'Je voudrais une couque.', en: 'I would like a sweet bun.' }, null, { fr: 'La formule polie pour commander : ik zou graag ... hebben.', en: 'The polite way to order: ik zou graag ... hebben.' }),
+      P('Ik zou graag een koffiekoek hebben.', { fr: 'Je voudrais une couque.', en: 'I would like a pastry.' }, null, { fr: 'La formule polie pour commander : ik zou graag ... hebben.', en: 'The polite way to order: ik zou graag ... hebben.' }),
       P('Een pintje, alstublieft.', { fr: 'Une bière, s’il vous plaît.', en: 'A beer, please.' }),
       P('Voor hier of om mee te nemen?', { fr: 'Sur place ou à emporter ?', en: 'Eat in or take away?' }, null, { fr: 'Encore une question qu’on te pose, pas l’inverse.', en: 'Another question they ask you, not the other way round.' }),
       P('Ik heb honger.', { fr: 'J’ai faim.', en: 'I am hungry.' }),
