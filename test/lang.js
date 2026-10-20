@@ -563,6 +563,20 @@ function langAttrCheck(B) {
   ok(!found.has('fr « hier » (fr)') && !found.has('fr « merci » (fr)'), '6 : « hier » dans un passage français est du français, pas signalé');
 }
 
+/* 6c. Le formulaire d'ajout : l'étiquette du champ enregistré sous « en » nomme l'anglais, celle du champ « fr » le français. */
+function addFormCheck(B) {
+  const NL = B.NL;
+  const tap = d => B.listeners.click.forEach(f => f({ target: { closest: () => ({ dataset: d }) } }));
+  [['en', English, /english/i], ['fr', French, /fran[cç]ais/i]].forEach(([l, set, name]) => {
+    set(B);
+    NL.ui.go('woorden');
+    tap({ act: 'addform' });
+    const m = /<label>([^<]*)<input class="textin" id="add-en"/.exec(B.app.innerHTML);
+    ok(m && name.test(m[1]), '6c : en ' + l + ', le champ enregistré sous « ' + NL.lang.current() + ' » est étiqueté « ' + (m && m[1]) + ' »');
+    tap({ act: 'addcancel' });
+  });
+}
+
 /* 6b. Chaque section de référence montre exactement une étiquette d'ancrage, la bonne, dans la langue lue. */
 function anchorCheck(B) {
   const NL = B.NL, A = NL.content.anchors, key = { fr: 'anchorFr', en: 'anchorEn', all: 'anchorAll' };
@@ -704,7 +718,7 @@ Promise.all([plain.NL.state.open(), paired.NL.state.open()]).then(() => {
         [['tussen', 'entre'], ['tegen', 'contre'], ['eigen', 'propre']].forEach(([nl, fr]) =>
           ok(WC({ kind: 'word', nl: nl, fr: fr }, 'fr') === 'other', 'wordClass : « ' + fr + ' » (' + nl + ') n’est pas un verbe')); }
       const L6 = boot(null);
-      return L6.NL.state.open().then(() => langAttrCheck(L6)).then(() => anchorCheck(L6)).then(interfaceCheck);
+      return L6.NL.state.open().then(() => langAttrCheck(L6)).then(() => anchorCheck(L6)).then(() => addFormCheck(L6)).then(interfaceCheck);
     }).then(() => {
       console.log('\n' + checks + ' contrôles, ' + (fails === 0 ? 'LANGUE CONFORME' : fails + ' ÉCHEC(S)'));
       process.exit(fails ? 1 : 0);
