@@ -89,7 +89,7 @@ NL.screens.luisteren = (function () {
       body = '<div class="listen-stage">' +
         '<button class="mic big play" data-act="play" aria-label="' + NL.t.listen + '">' + ICON.speaker(36) + '</button>' +
         '<p class="rev-nl" lang="nl-BE">' + esc(c.be || c.nl) + '</p>' +
-        '<p class="rev-en" lang="' + NL.gloss.htmlLang(c) + '">' + esc(NL.gloss.of(c)) + '</p>' +
+        '<p class="rev-en"' + NL.gloss.langAttr(c) + '>' + esc(NL.gloss.of(c)) + '</p>' +
         '<div class="listen-actions"><button class="btn btn-ghost" data-act="slow">' + NL.t.slow + '</button></div>' +
         '</div>' + shadowPanel(sp);
     }

@@ -194,6 +194,16 @@ NL.state.open().then(() => {
   console.log('  syntax          ' + sources.length + ' sources in SRC and ' + copied.length + ' copied to dist/ (' +
     copied.join(', ') + ') from build.sh: ' + (seen ? seen + ' finding(s)' : 'no var, no ?.'));
 
+  /* The language of a shown meaning has one source: NL.gloss.tag names the tag of a reading
+     language, and NL.gloss.langAttr writes the attribute. A `lang="' + …` built by hand, or an
+     en-GB written outside gloss.js, is a second source, and the two drift apart. */
+  ok(sources.indexOf('src/core/gloss.js') >= 0, 'the lang check looks for src/core/gloss.js, which build.sh no longer lists');
+  sources.filter(f => f !== 'src/core/gloss.js').forEach(f => {
+    const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
+    ok(!/[^\w-]lang="'\s*\+/.test(src), f + ': a lang attribute is built by hand; use NL.gloss.langAttr');
+    ok(src.indexOf('en-GB') < 0, f + ': en-GB is written outside gloss.js; use NL.gloss.tag');
+  });
+
   items.filter(i => i.art).forEach(i =>
     ok(i.nl.startsWith(i.art + ' '), 'article mismatch: ' + i.nl + ' / ' + i.art));
 

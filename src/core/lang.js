@@ -19,7 +19,7 @@ NL.lang = (function () {
     Object.assign(NL.t, NL.tables[l]);
     NL.gloss.use(l);
     NL.content.refresh();
-    document.documentElement.setAttribute('lang', l === 'en' ? 'en-GB' : 'fr');
+    document.documentElement.setAttribute('lang', NL.gloss.tag(l));
     applied = l;
     if (!quiet) notice = bySync ? 'sync' : 'own';
     return true;

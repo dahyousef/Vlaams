@@ -333,7 +333,7 @@ function tableCheck(NL) {
 const French = B => { B.NL.state.setMeta({ displayLang: 'fr' }); B.NL.lang.apply(true); };
 const English = B => { B.NL.state.setMeta({ displayLang: 'en' }); B.NL.lang.apply(true); };
 const tapOn = (B, d) => B.listeners.click.forEach(f => f({ target: { closest: () => ({ dataset: d }) } }));
-const htmlLang = B => B.ctx.document.documentElement.attrs.lang;
+const pageLang = B => B.ctx.document.documentElement.attrs.lang;
 const count = (s, sub) => s.split(sub).length - 1;
 /* La session arrive juste après open() : on l'attend, 5 ms de temps réel. */
 const signedIn = B => new Promise(res => setTimeout(res, 5)).then(() => {
@@ -379,7 +379,7 @@ function langChecks() {
     ok(NL.sync.mergeMeta({ displayLang: 'fr', updatedAt: 1 }, { updatedAt: 2 }).displayLang === 'fr', '5a : la fusion perd displayLang: fr');
     ok(!Object.prototype.hasOwnProperty.call(NL.state.meta(), 'displayLang'), '5a : un appareil neuf porte déjà displayLang');
     ok(NL.lang.current() === 'en', '5a : sans choix, la langue n\'est pas l\'anglais');
-    ok(htmlLang(A) === 'en-GB', '5a : <html lang> vaut « ' + htmlLang(A) + ' » au lieu de en-GB');
+    ok(pageLang(A) === 'en-GB', '5a : <html lang> vaut « ' + pageLang(A) + ' » au lieu de en-GB');
     ok(NL.t.nav[1].label === NL.tables.en.nav[1].label, '5a : NL.t n\'est pas la table anglaise');
 
     /* 5b. Un changement qui arrive en pleine séance ou conversation attend le premier écran d'après. */
@@ -396,11 +396,11 @@ function langChecks() {
         N.state.setMeta({ displayLang: 'fr' }, true);   // ce que fait une synchro
         N.ui.render();                                  // sans le garde de app.js : render() se garde seul
         ok(text(html()) === before, '5b ' + what + ' : l\'écran a changé en pleine séance');
-        ok(htmlLang(B) === 'en-GB', '5b ' + what + ' : <html lang> a changé en pleine séance (' + htmlLang(B) + ')');
+        ok(pageLang(B) === 'en-GB', '5b ' + what + ' : <html lang> a changé en pleine séance (' + pageLang(B) + ')');
         if (what === 'séance') tapOn(B, { quitYes: '1' }); else N.ui.go('vandaag');
         const t = text(html());
         ok(t.indexOf(fr.nav[1].label) >= 0 && t.indexOf(en.nav[1].label) < 0, '5b ' + what + ' : l\'écran d\'après n\'est pas en français');
-        ok(htmlLang(B) === 'fr', '5b ' + what + ' : <html lang> vaut « ' + htmlLang(B) + ' » après la sortie');
+        ok(pageLang(B) === 'fr', '5b ' + what + ' : <html lang> vaut « ' + pageLang(B) + ' » après la sortie');
         ok(count(t, fr.langNotice) === 1, '5b ' + what + ' : l\'avis s\'affiche ' + count(t, fr.langNotice) + ' fois au lieu d\'une');
         N.ui.go('leerpad');
         ok(count(text(html()), fr.langNotice) === 0, '5b ' + what + ' : l\'avis revient au go() suivant');
@@ -481,7 +481,7 @@ function langChecks() {
             ok(R.NL.state.meta().displayLang === 'fr', '5d : après déconnexion et rechargement, meta().displayLang vaut « ' + R.NL.state.meta().displayLang + ' »');
             ok(R.NL.lang.current() === 'fr', '5d : après rechargement, NL.lang.current() vaut « ' + R.NL.lang.current() + ' »');
             R.NL.ui.go('vandaag'); R.NL.ui.openSheet('instellingen');
-            ok(text(R.app.innerHTML).indexOf(R.NL.tables.fr.setLang) >= 0 && htmlLang(R) === 'fr', '5d : après rechargement, la page n\'est pas dessinée en français');
+            ok(text(R.app.innerHTML).indexOf(R.NL.tables.fr.setLang) >= 0 && pageLang(R) === 'fr', '5d : après rechargement, la page n\'est pas dessinée en français');
           });
         });
       }).then(() => {
@@ -512,7 +512,7 @@ function langChecks() {
             views(F, (n, h) => {
               if (n === 'klanken' || n === 'register') {
                 /* Un passage sous lang="fr" ou lang="en" est jugé dans cette langue ; les autres, dans la langue lue. */
-                foreign(h, htmlLang(F)).forEach(w => { if (!hits.has(w)) hits.set(w, n); });
+                foreign(h, pageLang(F)).forEach(w => { if (!hits.has(w)) hits.set(w, n); });
                 return;
               }
               const m = text(h).match(OTHER[l]);
@@ -532,7 +532,7 @@ function langChecks() {
           ok(label() === NL.tables.en.langOther, '5g : en anglais, le réglage dit « ' + label() + ' »');
           ok(G.app.innerHTML.indexOf('data-display-lang="fr"') >= 0, '5g : le bouton ne vise pas le français');
           tapOn(G, { displayLang: 'fr' });
-          ok(NL.lang.current() === 'fr' && htmlLang(G) === 'fr', '5g : le clic ne change pas la langue');
+          ok(NL.lang.current() === 'fr' && pageLang(G) === 'fr', '5g : le clic ne change pas la langue');
           ok(label() === NL.tables.fr.langOther, '5g : en français, le réglage dit « ' + label() + ' »');
           ok(G.app.innerHTML.indexOf('data-display-lang="en"') >= 0, '5g : le bouton ne vise pas l\'anglais');
           ok(text(G.app.innerHTML).indexOf(NL.tables.fr.setLang) >= 0, '5g : le titre du bloc n\'est pas en français');
@@ -574,7 +574,7 @@ function langAttrFind(B, each) {
   const bad = new Map();
   ['fr', 'en'].forEach(l => {
     (l === 'fr' ? French : English)(B);
-    each(B, (n, h) => runs(h, htmlLang(B)).forEach(r => {
+    each(B, (n, h) => runs(h, pageLang(B)).forEach(r => {
       const t = U.norm(r.text), own = /^fr/i.test(r.lang) ? 'fr' : /^en/i.test(r.lang) ? 'en' : null;
       if (dutch.has(t) && !/^nl/i.test(r.lang) && !(own && gloss[own].has(t))) { const key = l + ' « ' + r.text + ' » (' + (r.lang || 'sans lang') + ')'; if (!bad.has(key)) bad.set(key, n); }
     }));
@@ -709,9 +709,9 @@ function displayChecks() {
     NL.lang.set('fr');
     ok(NL.state.meta().displayLang === 'fr', '69.4 : set() n’a pas enregistré le choix');
     ok(NL.t.nav[1].label === en.nav[1].label, '69.4 : set() a changé NL.t en pleine séance');
-    ok(htmlLang(B) === 'en-GB', '69.4 : set() a changé <html lang> en pleine séance (' + htmlLang(B) + ')');
+    ok(pageLang(B) === 'en-GB', '69.4 : set() a changé <html lang> en pleine séance (' + pageLang(B) + ')');
     tapOn(B, { quitYes: '1' });
-    ok(NL.t.nav[1].label === fr.nav[1].label && htmlLang(B) === 'fr', '69.4 : après la séance, l’écran n’est pas en français');
+    ok(NL.t.nav[1].label === fr.nav[1].label && pageLang(B) === 'fr', '69.4 : après la séance, l’écran n’est pas en français');
   });
 
   /* 69.5. Un sens qui vaut « constructor » peut être proposé. */

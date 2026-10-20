@@ -157,7 +157,7 @@ NL.ex = (function () {
       return { type: 'pick', item, prompt: NL.gloss.bare(item), opts };
     },
     view(t, L, phase) {
-      return '<p class="sentence prompt" lang="' + NL.gloss.htmlLang(t.item) + '">' + esc(t.prompt) + '</p>' + optList(t.opts, L, phase, true);
+      return '<p class="sentence prompt"' + NL.gloss.langAttr(t.item) + '>' + esc(t.prompt) + '</p>' + optList(t.opts, L, phase, true);
     },
     ready: (t, L) => !!L.sel,
     judge: (t, L) => ({ ok: !!(L.sel && (t.opts[L.sel.i] || {}).ok) }),
@@ -187,7 +187,7 @@ NL.ex = (function () {
       const n = U.bare(t.item.nl);
       return '<div class="speaker-row">' +
         '<button class="speaker" data-say="' + esc(t.item.art + ' ' + n) + '" aria-label="' + NL.t.listen + '">' + ICON.speaker(26) + '</button>' +
-        '<div class="sentence">&hellip;&nbsp;<span lang="nl-BE">' + esc(n) + '</span><span class="gloss" lang="' + NL.gloss.htmlLang(t.item) + '">' + esc(NL.gloss.bare(t.item)) + '</span></div></div>' +
+        '<div class="sentence">&hellip;&nbsp;<span lang="nl-BE">' + esc(n) + '</span><span class="gloss"' + NL.gloss.langAttr(t.item) + '>' + esc(NL.gloss.bare(t.item)) + '</span></div></div>' +
         optList(t.opts, L, phase, true);
     },
     ready: (t, L) => !!L.sel,
@@ -288,7 +288,7 @@ NL.ex = (function () {
       return { type: 'type', item, target: item.kind === 'word' ? U.bare(item.nl) : (item.drills ? item.nl : item.nl), prompt: item.kind === 'word' ? NL.gloss.bare(item) : NL.gloss.of(item) };
     },
     view(t, L, phase) {
-      return '<div class="sentence prompt" lang="' + NL.gloss.htmlLang(t.item) + '">' + esc(t.prompt) + '</div>' +
+      return '<div class="sentence prompt"' + NL.gloss.langAttr(t.item) + '>' + esc(t.prompt) + '</div>' +
         '<input class="textin" type="text" value="' + esc(L.input) + '" autocomplete="off" autocapitalize="off" ' +
         'spellcheck="false" placeholder="' + NL.t.typeHere + '"' + (phase === 'ask' ? '' : ' disabled') + '>' +
         '<div class="hintline"><span>' + NL.t.specialLetters + '</span>' +
@@ -351,7 +351,7 @@ NL.ex = (function () {
       const hush = untried ? '<div class="mic-actions"><button class="btn btn-ghost" data-quiet="1">' + NL.t.cantSpeak + '</button></div>' : '';
 
       return '<div class="sentence prompt"><span lang="nl-BE">' + esc(t.target) + '</span>' + flemish(t.item.be, t.target) + '</div>' +
-        '<div class="gloss-line" lang="' + NL.gloss.htmlLang(t.item) + '">' + esc(t.prompt) + '</div>' +
+        '<div class="gloss-line"' + NL.gloss.langAttr(t.item) + '>' + esc(t.prompt) + '</div>' +
         speakerRow(t.target, {}) + panel + hush;
     },
     ready(t, L) {
@@ -465,7 +465,7 @@ NL.ex = (function () {
       return { type: 'corrige', item, bad, faulty: i, other: j, target: item.nl };
     },
     view(t, L, phase) {
-      return '<div class="gloss-line" lang="' + NL.gloss.htmlLang(t.item) + '">' + esc(NL.gloss.of(t.item)) + '</div>' +
+      return '<div class="gloss-line"' + NL.gloss.langAttr(t.item) + '>' + esc(NL.gloss.of(t.item)) + '</div>' +
         '<div class="corrige">' + t.bad.map((w, i) => {
           let cls = '';
           if (phase !== 'ask') { if (i === t.faulty || i === t.other) cls = ' bad'; }
@@ -496,7 +496,7 @@ NL.ex = (function () {
     },
     view(t, L, phase) {
       return '<div class="sentence prompt" lang="nl-BE">' + esc(t.item.nl) + '</div>' +
-        '<div class="gloss-line" lang="' + NL.gloss.htmlLang(t.item) + '">' + esc(NL.gloss.of(t.item)) + '</div>' + optList(t.opts, L, phase, true);
+        '<div class="gloss-line"' + NL.gloss.langAttr(t.item) + '>' + esc(NL.gloss.of(t.item)) + '</div>' + optList(t.opts, L, phase, true);
     },
     ready: (t, L) => !!L.sel,
     judge: (t, L) => ({ ok: !!(L.sel && (t.opts[L.sel.i] || {}).ok) }),

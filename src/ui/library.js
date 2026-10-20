@@ -71,7 +71,7 @@
               esc(U.bare(it.nl)) + '</span>' +
               (it.be && NL.state.meta().showFlemish !== false ? '<span class="v-be">' + NL.t.wordsHere + ' <span lang="nl-BE">' + esc(it.be) + '</span></span>' : '') +
               '</span>' +
-              '<span class="v-en" lang="' + NL.gloss.htmlLang(it) + '">' + esc(NL.gloss.bare(it)) + '</span>' +
+              '<span class="v-en"' + NL.gloss.langAttr(it) + '>' + esc(NL.gloss.bare(it)) + '</span>' +
               pips(s) +
               (it.unit === 'eigen' ? '<button class="iconbtn tiny" data-del="' + it.id + '" aria-label="' + NL.t.del + '">' + NL.ui.I.x + '</button>' : '') +
               '</div>';

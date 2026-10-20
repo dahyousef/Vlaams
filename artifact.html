@@ -814,10 +814,12 @@ NL.gloss = (function () {
      et le dit à un lecteur d'écran. C'est ici, et nulle part ailleurs, que cette règle s'applique. */
   const prose = html => String(html == null ? '' : html).replace(/<span class="ex">/g, '<span class="ex" lang="nl-BE">');
 
-  /* L'attribut lang d'un sens montré : celui de la langue où il se lit. */
-  const htmlLang = x => langOf(x) === 'en' ? 'en-GB' : 'fr';
+  /* La balise d'une langue lue, pour un lecteur d'écran : la page (NL.lang) comme chaque sens. */
+  const tag = l => l === 'en' ? 'en-GB' : 'fr';
+  /* L'attribut lang d'un sens ou d'un texte montré, espace compris : la langue où il se lit. */
+  const langAttr = x => ' lang="' + tag(langOf(x)) + '"';
 
-  return { prose, use, current, other, has, langOf, htmlLang, of, pair, bare, senses, sameSense, sameMeaning, wordClass, cognate };
+  return { prose, use, current, other, has, langOf, tag, langAttr, of, pair, bare, senses, sameSense, sameMeaning, wordClass, cognate };
 })();
 </script>
 <script>
@@ -5299,7 +5301,7 @@ NL.lang = (function () {
     Object.assign(NL.t, NL.tables[l]);
     NL.gloss.use(l);
     NL.content.refresh();
-    document.documentElement.setAttribute('lang', l === 'en' ? 'en-GB' : 'fr');
+    document.documentElement.setAttribute('lang', NL.gloss.tag(l));
     applied = l;
     if (!quiet) notice = bySync ? 'sync' : 'own';
     return true;
@@ -5480,7 +5482,7 @@ NL.ex = (function () {
       return { type: 'pick', item, prompt: NL.gloss.bare(item), opts };
     },
     view(t, L, phase) {
-      return '<p class="sentence prompt" lang="' + NL.gloss.htmlLang(t.item) + '">' + esc(t.prompt) + '</p>' + optList(t.opts, L, phase, true);
+      return '<p class="sentence prompt"' + NL.gloss.langAttr(t.item) + '>' + esc(t.prompt) + '</p>' + optList(t.opts, L, phase, true);
     },
     ready: (t, L) => !!L.sel,
     judge: (t, L) => ({ ok: !!(L.sel && (t.opts[L.sel.i] || {}).ok) }),
@@ -5510,7 +5512,7 @@ NL.ex = (function () {
       const n = U.bare(t.item.nl);
       return '<div class="speaker-row">' +
         '<button class="speaker" data-say="' + esc(t.item.art + ' ' + n) + '" aria-label="' + NL.t.listen + '">' + ICON.speaker(26) + '</button>' +
-        '<div class="sentence">&hellip;&nbsp;<span lang="nl-BE">' + esc(n) + '</span><span class="gloss" lang="' + NL.gloss.htmlLang(t.item) + '">' + esc(NL.gloss.bare(t.item)) + '</span></div></div>' +
+        '<div class="sentence">&hellip;&nbsp;<span lang="nl-BE">' + esc(n) + '</span><span class="gloss"' + NL.gloss.langAttr(t.item) + '>' + esc(NL.gloss.bare(t.item)) + '</span></div></div>' +
         optList(t.opts, L, phase, true);
     },
     ready: (t, L) => !!L.sel,
@@ -5611,7 +5613,7 @@ NL.ex = (function () {
       return { type: 'type', item, target: item.kind === 'word' ? U.bare(item.nl) : (item.drills ? item.nl : item.nl), prompt: item.kind === 'word' ? NL.gloss.bare(item) : NL.gloss.of(item) };
     },
     view(t, L, phase) {
-      return '<div class="sentence prompt" lang="' + NL.gloss.htmlLang(t.item) + '">' + esc(t.prompt) + '</div>' +
+      return '<div class="sentence prompt"' + NL.gloss.langAttr(t.item) + '>' + esc(t.prompt) + '</div>' +
         '<input class="textin" type="text" value="' + esc(L.input) + '" autocomplete="off" autocapitalize="off" ' +
         'spellcheck="false" placeholder="' + NL.t.typeHere + '"' + (phase === 'ask' ? '' : ' disabled') + '>' +
         '<div class="hintline"><span>' + NL.t.specialLetters + '</span>' +
@@ -5674,7 +5676,7 @@ NL.ex = (function () {
       const hush = untried ? '<div class="mic-actions"><button class="btn btn-ghost" data-quiet="1">' + NL.t.cantSpeak + '</button></div>' : '';
 
       return '<div class="sentence prompt"><span lang="nl-BE">' + esc(t.target) + '</span>' + flemish(t.item.be, t.target) + '</div>' +
-        '<div class="gloss-line" lang="' + NL.gloss.htmlLang(t.item) + '">' + esc(t.prompt) + '</div>' +
+        '<div class="gloss-line"' + NL.gloss.langAttr(t.item) + '>' + esc(t.prompt) + '</div>' +
         speakerRow(t.target, {}) + panel + hush;
     },
     ready(t, L) {
@@ -5788,7 +5790,7 @@ NL.ex = (function () {
       return { type: 'corrige', item, bad, faulty: i, other: j, target: item.nl };
     },
     view(t, L, phase) {
-      return '<div class="gloss-line" lang="' + NL.gloss.htmlLang(t.item) + '">' + esc(NL.gloss.of(t.item)) + '</div>' +
+      return '<div class="gloss-line"' + NL.gloss.langAttr(t.item) + '>' + esc(NL.gloss.of(t.item)) + '</div>' +
         '<div class="corrige">' + t.bad.map((w, i) => {
           let cls = '';
           if (phase !== 'ask') { if (i === t.faulty || i === t.other) cls = ' bad'; }
@@ -5819,7 +5821,7 @@ NL.ex = (function () {
     },
     view(t, L, phase) {
       return '<div class="sentence prompt" lang="nl-BE">' + esc(t.item.nl) + '</div>' +
-        '<div class="gloss-line" lang="' + NL.gloss.htmlLang(t.item) + '">' + esc(NL.gloss.of(t.item)) + '</div>' + optList(t.opts, L, phase, true);
+        '<div class="gloss-line"' + NL.gloss.langAttr(t.item) + '>' + esc(NL.gloss.of(t.item)) + '</div>' + optList(t.opts, L, phase, true);
     },
     ready: (t, L) => !!L.sel,
     judge: (t, L) => ({ ok: !!(L.sel && (t.opts[L.sel.i] || {}).ok) }),
@@ -7268,10 +7270,10 @@ NL.screens.sessie = (function () {
             '<button class="bub-say" data-say="' + esc(b.be || b.nl) + '" aria-label="' + NL.t.replay + '">' + ICON.speaker(17) + '</button>' +
             '<div><p class="bub-nl" lang="nl-BE">' + esc(b.be || b.nl) + '</p>' +
             (b.be && U.norm(b.be) !== U.norm(b.nl) ? '<p class="bub-std">' + NL.t.scnStd + ' <span lang="nl-BE">' + esc(b.nl) + '</span></p>' : '') +
-            '<p class="bub-en" lang="' + NL.gloss.htmlLang(b) + '">' + esc(NL.gloss.of(b)) + '</p></div></div>';
+            '<p class="bub-en"' + NL.gloss.langAttr(b) + '>' + esc(NL.gloss.of(b)) + '</p></div></div>';
         }
         return '<div class="bub you"><div><p class="bub-nl" lang="nl-BE">' + esc(b.nl) + '</p>' +
-          '<p class="bub-en" lang="' + NL.gloss.htmlLang(b) + '">' + esc(NL.gloss.of(b)) + '</p>' +
+          '<p class="bub-en"' + NL.gloss.langAttr(b) + '>' + esc(NL.gloss.of(b)) + '</p>' +
           (b.score ? '<p class="bub-score">' + esc(b.score) + '</p>' : '') + '</div></div>';
       }).join('');
 
@@ -7516,7 +7518,7 @@ NL.screens.luisteren = (function () {
       body = '<div class="listen-stage">' +
         '<button class="mic big play" data-act="play" aria-label="' + NL.t.listen + '">' + ICON.speaker(36) + '</button>' +
         '<p class="rev-nl" lang="nl-BE">' + esc(c.be || c.nl) + '</p>' +
-        '<p class="rev-en" lang="' + NL.gloss.htmlLang(c) + '">' + esc(NL.gloss.of(c)) + '</p>' +
+        '<p class="rev-en"' + NL.gloss.langAttr(c) + '>' + esc(NL.gloss.of(c)) + '</p>' +
         '<div class="listen-actions"><button class="btn btn-ghost" data-act="slow">' + NL.t.slow + '</button></div>' +
         '</div>' + shadowPanel(sp);
     }
@@ -7706,7 +7708,7 @@ NL.screens.luisteren = (function () {
               esc(U.bare(it.nl)) + '</span>' +
               (it.be && NL.state.meta().showFlemish !== false ? '<span class="v-be">' + NL.t.wordsHere + ' <span lang="nl-BE">' + esc(it.be) + '</span></span>' : '') +
               '</span>' +
-              '<span class="v-en" lang="' + NL.gloss.htmlLang(it) + '">' + esc(NL.gloss.bare(it)) + '</span>' +
+              '<span class="v-en"' + NL.gloss.langAttr(it) + '>' + esc(NL.gloss.bare(it)) + '</span>' +
               pips(s) +
               (it.unit === 'eigen' ? '<button class="iconbtn tiny" data-del="' + it.id + '" aria-label="' + NL.t.del + '">' + NL.ui.I.x + '</button>' : '') +
               '</div>';
@@ -7872,7 +7874,7 @@ NL.screens.fouten = (function () {
       html += '<div class="vrow">' +
         '<button class="speaker tiny" data-say="' + esc(U.bare(it.nl)) + '" aria-label="' + t.listen + '">' + NL.ex.ICON.speaker(17) + '</button>' +
         '<span class="v-nl" lang="nl-BE">' + (it.art ? '<span class="art ' + it.art + '">' + it.art + '</span>' : '') + esc(U.bare(it.nl)) + '</span>' +
-        '<span class="v-en" lang="' + NL.gloss.htmlLang(it) + '">' + esc(NL.gloss.bare(it)) + '</span>' +
+        '<span class="v-en"' + NL.gloss.langAttr(it) + '>' + esc(NL.gloss.bare(it)) + '</span>' +
         '<span class="muted small">' + t.missRow(x.wrong, x.wrong + x.right) + '</span>' +
         '</div>';
     });
