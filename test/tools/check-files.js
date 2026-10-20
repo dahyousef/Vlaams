@@ -8,7 +8,7 @@
    Chaque `where` est le chemin que donne owed() dans test/lib/prose.js. */
 const fs = require('fs'), path = require('path');
 const browser = require('../lib/browser');
-const { COLLECTIONS, owed } = require('../lib/prose');
+const { COLLECTIONS, owed, at } = require('../lib/prose');
 const ROOT = process.argv[2] || path.join(__dirname, '..', '..');
 const OUT = process.argv[3];
 if (!OUT) { console.log('usage: node test/tools/check-files.js <racine> <dossier-de-sortie>'); process.exit(1); }
@@ -23,13 +23,6 @@ COLLECTIONS.forEach(k => { RAW[k] = JSON.parse(JSON.stringify(NL.content[k] || [
 const cell = x => (x === null || x === undefined ? '' : String(x)).replace(/[\t\r\n]+/g, ' ');
 const line = cols => cols.map(cell).join('\t');
 
-/* Retrouve dans RAW l'objet qu'un `where` désigne. */
-function at(where) {
-  const re = /\[(\d+)\]|\.?([^.\[\]]+)/g;
-  let v = RAW, m;
-  while ((m = re.exec(where)) && v !== undefined && v !== null) v = m[1] !== undefined ? v[+m[1]] : v[m[2]];
-  return v;
-}
 /* Le texte français ou anglais d'une valeur : une paire, ou une chaîne (français seul). */
 const side = (v, l) => (v && typeof v === 'object') ? v[l] : (l === 'fr' ? v : '');
 
@@ -52,11 +45,11 @@ NL.state.open().then(() => {
   places.forEach(r => {
     if (GLOSS.test(r.where)) { glossPlaces++; return; }
     if (SENTENCE.test(r.where)) {
-      const o = at(r.where.replace(/\.fr$/, ''));
-      files['sentences.tsv'].push(line([r.where, o && o.nl, o && o.fr, o && o.en]));
+      const o = at(RAW, r.where.replace(/\.fr$/, ''));
+      files['sentences.tsv'].push(line([r.where, o.nl, o.fr, o.en]));
       return;
     }
-    const v = at(r.where);
+    const v = at(RAW, r.where);
     files['prose.tsv'].push(line([r.where, side(v, 'fr'), side(v, 'en')]));
   });
 
@@ -76,5 +69,8 @@ NL.state.open().then(() => {
   });
   const sum = files['glosses.tsv'].length + files['sentences.tsv'].length + files['prose.tsv'].length;
   console.log('glosses + sentences + prose = ' + sum + ' ; owed() liste ' + places.length + ' endroits (' + glossPlaces + ' de gloses)');
-  process.exit(sum === places.length ? 0 : 1);
+  /* Chaque endroit hors gloses donne sa ligne : seules les gloses se comptent de deux côtés. */
+  const glosses = files['glosses.tsv'].length;
+  if (glosses !== glossPlaces) console.log('ÉCART : glosses.tsv a ' + glosses + ' lignes, owed() ' + glossPlaces + ' endroits de gloses');
+  process.exit(glosses === glossPlaces ? 0 : 1);
 }).catch(e => { console.log('CRASH ' + (e && e.stack || e)); process.exit(1); });

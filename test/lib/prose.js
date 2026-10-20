@@ -19,4 +19,16 @@ function owed(v, where, key, out) {
   return out;
 }
 
-module.exports = { PROSE, COLLECTIONS, has, owed };
+/* Ce qu'un `where` d'owed() désigne dans `root`. Un chemin qui ne désigne rien est une erreur,
+   pas une valeur vide : la séance de contrôle lirait une ligne blanche sans le savoir. */
+function at(root, where) {
+  const re = /\[(\d+)\]|\.?([^.\[\]]+)/g;
+  let v = root, m;
+  while ((m = re.exec(where))) {
+    v = (v === undefined || v === null) ? undefined : (m[1] !== undefined ? v[+m[1]] : v[m[2]]);
+    if (v === undefined) throw new Error('« ' + where + ' » ne désigne rien');
+  }
+  return v;
+}
+
+module.exports = { PROSE, COLLECTIONS, has, owed, at };
