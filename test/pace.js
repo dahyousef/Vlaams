@@ -15,8 +15,18 @@ const MODE = process.argv.slice(4);
 const DRIFT = MODE.indexOf('drift') >= 0;
 if (DRIFT) process.env.TZ = 'Europe/Brussels';
 
-let fails = 0, checks = 0;
+let fails = 0, checks = 0, unjudged = 0;
 const ok = (c, m) => { checks++; if (!c) { console.log('   ✗ ' + m); fails++; } };
+/* Ce qui ne se voit qu'avec le temps — un lendemain, une première demande à voix haute,
+   une séance sans parler qui croise un exercice à voix haute, une fréquence, un étalement —
+   n'est pas jugé sous HORIZON jours : sur un seul jour, ces contrôles échouent sans rien
+   dire du moteur. */
+const HORIZON = 30;
+const okLong = (c, m) => {
+  if (DAYS >= HORIZON) { ok(c, m); return; }
+  unjudged++;
+  if (!c) console.log('   · non jugé, il faut au moins ' + HORIZON + ' jours : ' + m);
+};
 const P = (l, v) => console.log('  ' + String(l).padEnd(38) + v);
 const B = browser.open({
   root: ROOT, seed: browser.SEED, now: T0, ua: 'Chrome/120 OPR/106', blobs: true, byId: 'stub',
@@ -174,7 +184,7 @@ NL.state.open().then(() => {
      vingt-quatre heures pile après la réponse, celui qui étudie à la même heure
      chaque jour n'en revoyait aucun le lendemain : rien n'était encore dû quand
      sa séance se composait. Cette suite ne voit pas l'oubli : elle compte. */
-  ok(nextDay > 0, 'aucun des ' + leftOneDay + ' éléments laissés à un jour n’est revenu le lendemain');
+  okLong(nextDay > 0, 'aucun des ' + leftOneDay + ' éléments laissés à un jour n’est revenu le lendemain');
   P('revenus le lendemain', nextDay + ' sur ' + leftOneDay + ' laissés à un jour');
   /* L'apprenant qui dérive : son lendemain se compte à l'heure locale, et les
      jours où il commence plus tôt que la veille sont ceux qu'aucun autre ne
@@ -182,7 +192,7 @@ NL.state.open().then(() => {
   if (DRIFT) {
     const offsets = [Date.UTC(2026, 0, 15), Date.UTC(2026, 6, 15)].map(t => new Date(t).getTimezoneOffset()).join(' / ');
     ok(offsets === '-60 / -120', 'l’apprenant qui dérive tourne aux décalages ' + offsets + ' (janvier / juillet), pas à ceux de Bruxelles (-60 / -120) : son lendemain ne se compte pas à l’heure locale');
-    ok(nextEarlier > 0, 'aucun des ' + leftEarlier + ' éléments laissés à un jour n’est revenu le lendemain, les jours où la séance commence plus tôt que la veille');
+    okLong(nextEarlier > 0,'aucun des ' + leftEarlier + ' éléments laissés à un jour n’est revenu le lendemain, les jours où la séance commence plus tôt que la veille');
     P('  dont les jours commencés plus tôt', nextEarlier + ' sur ' + leftEarlier);
   }
   /* Dire tôt : un mot ou une phrase rencontré le premier jour est demandé à voix
@@ -191,8 +201,8 @@ NL.state.open().then(() => {
   const firstDay = Object.keys(seenOnDay).filter(id => seenOnDay[id].has(1) && NL.content.byId(id).kind !== 'pattern');
   const waits = firstDay.map(id => aloud[id] || Infinity).sort((a, b) => a - b);
   const typical = waits[Math.floor(waits.length / 2)], latest = waits[waits.length - 1];
-  ok(typical <= 10, 'un élément du premier jour est typiquement demandé à voix haute le jour ' + typical + ' : plus de dix jours');
-  ok(latest <= 21, 'un élément du premier jour attend le jour ' + latest + ' pour être demandé à voix haute : plus de trois semaines');
+  okLong(typical <= 10,'un élément du premier jour est typiquement demandé à voix haute le jour ' + typical + ' : plus de dix jours');
+  okLong(latest <= 21,'un élément du premier jour attend le jour ' + latest + ' pour être demandé à voix haute : plus de trois semaines');
   P('première demande à voix haute', 'jours ' + waits[0] + ' à ' + latest + ', pour les ' + waits.length + ' éléments du premier jour');
   /* Et dire tôt ne doit pas se payer sur le sens du second compte : un élément
      que l'on « sait produire » a passé l'échelon de l'écrit en étant écrit. Lu à
@@ -205,7 +215,7 @@ NL.state.open().then(() => {
   /* L'apprenant qui ne peut pas toujours parler : mettre de côté ne coûte rien,
      ne laisse rien passer à voix haute, et ne fait rien sauter. */
   if (QUIET) {
-    ok(taps > 0, 'aucune séance sans parler n’a rencontré d’exercice à voix haute : la simulation ne vérifie rien');
+    okLong(taps > 0,'aucune séance sans parler n’a rencontré d’exercice à voix haute : la simulation ne vérifie rien');
     ok(touched === 0, touched + ' « je ne peux pas parler » ont modifié un enregistrement, écrit au journal ou entamé le budget du jour');
     ok(spokeAfter === 0, spokeAfter + ' exercice(s) à voix haute servis après « je ne peux pas parler »');
     ok(detour === 0, detour + ' élément(s) mis de côté sont revenus autrement qu’à voix haute');
@@ -223,7 +233,7 @@ NL.state.open().then(() => {
     const f = seenOnDay[id].size / DAYS;
     if (f > worst) { worst = f; worstId = id; }
   });
-  ok(worst <= 0.4, 'un élément revient ' + Math.round(worst * 100) + '% des jours (' + worstId + ') — il oscille sous son plafond');
+  okLong(worst <= 0.4,'un élément revient ' + Math.round(worst * 100) + '% des jours (' + worstId + ') — il oscille sous son plafond');
   P('élément le plus fréquent', Math.round(worst * 100) + '% des jours');
 
   const pc = k => Math.round((mix[k] || 0) / tasks * 100);
@@ -234,7 +244,7 @@ NL.state.open().then(() => {
      plancher mathématiquement inatteignable. */
   const floor = Object.keys(mix).reduce((a2, k) => a2 + Math.pow(mix[k] / tasks, 2), 0);
   const actual = backToBack / tasks;
-  ok(actual < floor * 0.85,
+  okLong(actual < floor * 0.85,
     "l etalement n apporte rien : " + Math.round(actual * 100) + "% contre " +
     Math.round(floor * 100) + '% au hasard');
   P('répétitions dos à dos', Math.round(actual * 100) + '%  (hasard : ' + Math.round(floor * 100) + '%)');
@@ -260,6 +270,7 @@ NL.state.open().then(() => {
     console.log('  → le contenu s’épuise : c’est la phase 4 qui le règle, pas le moteur.');
   }
 
-  console.log('\n' + checks + ' vérifications, ' + (fails === 0 ? 'AUCUN PROBLÈME' : fails + ' PROBLÈME(S)'));
+  console.log('\n' + checks + ' vérifications, ' + (fails === 0 ? 'AUCUN PROBLÈME' : fails + ' PROBLÈME(S)') +
+    (unjudged ? ' ; ' + unjudged + ' non jugée(s) : il faut au moins ' + HORIZON + ' jours' : ''));
   process.exit(fails ? 1 : 0);
 }).catch(e => { console.log('BOOT FAIL: ' + e.stack); process.exit(1); });
