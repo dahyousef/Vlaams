@@ -25,4 +25,11 @@ function runs(html, rootLang) {
   flush(src.length);
   return out;
 }
-module.exports = { runs };
+/* Combien de fois `sub` paraît dans `s` : un avis se dit une fois, pas deux. */
+const count = (s, sub) => s.split(sub).length - 1;
+
+/* Ce qu'une fonction des tables fr et en reçoit dans un test : un nombre par argument, pris
+   dans `nums` ; paceNote, comme à l'écran, un rythme fait du premier et du dernier. */
+const argsOf = (k, f, nums) => k === 'paceNote' ? [{ mins: nums[0], cap: nums[nums.length - 1] }] : nums.slice(0, f.length);
+
+module.exports = { runs, count, argsOf };

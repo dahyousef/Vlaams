@@ -204,6 +204,19 @@ NL.state.open().then(() => {
     ok(src.indexOf('en-GB') < 0, f + ': en-GB is written outside gloss.js; use NL.gloss.tag');
   });
 
+  /* The suites share their helpers through test/lib, and a copy drifts from the original.
+     A click goes through B.tap, there is one fake Supabase, and a due date comes from the
+     suite's clock, never from an epoch written out by hand. */
+  const suites = ['test', 'test/tools'].reduce((all, d) => all.concat(fs.readdirSync(path.join(ROOT, d))
+    .filter(f => /\.js$/.test(f)).map(f => d + '/' + f)), []);
+  suites.forEach(f => {
+    const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
+    ok(!/target:\s*\{\s*closest:\s*\(\)\s*=>\s*\(\{\s*dataset/.test(src), f + ': builds a click by hand; use B.tap from test/lib/browser.js');
+    ok(!/createClient\s*(:|\([^)]*\)\s*\{)/.test(src), f + ': defines a second fake Supabase; use test/lib/supabase.js');
+    ok(!/\.due\s*=\s*\d{10,}/.test(src), f + ': writes a due date from a bare epoch; use the suite clock, as test/lib/seed.js does');
+  });
+  console.log('  suites          ' + suites.length + ' files: no hand-built click, no second fake Supabase, no due date from a bare epoch');
+
   items.filter(i => i.art).forEach(i =>
     ok(i.nl.startsWith(i.art + ' '), 'article mismatch: ' + i.nl + ' / ' + i.art));
 

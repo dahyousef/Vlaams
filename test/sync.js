@@ -4,6 +4,8 @@
    réglages, la boîte d'envoi qui survit à une panne réseau, l'effacement quand un
    autre compte se connecte, et l'inertie totale sans configuration. */
 const browser = require('./lib/browser');
+const { count } = require('./lib/langs');
+const { dueReviews } = require('./lib/seed');
 const ROOT = process.argv[2];
 
 let fails = 0, checks = 0;
@@ -11,103 +13,8 @@ const ok = (c, m) => { checks++; if (!c) { console.log('  FAIL: ' + m); fails++;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 /* ---------------- faux serveur ---------------- */
-const KEYS = {
-  srs_records: ['user_id', 'item_id'], user_meta: ['user_id'],
-  custom_words: ['user_id', 'id'], review_log: ['user_id', 't', 'item_id']
-};
-/* rls : chaque requête ne voit que les lignes de sa session. L'éteindre joue une
-   politique tombée ou assouplie : un effacement doit alors se borner lui-même.
-   failNext : le nom d'une table dont la prochaine lecture échoue, une fois. */
-const server = { tables: {}, users: {}, down: false, requests: 0, rls: true, failNext: null };
-Object.keys(KEYS).forEach(t => { server.tables[t] = new Map(); });
-const keyOf = (t, row) => KEYS[t].map(k => row[k]).join('|');
-const clone = v => JSON.parse(JSON.stringify(v));
-const rowsFor = (t, uid) => [...server.tables[t].values()].filter(r => r.user_id === uid);
-
-function fakeLib(device) {
-  return {
-    createClient(url, key, opts) {
-      const handlers = [];
-      const fire = (ev, s) => handlers.forEach(h => h(ev, s));
-      const session = () => { const raw = device.store['sb-session']; return raw ? JSON.parse(raw) : null; };
-      const uid = () => (session() ? session().user.id : null);
-
-      function query(table) {
-        const q = { filters: [], from: 0, to: Infinity };
-        const run = () => {
-          server.requests++;
-          if (server.down) return Promise.resolve({ data: null, error: { message: 'network down' } });
-          if (server.failNext === table && !q.del) { server.failNext = null; return Promise.resolve({ data: null, error: { message: 'network down' } }); }
-          if (!uid()) return Promise.resolve({ data: [], error: null });     // RLS : rien sans session
-          let rows = server.rls ? rowsFor(table, uid()) : [...server.tables[table].values()];
-          q.filters.forEach(f => { rows = rows.filter(f); });
-          if (q.del) {
-            rows.forEach(r => server.tables[table].delete(keyOf(table, r)));
-            return Promise.resolve({ error: null });
-          }
-          return Promise.resolve({ data: clone(rows.slice(q.from, q.to + 1)), error: null });
-        };
-        const b = {
-          select() { return b; },
-          eq(col, v) { q.filters.push(r => r[col] === v); return b; },
-          gte(col, v) { q.filters.push(r => r[col] >= v); return b; },
-          lt(col, v) { q.filters.push(r => r[col] < v); return b; },
-          delete() { q.del = true; return b; },
-          range(a, z) { q.from = a; q.to = z; return b; },
-          then(res, rej) { return run().then(res, rej); },
-          upsert(rows, o) {
-            server.requests++;
-            if (server.down) return Promise.resolve({ error: { message: 'network down' } });
-            rows = Array.isArray(rows) ? rows : [rows];
-            for (const r of rows) {
-              if (r.user_id !== uid()) return Promise.resolve({ error: { message: 'RLS violation' } });
-            }
-            rows.forEach(r => {
-              const k = keyOf(table, r);
-              const old = server.tables[table].get(k);
-              if (o && o.ignoreDuplicates && old) return;
-              if (old && r.updated_at != null && r.updated_at < old.updated_at) return;   // déclencheur keep_newer
-              const row = clone(r);
-              /* déclencheur keep_reset, qui part après keep_newer : une écriture qui ferait reculer resetAt
-                 garde le resetAt et le progress du serveur, et prend le reste. */
-              if (old && table === 'user_meta') {
-                const num = v => (typeof v === 'number' ? v : 0);
-                if (num(row.data.resetAt) < num(old.data.resetAt)) {
-                  row.data.resetAt = old.data.resetAt;
-                  if ('progress' in old.data) row.data.progress = clone(old.data.progress); else delete row.data.progress;
-                }
-              }
-              server.tables[table].set(k, row);
-            });
-            return Promise.resolve({ error: null });
-          }
-        };
-        return b;
-      }
-
-      return {
-        from: query,
-        auth: {
-          onAuthStateChange(fn) { handlers.push(fn); return { data: { subscription: { unsubscribe() {} } } }; },
-          getSession: () => Promise.resolve({ data: { session: session() } }),
-          signInWithOtp({ email, options }) {
-            device.sentTo = email; device.redirect = options && options.emailRedirectTo;
-            return Promise.resolve({ error: null });
-          },
-          verifyOtp({ email, token, type }) {
-            if (type !== 'email' || token !== '123456') return Promise.resolve({ data: {}, error: { message: 'Token has expired or is invalid' } });
-            const user = server.users[email] || (server.users[email] = { id: 'uid-' + Object.keys(server.users).length, email });
-            const s = { user };
-            device.store['sb-session'] = JSON.stringify(s);
-            fire('SIGNED_IN', s);
-            return Promise.resolve({ data: { user, session: s }, error: null });
-          },
-          signOut() { delete device.store['sb-session']; fire('SIGNED_OUT', null); return Promise.resolve({ error: null }); }
-        }
-      };
-    }
-  };
-}
+const { fakeSupabase, KEYS, keyOf, clone } = require('./lib/supabase');
+const { server, fakeLib, rowsFor } = fakeSupabase();
 
 /* ---------------- un appareil ---------------- */
 function device(name, withConfig, store, idb) {
@@ -134,7 +41,7 @@ function device(name, withConfig, store, idb) {
     return r;
   };
   dev.offline = v => { ctx.navigator.onLine = !v; (B.listeners[v ? 'offline' : 'online'] || []).forEach(f => f()); };
-  dev.tap = d => (B.listeners.click || []).forEach(f => f({ target: { closest: () => ({ dataset: d }) } }));
+  dev.tap = B.tap;
   dev.fire = type => (B.listeners[type] || []).forEach(f => f());
   return dev;
 }
@@ -1068,7 +975,6 @@ const items = NL => NL.content.allItems();
     for (const d of [T1, T2]) { await d.boot(); await d.signIn('langue@example.com'); d.NL.lang.apply(true); d.NL.ui.go('vandaag'); }
     const fr = T1.NL.tables.fr, en = T1.NL.tables.en;
     const shown = d => d.root.innerHTML.replace(/<[^>]*>/g, ' ');
-    const count = (s, sub) => s.split(sub).length - 1;
     T1.NL.lang.set('fr'); T1.NL.ui.render();
     ok(count(shown(T1), fr.langNotice) === 1 && shown(T1).indexOf(fr.langSynced) < 0, '69.3: the switch made on this device does not show the notice alone');
     await T1.NL.sync.flush();
@@ -1082,9 +988,7 @@ const items = NL => NL.content.allItems();
     await T2.NL.sync.flush(); T2.NL.ui.render();
     ok(count(shown(T2), en.langSynced + ' ' + en.langNotice) === 1, '69.3: after a flush that brought English, doctor does not say the change came from another device');
     T2.NL.ui.go('vandaag');
-    T2.NL.content.allItems().filter(it => it.unit !== 'eigen').slice(0, 12).forEach((it, i) => {
-      T2.NL.srs.seed(it, 1); const r = T2.NL.state.rec(it.id); r.due = Date.now() - 1000 * (i + 1); T2.NL.state.setRec(r);
-    });
+    dueReviews(T2.NL, 12, Date.now());
     ok(T2.NL.screens.sessie.begin('vandaag'), '69.3: no session to start'); T2.NL.ui.go('sessie'); await wait(3);
     T1.NL.lang.set('fr'); T1.NL.ui.render(); await T1.NL.sync.flush();
     await T2.NL.sync.pull(); T2.NL.ui.render();

@@ -4,7 +4,9 @@
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const browser = require('./lib/browser');
 const { PROSE, COLLECTIONS } = require('./lib/prose');
-const { runs } = require('./lib/langs');
+const { runs, count, argsOf } = require('./lib/langs');
+const { fakeSupabase } = require('./lib/supabase');
+const { dueReviews } = require('./lib/seed');
 const ROOT = process.argv[2] || path.join(__dirname, '..');
 let fails = 0, checks = 0;
 const ok = (c, m) => { checks++; if (!c) { console.log('  FAIL: ' + m); fails++; } };
@@ -25,21 +27,13 @@ function pairUp(C) {
   return n;
 }
 const T0 = Date.parse('2026-10-05T08:00:00Z');
-const fakeSupabase = () => ({
-  createClient: () => {
-    let open = true;
-    const q = { then: (res, rej) => Promise.resolve({ data: [], error: null }).then(res, rej), upsert: () => Promise.resolve({ error: null }) };
-    ['select', 'eq', 'gte', 'lt', 'delete', 'range'].forEach(k => { q[k] = () => q; });
-    return { from: () => q, auth: {
-      onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
-      getSession: () => Promise.resolve({ data: { session: open ? { user: { id: 'uid-lang', email: 'lang@example.com' } } : null } }),
-      signOut: () => { open = false; return Promise.resolve({ error: null }); } } };
-  }
-});
+/* account : un serveur neuf, et l'appareil déjà connecté. */
 function boot(prepare, store, account) {
-  const B = browser.open({ root: ROOT, seed: browser.SEED, now: T0, store: store || undefined, byId: 'stub', media: true, skip: ['src/app.js'],
+  const dev = { store: store || {} };
+  if (account) dev.store['sb-session'] = JSON.stringify({ user: { id: 'uid-lang', email: 'lang@example.com' } });
+  const B = browser.open({ root: ROOT, seed: browser.SEED, now: T0, store: dev.store, byId: 'stub', media: true, skip: ['src/app.js'],
     config: account ? { supabaseUrl: 'https://example.supabase.co', supabaseAnonKey: 'anon' } : undefined,
-    supabase: account ? fakeSupabase() : undefined,
+    supabase: account ? fakeSupabase().fakeLib(dev) : undefined,
     voices: [{ name: 'Microsoft Bart - Dutch (Belgium)', lang: 'nl-BE', localService: true }] });
   if (prepare) prepare(B.NL);
   vm.runInContext(fs.readFileSync(path.join(ROOT, 'src/app.js'), 'utf8'), B.ctx);
@@ -59,9 +53,8 @@ function views(B, visit) {
   const html = () => B.app.innerHTML;
   /* Des échéances fixes et toutes différentes : l'ordre d'une séance ne doit rien à l'horloge. */
   let seq = 0;
-  const put = (it, rung) => { NL.srs.seed(it, rung); const r = NL.state.rec(it.id); r.due = 1700000000000 - 1000 * (++seq); NL.state.setRec(r); };
+  const put = (it, rung) => { NL.srs.seed(it, rung); const r = NL.state.rec(it.id); r.due = T0 - 1000 * (++seq); NL.state.setRec(r); };
   const fresh = () => { NL.state.clearAll(); NL.content.refresh(); };
-  const tap = d => B.listeners.click.forEach(f => f({ target: { closest: () => ({ dataset: d }) } }));
   const builtIn = () => NL.content.allItems().filter(it => it.unit !== 'eigen');
 
   /* 1. Les écrans, sur un compte entamé où quelques éléments sont ratés. */
@@ -76,9 +69,9 @@ function views(B, visit) {
   /* 3. Les panneaux, et les cartes d'export et d'import. */
   ['instellingen', 'reset-confirm'].forEach(s => { NL.ui.go('vandaag'); NL.ui.openSheet(s); visit('panneau ' + s, html()); });
   NL.ui.go('vandaag'); NL.ui.openSheet('instellingen');
-  tap({ act: 'copy-show' }); visit('export', html());
+  B.tap({ act: 'copy-show' }); visit('export', html());
   NL.ui.go('vandaag'); NL.ui.openSheet('instellingen');
-  tap({ act: 'paste-show' }); visit('import', html());
+  B.tap({ act: 'paste-show' }); visit('import', html());
   NL.ui.closeSheet();
 
   /* 4. Chaque carte de grammaire. */
@@ -304,7 +297,7 @@ function tableCheck(NL) {
     if (typeof f === 'function') {
       ok(f.length === e.length, 'en.' + k + ' : ' + e.length + ' argument(s) au lieu de ' + f.length);
       [[3, 7, 12], Array(f.length).fill(1)].forEach(n => {
-        const args = k === 'paceNote' ? [{ mins: n[0], cap: n[n.length - 1] }] : n;
+        const args = argsOf(k, f, n);
         const rf = f.apply(null, args), re = e.apply(null, args);
         ok(typeof rf === 'string' && typeof re === 'string', k + ' : une fonction doit rendre une chaîne');
         if (typeof rf === 'string' && typeof re === 'string') {
@@ -333,9 +326,7 @@ function tableCheck(NL) {
    séance, l'avis, les mots à soi, ce que la restauration et la remise à zéro gardent. */
 const French = B => { B.NL.state.setMeta({ displayLang: 'fr' }); B.NL.lang.apply(true); };
 const English = B => { B.NL.state.setMeta({ displayLang: 'en' }); B.NL.lang.apply(true); };
-const tapOn = (B, d) => B.listeners.click.forEach(f => f({ target: { closest: () => ({ dataset: d }) } }));
 const pageLang = B => B.ctx.document.documentElement.attrs.lang;
-const count = (s, sub) => s.split(sub).length - 1;
 /* La session arrive juste après open() : on l'attend, 5 ms de temps réel. */
 const signedIn = B => new Promise(res => setTimeout(res, 5)).then(() => {
   ok(B.NL.sync.user && B.NL.sync.user.id === 'uid-lang', '5d : le faux compte n\'est pas ouvert');
@@ -388,9 +379,7 @@ function langChecks() {
     return B.NL.state.open().then(() => {
       const N = B.NL, S = N.screens.sessie, html = () => B.app.innerHTML;
       const fr = N.tables.fr, en = N.tables.en;
-      N.content.allItems().filter(it => it.unit !== 'eigen').slice(0, 12).forEach((it, i) => {
-        N.srs.seed(it, 1); const r = N.state.rec(it.id); r.due = 1700000000000 - 1000 * (i + 1); N.state.setRec(r);
-      });
+      dueReviews(N, 12, T0);
       const waits = (what, enter) => {
         enter();
         const before = text(html());
@@ -398,7 +387,7 @@ function langChecks() {
         N.ui.render();                                  // sans le garde de app.js : render() se garde seul
         ok(text(html()) === before, '5b ' + what + ' : l\'écran a changé en pleine séance');
         ok(pageLang(B) === 'en-GB', '5b ' + what + ' : <html lang> a changé en pleine séance (' + pageLang(B) + ')');
-        if (what === 'séance') tapOn(B, { quitYes: '1' }); else N.ui.go('vandaag');
+        if (what === 'séance') B.tap({ quitYes: '1' }); else N.ui.go('vandaag');
         const t = text(html());
         ok(t.indexOf(fr.nav[1].label) >= 0 && t.indexOf(en.nav[1].label) < 0, '5b ' + what + ' : l\'écran d\'après n\'est pas en français');
         ok(pageLang(B) === 'fr', '5b ' + what + ' : <html lang> vaut « ' + pageLang(B) + ' » après la sortie');
@@ -532,7 +521,7 @@ function langChecks() {
           NL.ui.go('vandaag'); NL.ui.openSheet('instellingen');
           ok(label() === NL.tables.en.langOther, '5g : en anglais, le réglage dit « ' + label() + ' »');
           ok(G.app.innerHTML.indexOf('data-display-lang="fr"') >= 0, '5g : le bouton ne vise pas le français');
-          tapOn(G, { displayLang: 'fr' });
+          G.tap({ displayLang: 'fr' });
           ok(NL.lang.current() === 'fr' && pageLang(G) === 'fr', '5g : le clic ne change pas la langue');
           ok(label() === NL.tables.fr.langOther, '5g : en français, le réglage dit « ' + label() + ' »');
           ok(G.app.innerHTML.indexOf('data-display-lang="en"') >= 0, '5g : le bouton ne vise pas l\'anglais');
@@ -595,14 +584,13 @@ function langAttrCheck(B) {
 /* 6c. Le formulaire d'ajout : l'étiquette du champ enregistré sous « en » nomme l'anglais, celle du champ « fr » le français. */
 function addFormCheck(B) {
   const NL = B.NL;
-  const tap = d => B.listeners.click.forEach(f => f({ target: { closest: () => ({ dataset: d }) } }));
   [['en', English, /english/i], ['fr', French, /fran[cç]ais/i]].forEach(([l, set, name]) => {
     set(B);
     NL.ui.go('woorden');
-    tap({ act: 'addform' });
+    B.tap({ act: 'addform' });
     const m = /<label>([^<]*)<input class="textin" id="add-en"/.exec(B.app.innerHTML);
     ok(m && name.test(m[1]), '6c : en ' + l + ', le champ enregistré sous « ' + NL.lang.current() + ' » est étiqueté « ' + (m && m[1]) + ' »');
-    tap({ act: 'addcancel' });
+    B.tap({ act: 'addcancel' });
   });
 }
 
@@ -639,9 +627,6 @@ function anchorCheck(B) {
 /* #69. Un appareil neuf par contrôle ; l'étiquette 69.n est le point du ticket. */
 function displayChecks() {
   const open = prepare => { const B = boot(prepare); return B.NL.state.open().then(() => B); };
-  const due12 = N => N.content.allItems().filter(it => it.unit !== 'eigen').slice(0, 12).forEach((it, i) => {
-    N.srs.seed(it, 1); const r = N.state.rec(it.id); r.due = 1700000000000 - 1000 * (i + 1); N.state.setRec(r);
-  });
 
   /* 69.1. Un sens montré dans l'autre langue porte cette langue. */
   const c1 = () => open(NL => {
@@ -754,14 +739,14 @@ function displayChecks() {
   /* 69.4. set() en pleine séance enregistre le choix, et rien d'autre. */
   const c4 = () => open(null).then(B => {
     const NL = B.NL, en = NL.tables.en, fr = NL.tables.fr;
-    English(B); due12(NL);
+    English(B); dueReviews(NL, 12, T0);
     ok(NL.screens.sessie.begin('vandaag'), '69.4 : aucune séance à démarrer');
     NL.ui.go('sessie');
     NL.lang.set('fr');
     ok(NL.state.meta().displayLang === 'fr', '69.4 : set() n’a pas enregistré le choix');
     ok(NL.t.nav[1].label === en.nav[1].label, '69.4 : set() a changé NL.t en pleine séance');
     ok(pageLang(B) === 'en-GB', '69.4 : set() a changé <html lang> en pleine séance (' + pageLang(B) + ')');
-    tapOn(B, { quitYes: '1' });
+    B.tap({ quitYes: '1' });
     ok(NL.t.nav[1].label === fr.nav[1].label && pageLang(B) === 'fr', '69.4 : après la séance, l’écran n’est pas en français');
   });
 
@@ -789,7 +774,7 @@ function displayChecks() {
   const c6 = () => open(null).then(B => {
     const NL = B.NL, real = NL.ex.get;
     let thrown = 0;
-    English(B); due12(NL);
+    English(B); dueReviews(NL, 12, T0);
     NL.ex.get = n => thrown ? real(n) : Object.assign(Object.create(real(n)), { build() { thrown++; throw new Error('essai 69.6'); } });
     NL.screens.sessie.begin('vandaag');
     NL.ex.get = real;
@@ -824,10 +809,10 @@ function displayChecks() {
   const c11 = () => open(null).then(B => {
     const NL = B.NL, en = NL.tables.en, fr = NL.tables.fr;
     English(B); NL.ui.go('doctor');
-    tapOn(B, { act: 'rec' });
+    B.tap({ act: 'rec' });
     return new Promise(r => setImmediate(r)).then(() => {
       ok(text(B.app.innerHTML).indexOf(en.docRecDenied) >= 0, '69.11 : le refus du micro n’est pas affiché, le contrôle est creux');
-      NL.ui.go('vandaag'); NL.ui.openSheet('instellingen'); tapOn(B, { displayLang: 'fr' });
+      NL.ui.go('vandaag'); NL.ui.openSheet('instellingen'); B.tap({ displayLang: 'fr' });
       NL.ui.go('doctor');
       const t = text(B.app.innerHTML);
       ok(t.indexOf(fr.docRecDenied) >= 0 && t.indexOf(en.docRecDenied) < 0, '69.11 : après le passage au français, le verdict du micro reste en anglais');

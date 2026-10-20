@@ -12,6 +12,7 @@
 const fs = require('fs'), path = require('path');
 const browser = require('../lib/browser');
 const { COLLECTIONS, owed, at } = require('../lib/prose');
+const { argsOf } = require('../lib/langs');
 const ROOT = process.argv[2] || path.join(__dirname, '..', '..');
 const OUT = process.argv[3];
 
@@ -61,12 +62,11 @@ NL.state.open().then(() => {
   });
 
   const T = NL.tables;
-  /* Une fonction reçoit autant de nombres qu'elle prend d'arguments ; paceNote, ce que l'écran lui passe. */
+  /* Ce que chaque fonction reçoit, test/lib/langs.js le dit : un nombre par argument, paceNote un rythme. */
   const NUMS = [3, 7, 12];
-  const ARGS = { paceNote: [NL.srs.pace()] };
   const show = (t, k) => {
     const v = t[k];
-    if (typeof v === 'function') return v.apply(null, ARGS[k] || NUMS.slice(0, v.length));
+    if (typeof v === 'function') return v.apply(null, argsOf(k, v, NUMS));
     if (typeof v === 'string') return v;
     return JSON.stringify(v);
   };
