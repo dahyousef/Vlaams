@@ -583,6 +583,9 @@ function anchorCheck(B) {
   const NL = B.NL, A = NL.content.anchors, key = { fr: 'anchorFr', en: 'anchorEn', all: 'anchorAll' };
   ok(A && A.sounds === 'fr' && A.loans === 'fr' && A.faux === 'fr' && A.fauxEn === 'en' && A.register === 'all' &&
     A.hetRules === 'all' && A.deRules === 'all' && A.sheets === 'all', '6b : NL.content.anchors n\'a pas la forme attendue');
+  /* L'étiquette se lit comme une note sous le titre, pas comme une deuxième ligne du titre en capitales grasses. */
+  const css = (/(^|[}\s])\.anchor\s*\{([^}]*)\}/.exec(fs.readFileSync(path.join(ROOT, 'styles.css'), 'utf8')) || [])[2] || '';
+  ok(/text-transform:\s*none/.test(css) && /font-weight:\s*400/.test(css), '6b : styles.css ne donne pas à .anchor son propre style (ni capitales ni gras)');
   ['fr', 'en'].forEach(l => {
     (l === 'fr' ? French : English)(B);
     const shown = (screen, id) => {
