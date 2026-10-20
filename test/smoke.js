@@ -136,7 +136,7 @@ NL.state.open().then(() => {
   ok(JSON.stringify(NL.content.allItems()).indexOf('Testdorp') < 0, 'clearing the settings left personal data behind');
   console.log('  personalisation  placeholders fill and clear cleanly');
 
-  /* French sweep: every built-in item has a French gloss. */
+  /* Build sweep: every built-in item has a French gloss, and the page declares English. */
   items.forEach(i => {
     ok(i.fr, 'no French gloss on ' + i.id);
   });
@@ -146,7 +146,9 @@ NL.state.open().then(() => {
     ['>Overslaan<', '>Nakijken<', '>Start de sessie<', '>Terug naar Vandaag<',
      'Welke is het?', 'Tik de woorden hieronder'].forEach(s =>
       ok(html.indexOf(s) < 0, 'untranslated interface string in build: ' + s));
-    console.log('  french sweep    build is clean of known EN/NL interface strings');
+    ok(html.indexOf('<html lang="en-GB">') >= 0, 'index.html must declare <html lang="en-GB">');
+    ok(html.indexOf('<meta name="description" content="Learn Flemish Dutch: spaced repetition, speaking aloud, and the language as it is really spoken in Flanders.">') >= 0, 'index.html must carry the English meta description');
+    console.log('  build sweep     build is clean of known EN/NL interface strings, and declares en-GB');
   }
 
   /* Les deux sorties du build sont en LF, quelle que soit la fin de ligne des sources dans la copie de

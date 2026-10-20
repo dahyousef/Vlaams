@@ -65,11 +65,11 @@ emit_scripts() {
 # ---- index.html : the real page ----
 {
   echo '<!doctype html>'
-  echo '<html lang="nl-BE">'
+  echo '<html lang="en-GB">'
   echo '<head>'
   echo '<meta charset="utf-8">'
   echo '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">'
-  echo '<meta name="description" content="Vlaams leren in het Frans: gespreide herhaling, hardop spreken, en de taal zoals ze in Vlaanderen echt gesproken wordt.">'
+  echo '<meta name="description" content="Learn Flemish Dutch: spaced repetition, speaking aloud, and the language as it is really spoken in Flanders.">'
   echo '<meta name="theme-color" content="#1F4B3F">'
   echo '<meta name="apple-mobile-web-app-capable" content="yes">'
   echo '<title>Vlaams</title>'

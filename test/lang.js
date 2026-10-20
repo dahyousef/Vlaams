@@ -347,6 +347,9 @@ function markedBoth(NL) {
     Object.keys(tb).forEach(k => { tb[k] = markLeaves(tb[k], l + ':' + k, k === 'nav'); });
   });
   Object.keys(NL.t).forEach(k => { NL.t[k] = markLeaves(NL.t[k], 'fr:' + k, k === 'nav'); });
+  /* Les trois pages françaises : le français du texte en ⟪n⟫ aussi (elles sont des chaînes simples). */
+  const mark = (rows, keys) => rows.forEach(r => keys.forEach(k => { if (typeof r[k] === 'string') r[k] = '⟪' + (n++) + '⟫'; }));
+  mark(NL.content.sounds, ['say']); mark(NL.content.loans, ['fr', 'note']); mark(NL.content.faux, ['fr', 'trap']);
 }
 
 function langChecks() {
@@ -474,9 +477,17 @@ function langChecks() {
           const F = boot(markedBoth);
           return F.NL.state.open().then(() => {
             if (l === 'fr') French(F);
-            const hits = new Map();
+            const hits = new Map(), badFr = /ENd+|⟦en:/, badEn = /⟪|⟦fr:/;
             views(F, (n, h) => {
-              if (n === 'klanken' || n === 'register') return;   // les trois pages françaises : tâche 13
+              if (n === 'klanken' || n === 'register') {
+                /* Un passage sous lang="fr" ou lang="en" est jugé dans cette langue ; les autres, dans la langue lue. */
+                require('./lib/langs').runs(h, htmlLang(F)).forEach(r => {
+                  const re = /^fr/i.test(r.lang) ? badFr : /^en/i.test(r.lang) ? badEn : bad;
+                  const m = r.text.match(re);
+                  if (m && !hits.has(m[0])) hits.set(m[0], n);
+                });
+                return;
+              }
               const m = text(h).match(bad);
               if (m && !hits.has(m[0])) hits.set(m[0], n);
             });

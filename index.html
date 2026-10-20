@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="nl-BE">
+<html lang="en-GB">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Vlaams leren in het Frans: gespreide herhaling, hardop spreken, en de taal zoals ze in Vlaanderen echt gesproken wordt.">
+<meta name="description" content="Learn Flemish Dutch: spaced repetition, speaking aloud, and the language as it is really spoken in Flanders.">
 <meta name="theme-color" content="#1F4B3F">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Vlaams</title>
@@ -7767,7 +7767,7 @@ NL.screens.luisteren = (function () {
         NL.content.loans.map(r =>
           '<div class="reg-row">' +
           '<button class="reg-cell be" lang="nl-BE" data-say="' + esc(r.nl) + '">' + esc(r.nl) + '</button>' +
-          '<span class="reg-cell std">' + esc(NL.gloss.of(r)) +
+          '<span class="reg-cell std" lang="fr">' + esc(NL.gloss.of(r)) +
           (NL.gloss.of(r.note) ? '<em>' + esc(NL.gloss.of(r.note)) + '</em>' : '') + '</span>' +
           '</div>').join('') +
         '</div>' +
@@ -7778,7 +7778,7 @@ NL.screens.luisteren = (function () {
         NL.content.faux.map(r =>
           '<div class="reg-row">' +
           '<button class="reg-cell be" lang="nl-BE" data-say="' + esc(r.nl) + '">' + esc(r.nl) + '</button>' +
-          '<span class="reg-cell std">' + esc(NL.gloss.of(r)) + '<em>' + esc(r.trap) + '</em></span>' +
+          '<span class="reg-cell std" lang="fr">' + esc(NL.gloss.of(r)) + '<em>' + esc(r.trap) + '</em></span>' +
           '</div>').join('') +
         '</div>' +
 
@@ -7821,7 +7821,7 @@ NL.screens.luisteren = (function () {
         NL.content.sounds.map(s =>
           '<div class="snd-row' + (s.good ? ' good' : s.warn ? ' warn' : '') + '"><div class="snd-head"><b lang="nl-BE">' + esc(s.g) + '</b><code>' + esc(s.ipa) + '</code>' +
           (s.good ? '<span class="snd-tag good">' + NL.t.soundsEasy + '</span>' : s.warn ? '<span class="snd-tag warn">' + NL.t.soundsWatch + '</span>' : '') + '</div>' +
-          '<p>' + s.say.replace(/<span class="ex">/g, '<span class="ex" lang="nl-BE">') + '</p></div>').join('') +
+          '<p lang="fr">' + s.say.replace(/<span class="ex">/g, '<span class="ex" lang="nl-BE">') + '</p></div>').join('') +
         '</div>';
     }
   };
