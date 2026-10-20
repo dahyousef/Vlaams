@@ -303,7 +303,7 @@ NL.state.open().then(() => {
     ok(cell(t.statProduced) === cp.produce, 'the strip does not give ' + cp.produce + ' « ' + t.statProduced + ' », it gives ' + cell(t.statProduced));
     ok(home.indexOf(cp.met + ' ' + t.statMet) >= 0 && home.indexOf(cp.produce + ' ' + t.statProduce) >= 0, 'the home screen does not give the same two numbers');
     ok(cell(t.statMine) === 3 && plus.split(t.statMine).length - 1 === 1, 'the own words do not appear once as « 3 ' + t.statMine + ' »: ' + cell(t.statMine) + ' / ' + (plus.split(t.statMine).length - 1));
-const want = [t.statMet, t.statProduced, t.statMine, t.statSpoken, t.statBest, t.statCombo, t.statDefi, t.tallyXp].join(' | ');
+    const want = [t.statMet, t.statProduced, t.statMine, t.statSpoken, t.statBest, t.statCombo, t.statDefi, t.tallyXp].join(' | ');
     const got = (strip.match(/<b>[0-9]+<\/b> [^<]*/g) || []).map(c => c.replace(/^<b>[0-9]+<\/b> /, '')).join(' | ');
     ok(got === want, 'the Plus strip shows « ' + got + ' » instead of « ' + want + ' »');
     SCREENS.forEach(n => { let err = null; try { NL.screens[n].render(); } catch (e) { err = e; } ok(!err, n + ' throws: ' + (err && err.message)); });

@@ -199,9 +199,10 @@ NL.sync = (function () {
 
   /* Déconnexion : on envoie ce qui reste, puis on efface l'appareil. La personne
      suivante ne voit rien de la progression ; seule la langue d'affichage reste
-     (clearAll la garde), et le compte suivant en hérite : il l'envoie si ses
-     propres réglages n'en ont pas. Pas encore rattaché, ce qui a été fait ici
-     n'est pas encore au compte : on le rattache d'abord. */
+     (clearAll la garde, sans updatedAt). Le compte suivant en hérite s'il n'en a
+     pas, et l'envoie ; s'il en a une, c'est la sienne qui l'emporte. Pas encore
+     rattaché, ce qui a été fait ici n'est pas encore au compte : on le
+     rattache d'abord. */
   async function signOut() {
     if (!enabled || !user) return;
     if (!attached()) { try { await adopt(); } catch (e) {} }
