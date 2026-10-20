@@ -217,6 +217,10 @@ NL.state.open().then(() => {
   const doctor = fs.readFileSync(path.join(ROOT, 'src/ui/doctor.js'), 'utf8');
   ok((doctor.match(/get label\(\)/g) || []).length === 1, 'src/ui/doctor.js writes a tier\'s getter pair more than once; use tierText');
 
+  /* Rebuilt settings keep the device's language in one place, withDeviceLang. */
+  const state = fs.readFileSync(path.join(ROOT, 'src/core/state.js'), 'utf8');
+  ok((state.match(/\.displayLang\s*=[^=]/g) || []).length === 1, 'src/core/state.js gives rebuilt settings the device\'s language in more than one place; use withDeviceLang');
+
   /* The suites share their helpers through test/lib, and a copy drifts from the original.
      A click goes through B.tap, there is one fake Supabase, and a due date comes from the
      suite's clock, never from an epoch written out by hand. */
