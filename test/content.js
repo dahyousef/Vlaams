@@ -167,10 +167,8 @@ NL.state.open().then(() => {
   console.log('  ids             ' + (pinned.length - moved) + ' / ' + pinned.length + ' à leur place');
 
   /* ============================================ 6. l'anglais qui reste dû */
-  /* Chaque sens et chaque texte du cours doit finir par porter un `en`. Le reste
-     à écrire se compte par lot, et le compte ne peut que baisser. */
+  /* Chaque sens et chaque texte du cours doit porter un `en`. Il ne reste rien à écrire. */
   ok(JSON.stringify(RAW).indexOf('{naam}') >= 0, 'RAW n’a pas été pris avant la première construction : {naam} a disparu');
-  const BUDGET = { lexiqueA1: 0, lexiqueA1b: 0, exemples: 0, grammaire: 0, references: 218, scenarios: 0 };
   const batches = { lexiqueA1: [], lexiqueA1b: [], exemples: [], grammaire: [], references: [], scenarios: [] };
   RAW.units.forEach((u, i) => owed(u, 'units[' + i + ']', '', []).forEach(r => {
     if (/\.drills\[/.test(r.where)) batches.exemples.push(r);
@@ -179,13 +177,10 @@ NL.state.open().then(() => {
   ['patterns', 'openTasks'].forEach(k => owed(RAW[k], k, '', []).forEach(r => batches.grammaire.push(r)));
   ['register', 'hetRules', 'deRules', 'sheets'].forEach(k => owed(RAW[k], k, '', []).forEach(r => batches.references.push(r)));
   owed(RAW.scenarios, 'scenarios', '', []).forEach(r => batches.scenarios.push(r));
-  Object.keys(BUDGET).forEach(b => {
-    const left = batches[b].filter(r => !r.ok), n = left.length;
-    ok(n <= BUDGET[b], b + ' ' + n + ' anglais dus, budget ' + BUDGET[b] + ' — baisser le budget quand on écrit, jamais le lever   [' +
-      left.slice(0, 3).map(r => r.where).join(', ') + ']');
-    ok(n >= BUDGET[b], b + ' : seulement ' + n + ' anglais dus : baisser le budget à ' + n + ' pour verrouiller le gain');
-    console.log('  ' + (b + '            ').slice(0, 13) + n + ' / ' + batches[b].length + ' (budget ' + BUDGET[b] + ')');
-  });
+  const left = [];
+  Object.keys(batches).forEach(b => batches[b].filter(r => !r.ok).forEach(r => left.push(b + ' ' + r.where)));
+  ok(left.length === 0, 'rien n’est dû : ' + left.length + ' anglais manquent   [' + left.slice(0, 3).join(', ') + ']');
+  console.log('  anglais dû     ' + left.length + ' (rien n’est dû)');
 
   /* Parcours de RAW : tout objet qui porte `fr` ou `en`. */
   const pairs6 = [];

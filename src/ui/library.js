@@ -4,6 +4,12 @@
   const U = NL.util, esc = U.esc, ICON = NL.ex.ICON;
   let query = '', filter = 'alles', adding = false;
 
+  /* L'étiquette « pour qui » d'une section de référence, d'après NL.content.anchors. */
+  const anchor = k => {
+    const a = NL.content.anchors[k];
+    return '<span class="muted anchor" data-anchor="' + a + '">' + NL.t[{ fr: 'anchorFr', en: 'anchorEn', all: 'anchorAll' }[a]] + '</span>';
+  };
+
   const pips = s => {
     let h = '<span class="pips sm">';
     for (let i = 0; i < NL.srs.MAX_STAGE; i++) h += '<i class="' + (i <= s ? 'on' : '') + '"></i>';
@@ -101,7 +107,7 @@
         if (s) {
           return '<div class="wrap">' +
             '<button class="backlink" data-go="spiek">' + NL.ui.I.back + ' ' + NL.t.sheetsAll + '</button>' +
-            '<section class="card lead slim"><span class="eyebrow">' + NL.t.sheetsEyebrow + '</span>' +
+            '<section class="card lead slim"><span class="eyebrow">' + NL.t.sheetsEyebrow + '</span> ' + anchor('sheets') +
             '<h1>' + s.icon + ' ' + esc(NL.gloss.of(s.title)) + '</h1><p>' + esc(NL.gloss.of(s.blurb)) + '</p></section>' +
             s.groups.map(g => '<div class="sheet-group"><h4>' + esc(NL.gloss.of(g.h)) + '</h4>' +
               g.rows.map(r => '<button class="sheet-row" data-say="' + esc(r.nl) + '">' +
@@ -129,7 +135,7 @@
   NL.screens.register = {
     render() {
       return '<div class="wrap">' +
-        '<section class="card lead slim"><span class="eyebrow">' + NL.t.regEyebrow + '</span>' +
+        '<section class="card lead slim"><span class="eyebrow">' + NL.t.regEyebrow + '</span> ' + anchor('register') +
         '<h1>' + NL.t.regTitle + '</h1>' +
         '<p>' + NL.t.regBody + '</p></section>' +
         '<div class="reg-table"><div class="reg-head"><span>' + NL.t.regStd + '</span><span>' + NL.t.regBe + '</span></div>' +
@@ -141,7 +147,7 @@
           '</div>').join('') +
         '</div>' +
 
-        '<h3 class="sec">' + NL.t.loansTitle + '</h3>' +
+        '<h3 class="sec">' + NL.t.loansTitle + ' ' + anchor('loans') + '</h3>' +
         '<section class="card lead slim"><p>' + NL.t.loansBody + '</p></section>' +
         '<div class="reg-table"><div class="reg-head"><span>' + NL.t.loansColBe + '</span><span>' + NL.t.loansColFr + '</span></div>' +
         NL.content.loans.map(r =>
@@ -152,13 +158,23 @@
           '</div>').join('') +
         '</div>' +
 
-        '<h3 class="sec">' + NL.t.fauxTitle + '</h3>' +
+        '<h3 class="sec">' + NL.t.fauxTitle + ' ' + anchor('faux') + '</h3>' +
         '<section class="card lead slim"><p>' + NL.t.fauxBody + '</p></section>' +
         '<div class="reg-table"><div class="reg-head"><span>' + NL.t.fauxColNl + '</span><span>' + NL.t.fauxColMeaning + '</span></div>' +
         NL.content.faux.map(r =>
           '<div class="reg-row">' +
           '<button class="reg-cell be" lang="nl-BE" data-say="' + esc(r.nl) + '">' + esc(r.nl) + '</button>' +
           '<span class="reg-cell std">' + esc(NL.gloss.of(r)) + '<em>' + esc(r.trap) + '</em></span>' +
+          '</div>').join('') +
+        '</div>' +
+
+        '<h3 class="sec">' + NL.t.fauxEnTitle + ' ' + anchor('fauxEn') + '</h3>' +
+        '<section class="card lead slim"><p>' + NL.t.fauxEnBody + '</p></section>' +
+        '<div class="reg-table"><div class="reg-head"><span>' + NL.t.fauxColNl + '</span><span>' + NL.t.fauxColMeaning + '</span></div>' +
+        NL.content.fauxEn.map(r =>
+          '<div class="reg-row">' +
+          '<button class="reg-cell be" lang="nl-BE" data-say="' + esc(r.nl) + '">' + esc(r.nl) + '</button>' +
+          '<span class="reg-cell std" lang="en">' + esc(r.en) + '<em>' + esc(r.trap) + '</em></span>' +
           '</div>').join('') +
         '</div></div>';
     }
@@ -167,16 +183,16 @@
   /* ---------------------------------------------------- de / het */
   NL.screens.dehet = {
     render() {
-      const col = (title, rules, cls) =>
-        '<h3 class="sec">' + title + '</h3>' +
+      const col = (title, rules, cls, a) =>
+        '<h3 class="sec">' + title + ' ' + anchor(a) + '</h3>' +
         rules.map(r => '<div class="rule-row ' + cls + '">' +
           '<b>' + esc(NL.gloss.of(r.rule)) + (r.sure ? '<span class="sure-tag">' + NL.t.dehetSure + '</span>' : '') + '</b>' +
           '<button class="rule-ex" lang="nl-BE" data-say="' + esc(r.ex) + '">' + esc(r.ex) + '</button></div>').join('');
       return '<div class="wrap">' +
         '<section class="card lead slim"><span class="eyebrow">' + 'de / het' + '</span>' +
         '<h1>' + NL.t.dehetTitle + '</h1><p>' + NL.t.dehetBody + '</p></section>' +
-        col(NL.t.dehetHet, NL.content.hetRules, 'het') +
-        col(NL.t.dehetDe, NL.content.deRules, 'de') +
+        col(NL.t.dehetHet, NL.content.hetRules, 'het', 'hetRules') +
+        col(NL.t.dehetDe, NL.content.deRules, 'de', 'deRules') +
         '</div>';
     }
   };
@@ -185,7 +201,7 @@
   NL.screens.klanken = {
     render() {
       return '<div class="wrap">' +
-        '<section class="card lead slim"><span class="eyebrow">' + NL.t.soundsEyebrow + '</span>' +
+        '<section class="card lead slim"><span class="eyebrow">' + NL.t.soundsEyebrow + '</span> ' + anchor('sounds') +
         '<h1>' + NL.t.soundsTitle + '</h1>' +
         '<p>' + NL.t.soundsBody + '</p></section>' +
         NL.content.sounds.map(s =>

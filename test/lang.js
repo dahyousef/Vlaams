@@ -232,6 +232,8 @@ function interfaceCheck() {
   return m.NL.state.open().then(() => {
     const dutch = dutchWords(m.NL), seen = new Map();
     /* Les mots qu'une personne a tapés elle-même sont ses données, pas l'interface. */
+    /* Les faux amis des anglophones sont une donnée du cours, écrite en anglais dans les deux affichages. */
+    m.NL.content.fauxEn.forEach(r => [r.en, r.trap].forEach(t => t.toLowerCase().split(/[^\p{L}\p{N}]+/u).forEach(w => { if (w) dutch.add(w); })));
     ['de vergaderzaal', 'la salle de réunion'].forEach(s => s.split(/[^\p{L}]+/u).forEach(w => dutch.add(w)));
     views(m, (n, h) => {
       /* Le texte d'une sauvegarde exportée est une donnée, pas l'interface ; les entités
@@ -540,6 +542,33 @@ function langAttrCheck(B) {
   bad.forEach((n, k) => ok(false, '6 : néerlandais sans lang="nl" : ' + k + ' (vue ' + n + ')'));
 }
 
+/* 6b. Chaque section de référence montre exactement une étiquette d'ancrage, la bonne, dans la langue lue. */
+function anchorCheck(B) {
+  const NL = B.NL, A = NL.content.anchors, key = { fr: 'anchorFr', en: 'anchorEn', all: 'anchorAll' };
+  ok(A && A.sounds === 'fr' && A.loans === 'fr' && A.faux === 'fr' && A.fauxEn === 'en' && A.register === 'all' &&
+    A.hetRules === 'all' && A.deRules === 'all' && A.sheets === 'all', '6b : NL.content.anchors n\'a pas la forme attendue');
+  ['fr', 'en'].forEach(l => {
+    (l === 'fr' ? French : English)(B);
+    const shown = (screen, id) => {
+      NL.ui.go(screen, id);
+      const out = [], re = /<span class="muted anchor" data-anchor="(fr|en|all)">([^<]*)<\/span>/g;
+      let m; while ((m = re.exec(B.app.innerHTML))) out.push(m);
+      return out;
+    };
+    const expect = (what, got, names) => {
+      ok(got.length === names.length, '6b (' + l + ') : ' + what + ' montre ' + got.length + ' étiquette(s), il en faut ' + names.length);
+      got.forEach((m, i) => { if (names[i]) ok(m[1] === A[names[i]] && m[2] === NL.t[key[A[names[i]]]], '6b (' + l + ') : ' + what + ', étiquette ' + i + ' « ' + m[2] + ' » (' + m[1] + ')'); });
+    };
+    expect('register', shown('register'), ['register', 'loans', 'faux', 'fauxEn']);
+    expect('klanken', shown('klanken'), ['sounds']);
+    expect('dehet', shown('dehet'), ['hetRules', 'deRules']);
+    NL.content.sheets.forEach(sh => expect('fiche ' + sh.id, shown('spiek', sh.id), ['sheets']));
+  });
+  ['eventueel', 'actueel', 'slim', 'raar', 'de brand', 'door', 'bellen', 'de map'].forEach(w =>
+    ok(NL.content.fauxEn.some(r => r.nl === w && typeof r.en === 'string' && typeof r.trap === 'string' && !('fr' in r)), '6b : fauxEn n\'a pas « ' + w + ' » en anglais seul'));
+  ok(NL.content.fauxEn.length === 8, '6b : fauxEn a ' + NL.content.fauxEn.length + ' entrées, il en faut 8');
+}
+
 const plain = boot(null), paired = boot(NL => pairUp(NL.content));
 Promise.all([plain.NL.state.open(), paired.NL.state.open()]).then(() => {
   French(plain); French(paired);
@@ -651,7 +680,7 @@ Promise.all([plain.NL.state.open(), paired.NL.state.open()]).then(() => {
         ok(WC({ kind: 'word', nl: 'gisteren', fr: 'hier' }, 'fr') === 'other', 'wordClass : « hier » (gisteren) n’est pas un verbe');
         ok(WC({ kind: 'word', nl: 'werken', fr: 'travailler' }, 'fr') === 'verb', 'wordClass : « travailler » (werken) reste un verbe'); }
       const L6 = boot(null);
-      return L6.NL.state.open().then(() => langAttrCheck(L6)).then(interfaceCheck);
+      return L6.NL.state.open().then(() => langAttrCheck(L6)).then(() => anchorCheck(L6)).then(interfaceCheck);
     }).then(() => {
       console.log('\n' + checks + ' contrôles, ' + (fails === 0 ? 'LANGUE CONFORME' : fails + ' ÉCHEC(S)'));
       process.exit(fails ? 1 : 0);
