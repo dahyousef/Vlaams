@@ -192,7 +192,9 @@ NL.state.open().then(() => {
   };
   COLLECTIONS.forEach(k => walk6(RAW[k], k));
   let lonely = 0, drift = 0;
-  const sig = s => (String(s).match(/\d+|\{[a-z]+\}/g) || []).join('|');
+  const sig = s => (String(s).match(/\d+|\{[a-z]+\}/g) || []).sort().join('|');
+  ok(sig('{naam} arrive à 3 h') === sig('Arrives at 3, {naam}'), 'sig : un jeton et un chiffre dans un autre ordre ne sont pas une dérive');
+  ok(sig('3 h') !== sig('4 h'), 'sig : un chiffre qui change reste une dérive');
   pairs6.forEach(([v, where]) => {
     if (typeof v.en === 'string' && typeof v.fr !== 'string') { lonely++; ok(false, 'un `en` sans `fr` : ' + where); }
     if (typeof v.en === 'string' && typeof v.fr === 'string' && sig(v.fr) !== sig(v.en)) {
@@ -205,14 +207,41 @@ NL.state.open().then(() => {
   const G = NL.gloss, glossed = items.filter(it => it.unit !== 'eigen' && it.kind !== 'pattern' && G.has(it, 'en'));
   const bySense = new Map();
   glossed.forEach(it => G.senses(it, 'en').forEach(s => { if (!bySense.has(s)) bySense.set(s, []); bySense.get(s).push(it); }));
-  bySense.forEach((its, s) => { for (let i = 1; i < its.length; i++) {
-    ok(G.sameSense(its[0], its[i]), 'même anglais « ' + s + ' » pour deux éléments sans sens français ni néerlandais commun : ' +
-      its[0].id + ' « ' + its[0].nl + ' » et ' + its[i].id + ' « ' + its[i].nl + ' »');
-  } });
+  /* Les paires d'éléments qui partagent un sens anglais sans partager de sens français ni néerlandais. */
+  const clashes = its => {
+    const out = [];
+    for (let i = 0; i < its.length; i++) for (let j = i + 1; j < its.length; j++) if (!G.sameSense(its[i], its[j])) out.push([its[i], its[j]]);
+    return out;
+  };
+  { const A = { id: 'A', nl: 'aa', fr: 'x / y', en: 'e' }, Bb = { id: 'B', nl: 'bb', fr: 'x', en: 'e' }, C = { id: 'C', nl: 'cc', fr: 'y', en: 'e' };
+    const found = clashes([A, Bb, C]);
+    ok(found.length === 1 && found[0][0].id === 'B' && found[0][1].id === 'C',
+      'clashes : B et C partagent un sens anglais sans sens français commun, la garde doit le dire'); }
+  bySense.forEach((its, s) => clashes(its).forEach(p => {
+    ok(false, 'même anglais « ' + s + ' » pour deux éléments sans sens français ni néerlandais commun : ' +
+      p[0].id + ' « ' + p[0].nl + ' » et ' + p[1].id + ' « ' + p[1].nl + ' »');
+  }));
+  /* Le néerlandais u/uw glosé « you » : en Flandre, u est aussi le tutoiement, et c'est le français qui le dit. */
+  const hasU = nl => /(^|[^a-zà-ÿ])uw?(?![a-zà-ÿ])/i.test(nl);
+  const frTu = fr => /(^|[^a-zà-ÿ])(tu|te|toi|ton|ta|tes|t['’])(?![a-zà-ÿ])/i.test(fr);
+  const uTag = fr => frTu(fr) ? '(informal, Flemish u)' : '(formal)';
+  ok(uTag('C’était comment, ton week-end ?') === '(informal, Flemish u)', 'uTag : « ton » est un tutoiement');
+  ok(uTag('Et vous ?') === '(formal)', 'uTag : « vous » est formel');
+  ok(uTag('Comment t’appelles-tu ?') === '(informal, Flemish u)', 'uTag : « t’ » est un tutoiement');
+  ok(uTag('Il a mis la table') === '(formal)', 'uTag : « ta » ne se lit pas au milieu d’un mot');
   glossed.forEach(it => {
     if (G.wordClass(it, 'fr') === 'verb') ok(/^to\s+\S/i.test(it.en), it.id + ' « ' + it.nl + ' » est un verbe en français, et son anglais « ' + it.en + ' » ne commence pas par « to »');
-    if (/(^|[^a-zà-ÿ])uw?(?![a-zà-ÿ])/i.test(it.nl) && /\byou(r)?\b/i.test(it.en)) ok(/\(formal\)/.test(it.en), it.id + ' « ' + it.nl + ' » : « ' + it.en + ' » doit porter « (formal) »');
+    if (hasU(it.nl) && /\byou(r)?\b/i.test(it.en)) { const t = uTag(it.fr);
+      ok(it.en.indexOf(t) >= 0, it.id + ' « ' + it.nl + ' » : « ' + it.en + ' » doit porter « ' + t + ' » (« (informal, Flemish u) » si le français tutoie, « (formal) » sinon)'); }
     if (it.art) ok(!/^(the|an|a)\s/i.test(it.en), it.id + ' « ' + it.nl + ' » est un nom : « ' + it.en + ' » ne prend pas d’article');
+  });
+  /* Toute autre ligne du cours (référence, scénarios, phrases d'exemple…) dont l'anglais porte déjà une étiquette
+     de registre : si son néerlandais a u/uw, l'étiquette doit être la bonne. Une ligne sans étiquette n'est pas tenue d'en prendre une. */
+  pairs6.forEach(([v, where]) => {
+    if (typeof v.nl !== 'string' || typeof v.fr !== 'string' || typeof v.en !== 'string' || !hasU(v.nl)) return;
+    if (!/\((formal|informal)/.test(v.en)) return;
+    const t = uTag(v.fr);
+    ok(v.en.indexOf(t) >= 0, where + ' « ' + v.nl + ' » : « ' + v.en + ' » doit porter « ' + t + ' »');
   });
   console.log('  gardes         ' + glossed.length + ' éléments glosés en anglais contrôlés');
 
