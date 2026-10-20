@@ -1085,7 +1085,7 @@ const items = NL => NL.content.allItems();
     T2.NL.content.allItems().filter(it => it.unit !== 'eigen').slice(0, 12).forEach((it, i) => {
       T2.NL.srs.seed(it, 1); const r = T2.NL.state.rec(it.id); r.due = Date.now() - 1000 * (i + 1); T2.NL.state.setRec(r);
     });
-    ok(T2.NL.screens.sessie.begin('vandaag'), '69.3: no session to start'); T2.NL.ui.go('sessie');
+    ok(T2.NL.screens.sessie.begin('vandaag'), '69.3: no session to start'); T2.NL.ui.go('sessie'); await wait(3);
     T1.NL.lang.set('fr'); T1.NL.ui.render(); await T1.NL.sync.flush();
     await T2.NL.sync.pull(); T2.NL.ui.render();
     ok(T2.NL.t.nav[1].label === en.nav[1].label, '69.3: a synced change applied in the middle of a session');
@@ -1094,8 +1094,9 @@ const items = NL => NL.content.allItems();
     /* Deux synchros contraires pendant une séance : rien n'a changé, rien ne s'annonce, et
        aucune marque ne reste pour la sauvegarde rendue ensuite. */
     T2.NL.ui.go('vandaag');
-    ok(T2.NL.screens.sessie.begin('vandaag'), '69.3: no second session to start'); T2.NL.ui.go('sessie');
+    ok(T2.NL.screens.sessie.begin('vandaag'), '69.3: no second session to start'); T2.NL.ui.go('sessie'); await wait(3);
     T1.NL.lang.set('en'); T1.NL.ui.render(); await T1.NL.sync.flush(); await T2.NL.sync.pull();
+    ok(T2.NL.lang.current() === 'en', '69.3: the first opposite sync did not arrive during the session');
     await wait(3);
     T1.NL.lang.set('fr'); T1.NL.ui.render(); await T1.NL.sync.flush(); await T2.NL.sync.pull();
     T2.tap({ quitYes: '1' });
