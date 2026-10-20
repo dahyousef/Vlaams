@@ -90,5 +90,9 @@ NL.gloss = (function () {
     return U.ratio(U.bare(item.nl), g) > 0.62;
   }
 
-  return { use, current, other, has, langOf, of, pair, bare, senses, sameSense, sameMeaning, wordClass, cognate };
+  /* Une prose du cours qui porte des exemples en néerlandais : <span class="ex"> est du néerlandais,
+     et le dit à un lecteur d'écran. C'est ici, et nulle part ailleurs, que cette règle s'applique. */
+  const prose = html => String(html == null ? '' : html).replace(/<span class="ex">/g, '<span class="ex" lang="nl-BE">');
+
+  return { prose, use, current, other, has, langOf, of, pair, bare, senses, sameSense, sameMeaning, wordClass, cognate };
 })();
