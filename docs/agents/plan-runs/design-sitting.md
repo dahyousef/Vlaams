@@ -31,6 +31,7 @@ it nor waits on it.
     # Task <id>: <name>
     Class: engine | mechanical
     Ticket: #<n> | none
+    Promises: <each ticket this task leaves to be filed: its title> | none
     Why: <the decision this implements, one paragraph; the ruling or ADR it rests on>
     Files:
     - Create or Modify: <exact paths>
@@ -43,6 +44,14 @@ it nor waits on it.
     5. Commit: git add <paths>; git commit -m "<subject>"
     Done when: <the lines that must print>
 
+The implementer transcribes a brief's code and insertion points word for word, so they are the code that
+ships. Before a brief is approved, whoever wrote it:
+
+- reads its code as `reviewer.md` Part 2 reads a diff, smells included;
+- checks each insertion point against the file as it now stands;
+- gives step 1 a red check for every site step 3 changes;
+- names under `Promises:` every ticket its text says will be filed.
+
 ## Task classes in a plan
 
 Every task of a plan carries `Class: engine` or `Class: mechanical` under its title.
@@ -53,3 +62,6 @@ Every task of a plan carries `Class: engine` or `Class: mechanical` under its ti
 
 The class sets the models (`task-controller.md`). A plan's header says it runs with
 `docs/agents/plan-runs/run-controller.md`, not with a skill's controller loop.
+
+A task carries at most about six items. A ticket with more is split over several tasks: phase 2's follow-ups
+put eleven in one task, which cost 1.16M tokens and 58 implementer calls.

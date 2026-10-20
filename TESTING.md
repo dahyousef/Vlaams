@@ -57,7 +57,13 @@ plus tard, et aucun des 521 des jours où il commençait plus tôt : son compte
 global seul n'aurait rien vu. Ce qu'il garde, c'est un lendemain qui ne dépend
 pas de l'heure à laquelle on commence.
 
-Chaque bug corrigé laisse un test qui échoue sur l'ancien code.
+Chaque bug corrigé laisse un test qui échoue sur l'ancien code ; une correction
+faite à plusieurs endroits, un test qui échoue à chacun.
+
+Ce que plusieurs suites font vit une fois dans `test/lib/`, et chaque fichier y
+dit en tête ce qu'il offre : une suite le prend là au lieu de le refaire. Ses
+dates partent de l'horloge de la suite (`T0`), chacune différente : deux
+écritures dans la même milliseconde ne testent rien.
 
 ## Ce que les tests ne voient pas
 

@@ -7,7 +7,9 @@ Your dispatch names the run file and the commit to verify. In the worktree named
 
 1. `git rev-parse HEAD` must equal `git rev-parse <the commit you were given>`, whatever length the hash was
    given in. If not, return `VERIFIER: fail — HEAD is <x>, expected <y>` and stop.
-2. Run `git diff --quiet -- index.html artifact.html && git checkout -- index.html artifact.html` first: a suite left
+2. Run `git update-index -q --refresh` first: it clears files git lists as modified though their content is
+   unchanged, which failed phase 2's follow-ups' first verify. Then run
+   `git diff --quiet -- index.html artifact.html && git checkout -- index.html artifact.html`: a suite left
    running by a sitting that was cut off can rebuild them in line endings only (`core.autocrlf`). Then run
    `git status --short` on the whole tree. Any line is a fail: return
    `VERIFIER: fail — tree not clean` with those lines, and stop. A pass would otherwise be credited to the
@@ -16,6 +18,7 @@ Your dispatch names the run file and the commit to verify. In the worktree named
 
        sh test/run-all.sh > "<WS>/tmp/suite.txt" 2>&1
        echo "exit=$?" >> "<WS>/tmp/suite.txt"
+       git update-index -q --refresh
        git diff --quiet -- index.html artifact.html && git checkout -- index.html artifact.html
        git status --short -- index.html artifact.html >> "<WS>/tmp/suite.txt"
 

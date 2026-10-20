@@ -89,9 +89,11 @@ the run's worktree, with this command (PowerShell):
 
 ## After the last task
 
-Dispatch the closing review (`closing-review.md`) on `opus`, naming the run file and its `Base:` commit. Then
-measure, and write the run's final report for the maintainer. The full review of the branch is the
-maintainer's (`/code-review main`).
+Dispatch the closing review (`closing-review.md`) on `opus`, naming the run file and its `Base:` commit. If
+its `FIXES` line names a brief, add a Status row `closing` (`mechanical`, ticket `none`) and run it through
+the loop like any task. Then measure, and write the run's final report for the maintainer, with the closing's
+`TICKETS`. The full review of the branch is the maintainer's, against the remote: `git fetch origin`, then
+`/code-review origin/main`. A local `main` that lags puts main's own commits in the diff.
 
 ## Measuring
 
@@ -119,7 +121,8 @@ Once per plan, in the run's worktree, create `<WS>` = `.superpowers/sdd/<plan na
 - `progress.md`, from `ledger-template.md` with its title filled in, one Status row per plan task with its
   class and ticket;
 - `global-constraints.md`: the plan's Global Constraints and Review Focus, word for word;
-- `briefs/task-<N>.md`: each task's full text from the plan;
+- `briefs/task-<N>.md`: each task's full text from the plan, checked as `design-sitting.md` says before a
+  brief is approved;
 - empty folders `reports/`, `reviews/`, `tmp/`.
 
 `run.md`:

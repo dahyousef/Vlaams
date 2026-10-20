@@ -19,9 +19,16 @@ Your dispatch names the run file and the run's base commit.
    and a report path `<WS>/reports/closing-<area>.md`. Its final message, at most 10 lines: issue counts and
    the checklist items it found broken. Dispatch each one in the foreground and wait for its return; never end
    your turn while one runs.
-4. Read the area reviewers' final messages. Open a report only for a Critical or Important item, and read the
-   diff only around it.
+4. Read the area reviewers' final messages and the Issues of their reports. Read the diff only around a
+   Critical or Important item.
 5. Check the checklist against the diff's stat and the areas' answers.
+6. Leave nothing open. Each of these becomes a fix or a ticket: your findings and the area reviewers', the
+   log's Open lines, and every ticket the plan promises to file.
+   - A fix stays in files the run changed and needs no decision the plan lacks. Write all of them as one
+     brief, `<WS>/briefs/task-closing.md`, in `design-sitting.md`'s form, class `mechanical`, a red check for
+     each.
+   - A ticket is filed with `gh issue create --parent <the spec issue CLAUDE.md names> --label needs-triage`
+     (`docs/agents/issue-tracker.md`): one subject per ticket, at most about six items.
 
 ## The checklist
 
@@ -36,6 +43,7 @@ Your dispatch names the run file and the run's base commit.
 - `resetAt` only grows; `ENGINE_EPOCH` is unchanged unless the plan says otherwise; reset and sync still agree
   with ADR 0006.
 - Every task in the log has a verifier pass and an Approved review.
+- Every ticket the plan promises is filed.
 
 ## Your report and your final message
 
@@ -44,4 +52,6 @@ Write the full report to `<WS>/reports/closing.md`. Your final message, at most 
     CLOSING: clean | issues
     ISSUES: <critical>/<important>/<minor>
     CHECKLIST: <items broken, or none>
+    FIXES: <WS>/briefs/task-closing.md | none
+    TICKETS: #<n>, … | none
     REPORT: <WS>/reports/closing.md
