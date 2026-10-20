@@ -64,6 +64,9 @@ NL.gloss = (function () {
     return ea.some(x => eb.indexOf(x) >= 0);
   }
 
+  /* Des mots français qui finissent comme un infinitif sans en être un. */
+  const NOT_VERBS = ['hier', 'entre', 'contre', 'propre'];
+
   /* La nature du mot, grossièrement : « oui » face à « sorry / spreken / ja » se
      résout sans connaître le mot, parce qu'un verbe ne répond pas à « oui ». */
   function wordClass(x, l) {
@@ -75,7 +78,7 @@ NL.gloss = (function () {
       if (/^to\s+\S/.test(first) && /en$/.test(U.bare(x.nl))) return 'verb';
       return 'other';
     }
-    if (/^\S+(er|ir|re|oir)$/.test(first) && first.indexOf('-') < 0 && first !== 'hier' && /en$/.test(U.bare(x.nl))) return 'verb';
+    if (/^\S+(er|ir|re|oir)$/.test(first) && first.indexOf('-') < 0 && NOT_VERBS.indexOf(first) < 0 && /en$/.test(U.bare(x.nl))) return 'verb';
     return 'other';
   }
 

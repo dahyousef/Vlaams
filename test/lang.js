@@ -689,7 +689,9 @@ Promise.all([plain.NL.state.open(), paired.NL.state.open()]).then(() => {
       tableCheck(plain.NL);
       { const WC = plain.NL.gloss.wordClass;
         ok(WC({ kind: 'word', nl: 'gisteren', fr: 'hier' }, 'fr') === 'other', 'wordClass : « hier » (gisteren) n’est pas un verbe');
-        ok(WC({ kind: 'word', nl: 'werken', fr: 'travailler' }, 'fr') === 'verb', 'wordClass : « travailler » (werken) reste un verbe'); }
+        ok(WC({ kind: 'word', nl: 'werken', fr: 'travailler' }, 'fr') === 'verb', 'wordClass : « travailler » (werken) reste un verbe');
+        [['tussen', 'entre'], ['tegen', 'contre'], ['eigen', 'propre']].forEach(([nl, fr]) =>
+          ok(WC({ kind: 'word', nl: nl, fr: fr }, 'fr') === 'other', 'wordClass : « ' + fr + ' » (' + nl + ') n’est pas un verbe')); }
       const L6 = boot(null);
       return L6.NL.state.open().then(() => langAttrCheck(L6)).then(() => anchorCheck(L6)).then(interfaceCheck);
     }).then(() => {
