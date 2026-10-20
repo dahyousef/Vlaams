@@ -223,11 +223,11 @@ NL.state.open().then(() => {
   }));
   /* Le néerlandais u/uw glosé « you » : en Flandre, u est aussi le tutoiement, et c'est le français qui le dit. */
   const hasU = nl => /(^|[^a-zà-ÿ])uw?(?![a-zà-ÿ])/i.test(nl);
-  const frTu = fr => /(^|[^a-zà-ÿ])(tu|te|toi|ton|ta|tes|t['’])(?![a-zà-ÿ])/i.test(fr);
+  const frTu = fr => /(^|[^a-zà-ÿ])((tu|te|toi|ton|ta|tes)(?![a-zà-ÿ])|t['’])/i.test(fr);
   const uTag = fr => frTu(fr) ? '(informal, Flemish u)' : '(formal)';
   ok(uTag('C’était comment, ton week-end ?') === '(informal, Flemish u)', 'uTag : « ton » est un tutoiement');
   ok(uTag('Et vous ?') === '(formal)', 'uTag : « vous » est formel');
-  ok(uTag('Comment t’appelles-tu ?') === '(informal, Flemish u)', 'uTag : « t’ » est un tutoiement');
+  ok(uTag('Je t’appelle demain.') === '(informal, Flemish u)', 'uTag : « t’ » est un tutoiement');
   ok(uTag('Il a mis la table') === '(formal)', 'uTag : « ta » ne se lit pas au milieu d’un mot');
   glossed.forEach(it => {
     if (G.wordClass(it, 'fr') === 'verb') ok(/^to\s+\S/i.test(it.en), it.id + ' « ' + it.nl + ' » est un verbe en français, et son anglais « ' + it.en + ' » ne commence pas par « to »');
@@ -258,7 +258,7 @@ NL.state.open().then(() => {
       });
     });
     ok(seenI > 0, 'aucun <i> dans les explications de grammaire : le contrôle est creux'); }
-  console.log('  gardes        ' + glossed.length + ' éléments glosés en anglais contrôlés');
+  console.log('  gardes         ' + glossed.length + ' éléments glosés en anglais contrôlés');
 
   console.log('\n' + checks + ' contrôles, ' + (fails === 0 ? 'CONTENU CONFORME' : fails + ' ÉCHEC(S)'));
   process.exit(fails ? 1 : 0);
