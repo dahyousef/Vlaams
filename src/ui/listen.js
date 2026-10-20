@@ -17,13 +17,13 @@ NL.screens.luisteren = (function () {
     /* Une même réplique revient d'un scénario à l'autre : sans ce filtre, la
        bonne traduction pouvait s'afficher deux fois, dont une comptée fausse. */
     const lang = NL.gloss.langOf(c), right = NL.gloss.of(c);
-    const seen = {};
+    const seen = new Set();
     const pool = [];
     NL.content.listenClips()
       .filter(x => x.id !== c.id && NL.gloss.has(x, lang) && U.norm(NL.gloss.of(x, lang)) !== U.norm(right))
       .forEach(x => {
         const l = NL.gloss.of(x, lang), k = U.norm(l);
-        if (!seen[k]) { seen[k] = true; pool.push(l); }
+        if (!seen.has(k)) { seen.add(k); pool.push(l); }
       });
     S.opts = U.shuffle([{ label: right, ok: true }].concat(
       U.sample(pool, 2).map(l => ({ label: l, ok: false }))));
@@ -89,7 +89,7 @@ NL.screens.luisteren = (function () {
       body = '<div class="listen-stage">' +
         '<button class="mic big play" data-act="play" aria-label="' + NL.t.listen + '">' + ICON.speaker(36) + '</button>' +
         '<p class="rev-nl" lang="nl-BE">' + esc(c.be || c.nl) + '</p>' +
-        '<p class="rev-en">' + esc(NL.gloss.of(c)) + '</p>' +
+        '<p class="rev-en"' + NL.gloss.langAttr(c) + '>' + esc(NL.gloss.of(c)) + '</p>' +
         '<div class="listen-actions"><button class="btn btn-ghost" data-act="slow">' + NL.t.slow + '</button></div>' +
         '</div>' + shadowPanel(sp);
     }

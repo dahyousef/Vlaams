@@ -60,8 +60,8 @@ emit_scripts() {
   done
 }
 
-# Les sources sont en CRLF dans une copie de travail (core.autocrlf=true) : le « tr » garde les deux
-# sorties en LF, comme .gitattributes les veut, sinon git les montre modifiées après chaque build.
+# The sources are CRLF in a working copy (core.autocrlf=true): the « tr » keeps both
+# outputs in LF, as .gitattributes wants them, or git shows them modified after every build.
 # ---- index.html : the real page ----
 {
   echo '<!doctype html>'

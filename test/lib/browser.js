@@ -14,6 +14,7 @@
      B.store         le localStorage
      B.idb           le contenu de l'IndexedDB — si `idb` est donné
      B.listeners     tous les écouteurs posés, par type d'événement
+     B.tap(d)        un clic sur un élément dont le dataset est d, tel que le shell le reçoit
      B.clock         l'horloge : now(), set(ms), advance(ms) — si `now` est donné
      B.spoken        ce que la synthèse vocale a prononcé — si `voices` est donné */
 const fs = require('fs'), path = require('path'), vm = require('vm');
@@ -233,7 +234,9 @@ function open(opts) {
     catch (e) { console.log('LOAD FAIL ' + f + ': ' + e.message); process.exit(1); }
   });
 
-  return { ctx, NL: ctx.NL, app, store, idb, listeners, spoken, clock, mkEl, random: M.random };
+  const tap = d => (listeners.click || []).forEach(f => f({ target: { closest: () => ({ dataset: d }) } }));
+
+  return { ctx, NL: ctx.NL, app, store, idb, listeners, spoken, clock, mkEl, tap, random: M.random };
 }
 
 module.exports = { open, rng, sources, UA, SEED };

@@ -86,10 +86,10 @@
             '<button class="bub-say" data-say="' + esc(b.be || b.nl) + '" aria-label="' + NL.t.replay + '">' + ICON.speaker(17) + '</button>' +
             '<div><p class="bub-nl" lang="nl-BE">' + esc(b.be || b.nl) + '</p>' +
             (b.be && U.norm(b.be) !== U.norm(b.nl) ? '<p class="bub-std">' + NL.t.scnStd + ' <span lang="nl-BE">' + esc(b.nl) + '</span></p>' : '') +
-            '<p class="bub-en">' + esc(NL.gloss.of(b)) + '</p></div></div>';
+            '<p class="bub-en"' + NL.gloss.langAttr(b) + '>' + esc(NL.gloss.of(b)) + '</p></div></div>';
         }
         return '<div class="bub you"><div><p class="bub-nl" lang="nl-BE">' + esc(b.nl) + '</p>' +
-          '<p class="bub-en">' + esc(NL.gloss.of(b)) + '</p>' +
+          '<p class="bub-en"' + NL.gloss.langAttr(b) + '>' + esc(NL.gloss.of(b)) + '</p>' +
           (b.score ? '<p class="bub-score">' + esc(b.score) + '</p>' : '') + '</div></div>';
       }).join('');
 

@@ -20,7 +20,7 @@ const answer = require('./lib/answer')(B);
 const text = html => String(html).replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ');
 const put = (it, rung, due) => { NL.srs.seed(it, rung); const r = NL.state.rec(it.id); r.due = due; NL.state.setRec(r); };
 const fresh = () => { NL.state.clearAll(); NL.content.refresh(); B.clock.set(T0); };
-const SCREENS = ['vandaag', 'leerpad', 'praten', 'luisteren', 'meer', 'woorden', 'spiek', 'register', 'klanken', 'dehet', 'doctor', 'fouten'];
+const { SCREENS } = require('./lib/screens');
 
 /* Ce qu'aucun écran ne doit montrer, quel que soit l'état. */
 function read(name, html, state) {
@@ -303,8 +303,10 @@ NL.state.open().then(() => {
     ok(cell(t.statProduced) === cp.produce, 'the strip does not give ' + cp.produce + ' « ' + t.statProduced + ' », it gives ' + cell(t.statProduced));
     ok(home.indexOf(cp.met + ' ' + t.statMet) >= 0 && home.indexOf(cp.produce + ' ' + t.statProduce) >= 0, 'the home screen does not give the same two numbers');
     ok(cell(t.statMine) === 3 && plus.split(t.statMine).length - 1 === 1, 'the own words do not appear once as « 3 ' + t.statMine + ' »: ' + cell(t.statMine) + ' / ' + (plus.split(t.statMine).length - 1));
-    ['vandaag', 'leerpad', 'meer', 'woorden'].forEach(n => ok(!/solides|<b>\d+<\/b> en cours</.test(NL.screens[n].render()) && !/solides/.test(text(NL.screens[n].render())), n + ' still says « solides » or « en cours »'));
-    SCREENS.forEach(n => { let h = null, err = null; try { h = text(NL.screens[n].render()); } catch (e) { err = e; } ok(!err && !/solides/.test(h), n + (err ? ' throws: ' + err.message : ' says « solides »')); });
+    const want = [t.statMet, t.statProduced, t.statMine, t.statSpoken, t.statBest, t.statCombo, t.statDefi, t.tallyXp].join(' | ');
+    const got = (strip.match(/<b>[0-9]+<\/b> [^<]*/g) || []).map(c => c.replace(/^<b>[0-9]+<\/b> /, '')).join(' | ');
+    ok(got === want, 'the Plus strip shows « ' + got + ' » instead of « ' + want + ' »');
+    SCREENS.forEach(n => { let err = null; try { NL.screens[n].render(); } catch (e) { err = e; } ok(!err, n + ' throws: ' + (err && err.message)); });
     NL.screens.woorden.click({ dataset: { f: 'sterk' } }, { act: 'filter' });
     const rows = (NL.screens.woorden.render().match(/class="vrow"/g) || []).length;
     const expect = cp.produce;

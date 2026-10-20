@@ -46,16 +46,29 @@ Compare the diff with the brief, file by file, hunk by hunk: missing, extra, mis
 outputs the report quotes with the outputs the brief expects, the red step included. A requirement you cannot
 verify from the diff alone is a ⚠️ item, not a reason to search wider.
 
+Every site the diff changes has its own red: a check that fails without that site's change. A change made at
+several sites (each exercise, each screen) needs a check that fails at each, or one check that walks them all.
+A site with no red is Important.
+
 ## Part 2: Code quality
 
 Separation of concerns, error handling, duplication, edge cases; tests that verify real behaviour; one
-responsibility per file. Point at file:line for every finding.
+responsibility per file. Then the smells, each a labelled judgement call that a rule of `CLAUDE.md`
+overrides: Duplicated Code (above all a second copy of what `test/lib/` or another `src/` module already
+holds), Feature Envy (a module that sets another module's state), Mysterious Name, Data Clumps, Primitive
+Obsession, Speculative Generality, Shotgun Surgery. Tests follow `TESTING.md`'s rule for helpers and dates.
+Point at file:line for every finding.
 
 ## Calibration
 
 Important means the task cannot be trusted until it is fixed: incorrect or fragile behaviour, a missed
 requirement, damage you would block a merge over. Polish is Minor. Something the brief mandates that this
 rubric calls a defect is Important, labelled plan-mandated.
+
+Each Minor, smells included, is `fix` or `open`. `fix` when its fix stays in the task's files and changes no
+behaviour the brief states: the task's fix round makes it. `open` when the brief's own code dictates it, or
+its fix reaches past the task's files: it goes to the log, and the closing review turns it into a fix or a
+ticket. `Approved` means no Critical, no Important and no `fix`.
 
 ## Fix or design
 
@@ -69,7 +82,7 @@ Write the full report to the path your dispatch names, in this form:
 
     ### Spec Compliance   ✅ / ❌ with file:line / ⚠️ cannot verify from the diff
     ### Strengths
-    ### Issues            Critical / Important / Minor — each with file:line, what, why, fix
+    ### Issues            Critical / Important / Minor — each with file:line, what, why, fix; each Minor `fix` or `open`
     ### Assessment        Task quality: Approved | Needs fixes — one or two sentences
 
 Your final message, at most 10 lines:
@@ -77,11 +90,12 @@ Your final message, at most 10 lines:
     REVIEW: Approved | Needs fixes
     ISSUES: <critical>/<important>/<minor>
     DESIGN: yes | no — <one line reason when yes>
+    OPEN: <the `open` Minors, one line, or none>
     REPORT: <path>
 
 ## Re-review
 
 When your dispatch says "re-review", you get the fix diff and the previous report. Check only that each
-Critical and Important issue of the previous report is fixed, and that the fix introduced nothing new. Write
-your report to the path your dispatch names (`task-<N>-rereview-<k>.md`, beside the previous one, so a second
-re-review does not overwrite the first). Same final message.
+Critical, Important and `fix` issue of the previous report is fixed, and that the fix introduced nothing
+new. Write your report to the path your dispatch names (`task-<N>-rereview-<k>.md`, beside the previous one,
+so a second re-review does not overwrite the first). Same final message.

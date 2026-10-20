@@ -197,9 +197,12 @@ NL.sync = (function () {
     return { error: null };
   }
 
-  /* Déconnexion : on envoie ce qui reste, puis on efface l'appareil pour que la
-     personne suivante ne voie rien. Pas encore rattaché, ce qui a été fait ici
-     n'est pas encore au compte : on le rattache d'abord. */
+  /* Déconnexion : on envoie ce qui reste, puis on efface l'appareil. La personne
+     suivante ne voit rien de la progression ; seule la langue d'affichage reste
+     (clearAll la garde, sans updatedAt). Le compte suivant en hérite s'il n'en a
+     pas, et l'envoie ; s'il en a une, c'est la sienne qui l'emporte. Pas encore
+     rattaché, ce qui a été fait ici n'est pas encore au compte : on le
+     rattache d'abord. */
   async function signOut() {
     if (!enabled || !user) return;
     if (!attached()) { try { await adopt(); } catch (e) {} }
@@ -264,6 +267,12 @@ NL.sync = (function () {
     return data && data[0] ? data[0].data : null;
   }
 
+  /* Les réglages fusionnés prennent la place de ceux d'ici. Une langue d'affichage
+     qui change ainsi vient d'un autre appareil : NL.lang le voit, et le dira dans l'avis. */
+  function takeMeta(merged) {
+    NL.lang.fromAccount(() => NL.state.setMeta(merged, true));
+  }
+
   /* Une ligne du serveur qui descend d'une remise à zéro antérieure à la nôtre
      est en cours d'effacement ; sans `base`, elle vient de la version
      précédente, qui écrit encore après l'époque. Ni l'une ni l'autre n'entre. */
@@ -298,7 +307,7 @@ NL.sync = (function () {
 
       if (remoteMeta) {
         const merged = mergeMeta(NL.state.meta(), remoteMeta);
-        NL.state.setMeta(merged, true);
+        takeMeta(merged);
         if (JSON.stringify(merged) !== JSON.stringify(remoteMeta)) { box.meta = true; persist(); }
       } else {
         box.meta = true; persist();
@@ -359,7 +368,7 @@ NL.sync = (function () {
       if (snap.meta) {
         /* Les réglages se fusionnent avec la copie du serveur AVANT l'envoi :
            l'XP gagnée ailleurs pendant que cet appareil était hors ligne reste. */
-        if (remoteMeta) NL.state.setMeta(mergeMeta(NL.state.meta(), remoteMeta), true);
+        if (remoteMeta) takeMeta(mergeMeta(NL.state.meta(), remoteMeta));
         const m = NL.state.meta();
         const { error } = await client.from('user_meta').upsert(
           { user_id: uid, data: m, updated_at: m.updatedAt || now }, { onConflict: 'user_id' });

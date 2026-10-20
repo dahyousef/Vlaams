@@ -207,10 +207,10 @@ NL.tables.en = {
   wordsMineGroup: 'My words',
 
   /* --- fiches --- */
-  sheetsEyebrow: 'Cheat sheets',
+  sheetsEyebrow: 'Reference sheets',
   sheetsTitle: 'For the corridor',
   sheetsBody: 'Eight sheets to open thirty seconds before you need them. Tap a line to hear it.',
-  sheetsAll: 'All the cheat sheets',
+  sheetsAll: 'All the reference sheets',
 
   /* --- registre et sons --- */
   regEyebrow: 'Standard and Flemish',
@@ -232,7 +232,7 @@ NL.tables.en = {
   soundsEasy: 'you already have it',
   soundsWatch: 'watch out',
   dehetTitle: 'The het families',
-  dehetBody: 'About seven het words in ten follow a rule. Learn the families instead of the 425 articles one by one — and never translate from French: het huis is neuter, la maison is feminine.',
+  dehetBody: 'About seven het words in ten follow a rule. Learn the families instead of the 425 articles one by one — and never guess from another language: het huis is neuter.',
   dehetHet: 'Take het', dehetDe: 'Take de',
   dehetSure: 'no exceptions',
 
@@ -242,6 +242,7 @@ NL.tables.en = {
   setLang: 'Language',
   langOther: 'French',
   langNotice: 'Reading in English. The reference sheets are under More; each says which language it helps with.',
+  langSynced: 'Language changed on another device.',
   setPractice: 'Practice',
   setFlemish: 'Show the Flemish variant',
   setAutoplay: 'Play audio automatically',

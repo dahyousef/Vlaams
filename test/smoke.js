@@ -194,6 +194,29 @@ NL.state.open().then(() => {
   console.log('  syntax          ' + sources.length + ' sources in SRC and ' + copied.length + ' copied to dist/ (' +
     copied.join(', ') + ') from build.sh: ' + (seen ? seen + ' finding(s)' : 'no var, no ?.'));
 
+  /* The language of a shown meaning has one source: NL.gloss.tag names the tag of a reading
+     language, and NL.gloss.langAttr writes the attribute. A `lang="' + …` built by hand, or an
+     en-GB written outside gloss.js, is a second source, and the two drift apart. */
+  ok(sources.indexOf('src/core/gloss.js') >= 0, 'the lang check looks for src/core/gloss.js, which build.sh no longer lists');
+  sources.filter(f => f !== 'src/core/gloss.js').forEach(f => {
+    const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
+    ok(!/[^\w-]lang="'\s*\+/.test(src), f + ': a lang attribute is built by hand; use NL.gloss.langAttr');
+    ok(src.indexOf('en-GB') < 0, f + ': en-GB is written outside gloss.js; use NL.gloss.tag');
+  });
+
+  /* The suites share their helpers through test/lib, and a copy drifts from the original.
+     A click goes through B.tap, there is one fake Supabase, and a due date comes from the
+     suite's clock, never from an epoch written out by hand. */
+  const suites = ['test', 'test/tools'].reduce((all, d) => all.concat(fs.readdirSync(path.join(ROOT, d))
+    .filter(f => /\.js$/.test(f)).map(f => d + '/' + f)), []);
+  suites.forEach(f => {
+    const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
+    ok(!/target:\s*\{\s*closest:\s*\(\)\s*=>\s*\(\{\s*dataset/.test(src), f + ': builds a click by hand; use B.tap from test/lib/browser.js');
+    ok(!/createClient\s*(:|\([^)]*\)\s*\{)/.test(src), f + ': defines a second fake Supabase; use test/lib/supabase.js');
+    ok(!/\.due\s*=\s*\d{10,}/.test(src), f + ': writes a due date from a bare epoch; use the suite clock, as test/lib/seed.js does');
+  });
+  console.log('  suites          ' + suites.length + ' files: no hand-built click, no second fake Supabase, no due date from a bare epoch');
+
   items.filter(i => i.art).forEach(i =>
     ok(i.nl.startsWith(i.art + ' '), 'article mismatch: ' + i.nl + ' / ' + i.art));
 
@@ -397,25 +420,25 @@ NL.state.open().then(() => {
     /* Le sens se lit par NL.gloss, dans chaque langue lue. */
     const was = NL.gloss.current();
     ['fr', 'en'].forEach(l => {
-    NL.gloss.use(l);
-    /* Les mots qui ont un jumeau de sens sont rares : on les tire bien plus
-       souvent, sinon le hasard ne les met presque jamais face à face. */
-    const hasTwin = it => all.some(x => x !== it && x.kind === it.kind && overlap(NL.gloss.bare(x), NL.gloss.bare(it)));
-    all.forEach(it => {
-      const reps = hasTwin(it) ? 60 : 3;
-      for (let k = 0; k < reps; k++) {
-        const p = NL.ex.get('pick').build(it), r = NL.ex.get('recall').build(it);
-        built += 2;
-        p.opts.filter(o => !o.ok).forEach(o => {
-          if ((byNl[UU.norm(o.label)] || []).some(x => overlap(NL.gloss.bare(x), NL.gloss.bare(it)))) {
-            second++; example = example || NL.gloss.bare(it) + ' → ' + o.label;
-          }
-        });
-        r.opts.filter(o => !o.ok).forEach(o => {
-          if (overlap(o.label, NL.gloss.bare(it))) { second++; example = example || it.nl + ' → ' + o.label; }
-        });
-      }
-    });
+      NL.gloss.use(l);
+      /* Les mots qui ont un jumeau de sens sont rares : on les tire bien plus
+         souvent, sinon le hasard ne les met presque jamais face à face. */
+      const hasTwin = it => all.some(x => x !== it && x.kind === it.kind && overlap(NL.gloss.bare(x), NL.gloss.bare(it)));
+      all.forEach(it => {
+        const reps = hasTwin(it) ? 60 : 3;
+        for (let k = 0; k < reps; k++) {
+          const p = NL.ex.get('pick').build(it), r = NL.ex.get('recall').build(it);
+          built += 2;
+          p.opts.filter(o => !o.ok).forEach(o => {
+            if ((byNl[UU.norm(o.label)] || []).some(x => overlap(NL.gloss.bare(x), NL.gloss.bare(it)))) {
+              second++; example = example || NL.gloss.bare(it) + ' → ' + o.label;
+            }
+          });
+          r.opts.filter(o => !o.ok).forEach(o => {
+            if (overlap(o.label, NL.gloss.bare(it))) { second++; example = example || it.nl + ' → ' + o.label; }
+          });
+        }
+      });
     });
     NL.gloss.use(was);
 

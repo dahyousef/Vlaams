@@ -827,7 +827,12 @@ NL.gloss = (function () {
      et le dit à un lecteur d'écran. C'est ici, et nulle part ailleurs, que cette règle s'applique. */
   const prose = html => String(html == null ? '' : html).replace(/<span class="ex">/g, '<span class="ex" lang="nl-BE">');
 
-  return { prose, use, current, other, has, langOf, of, pair, bare, senses, sameSense, sameMeaning, wordClass, cognate };
+  /* La balise d'une langue lue, pour un lecteur d'écran : la page (NL.lang) comme chaque sens. */
+  const tag = l => l === 'en' ? 'en-GB' : 'fr';
+  /* L'attribut lang d'un sens ou d'un texte montré, espace compris : la langue où il se lit. */
+  const langAttr = x => ' lang="' + tag(langOf(x)) + '"';
+
+  return { prose, use, current, other, has, langOf, tag, langAttr, of, pair, bare, senses, sameSense, sameMeaning, wordClass, cognate };
 })();
 </script>
 <script>
@@ -1114,7 +1119,8 @@ NL.tables.fr = {
   setTheme: 'Thème', setSystem: 'Système', setLight: 'Clair', setDark: 'Sombre',
   setLang: 'Langue',
   langOther: 'Anglais',
-  langNotice: 'Lecture en français. Les fiches de référence sont dans Plus ; chacune dit pour quelle langue elle est faite.',
+  langNotice: 'Lecture en français. Les antisèches sont dans Plus ; chacune dit pour quelle langue elle est faite.',
+  langSynced: 'Langue changée sur un autre appareil.',
   setPractice: 'Exercice',
   setFlemish: 'Montrer la variante flamande',
   setAutoplay: 'Lire l’audio automatiquement',
@@ -1480,10 +1486,10 @@ NL.tables.en = {
   wordsMineGroup: 'My words',
 
   /* --- fiches --- */
-  sheetsEyebrow: 'Cheat sheets',
+  sheetsEyebrow: 'Reference sheets',
   sheetsTitle: 'For the corridor',
   sheetsBody: 'Eight sheets to open thirty seconds before you need them. Tap a line to hear it.',
-  sheetsAll: 'All the cheat sheets',
+  sheetsAll: 'All the reference sheets',
 
   /* --- registre et sons --- */
   regEyebrow: 'Standard and Flemish',
@@ -1505,7 +1511,7 @@ NL.tables.en = {
   soundsEasy: 'you already have it',
   soundsWatch: 'watch out',
   dehetTitle: 'The het families',
-  dehetBody: 'About seven het words in ten follow a rule. Learn the families instead of the 425 articles one by one — and never translate from French: het huis is neuter, la maison is feminine.',
+  dehetBody: 'About seven het words in ten follow a rule. Learn the families instead of the 425 articles one by one — and never guess from another language: het huis is neuter.',
   dehetHet: 'Take het', dehetDe: 'Take de',
   dehetSure: 'no exceptions',
 
@@ -1515,6 +1521,7 @@ NL.tables.en = {
   setLang: 'Language',
   langOther: 'French',
   langNotice: 'Reading in English. The reference sheets are under More; each says which language it helps with.',
+  langSynced: 'Language changed on another device.',
   setPractice: 'Practice',
   setFlemish: 'Show the Flemish variant',
   setAutoplay: 'Play audio automatically',
@@ -2981,9 +2988,12 @@ NL.sync = (function () {
     return { error: null };
   }
 
-  /* Déconnexion : on envoie ce qui reste, puis on efface l'appareil pour que la
-     personne suivante ne voie rien. Pas encore rattaché, ce qui a été fait ici
-     n'est pas encore au compte : on le rattache d'abord. */
+  /* Déconnexion : on envoie ce qui reste, puis on efface l'appareil. La personne
+     suivante ne voit rien de la progression ; seule la langue d'affichage reste
+     (clearAll la garde, sans updatedAt). Le compte suivant en hérite s'il n'en a
+     pas, et l'envoie ; s'il en a une, c'est la sienne qui l'emporte. Pas encore
+     rattaché, ce qui a été fait ici n'est pas encore au compte : on le
+     rattache d'abord. */
   async function signOut() {
     if (!enabled || !user) return;
     if (!attached()) { try { await adopt(); } catch (e) {} }
@@ -3048,6 +3058,12 @@ NL.sync = (function () {
     return data && data[0] ? data[0].data : null;
   }
 
+  /* Les réglages fusionnés prennent la place de ceux d'ici. Une langue d'affichage
+     qui change ainsi vient d'un autre appareil : NL.lang le voit, et le dira dans l'avis. */
+  function takeMeta(merged) {
+    NL.lang.fromAccount(() => NL.state.setMeta(merged, true));
+  }
+
   /* Une ligne du serveur qui descend d'une remise à zéro antérieure à la nôtre
      est en cours d'effacement ; sans `base`, elle vient de la version
      précédente, qui écrit encore après l'époque. Ni l'une ni l'autre n'entre. */
@@ -3082,7 +3098,7 @@ NL.sync = (function () {
 
       if (remoteMeta) {
         const merged = mergeMeta(NL.state.meta(), remoteMeta);
-        NL.state.setMeta(merged, true);
+        takeMeta(merged);
         if (JSON.stringify(merged) !== JSON.stringify(remoteMeta)) { box.meta = true; persist(); }
       } else {
         box.meta = true; persist();
@@ -3143,7 +3159,7 @@ NL.sync = (function () {
       if (snap.meta) {
         /* Les réglages se fusionnent avec la copie du serveur AVANT l'envoi :
            l'XP gagnée ailleurs pendant que cet appareil était hors ligne reste. */
-        if (remoteMeta) NL.state.setMeta(mergeMeta(NL.state.meta(), remoteMeta), true);
+        if (remoteMeta) takeMeta(mergeMeta(NL.state.meta(), remoteMeta));
         const m = NL.state.meta();
         const { error } = await client.from('user_meta').upsert(
           { user_id: uid, data: m, updated_at: m.updatedAt || now }, { onConflict: 'user_id' });
@@ -5279,35 +5295,48 @@ NL.content = NL.content || {};
    Absente des réglages, c'est l'anglais. Un changement ne s'applique jamais en
    pleine séance ni en pleine conversation : le shell n'appelle `apply` qu'en
    dehors d'elles, au premier écran dessiné ensuite. Le bandeau d'avis n'est pas
-   enregistré : il se dit une fois, puis `seen` l'efface. */
+   enregistré : il se dit une fois, puis `seen` l'efface. Un changement venu d'un
+   autre appareil le dit (`fromAccount`) ; la marque, comme l'avis, n'est pas enregistrée. */
 NL.lang = (function () {
   'use strict';
-  let applied = null, notice = false;
+  /* notice : les clés de NL.t que l'avis dit, dans l'ordre ; vide, il n'y a pas d'avis. */
+  let applied = null, notice = [], fromSync = false;
 
   const current = () => NL.state.meta().displayLang === 'fr' ? 'fr' : 'en';
 
   function apply(quiet) {
+    /* La marque de synchro vaut pour l'appel suivant, qu'il change la langue ou non. */
+    const bySync = fromSync; fromSync = false;
     const l = current();
     if (l === applied) return false;
     Object.keys(NL.t).forEach(k => { delete NL.t[k]; });
     Object.assign(NL.t, NL.tables[l]);
     NL.gloss.use(l);
     NL.content.refresh();
-    document.documentElement.setAttribute('lang', l === 'en' ? 'en-GB' : 'fr');
+    document.documentElement.setAttribute('lang', NL.gloss.tag(l));
     applied = l;
-    if (!quiet) notice = true;
+    if (!quiet) notice = bySync ? ['langSynced', 'langNotice'] : ['langNotice'];
     return true;
   }
 
+  /* Enregistre le choix ; render() l'applique au premier écran hors séance. */
   function set(lang) {
+    fromSync = false;
     NL.state.setMeta({ displayLang: lang });
-    return apply(false);
   }
 
-  const text = () => notice ? NL.t.langNotice : '';
-  const seen = () => { notice = false; };
+  /* sync.js écrit par `write` les réglages venus du compte. Une langue qui change
+     ainsi vient d'un autre appareil : l'avis le dira. */
+  function fromAccount(write) {
+    const before = current();
+    write();
+    if (current() !== before) fromSync = true;
+  }
 
-  return { current, apply, set, notice: text, seen };
+  const text = () => notice.map(k => NL.t[k]).join(' ');
+  const seen = () => { notice = []; };
+
+  return { current, apply, set, fromAccount, notice: text, seen };
 })();
 </script>
 <script>
@@ -5336,15 +5365,16 @@ NL.ex = (function () {
   const flemish = (be, std) => (be && NL.state.meta().showFlemish !== false && U.norm(be) !== U.norm(std))
     ? '<span class="be-line"><span class="be-tag">' + NL.t.beTag + '</span><span lang="nl-BE">' + esc(be) + '</span></span>' : '';
 
-  /* `nl` : les libellés sont du néerlandais (sinon des sens, dans la langue lue). */
-  function optList(opts, L, phase, nl) {
+  /* `lang` : l'attribut de la langue des libellés, NL_BE pour du néerlandais, NL.gloss.langAttr pour des sens. */
+  const NL_BE = ' lang="nl-BE"';
+  function optList(opts, L, phase, lang) {
     return '<div class="opts">' + opts.map((o, i) => {
       let cls = '';
       if (phase === 'ask') cls = (L.sel && L.sel.i === i) ? ' sel' : '';
       else if (o.ok) cls = ' ok';
       else if (L.sel && L.sel.i === i) cls = ' no';
       return '<button class="opt' + cls + '" data-opt="' + i + '"' + (phase === 'ask' ? '' : ' disabled') + '>' +
-        '<span class="opt-key">' + (i + 1) + '</span><span' + (nl ? ' lang="nl-BE"' : '') + '>' + esc(o.label) + '</span></button>';
+        '<span class="opt-key">' + (i + 1) + '</span><span' + lang + '>' + esc(o.label) + '</span></button>';
     }).join('') + '</div>';
   }
 
@@ -5367,17 +5397,12 @@ NL.ex = (function () {
   /* Une note de prononciation se dit en mots reconnus, pas en pourcentage. */
   const wordScore = parts => NL.t.wordsHeard((parts || []).filter(p => p.ok).length, (parts || []).length);
 
-  /* Les mauvaises réponses décident de la difficulté d'un QCM. Tirées au hasard
-     dans l'unité, elles s'éliminent sans connaître le mot : la bonne est la plus
-     longue, ou la seule avec le bon article, ou la seule du bon champ lexical.
-     On les choisit donc PROCHES de la bonne réponse — même genre, longueur
-     comparable, graphie voisine — pour qu'il faille vraiment savoir. */
   /* Un leurre ne doit jamais être une autre bonne réponse. « bonjour » se dit
      « hallo » ET « goeiedag » : proposer les deux, c'est en compter un faux.
      On compare chaque sens (« s'il vous plaît / voilà » en a deux), dans les
      deux langues. Le lexique sépare les sens par « / » ; une virgule, elle,
-     appartient à la phrase et ne sépare rien. */
-  /* La comparaison vit dans NL.gloss ; NL.ex.sameSense la re-exporte. */
+     appartient à la phrase et ne sépare rien. La comparaison vit dans NL.gloss ;
+     NL.ex.sameSense la re-exporte. */
   const sameSense = NL.gloss.sameSense;
 
   /* Ce que la réponse tapée accepte pour un élément : la cible, ses variantes
@@ -5395,7 +5420,12 @@ NL.ex = (function () {
   /* Les réponses acceptées (`list`) comprennent-elles le néerlandais de `b` ? */
   const accepts = (list, b) => list.indexOf(U.norm(U.bare(b.nl))) >= 0;
 
-  /* "field" : 'nl' pour des mots néerlandais, 'gloss' pour des sens. Les sens se
+  /* Les mauvaises réponses décident de la difficulté d'un QCM. Tirées au hasard
+     dans l'unité, elles s'éliminent sans connaître le mot : la bonne est la plus
+     longue, ou la seule avec le bon article, ou la seule du bon champ lexical.
+     On les choisit donc PROCHES de la bonne réponse — même genre, longueur
+     comparable, graphie voisine — pour qu'il faille vraiment savoir.
+     "field" : 'nl' pour des mots néerlandais, 'gloss' pour des sens. Les sens se
      jugent dans la langue lue de l'élément : on ne pose jamais contre des
      éléments qui n'ont rien dans cette langue. */
   function others(item, n, field) {
@@ -5420,7 +5450,7 @@ NL.ex = (function () {
       const s = label(x);
       let sc = 0;
       if (item.art && x.art && x.art === item.art) sc += 3;        // pas de tri par de/het
-      if (NL.gloss.wordClass(x, lang) === cls) sc += 3;                             // pas de tri par nature
+      if (NL.gloss.wordClass(x, lang) === cls) sc += 3;            // pas de tri par nature
       const gap = Math.abs(s.length - len) / Math.max(len, 1);
       sc += gap < 0.2 ? 3 : gap < 0.45 ? 2 : gap < 0.7 ? 1 : 0;    // pas de tri par longueur
       const d = U.lev(U.norm(s), tn);
@@ -5470,7 +5500,7 @@ NL.ex = (function () {
       return { type: 'pick', item, prompt: NL.gloss.bare(item), opts };
     },
     view(t, L, phase) {
-      return '<p class="sentence prompt">' + esc(t.prompt) + '</p>' + optList(t.opts, L, phase, true);
+      return '<p class="sentence prompt"' + NL.gloss.langAttr(t.item) + '>' + esc(t.prompt) + '</p>' + optList(t.opts, L, phase, NL_BE);
     },
     ready: (t, L) => !!L.sel,
     judge: (t, L) => ({ ok: !!(L.sel && (t.opts[L.sel.i] || {}).ok) }),
@@ -5485,7 +5515,7 @@ NL.ex = (function () {
       return { type: 'recall', item, opts };
     },
     view(t, L, phase) {
-      return speakerRow(U.bare(t.item.nl), { show: true, be: t.item.be }) + optList(t.opts, L, phase);
+      return speakerRow(U.bare(t.item.nl), { show: true, be: t.item.be }) + optList(t.opts, L, phase, NL.gloss.langAttr(t.item));
     },
     auto: t => U.bare(t.item.nl),
     ready: (t, L) => !!L.sel,
@@ -5500,8 +5530,8 @@ NL.ex = (function () {
       const n = U.bare(t.item.nl);
       return '<div class="speaker-row">' +
         '<button class="speaker" data-say="' + esc(t.item.art + ' ' + n) + '" aria-label="' + NL.t.listen + '">' + ICON.speaker(26) + '</button>' +
-        '<div class="sentence">&hellip;&nbsp;<span lang="nl-BE">' + esc(n) + '</span><span class="gloss">' + esc(NL.gloss.bare(t.item)) + '</span></div></div>' +
-        optList(t.opts, L, phase, true);
+        '<div class="sentence">&hellip;&nbsp;<span lang="nl-BE">' + esc(n) + '</span><span class="gloss"' + NL.gloss.langAttr(t.item) + '>' + esc(NL.gloss.bare(t.item)) + '</span></div></div>' +
+        optList(t.opts, L, phase, NL_BE);
     },
     ready: (t, L) => !!L.sel,
     judge: (t, L) => ({ ok: !!(L.sel && (t.opts[L.sel.i] || {}).ok) }),
@@ -5515,7 +5545,7 @@ NL.ex = (function () {
       return { type: 'bank', item, drill: d, target: d.nl, bank: bankFor(d.nl, item) };
     },
     view(t, L, phase) {
-      return '<div class="sentence prompt">' + esc(NL.gloss.of(t.drill)) + '</div>' + tileArea(t, L, phase);
+      return '<div class="sentence prompt"' + NL.gloss.langAttr(t.drill) + '>' + esc(NL.gloss.of(t.drill)) + '</div>' + tileArea(t, L, phase);
     },
     ready: (t, L) => L.picked.length > 0,
     judge: (t, L) => ({ ok: U.norm(said(t, L)) === U.norm(t.target) }),
@@ -5529,8 +5559,8 @@ NL.ex = (function () {
       return { type: 'order', item, drill: d, target: d.nl, bank: U.shuffle(U.tiles(d.nl)) };
     },
     view(t, L, phase) {
-      return '<div class="sentence prompt">' + esc(NL.gloss.of(t.drill)) + '</div>' +
-        '<div class="rule-chip">' + esc(NL.gloss.of(t.item.rule)) + '</div>' + tileArea(t, L, phase);
+      return '<div class="sentence prompt"' + NL.gloss.langAttr(t.drill) + '>' + esc(NL.gloss.of(t.drill)) + '</div>' +
+        '<div class="rule-chip"' + NL.gloss.langAttr(t.item.rule) + '>' + esc(NL.gloss.of(t.item.rule)) + '</div>' + tileArea(t, L, phase);
     },
     ready: (t, L) => L.picked.length > 0,
     judge: (t, L) => ({ ok: U.norm(said(t, L)) === U.norm(t.target) }),
@@ -5565,7 +5595,7 @@ NL.ex = (function () {
     },
     view(t, L, phase) {
       return '<div class="sentence cloze-line" lang="nl-BE">' + esc(t.shown).replace(/ +/, '<span class="gap">' + (phase === 'ask' ? '' : esc(t.gap)) + '</span>') + '</div>' +
-        '<div class="gloss-line">' + esc(NL.gloss.of(t.drill)) + '</div>' + optList(t.opts, L, phase, true);
+        '<div class="gloss-line"' + NL.gloss.langAttr(t.drill) + '>' + esc(NL.gloss.of(t.drill)) + '</div>' + optList(t.opts, L, phase, NL_BE);
     },
     ready: (t, L) => !!L.sel,
     judge: (t, L) => ({ ok: !!(L.sel && (t.opts[L.sel.i] || {}).ok) }),
@@ -5601,7 +5631,7 @@ NL.ex = (function () {
       return { type: 'type', item, target: item.kind === 'word' ? U.bare(item.nl) : (item.drills ? item.nl : item.nl), prompt: item.kind === 'word' ? NL.gloss.bare(item) : NL.gloss.of(item) };
     },
     view(t, L, phase) {
-      return '<div class="sentence prompt">' + esc(t.prompt) + '</div>' +
+      return '<div class="sentence prompt"' + NL.gloss.langAttr(t.item) + '>' + esc(t.prompt) + '</div>' +
         '<input class="textin" type="text" value="' + esc(L.input) + '" autocomplete="off" autocapitalize="off" ' +
         'spellcheck="false" placeholder="' + NL.t.typeHere + '"' + (phase === 'ask' ? '' : ' disabled') + '>' +
         '<div class="hintline"><span>' + NL.t.specialLetters + '</span>' +
@@ -5664,7 +5694,7 @@ NL.ex = (function () {
       const hush = untried ? '<div class="mic-actions"><button class="btn btn-ghost" data-quiet="1">' + NL.t.cantSpeak + '</button></div>' : '';
 
       return '<div class="sentence prompt"><span lang="nl-BE">' + esc(t.target) + '</span>' + flemish(t.item.be, t.target) + '</div>' +
-        '<div class="gloss-line">' + esc(t.prompt) + '</div>' +
+        '<div class="gloss-line"' + NL.gloss.langAttr(t.item) + '>' + esc(t.prompt) + '</div>' +
         speakerRow(t.target, {}) + panel + hush;
     },
     ready(t, L) {
@@ -5758,7 +5788,7 @@ NL.ex = (function () {
     },
     view(t, L, phase) {
       return '<p class="sentence prompt">' + NL.t.intrusAsk(t.art) + '</p>' +
-        optList(t.opts, L, phase, true);
+        optList(t.opts, L, phase, NL_BE);
     },
     ready: (t, L) => !!L.sel,
     judge: (t, L) => ({ ok: !!(L.sel && (t.opts[L.sel.i] || {}).ok) }),
@@ -5778,7 +5808,7 @@ NL.ex = (function () {
       return { type: 'corrige', item, bad, faulty: i, other: j, target: item.nl };
     },
     view(t, L, phase) {
-      return '<div class="gloss-line">' + esc(NL.gloss.of(t.item)) + '</div>' +
+      return '<div class="gloss-line"' + NL.gloss.langAttr(t.item) + '>' + esc(NL.gloss.of(t.item)) + '</div>' +
         '<div class="corrige">' + t.bad.map((w, i) => {
           let cls = '';
           if (phase !== 'ask') { if (i === t.faulty || i === t.other) cls = ' bad'; }
@@ -5809,7 +5839,7 @@ NL.ex = (function () {
     },
     view(t, L, phase) {
       return '<div class="sentence prompt" lang="nl-BE">' + esc(t.item.nl) + '</div>' +
-        '<div class="gloss-line">' + esc(NL.gloss.of(t.item)) + '</div>' + optList(t.opts, L, phase, true);
+        '<div class="gloss-line"' + NL.gloss.langAttr(t.item) + '>' + esc(NL.gloss.of(t.item)) + '</div>' + optList(t.opts, L, phase, NL_BE);
     },
     ready: (t, L) => !!L.sel,
     judge: (t, L) => ({ ok: !!(L.sel && (t.opts[L.sel.i] || {}).ok) }),
@@ -5832,13 +5862,13 @@ NL.ex = (function () {
     build: item => ({ type: 'open', item, task: item.open }),
     view(t, L, phase) {
       const met = phase === 'ask' ? null : rubric(t.task, L.input);
-      return '<p class="sentence prompt">' + esc(NL.gloss.of(t.task.ask)) + '</p>' +
+      return '<p class="sentence prompt"' + NL.gloss.langAttr(t.task.ask) + '>' + esc(NL.gloss.of(t.task.ask)) + '</p>' +
         '<textarea class="textin open-box" rows="3" spellcheck="false" ' +
         'placeholder="' + esc(NL.t.openPlaceholder) + '"' + (phase === 'ask' ? '' : ' disabled') + '>' +
         esc(L.input) + '</textarea>' +
         '<div class="need-list">' + (t.task.need || []).map(n => {
           const on = met ? met.indexOf(n.what) >= 0 : null;
-          return '<span class="need' + (on === null ? '' : on ? ' ok' : ' no') + '">' + esc(NL.gloss.of(n.what)) + '</span>';
+          return '<span class="need' + (on === null ? '' : on ? ' ok' : ' no') + '"' + NL.gloss.langAttr(n.what) + '>' + esc(NL.gloss.of(n.what)) + '</span>';
         }).join('') + '</div>' +
         (phase !== 'ask' ? '<p class="model-answer"><i>' + NL.t.openModel + '</i> <span lang="nl-BE">' + esc(t.task.model) + '</span></p>' : '');
     },
@@ -5863,7 +5893,7 @@ NL.ex = (function () {
         const sel = L.matchSel && L.matchSel.id === id, bad = L.matchBad === id;
         return '<button class="pair' + (gone ? ' gone' : '') + (sel ? ' sel' : '') + (bad ? ' shake' : '') + '"' +
           ' data-match="' + id + '" data-k="' + c.k + '" data-side="' + c.s + '"' + (gone ? ' disabled' : '') + '>' +
-          '<span class="pair-n">' + (c.s === 'l' ? 'NL' : t.pairs[c.k].lang.toUpperCase()) + '</span>' + (c.s === 'l' ? '<span lang="nl-BE">' + esc(c.t) + '</span>' : esc(c.t)) + '</button>';
+          '<span class="pair-n">' + (c.s === 'l' ? 'NL' : t.pairs[c.k].lang.toUpperCase()) + '</span>' + '<span' + (c.s === 'l' ? NL_BE : NL.gloss.langAttr(t.pairs[c.k].item)) + '>' + esc(c.t) + '</span></button>';
       };
       let rows = '';
       for (let i = 0; i < t.pairs.length; i++) rows += cell(t.left[i]) + cell(t.right[i]);
@@ -5947,6 +5977,8 @@ NL.ui = (function () {
   };
   const UNDER_MEER = ['woorden', 'spiek', 'register', 'klanken', 'doctor', 'dehet', 'fouten'];
   const FULLSCREEN = { sessie: 1, scenario: 1, doctor: 1, compte: 1 };
+  /* Les écrans où un changement de langue attend, et son avis avec lui. */
+  const LANG_WAITS = { sessie: 1, scenario: 1 };
 
   function go(to, a) {
     if (route === 'sessie' && to !== 'sessie' && NL.screens.sessie.active()) { sheet = 'quit-session'; return render(); }
@@ -5999,13 +6031,14 @@ NL.ui = (function () {
   function render() {
     applyTheme();
     /* Un changement de langue n'entre jamais en pleine séance ni en pleine conversation. */
-    if (route !== 'sessie' && route !== 'scenario') NL.lang.apply(false);
+    if (!LANG_WAITS[route]) NL.lang.apply(false);
     const S = NL.screens[route] || NL.screens.vandaag;
     const full = !!FULLSCREEN[route];
-    const note = NL.lang.notice();
+    const note = LANG_WAITS[route] ? '' : NL.lang.notice();
+    const noticeHtml = note ? '<div class="notice"><p>' + esc(note) + '</p></div>' : '';
     const html = full
-      ? '<div class="screen full">' + S.render(arg) + '</div>'
-      : topbar() + '<main class="screen">' + (note ? '<div class="notice"><p>' + esc(note) + '</p></div>' : '') + S.render(arg) + '</main>' + nav();
+      ? '<div class="screen full">' + noticeHtml + S.render(arg) + '</div>'
+      : topbar() + '<main class="screen">' + noticeHtml + S.render(arg) + '</main>' + nav();
     root.innerHTML = html + (sheet ? sheetHtml() : '') + (toastMsg ? '<div class="toast">' + esc(toastMsg) + '</div>' : '');
     if (S.after) S.after(arg);
   }
@@ -6379,7 +6412,7 @@ NL.screens.sessie = (function () {
       } catch (e) {
         /* Un élément mal formé est sauté — mais plus en silence : sans trace,
            il pouvait n'être jamais drillé sans que personne le sache. */
-        NL.errlog.note(e, 'exercice ' + name + ' · ' + it.id);
+        NL.errlog.note(e, 'exercise ' + name + ' · ' + it.id);
       }
     });
     return out;
@@ -6745,8 +6778,9 @@ NL.screens.sessie = (function () {
     const vl = c.ex === 'vlaams' ? EX.hereLine(it, '', true) : '';
     const be = vl || (NL.state.meta().showFlemish !== false ? EX.hereLine(it, ans, false) : '');
     /* Un autre élément au même sens a été tapé : on dit quel mot était demandé. */
-    /* La réponse est du néerlandais partout, sauf en « recall » (un sens) et en « match » (des paires). */
-    const ansLang = c.ex === 'recall' || c.ex === 'match' ? '' : ' lang="nl-BE"';
+    /* La réponse est du néerlandais partout, sauf en « recall », un sens dans sa langue, et en « match »,
+       des paires où les deux se mêlent. */
+    const ansLang = c.ex === 'recall' ? NL.gloss.langAttr(it) : c.ex === 'match' ? '' : ' lang="nl-BE"';
     const asked = ok && L.other ? '<p>' + NL.t.askedFor + ' <b' + ansLang + '>' + esc(ans) + '</b></p>' : '';
     const also = it && it.also && it.also.length
       ? '<p class="v-also">' + NL.t.alsoSaid + ' <span lang="nl-BE">' + esc(it.also.join(', ')) + '</span></p>' : '';
@@ -7255,10 +7289,10 @@ NL.screens.sessie = (function () {
             '<button class="bub-say" data-say="' + esc(b.be || b.nl) + '" aria-label="' + NL.t.replay + '">' + ICON.speaker(17) + '</button>' +
             '<div><p class="bub-nl" lang="nl-BE">' + esc(b.be || b.nl) + '</p>' +
             (b.be && U.norm(b.be) !== U.norm(b.nl) ? '<p class="bub-std">' + NL.t.scnStd + ' <span lang="nl-BE">' + esc(b.nl) + '</span></p>' : '') +
-            '<p class="bub-en">' + esc(NL.gloss.of(b)) + '</p></div></div>';
+            '<p class="bub-en"' + NL.gloss.langAttr(b) + '>' + esc(NL.gloss.of(b)) + '</p></div></div>';
         }
         return '<div class="bub you"><div><p class="bub-nl" lang="nl-BE">' + esc(b.nl) + '</p>' +
-          '<p class="bub-en">' + esc(NL.gloss.of(b)) + '</p>' +
+          '<p class="bub-en"' + NL.gloss.langAttr(b) + '>' + esc(NL.gloss.of(b)) + '</p>' +
           (b.score ? '<p class="bub-score">' + esc(b.score) + '</p>' : '') + '</div></div>';
       }).join('');
 
@@ -7431,13 +7465,13 @@ NL.screens.luisteren = (function () {
     /* Une même réplique revient d'un scénario à l'autre : sans ce filtre, la
        bonne traduction pouvait s'afficher deux fois, dont une comptée fausse. */
     const lang = NL.gloss.langOf(c), right = NL.gloss.of(c);
-    const seen = {};
+    const seen = new Set();
     const pool = [];
     NL.content.listenClips()
       .filter(x => x.id !== c.id && NL.gloss.has(x, lang) && U.norm(NL.gloss.of(x, lang)) !== U.norm(right))
       .forEach(x => {
         const l = NL.gloss.of(x, lang), k = U.norm(l);
-        if (!seen[k]) { seen[k] = true; pool.push(l); }
+        if (!seen.has(k)) { seen.add(k); pool.push(l); }
       });
     S.opts = U.shuffle([{ label: right, ok: true }].concat(
       U.sample(pool, 2).map(l => ({ label: l, ok: false }))));
@@ -7503,7 +7537,7 @@ NL.screens.luisteren = (function () {
       body = '<div class="listen-stage">' +
         '<button class="mic big play" data-act="play" aria-label="' + NL.t.listen + '">' + ICON.speaker(36) + '</button>' +
         '<p class="rev-nl" lang="nl-BE">' + esc(c.be || c.nl) + '</p>' +
-        '<p class="rev-en">' + esc(NL.gloss.of(c)) + '</p>' +
+        '<p class="rev-en"' + NL.gloss.langAttr(c) + '>' + esc(NL.gloss.of(c)) + '</p>' +
         '<div class="listen-actions"><button class="btn btn-ghost" data-act="slow">' + NL.t.slow + '</button></div>' +
         '</div>' + shadowPanel(sp);
     }
@@ -7652,7 +7686,7 @@ NL.screens.luisteren = (function () {
         : filter === 'zwak' ? seen.filter(it => missed.has(it.id))
           : filter === 'sterk' ? all.filter(it => it.unit !== 'eigen' && NL.content.produced(it))   // l'ensemble et le prédicat du compteur « produits »
             : seen);
-      if (q) list = all.filter(it => U.norm(it.nl).indexOf(q) >= 0 || U.norm(NL.gloss.of(it)).indexOf(q) >= 0 || (it.be && U.norm(it.be).indexOf(q) >= 0));
+      if (q) list = all.filter(it => [it.nl, it.be, NL.gloss.of(it, 'fr'), NL.gloss.of(it, 'en')].some(s => !!s && U.norm(s).indexOf(q) >= 0));
 
       const groups = {};
       list.forEach(it => { (groups[it.unit] = groups[it.unit] || []).push(it); });
@@ -7693,7 +7727,7 @@ NL.screens.luisteren = (function () {
               esc(U.bare(it.nl)) + '</span>' +
               (it.be && NL.state.meta().showFlemish !== false ? '<span class="v-be">' + NL.t.wordsHere + ' <span lang="nl-BE">' + esc(it.be) + '</span></span>' : '') +
               '</span>' +
-              '<span class="v-en">' + esc(NL.gloss.bare(it)) + '</span>' +
+              '<span class="v-en"' + NL.gloss.langAttr(it) + '>' + esc(NL.gloss.bare(it)) + '</span>' +
               pips(s) +
               (it.unit === 'eigen' ? '<button class="iconbtn tiny" data-del="' + it.id + '" aria-label="' + NL.t.del + '">' + NL.ui.I.x + '</button>' : '') +
               '</div>';
@@ -7859,7 +7893,7 @@ NL.screens.fouten = (function () {
       html += '<div class="vrow">' +
         '<button class="speaker tiny" data-say="' + esc(U.bare(it.nl)) + '" aria-label="' + t.listen + '">' + NL.ex.ICON.speaker(17) + '</button>' +
         '<span class="v-nl" lang="nl-BE">' + (it.art ? '<span class="art ' + it.art + '">' + it.art + '</span>' : '') + esc(U.bare(it.nl)) + '</span>' +
-        '<span class="v-en">' + esc(NL.gloss.bare(it)) + '</span>' +
+        '<span class="v-en"' + NL.gloss.langAttr(it) + '>' + esc(NL.gloss.bare(it)) + '</span>' +
         '<span class="muted small">' + t.missRow(x.wrong, x.wrong + x.right) + '</span>' +
         '</div>';
     });
@@ -7883,7 +7917,7 @@ NL.screens.doctor = (function () {
   'use strict';
   const esc = NL.util.esc, t = NL.t;
   const TEST = 'Goeiemorgen, alles goed met u?';
-  let S = { heard: null, mic: null, micMsg: '', rec: 'idle' };
+  let S = { heard: null, mic: null, micKey: '', rec: 'idle' };
 
   const TIERS = {
     full: { get label() { return t.tierFull; }, get note() { return t.tierFullNote; } },
@@ -7957,7 +7991,7 @@ NL.screens.doctor = (function () {
       (S.rec === 'rec' ? t.recStop : t.docMicTest) + '</button>' +
       (NL.speech.hasRecording() ? '<button class="btn" data-act="playrec">' + t.recYours + '</button>' : '') +
       '</div>' +
-      (S.micMsg ? '<p class="doc-verdict ' + (S.mic ? 'good' : 'bad') + '">' + esc(S.micMsg) + '</p>' : '') +
+      (S.micKey ? '<p class="doc-verdict ' + (S.mic ? 'good' : 'bad') + '">' + esc(t[S.micKey]) + '</p>' : '') +
       '</section>' +
 
       '<section class="doc-block"><h4>' + t.errTitle + '</h4>' + errorBlock() + '</section>' +
@@ -7996,22 +8030,22 @@ NL.screens.doctor = (function () {
       }
       if (d.act === 'recstop') { NL.speech.stopRecord(); return; }
       if (d.act === 'rec') {
-        S.rec = 'rec'; S.micMsg = t.docSpeakNow; S.mic = null; NL.ui.render();
+        S.rec = 'rec'; S.micKey = 'docSpeakNow'; S.mic = null; NL.ui.render();
         NL.speech.record({
           onstart: () => { setTimeout(() => { if (S.rec === 'rec') NL.speech.stopRecord(); }, 3000); },
           onstop: url => {
             S.rec = 'idle';
             S.mic = !!url;
-            S.micMsg = url ? t.docRecOk : t.docRecNone;
+            S.micKey = url ? 'docRecOk' : 'docRecNone';
             NL.ui.render();
           },
           onerror: kind => {
             S.rec = 'idle'; S.mic = false;
-            S.micMsg = kind === 'framed'
-              ? t.docRecFramed
-              : kind === 'denied' ? t.docRecDenied
-                : kind === 'nomic' ? t.docRecNoMic
-                  : t.docRecOther;
+            S.micKey = kind === 'framed'
+              ? 'docRecFramed'
+              : kind === 'denied' ? 'docRecDenied'
+                : kind === 'nomic' ? 'docRecNoMic'
+                  : 'docRecOther';
             NL.ui.render();
           }
         });
