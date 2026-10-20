@@ -12,8 +12,9 @@ n'y a qu'une seule liste. Il faut Node et un `sh` (sous Windows, celui de Git).
 | Test | Ce qu'il vérifie |
 | --- | --- |
 | `smoke.js` | Le contenu, l'échelle, chaque type d'exercice, la notation, la qualité des leurres, l'orthographe, qu'aucune chaîne anglaise ne survit dans le build, et qu'aucune source listée dans `build.sh` n'emploie `var` ni le chaînage optionnel `?.` (les chaînes, les commentaires et les regex ne comptent pas), et que `index.html` et `artifact.html` sortent du build en LF, sans retour chariot |
+| `lang.js` | La langue d'affichage (contrôles 2 à 6) : le cours chargé tel quel puis « apparié » (un anglais factice par sens et par texte), aucune chaîne d'interface hors des deux tables, mêmes clés, même forme, mêmes chiffres et mêmes `{…}` dans `fr.js` et `en.js`, aucun écran qui mêle les langues, le réglage, le changement qui attend la fin de la séance, ce que la restauration et la remise à zéro gardent, et le néerlandais du cours déclaré comme tel (`lang`) |
 | `dehet.js` | Chaque nom du cours confronté au Wiktionnaire : `de` ou `het`, sur la fiche **et** dans ses phrases d'exemple |
-| `content.js` | L'orthographe contre 410 000 formes néerlandaises, que chaque exercice promis se construise vraiment, qu'une phrase d'exemple n'emprunte pas de vocabulaire à une unité ultérieure, et les éléments enseignés deux fois |
+| `content.js` | L'orthographe contre 410 000 formes néerlandaises, que chaque exercice promis se construise vraiment, qu'une phrase d'exemple n'emprunte pas de vocabulaire à une unité ultérieure, et les éléments enseignés deux fois ; le contrôle 5 : chaque id garde son néerlandais, le 6 : l'anglais qui reste dû |
 | `engine.js` | Ce qu'une séance contient et quand un élément revient, horloge en marche : la panne d'octobre, deux jours de suite, ce qui revient le lendemain à la même heure, l'heure de la réponse à Bruxelles (minuit, 23 h 50, les deux nuits de changement d'heure), le renforcement dans la séance, la réserve de nouveautés, le seuil des unités, la première demande à voix haute et l'exercice écrit qui la suit, l'écrit de l'échelon 3 toujours tapé, « je ne peux pas parler » |
 | `screens.js` | Chaque écran dans quatre états, relu comme du texte : ni pourcentage, ni maîtrise ; les comptes, le nom de l'unité, ce qui résiste, le bouton « je ne peux pas parler », le journal d'erreurs |
 | `typed.js` | Ce qu'une réponse tapée accepte, tapée à l'écran : la cible, la variante flamande, les autres façons de dire (`also`), et la réponse d'un élément au même sens ; la note qu'elle laisse, « Presque » mesuré contre chaque réponse acceptée, la dictée qui garde sa seule cible, les leurres qui ne sont jamais une réponse juste, et le panneau : « Ici on dit » sans répétition, les mots flamands en gras, « On dit aussi » ; et tout le cours : pour chaque élément, sa cible puis chaque forme que le panneau présente comme juste (« Ici on dit », `also`), tapées à l'écran, justes et notées comme la cible |
@@ -94,6 +95,8 @@ changent, ni des heures au hasard, ni un jour sauté. En deux cents jours, il ne
 traverse que le passage à l'heure d'été du 29 mars ; celui d'octobre, c'est
 `engine.js` qui le vérifie. Et comme tous les apprenants simulés, il n'oublie
 rien : il répond juste 85 fois sur 100, quoi qu'il arrive.
+
+`lang.js` ne voit pas si l'anglais est naturel : il compare des clés, des chiffres et des langues, pas le sens. C'est le travail de la séance de contrôle et du mainteneur.
 
 Et ce qu'aucun d'eux ne voit : l'idiome, le registre, l'ordre des mots, si une
 phrase vaut la peine d'être apprise. Les scénarios et les antisèches ne passent
