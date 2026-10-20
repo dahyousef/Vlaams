@@ -16,9 +16,16 @@ NL.screens.luisteren = (function () {
     const c = S.clips[S.at];
     /* Une même réplique revient d'un scénario à l'autre : sans ce filtre, la
        bonne traduction pouvait s'afficher deux fois, dont une comptée fausse. */
-    const pool = U.uniq(NL.content.listenClips()
-      .filter(x => x.id !== c.id && U.norm(x.fr) !== U.norm(c.fr)).map(x => x.fr));
-    S.opts = U.shuffle([{ label: c.fr, ok: true }].concat(
+    const lang = NL.gloss.langOf(c), right = NL.gloss.of(c);
+    const seen = {};
+    const pool = [];
+    NL.content.listenClips()
+      .filter(x => x.id !== c.id && NL.gloss.has(x, lang) && U.norm(NL.gloss.of(x, lang)) !== U.norm(right))
+      .forEach(x => {
+        const l = NL.gloss.of(x, lang), k = U.norm(l);
+        if (!seen[k]) { seen[k] = true; pool.push(l); }
+      });
+    S.opts = U.shuffle([{ label: right, ok: true }].concat(
       U.sample(pool, 2).map(l => ({ label: l, ok: false }))));
     S.plays = 0;
   }
@@ -66,8 +73,8 @@ NL.screens.luisteren = (function () {
         '<button class="btn btn-ghost" data-act="slow">' + NL.t.slow + '</button>' +
         '</div>' +
         (S.phase === 'shown'
-          ? '<div class="reveal"><p class="rev-nl">' + esc(c.be || c.nl) + '</p>' +
-          (c.be && U.norm(c.be) !== U.norm(c.nl) ? '<p class="rev-std">' + NL.t.scnStd + ' ' + esc(c.nl) + '</p>' : '') +
+          ? '<div class="reveal"><p class="rev-nl" lang="nl-BE">' + esc(c.be || c.nl) + '</p>' +
+          (c.be && U.norm(c.be) !== U.norm(c.nl) ? '<p class="rev-std">' + NL.t.scnStd + ' <span lang="nl-BE">' + esc(c.nl) + '</span></p>' : '') +
           '<p class="rev-src">' + NL.t.listenFrom + ' &ldquo;' + esc(c.from) + '&rdquo;</p></div>'
           : '<p class="listen-hint">' + NL.t.listenNoText + '</p>') +
         '</div>' +
@@ -81,8 +88,8 @@ NL.screens.luisteren = (function () {
       const sp = S.speech;
       body = '<div class="listen-stage">' +
         '<button class="mic big play" data-act="play" aria-label="' + NL.t.listen + '">' + ICON.speaker(36) + '</button>' +
-        '<p class="rev-nl">' + esc(c.be || c.nl) + '</p>' +
-        '<p class="rev-en">' + esc(c.fr) + '</p>' +
+        '<p class="rev-nl" lang="nl-BE">' + esc(c.be || c.nl) + '</p>' +
+        '<p class="rev-en">' + esc(NL.gloss.of(c)) + '</p>' +
         '<div class="listen-actions"><button class="btn btn-ghost" data-act="slow">' + NL.t.slow + '</button></div>' +
         '</div>' + shadowPanel(sp);
     }
@@ -148,7 +155,7 @@ NL.screens.luisteren = (function () {
         : NL.t.listenShadowDone) + '</p>' +
       '<div class="tally">' +
       (S.mode === 'begrijpen' ? '<div class="tally-box blue"><div class="t-n">' + S.right + '/' + S.clips.length + '</div><div class="t-l">' + NL.t.listenUnderstood + '</div></div>' : '') +
-      '<div class="tally-box gold"><div class="t-n">+8</div><div class="t-l">XP</div></div></div>' +
+      '<div class="tally-box gold"><div class="t-n">+8</div><div class="t-l">' + NL.t.tallyXp + '</div></div></div>' +
       '<button class="btn btn-primary wide" data-act="menu">' + NL.t.listenMore + '</button>' +
       '<button class="btn btn-ghost wide" data-go="vandaag">' + NL.t.back + '</button>' +
       '</div></div></div>';

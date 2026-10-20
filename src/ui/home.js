@@ -32,8 +32,8 @@
 
       if (v.quality !== 'be') {
         html += '<button class="notice" data-go="doctor">' +
-          '<b>' + (v.quality === 'nl' ? 'Voix du nord des Pays-Bas' : 'Aucune voix néerlandaise') + '</b>' +
-          '<p>' + esc(v.note) + ' Touche ici pour tester et corriger.</p></button>';
+          '<b>' + (v.quality === 'nl' ? t.voiceNorthTitle : t.voiceNoneTitle) + '</b>' +
+          '<p>' + esc(t[v.note]) + ' ' + t.voiceFix + '</p></button>';
       }
 
       /* La série enregistrée ne change qu'à la séance suivante : un jour sauté, elle est déjà coupée.
@@ -48,10 +48,10 @@
       html += '<h3 class="sec">' + t.morepractice + '</h3><div class="cards">';
       html += defiTile(m);
       const scn = (NL.content.scenarios || []).filter(s => (m.scenariosDone || []).indexOf(s.id) < 0)[0] || NL.content.scenarios[0];
-      html += tile(scn.icon, scn.title, scn.place, 'scn', scn.id);
+      html += tile(scn.icon, NL.gloss.of(scn.title), NL.gloss.of(scn.place), 'scn', scn.id);
       html += tile('\u{1F3A7}', t.listenTitle, t.listenUnderstandSub, 'go', 'luisteren');
       const sheet = NL.content.sheets[(m.doneToday || 0) > 0 ? 1 : 0];
-      html += tile(sheet.icon, sheet.title, sheet.blurb, 'sheetid', sheet.id);
+      html += tile(sheet.icon, NL.gloss.of(sheet.title), NL.gloss.of(sheet.blurb), 'sheetid', sheet.id);
       html += '</div></div>';
       return html;
     },
@@ -105,17 +105,17 @@
           (isNow ? '<span class="now-tag">' + t.currentUnit + '</span>' : '') +
           '<div class="uc-head">' +
           '<span class="uc-icon">' + u.icon + '</span>' +
-          '<div class="uc-title"><span class="eyebrow">Unité ' + u.n + ' · ' + u.level + ' · ' + trackName(u.track) + '</span>' +
-          '<h2>' + esc(u.name) + '<i class="uc-nl">' + esc(u.nlName || '') + '</i></h2></div>' +
+          '<div class="uc-title"><span class="eyebrow">' + t.unitOne(u.n) + ' · ' + u.level + ' · ' + trackName(u.track) + '</span>' +
+          '<h2>' + esc(NL.gloss.of(u.name)) + '<i class="uc-nl" lang="nl-BE">' + esc(u.nlName || '') + '</i></h2></div>' +
           '<span class="uc-pct">' + p.met + '/' + p.total + '</span>' +
           '</div>' +
-          '<p class="uc-blurb">' + esc(u.blurb) + '</p>' +
+          '<p class="uc-blurb">' + esc(NL.gloss.of(u.blurb)) + '</p>' +
           '<p class="muted small">' + t.unitCounts(p.met, p.produce, p.total) + '</p>' +
           /* Le seuil est un compte à rebours, pas un mystère. */
           (open && p.toOpen > 0 && u !== NL.content.units[NL.content.units.length - 1]
             ? '<p class="uc-gate">' + t.unitGate(p.toOpen) + '</p>' : '') +
           (g.length ? '<div class="uc-gram">' + g.map(x =>
-            '<button class="gram-chip" data-act="gram" data-id="' + x.id + '">' + esc(x.title) + '</button>').join('') + '</div>' : '') +
+            '<button class="gram-chip" data-act="gram" data-id="' + x.id + '">' + esc(NL.gloss.of(x.title)) + '</button>').join('') + '</div>' : '') +
           (open
             ? '<button class="btn btn-blue" data-unit="' + u.id + '">' + (p.met ? t.unitPractise : t.unitStart) + '</button>'
             : '<p class="uc-lock">' + t.unitLocked(u.n - 1) + '</p>') +
@@ -127,10 +127,10 @@
       if (d.unit) { NL.screens.sessie.begin(d.unit); NL.ui.go('sessie'); return; }
       if (d.act === 'gram') {
         const g = (NL.content.patterns || []).find(x => x.id === el.dataset.id);
-        if (g) NL.ui.openSheet({ custom: NL.ui.card(esc(g.title),
-          '<p class="rule">' + esc(g.rule) + '</p><div class="explain">' + g.explain + '</div>' +
+        if (g) NL.ui.openSheet({ custom: NL.ui.card(esc(NL.gloss.of(g.title)),
+          '<p class="rule">' + esc(NL.gloss.of(g.rule)) + '</p><div class="explain">' + NL.gloss.prose(NL.gloss.of(g.explain)) + '</div>' +
           '<div class="ex-list">' + g.drills.slice(0, 3).map(d2 =>
-            '<button class="ex-row" data-say="' + esc(d2.nl) + '"><b>' + esc(d2.nl) + '</b><i>' + esc(d2.fr) + '</i></button>').join('') + '</div>',
+            '<button class="ex-row" data-say="' + esc(d2.nl) + '"><b lang="nl-BE">' + esc(d2.nl) + '</b><i>' + esc(NL.gloss.of(d2)) + '</i></button>').join('') + '</div>',
           '<button class="btn btn-ghost wide" data-close="1">' + t.close + '</button>') });
       }
     }
@@ -179,7 +179,7 @@
         '<span><b>' + (m.best || 0) + '</b> ' + t.statBest + '</span>' +
         '<span><b>' + (m.bestCombo || 0) + '</b> ' + t.statCombo + '</span>' +
         '<span><b>' + (m.defiBest || 0) + '</b> ' + t.statDefi + '</span>' +
-        '<span><b>' + m.xp + '</b> XP</span>' +
+        '<span><b>' + m.xp + '</b> ' + t.tallyXp + '</span>' +
         '</div></section></div>';
     },
     click(el, d) {

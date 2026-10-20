@@ -48,9 +48,9 @@ NL.speech = (function () {
     quality,                                  // 'be' | 'nl' | 'none' | 'unknown'
     name: voiceNow() ? voiceNow().name : null,
     lang: voiceNow() ? voiceNow().lang : null,
-    note: quality === 'be' ? 'Voix flamande trouvée.'
-      : quality === 'nl' ? 'Seule une voix des Pays-Bas est installée : l’audio a donc l’accent du nord, avec un g raclé là où la Flandre utilise un g doux.'
-        : 'Aucune voix néerlandaise trouvée. L’audio retombe sur la voix par défaut du navigateur et ne sonnera pas néerlandais.'
+    note: quality === 'be' ? 'voiceNoteBe'
+      : quality === 'nl' ? 'voiceNoteNl'
+        : 'voiceNoteNone'
   });
 
   let lastSpoken = 0;
@@ -101,7 +101,7 @@ NL.speech = (function () {
     if (/Firefox\//.test(UA)) return 'Firefox';
     if (/Chrome\//.test(UA)) return 'Chrome';
     if (/Safari\//.test(UA)) return 'Safari';
-    return 'ton navigateur';
+    return NL.t.browserYours;
   }
 
   const canListen = () => !!SR && !NO_SERVICE && navigator.onLine !== false;

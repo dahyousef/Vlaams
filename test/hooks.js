@@ -1,7 +1,8 @@
 /* Les deux crochets de SessionStart et l'ordre du vérificateur. Le rappel de reprise : .claude/settings.json le
    branche sur SessionStart (compact|resume), et ce qu'il imprime entre dans le contexte de la session. Le crochet
    du transcript (startup|clear) imprime le chemin que Claude Code lui donne sur stdin. verifier.md remet les
-   sorties du build avant de vérifier l'arbre. On lance les commandes telles que Claude Code les lance. */
+   sorties du build avant de vérifier l'arbre. Le texte du kit ne porte aucun caractère de contrôle, et sa commande
+   de lancement nomme claude.exe en entier. On lance les commandes telles que Claude Code les lance. */
 const path = require('path'), fs = require('fs'), { spawnSync } = require('child_process');
 const ROOT = process.argv[2];
 let fails = 0;
@@ -45,6 +46,15 @@ ok(t3.status === 0 && (t3.stdout || '').trim() === '', 'avec un JSON invalide : 
 const rc = fs.readFileSync(path.join(ROOT, 'docs/agents/plan-runs/run-controller.md'), 'utf8');
 ok(rc.includes("This session's transcript"), 'run-controller.md nomme la ligne du crochet');
 ok(!rc.includes('newest `.jsonl`'), 'run-controller.md ne devine plus le transcript par le .jsonl le plus récent');
+
+// Une commande du kit est copiée telle quelle. Un fichier écrit par une chaîne JS aux barres obliques inverses
+// non doublées change « \b » en caractère de contrôle et efface les autres : la commande ne trouve plus claude.exe.
+const kit = path.join(ROOT, 'docs/agents/plan-runs');
+for (const f of fs.readdirSync(kit).filter(f => f.endsWith('.md'))) {
+  ok(!/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(fs.readFileSync(path.join(kit, f), 'utf8')), f + ' ne contient aucun caractère de contrôle');
+}
+const launches = rc.split('$env:USERPROFILE').slice(1);
+ok(launches.length >= 2 && launches.every(s => s.startsWith('\\.local\\bin\\claude.exe')), 'run-controller.md nomme claude.exe par son chemin entier, au lancement et dans la fenêtre');
 
 const ver = fs.readFileSync(path.join(ROOT, 'docs/agents/plan-runs/verifier.md'), 'utf8');
 const iCo = ver.indexOf('git checkout -- index.html artifact.html'), iSt = ver.indexOf('`git status --short`');

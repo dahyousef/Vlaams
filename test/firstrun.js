@@ -21,8 +21,8 @@ NL.state.open().then(() => {
   NL.ui.go('vandaag');
   const home = app.innerHTML;
   ok(!/test de niveau/i.test(home) && home.indexOf('placement') < 0, 'a blank account is still offered the placement test');
-  ok(home.includes('Démarrer la session'), 'no session button on a blank account');
-  ok(!/[^a-z]the [a-z]/.test(home), 'English leaked onto the home screen');
+  ok(home.includes(NL.t.todayStart), 'no session button on a blank account');
+  Object.keys(NL.tables.fr).forEach(k => { const f = NL.tables.fr[k], e = NL.tables.en[k]; if (typeof f === 'string' && f.length >= 12 && f !== e) ok(home.indexOf(f) < 0, 'the other language leaked onto the home screen: ' + k); });
   console.log('  home screen     ' + home.length + ' chars, session offered');
   console.log('  voice report    ' + NL.speech.voiceInfo().note.slice(0, 60) + '…');
   console.log('  mic verdict     listenBlocked=' + NL.speech.listenBlocked() + ', tier=' + NL.speech.tier().id);
@@ -67,7 +67,7 @@ NL.state.open().then(() => {
          donc c'est ce qu'un vrai utilisateur fait une fois sur deux. */
       const pairs = S.peek().task.pairs, done = new Set();
       for (let a = 0; a < pairs.length; a++) for (let b = a + 1; b < pairs.length; b++) {
-        if (done.has(a) || done.has(b) || U.norm(pairs[a].fr) !== U.norm(pairs[b].fr)) continue;
+        if (done.has(a) || done.has(b) || U.norm(pairs[a].gloss) !== U.norm(pairs[b].gloss)) continue;
         S.click({ dataset: {} }, { match: 'l' + a, k: String(a), side: 'l' });
         S.click({ dataset: {} }, { match: 'r' + b, k: String(b), side: 'r' });
         S.click({ dataset: {} }, { match: 'l' + b, k: String(b), side: 'l' });

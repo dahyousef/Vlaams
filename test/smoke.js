@@ -8,10 +8,10 @@ const ROOT = process.argv[2];
    phrases d'exemple. */
 const B = browser.open({
   root: ROOT, seed: browser.SEED, timers: 'real', location: { protocol: 'file:' },
-  files: ['src/core/util.js', 'src/core/fr.js', 'src/core/state.js', 'src/core/srs.js', 'src/core/speech.js',
+  files: ['src/core/util.js', 'src/core/gloss.js', 'src/core/fr.js', 'src/core/state.js', 'src/core/srs.js', 'src/core/speech.js',
     'src/core/audio.js', 'src/content/lexicon.a1.js', 'src/content/lexicon.a1b.js', 'src/content/grammar.js',
     'src/content/open.js', 'src/content/reference.js', 'src/content/scenarios.js', 'src/content/index.js',
-    'src/ex/index.js']
+    'src/core/lang.js', 'src/ex/index.js']
 });
 const NL = B.NL;
 let fails = 0;
@@ -136,19 +136,27 @@ NL.state.open().then(() => {
   ok(JSON.stringify(NL.content.allItems()).indexOf('Testdorp') < 0, 'clearing the settings left personal data behind');
   console.log('  personalisation  placeholders fill and clear cleanly');
 
-  /* French sweep: every gloss is French, none is English. */
+  /* Build sweep: every built-in item has a French gloss, and the page declares English. */
   items.forEach(i => {
     ok(i.fr, 'no French gloss on ' + i.id);
-    ok(i.en === undefined, 'English gloss survived on ' + i.id);
   });
   const built = path.join(ROOT, 'index.html');
   if (fs.existsSync(built)) {
     const html = fs.readFileSync(built, 'utf8');
     ['>Overslaan<', '>Nakijken<', '>Start de sessie<', '>Terug naar Vandaag<',
-     'Everything you have met', 'Welke is het?', 'Tik de woorden hieronder'].forEach(s =>
+     'Welke is het?', 'Tik de woorden hieronder'].forEach(s =>
       ok(html.indexOf(s) < 0, 'untranslated interface string in build: ' + s));
-    console.log('  french sweep    build is clean of known EN/NL interface strings');
+    ok(html.indexOf('<html lang="en-GB">') >= 0, 'index.html must declare <html lang="en-GB">');
+    ok(html.indexOf('<meta name="description" content="Learn Flemish Dutch: spaced repetition, speaking aloud, and the language as it is really spoken in Flanders.">') >= 0, 'index.html must carry the English meta description');
+    console.log('  build sweep     build is clean of known EN/NL interface strings, and declares en-GB');
   }
+
+  /* Les deux sorties du build sont en LF, quelle que soit la fin de ligne des sources dans la copie de
+     travail (core.autocrlf=true les y met en CRLF) : sinon git les montre modifiées après chaque build. */
+  ['index.html', 'artifact.html'].forEach(f => {
+    const p = path.join(ROOT, f);
+    if (fs.existsSync(p)) ok(fs.readFileSync(p, 'utf8').indexOf('\r') < 0, f + ' contient un retour chariot : build.sh doit écrire du LF');
+  });
 
   /* Ni `var` ni chaînage optionnel (`?.`) dans les sources. Les listes sont celles de
      build.sh : un fichier ajouté plus tard est relu lui aussi. Les sources actuelles
@@ -386,24 +394,31 @@ NL.state.open().then(() => {
     const byNl = {};
     all.forEach(x => { (byNl[UU.norm(UU.bare(x.nl))] = byNl[UU.norm(UU.bare(x.nl))] || []).push(x); });
     let built = 0, second = 0, example = '';
+    /* Le sens se lit par NL.gloss, dans chaque langue lue. */
+    const was = NL.gloss.current();
+    ['fr', 'en'].forEach(l => {
+    NL.gloss.use(l);
     /* Les mots qui ont un jumeau de sens sont rares : on les tire bien plus
        souvent, sinon le hasard ne les met presque jamais face à face. */
-    const hasTwin = it => all.some(x => x !== it && x.kind === it.kind && overlap(UU.bareFr(x.fr), UU.bareFr(it.fr)));
+    const hasTwin = it => all.some(x => x !== it && x.kind === it.kind && overlap(NL.gloss.bare(x), NL.gloss.bare(it)));
     all.forEach(it => {
       const reps = hasTwin(it) ? 60 : 3;
       for (let k = 0; k < reps; k++) {
         const p = NL.ex.get('pick').build(it), r = NL.ex.get('recall').build(it);
         built += 2;
         p.opts.filter(o => !o.ok).forEach(o => {
-          if ((byNl[UU.norm(o.label)] || []).some(x => overlap(UU.bareFr(x.fr), UU.bareFr(it.fr)))) {
-            second++; example = example || UU.bareFr(it.fr) + ' → ' + o.label;
+          if ((byNl[UU.norm(o.label)] || []).some(x => overlap(NL.gloss.bare(x), NL.gloss.bare(it)))) {
+            second++; example = example || NL.gloss.bare(it) + ' → ' + o.label;
           }
         });
         r.opts.filter(o => !o.ok).forEach(o => {
-          if (overlap(o.label, UU.bareFr(it.fr))) { second++; example = example || it.nl + ' → ' + o.label; }
+          if (overlap(o.label, NL.gloss.bare(it))) { second++; example = example || it.nl + ' → ' + o.label; }
         });
       }
     });
+    });
+    NL.gloss.use(was);
+
     /* « Comment le dit-on ici ? » : une phrase face à deux mots isolés se devine. */
     let mixed = 0, vl = 0;
     all.filter(i => i.kind === 'phrase' && i.be && UU.norm(i.be) !== UU.norm(i.nl)).forEach(it => {
@@ -472,6 +487,7 @@ NL.state.open().then(() => {
   /* Deux mots, une même traduction : à l'écran les deux cartes « bonjour » sont
      identiques, donc l'une ou l'autre doit être acceptée. */
   {
+    NL.state.setMeta({ displayLang: 'fr' }); NL.lang.apply(true);
     const hallo = items.find(i => U.bare(i.nl) === 'hallo'), goeiedag = items.find(i => U.bare(i.nl) === 'goeiedag');
     const dag = items.find(i => U.bare(i.nl) === 'dag');
     ok(hallo && goeiedag && U.norm(U.bareFr(hallo.fr)) === U.norm(U.bareFr(goeiedag.fr)),

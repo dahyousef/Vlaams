@@ -17,6 +17,7 @@ node test/dehet.js    "$ROOT"
 node test/content.js  "$ROOT"
 node test/engine.js   "$ROOT"
 node test/screens.js  "$ROOT"
+node test/lang.js     "$ROOT"
 node test/typed.js    "$ROOT"
 node test/sim.js      "$ROOT"
 node test/firstrun.js "$ROOT"
@@ -40,6 +41,9 @@ node test/pace.js "$ROOT" "${PACE_DAYS:-200}"
 node test/pace.js "$ROOT" "${PACE_DAYS:-200}" one
 node test/pace.js "$ROOT" "${PACE_DAYS:-200}" one quiet
 node test/pace.js "$ROOT" "${PACE_DAYS:-200}" one drift
+# Un seul jour, comme les tâches d'un plan la lancent : ce qui ne se juge que
+# sur la durée dit « non jugé », et ne compte pas comme un problème.
+node test/pace.js "$ROOT" 1
 
 # Le build versionné doit correspondre à ses sources : index.html et
 # artifact.html sont ce que Vercel et l'artefact servent. En CI, un écart est

@@ -1064,7 +1064,10 @@ const items = NL => NL.content.allItems();
     const t = A.NL.t;
     ['accTitle', 'accSend', 'accSkip', 'accCheckMail', 'accVerify', 'accSignOut', 'syncNow', 'syncLocalOnly'].forEach(k =>
       ok(typeof t[k] === 'string' && t[k].length > 0, 'missing string ' + k));
-    ok(t.syncAgo(3 * 3600000) === 'il y a 3 h', 'French time units: ' + t.syncAgo(3 * 3600000));
+    /* Un texte fixe, pas un second calcul : la langue lue ici est celle de l'appareil d'essai. */
+    const AGO = { fr: 'il y a 3 h', en: '3 h ago' };
+    ok(t.syncAgo(3 * 3600000) === AGO[A.NL.lang.current()], 'time units (' + A.NL.lang.current() + '): ' + t.syncAgo(3 * 3600000));
+    ok(A.NL.tables.fr.syncAgo(3 * 3600000) === AGO.fr && A.NL.tables.en.syncAgo(3 * 3600000) === AGO.en, 'time units of the tables: ' + A.NL.tables.fr.syncAgo(3 * 3600000) + ' / ' + A.NL.tables.en.syncAgo(3 * 3600000));
     const html = A.NL.screens.compte.render();
     ok(html.includes('learner@example.com'), 'signed-in screen should show the address');
     ok(html.includes(t.accSignOut), 'signed-in screen should offer sign-out');

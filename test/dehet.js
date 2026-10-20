@@ -37,10 +37,11 @@ fs.readFileSync(TSV, 'utf8').split('\n').forEach(l => {
 });
 
 /* ---------- le cours ---------- */
+/* gloss.js d'abord : les aides du contenu lisent le sens par NL.gloss, comme dans build.sh. */
 const ctx = { NL: { util: {}, state: {} }, console, JSON, Math, Date, Object, Array, String, Number, RegExp, Map, Set };
 ctx.window = ctx; ctx.globalThis = ctx;
 vm.createContext(ctx);
-['src/content/lexicon.a1.js', 'src/content/lexicon.a1b.js', 'src/content/grammar.js', 'src/content/examples.js']
+['src/core/gloss.js', 'src/content/lexicon.a1.js', 'src/content/lexicon.a1b.js', 'src/content/grammar.js', 'src/content/examples.js']
   .forEach(f => {
     try { vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), ctx, { filename: f }); }
     catch (e) { console.log('LOAD FAIL ' + f + ': ' + e.message); process.exit(1); }

@@ -712,9 +712,9 @@ NL.state.open().then(() => {
       return html;
     };
     const many = run(3), one = run(1);
-    ok(/3 exercices à voix haute gardés pour la prochaine séance/.test(many), 'after putting 3 spoken exercises off the summary does not say they were kept: « ' + (many.match(/done-sub">[^<]*/) || [''])[0] + ' »');
-    ok(/\b1 exercice à voix haute gardé pour la prochaine séance/.test(one), 'after putting 1 spoken exercise off the summary does not say so in the singular: « ' + (one.match(/done-sub">[^<]*/) || [''])[0] + ' »');
-    ok(many.indexOf('arrivent quand les') < 0 && one.indexOf('arrivent quand les') < 0, 'the summary still says pronunciation exercises are yet to come');
+    ok(many.includes(NL.t.doneSpokenKept(3)), 'after putting 3 spoken exercises off the summary does not say they were kept: « ' + (many.match(/done-sub">[^<]*/) || [''])[0] + ' »');
+    ok(one.includes(NL.t.doneSpokenKept(1)), 'after putting 1 spoken exercise off the summary does not say so in the singular: « ' + (one.match(/done-sub">[^<]*/) || [''])[0] + ' »');
+    ok(many.indexOf(NL.t.doneNoSpoken) < 0 && one.indexOf(NL.t.doneNoSpoken) < 0, 'the summary still says pronunciation exercises are yet to come');
     /* Mixte : un élément dit, puis le bouton sur le suivant. */
     {
       fresh();
@@ -733,8 +733,8 @@ NL.state.open().then(() => {
       }
       const mixed = (B.app.innerHTML.match(/done-sub">[^<]*/) || [''])[0];
       S.abandon();
-      ok(/Tu as dit 1 élément/.test(mixed), 'the mixed summary does not say what was said: « ' + mixed + ' »');
-      ok(/\d+ exercices? à voix haute gardés? pour la prochaine séance/.test(mixed), 'the mixed summary does not say what was kept: « ' + mixed + ' »');
+      ok(mixed.includes(NL.t.doneSpoken(1).slice(0, 11)), 'the mixed summary does not say what was said: « ' + mixed + ' »');
+      ok(Array.from({ length: 40 }, (_, i) => NL.t.doneSpokenKept(i + 1)).some(s => mixed.includes(s)), 'the mixed summary does not say what was kept: « ' + mixed + ' »');
       console.log('  dit puis mis de côté : « ' + mixed.slice(10) + ' »');
     }
     console.log('  3 mis de côté : « ' + (many.match(/done-sub">([^<]*)/) || ['', '?'])[1] + ' »');

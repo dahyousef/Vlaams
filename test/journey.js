@@ -265,18 +265,18 @@ function view(screen, arg) {
   /* ---------------------------------------------------------- 10. doctor */
   head('10. Audio doctor');
   const d0 = view('doctor');
-  if (VOICE === 'nl-BE') ok(d0.indexOf('Voix flamande installée') >= 0, 'doctor does not confirm the installed Flemish voice');
-  else ok(d0.indexOf('docFix') >= 0 || d0.indexOf('Paramètres') >= 0, 'doctor does not offer the install steps');
+  if (VOICE === 'nl-BE') ok(d0.indexOf(NL.t.docFixDone) >= 0, 'doctor does not confirm the installed Flemish voice');
+  else ok(d0.indexOf('docFix') >= 0 || d0.indexOf(NL.util.esc(NL.t.docFixSteps[0])) >= 0, 'doctor does not offer the install steps');
   tap('doctor', { act: 'play' });
   tap('doctor', { act: 'heard-yes' });
   tap('doctor', { act: 'recheck' });
   tap('doctor', { act: 'rec' });
   await new Promise(r => setImmediate(r));
   const d1 = view('doctor');
-  ok(d1.indexOf('cadre') >= 0 || d1.indexOf('Autorisation') >= 0, 'doctor did not explain the blocked microphone');
+  ok(d1.indexOf(NL.t.tierRefusedNote) >= 0, 'doctor did not explain the blocked microphone');
   /* Après un refus, le niveau affiché ne peut plus prétendre que tout marche. */
   ok(NL.speech.tier().id === 'refused', 'tier still claims a working microphone after a refusal: ' + NL.speech.tier().id);
-  ok(d1.indexOf('Micro refusé') >= 0, 'doctor headline ignores the refused microphone');
+  ok(d1.indexOf(NL.t.tierRefused) >= 0, 'doctor headline ignores the refused microphone');
   console.log('   browser=' + NL.speech.browserName() + ', tier=' + NL.speech.tier().id + ', mic refusal explained');
 
   /* ---------------------------------------------------------- 11. keyboard */
@@ -336,11 +336,11 @@ function view(screen, arg) {
     ctx.__denyNext = true;
     tap('scenario', { mic: 'start' });
     const refused = NL.screens.scenario.render(scn.id);
-    ok(refused.indexOf('Micro bloqué') >= 0, 'the refusal was not explained');
+    ok(refused.indexOf(NL.t.micDenied) >= 0, 'the refusal was not explained');
     ok(refused.indexOf('data-self="1"') >= 0, 'the refusal promises self-rating but offers no button — a dead end');
     tap('scenario', { self: '1' });
     const moved = NL.screens.scenario.render(scn.id);
-    ok(moved.indexOf('Micro bloqué') < 0, 'rating yourself did not move the scenario on');
+    ok(moved.indexOf(NL.t.micDenied) < 0, 'rating yourself did not move the scenario on');
     console.log('   refusal explained, self-rating offered, scenario continues');
   }
 

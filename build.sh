@@ -14,8 +14,10 @@ set -e
 cd "$(dirname "$0")"
 
 SRC="src/core/util.js
+src/core/gloss.js
 src/core/errlog.js
 src/core/fr.js
+src/core/en.js
 src/core/state.js
 src/core/srs.js
 src/core/speech.js
@@ -30,6 +32,7 @@ src/content/open.js
 src/content/reference.js
 src/content/scenarios.js
 src/content/index.js
+src/core/lang.js
 src/ex/index.js
 src/ui/shell.js
 src/ui/session.js
@@ -57,14 +60,16 @@ emit_scripts() {
   done
 }
 
+# Les sources sont en CRLF dans une copie de travail (core.autocrlf=true) : le « tr » garde les deux
+# sorties en LF, comme .gitattributes les veut, sinon git les montre modifiées après chaque build.
 # ---- index.html : the real page ----
 {
   echo '<!doctype html>'
-  echo '<html lang="nl-BE">'
+  echo '<html lang="en-GB">'
   echo '<head>'
   echo '<meta charset="utf-8">'
   echo '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">'
-  echo '<meta name="description" content="Vlaams leren in het Frans: gespreide herhaling, hardop spreken, en de taal zoals ze in Vlaanderen echt gesproken wordt.">'
+  echo '<meta name="description" content="Learn Flemish Dutch: spaced repetition, speaking aloud, and the language as it is really spoken in Flanders.">'
   echo '<meta name="theme-color" content="#1F4B3F">'
   echo '<meta name="apple-mobile-web-app-capable" content="yes">'
   echo '<title>Vlaams</title>'
@@ -88,7 +93,7 @@ emit_scripts() {
   emit_scripts
   echo '</body>'
   echo '</html>'
-} > index.html
+} | tr -d '\015' > index.html
 
 # ---- artifact.html : head/body skeleton supplied by the host ----
 {
@@ -99,7 +104,7 @@ emit_scripts() {
   echo '</style>'
   echo '<div id="app"></div>'
   emit_scripts
-} > artifact.html
+} | tr -d '\015' > artifact.html
 
 # ---- dist/ : the deployable site ----
 rm -rf dist

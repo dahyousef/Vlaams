@@ -187,11 +187,17 @@ NL.state = (function () {
     return new Promise(res => { const r = tx(store, 'readwrite').put(val); r.onsuccess = res; r.onerror = res; });
   }
   function clearAll() {
+    /* La langue d'affichage est un choix de l'appareil, pas de la progression : elle reste. */
+    const lang = meta.displayLang;
     mem.srs.clear(); mem.custom.clear(); mem.log = []; meta = defaults();
-    if (!useIDB) { try { localStorage.removeItem(LS); } catch (e) {} return Promise.resolve(); }
+    if (lang) meta.displayLang = lang;
+    /* Elle reste aussi sur l'appareil, pour le rechargement qui suit une déconnexion. Écrite
+       en silence : sans emit ni updatedAt, elle ne passe pas devant les réglages d'un compte. */
+    const keep = () => { if (lang) setMeta({ displayLang: lang }, true); };
+    if (!useIDB) { try { localStorage.removeItem(LS); } catch (e) {} keep(); return Promise.resolve(); }
     return Promise.all(STORES.map(s => new Promise(res => {
       const r = db.transaction(s, 'readwrite').objectStore(s).clear(); r.onsuccess = res; r.onerror = res;
-    })));
+    }))).then(keep);
   }
 
   /* ---- abonnés aux écritures ----
@@ -296,7 +302,8 @@ NL.state = (function () {
        annonçant que le moteur avait changé ; un mot ajouté après la sauvegarde
        revenait de même. */
     rewrite(true);
-    if (data.meta) meta = Object.assign(defaults(), data.meta);
+    /* Une sauvegarde d'avant la langue d'affichage n'efface pas le choix de l'appareil. */
+    if (data.meta) { const lang = meta.displayLang; meta = Object.assign(defaults(), data.meta); if (!data.meta.displayLang && lang) meta.displayLang = lang; }
     setMeta(Object.assign({ resetAt: stamp, updatedAt: stamp },
       old ? { dataVersion: 3, reached: 0, scenariosDone: [], listenDone: [] } : {}), true);
     emit('reset', stamp);

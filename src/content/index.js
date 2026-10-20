@@ -1,5 +1,7 @@
 /* Flattens the curriculum into addressable items and answers questions about
-   progress. Every learnable thing gets a stable id; the scheduler works in ids. */
+   progress. An item's id is its unit and its position in it (`overleven:w3`):
+   words and phrases are only ever appended, and `test/content.js` pins every id
+   to its Dutch. */
 NL.content = NL.content || {};
 (function () {
   'use strict';
@@ -61,8 +63,7 @@ NL.content = NL.content || {};
        « de garage », « direct » sont offerts à un francophone. */
     flat.forEach(it => {
       it.tier = it.tier || 'produce';
-      it.cognate = it.kind === 'word' &&
-        NL.util.ratio(NL.util.bare(it.nl), NL.util.bareFr(it.fr)) > 0.62;
+      it.cognate = NL.gloss.cognate(it);
     });
     index = new Map(flat.map(it => [it.id, it]));
   }
@@ -142,8 +143,8 @@ NL.content = NL.content || {};
       s.steps.forEach((st, i) => {
         if (!st.them) return;
         out.push({
-          id: s.id + ':l' + i, nl: st.them.nl, be: st.them.be || st.them.nl, fr: st.them.fr,
-          from: s.title, icon: s.icon, track: s.track
+          id: s.id + ':l' + i, nl: st.them.nl, be: st.them.be || st.them.nl, fr: st.them.fr, en: st.them.en,
+          from: NL.gloss.of(s.title), icon: s.icon, track: s.track
         });
       });
     });

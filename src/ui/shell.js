@@ -28,6 +28,7 @@ NL.ui = (function () {
   function go(to, a) {
     if (route === 'sessie' && to !== 'sessie' && NL.screens.sessie.active()) { sheet = 'quit-session'; return render(); }
     NL.speech.stop(); NL.speech.abort();
+    NL.lang.seen();
     route = to; arg = a == null ? null : a; sheet = null;
     try { location.hash = '#' + to + (a ? '/' + a : ''); } catch (e) {}
     render();
@@ -68,17 +69,20 @@ NL.ui = (function () {
       const on = route === n.id || (n.id === 'meer' && UNDER_MEER.indexOf(route) >= 0);
       return '<button class="nav-btn' + (on ? ' on' : '') + '" data-go="' + n.id + '">' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + NAV_ICON[n.id] + '</svg>' +
-        '<span class="nav-fr">' + n.fr + '</span><span class="nav-nl">' + n.nl + '</span></button>';
+        '<span class="nav-fr">' + n.label + '</span><span class="nav-nl" lang="nl-BE">' + n.nl + '</span></button>';
     }).join('') + '</div></nav>';
   }
 
   function render() {
     applyTheme();
+    /* Un changement de langue n'entre jamais en pleine séance ni en pleine conversation. */
+    if (route !== 'sessie' && route !== 'scenario') NL.lang.apply(false);
     const S = NL.screens[route] || NL.screens.vandaag;
     const full = !!FULLSCREEN[route];
+    const note = NL.lang.notice();
     const html = full
       ? '<div class="screen full">' + S.render(arg) + '</div>'
-      : topbar() + '<main class="screen">' + S.render(arg) + '</main>' + nav();
+      : topbar() + '<main class="screen">' + (note ? '<div class="notice"><p>' + esc(note) + '</p></div>' : '') + S.render(arg) + '</main>' + nav();
     root.innerHTML = html + (sheet ? sheetHtml() : '') + (toastMsg ? '<div class="toast">' + esc(toastMsg) + '</div>' : '');
     if (S.after) S.after(arg);
   }
@@ -94,7 +98,7 @@ NL.ui = (function () {
   function unitLabel(span) {
     if (span.from !== span.to) return t.unitsRange(span.from, span.to);
     const u = NL.content.units.find(x => x.n === span.from);
-    return t.unitOne(span.from) + (u ? ' · ' + u.name : '');
+    return t.unitOne(span.from) + (u ? ' · ' + NL.gloss.of(u.name) : '');
   }
 
   function sheetHtml() {
@@ -112,6 +116,9 @@ NL.ui = (function () {
         [['system', t.setSystem], ['light', t.setLight], ['dark', t.setDark]].map(([k, label]) =>
           '<button class="seg-btn' + (m.theme === k ? ' on' : '') + '" data-theme="' + k + '">' + label + '</button>').join('') +
         '</div></div>' +
+
+        '<div class="set-block"><h4>' + t.setLang + '</h4>' +
+        '<button class="btn wide" data-display-lang="' + (NL.lang.current() === 'en' ? 'fr' : 'en') + '">' + t.langOther + '</button></div>' +
 
         '<div class="set-block"><h4>' + t.setPace + '</h4><div class="seg">' +
         ['calme', 'normal', 'intensif'].map(k =>
@@ -137,17 +144,17 @@ NL.ui = (function () {
         (NL.sync.enabled ? accountBlock() : '') +
 
         '<div class="set-block"><h4>' + t.setVoice + '</h4>' +
-        '<p class="set-note ' + (v.quality === 'be' ? 'good' : 'warn') + '">' + esc(v.note) +
+        '<p class="set-note ' + (v.quality === 'be' ? 'good' : 'warn') + '">' + esc(t[v.note]) +
         (v.name ? ' <span class="muted">(' + esc(v.name) + ')</span>' : '') + '</p>' +
         '<p class="set-note ' + (mic ? 'warn' : 'good') + '">' + esc(micLine(mic)) + '</p>' +
         '<button class="btn btn-blue wide" data-go="doctor">' + t.setDoctor + '</button></div>' +
 
         '<div class="set-block"><h4>' + t.setExport + '</h4>' +
-        '<p class="set-note muted">' + t.setStorage + ' ' + NL.state.storage + '. Une sauvegarde te suit d’un navigateur à l’autre, et reste utile même connecté : c’est la seule copie que tu tiens en main.</p>' +
+        '<p class="set-note muted">' + t.setStorage + ' ' + NL.state.storage + '. ' + t.setBackupNote + '</p>' +
         '<div class="row"><button class="btn" data-export="1">' + t.setExport + '</button>' +
         '<button class="btn" data-import="1">' + t.setImport + '</button></div>' +
-        '<div class="row"><button class="btn btn-ghost" data-act="copy-show">Copier le texte</button>' +
-        '<button class="btn btn-ghost" data-act="paste-show">Coller une sauvegarde</button></div>' +
+        '<div class="row"><button class="btn btn-ghost" data-act="copy-show">' + t.copyText + '</button>' +
+        '<button class="btn btn-ghost" data-act="paste-show">' + t.pasteBackup + '</button></div>' +
         '<input type="file" id="import-file" accept="application/json" hidden></div>',
 
         '<button class="btn btn-ghost wide" data-close="1">' + t.close + '</button>' +
@@ -190,8 +197,8 @@ NL.ui = (function () {
   const micLine = kind => kind === 'browser' ? (NL.speech.noService() === 'ios' ? t.micNoBrowserIOS : t.micNoBrowser)
     : kind === 'offline' ? t.micOffline
       /* Même règle que le docteur audio : après un refus, ne pas dire « active ». */
-      : kind === 'refused' ? 'Micro refusé par le navigateur : autorise-le avec le cadenas de la barre d’adresse.'
-        : 'Reconnaissance vocale active (nl-BE).';
+      : kind === 'refused' ? t.micRefusedLine
+        : t.micActiveLine;
 
   const toggle = (k, label, on) =>
     '<label class="tog"><span>' + label + '</span>' +
@@ -243,15 +250,15 @@ NL.ui = (function () {
 
   function openCopy(text) {
     openSheet({ custom: card(t.setExport,
-      '<p>Copie ce texte et garde-le. C’est toute ta progression : colle-le dans « ' + t.setImport + ' » sur l’autre appareil.</p>' +
+      '<p>' + t.copyHow(t.setImport) + '</p>' +
       '<textarea class="backup-box" id="backup-out" readonly spellcheck="false">' + esc(text) + '</textarea>',
-      '<button class="btn btn-blue wide" data-act="copy-backup">Copier</button>' +
+      '<button class="btn btn-blue wide" data-act="copy-backup">' + t.copy + '</button>' +
       '<button class="btn btn-ghost wide" data-close="1">' + t.close + '</button>') });
   }
 
   function openPaste() {
     openSheet({ custom: card(t.setImport,
-      '<p>Colle ici la sauvegarde exportée depuis l’autre appareil.</p>' +
+      '<p>' + t.pasteHow + '</p>' +
       '<textarea class="backup-box" id="backup-in" spellcheck="false" placeholder="{ &quot;app&quot;: &quot;vlaams-onderweg&quot; … }"></textarea>',
       '<button class="btn btn-good wide" data-act="paste-backup">' + t.setImport + '</button>' +
       '<button class="btn btn-ghost wide" data-close="1">' + t.cancel + '</button>') });
@@ -288,7 +295,7 @@ NL.ui = (function () {
 
     root.addEventListener('click', e => {
       let hit = e.target.closest('[data-say],[data-go],[data-sheet],[data-close],[data-backdrop],[data-theme],' +
-        '[data-toggle],[data-reset],[data-reset-yes],[data-quit-yes],[data-export],[data-import],[data-pace],[data-act]');
+        '[data-toggle],[data-reset],[data-reset-yes],[data-quit-yes],[data-export],[data-import],[data-pace],[data-act],[data-display-lang]');
       /* Avec le thème Sombre ou Clair, <html> porte data-theme : closest()
          remontait jusqu'à lui, chaque clic devenait « choisir le thème », et plus
          aucune réponse ne passait. On ne garde que ce qui est dans l'app. */
@@ -304,6 +311,7 @@ NL.ui = (function () {
         if (d.sheet) { openSheet(d.sheet); return; }
         if (d.theme) { NL.state.setMeta({ theme: d.theme }); render(); return; }
         if (d.pace) { NL.state.setMeta({ pace: d.pace }); render(); return; }
+        if (d.displayLang) { NL.lang.set(d.displayLang); render(); return; }
         if (d.toggle) { const m = NL.state.meta(); NL.state.setMeta({ [d.toggle]: m[d.toggle] === false }); render(); return; }
         if (d.export !== undefined) { doExport(); return; }
         if (d.import !== undefined) { doImport(); return; }
@@ -316,7 +324,7 @@ NL.ui = (function () {
             const ok = navigator.clipboard
               ? navigator.clipboard.writeText(box.value).then(() => true).catch(() => false)
               : Promise.resolve(document.execCommand && document.execCommand('copy'));
-            Promise.resolve(ok).then(good => toast(good ? 'Copié.' : 'Sélectionne le texte et copie-le à la main.'));
+            Promise.resolve(ok).then(good => toast(good ? t.errCopied : t.errCopyByHand));
           }
           return;
         }

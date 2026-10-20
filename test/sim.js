@@ -85,7 +85,7 @@ NL.state.open().then(() => {
       NL.screens.scenario.click({ dataset: {} }, { self: '1' });
       NL.screens.scenario.click({ dataset: {} }, { act: 'accept' });
     }
-    console.log('  "' + s.title + '" ran ' + guard + ' turns, finished: ' + (app.innerHTML.indexOf('scn-done') >= 0));
+    console.log('  "' + NL.gloss.of(s.title) + '" ran ' + guard + ' turns, finished: ' + (app.innerHTML.indexOf('scn-done') >= 0));
     if (guard >= 40) fail('scenario never finished');
   } catch (e) { fail('scenario threw: ' + e.message + '\n' + e.stack.split('\n')[1]); }
 

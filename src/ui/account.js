@@ -52,7 +52,7 @@ NL.screens.compte = (function () {
         '<h1>' + t.accTitle + '</h1>' +
         '<p>' + t.accBody + '</p>' +
         '<label class="acc-field"><span>' + t.accEmail + '</span>' +
-        '<input class="textin" id="acc-email" type="email" autocomplete="email" value="' + esc(email) + '" placeholder="prenom@exemple.be"></label>' +
+        '<input class="textin" id="acc-email" type="email" autocomplete="email" value="' + esc(email) + '" placeholder="' + NL.t.accEmailPh + '"></label>' +
         (msg ? '<p class="acc-err">' + esc(msg) + '</p>' : '') +
         '<div class="acc-actions">' +
         '<button class="btn btn-primary wide" data-act="send"' + (busy ? ' disabled' : '') + '>' + (busy ? t.accSending : t.accSend) + '</button>' +

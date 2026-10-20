@@ -1,4 +1,4 @@
-/* Quatre contrôles mécaniques sur le contenu. Le cours va être multiplié par dix
+/* Six contrôles mécaniques sur le contenu. Le cours va être multiplié par dix
    et il n'y a pas de relecteur néerlandophone : tout ce qu'une machine peut
    vérifier, elle le vérifie, à chaque changement.
 
@@ -7,6 +7,7 @@
    que le mot drillé. Voir TESTING.md. */
 const fs = require('fs'), path = require('path'), zlib = require('zlib');
 const browser = require('./lib/browser');
+const { COLLECTIONS, owed, at } = require('./lib/prose');
 const ROOT = process.argv[2] || path.join(__dirname, '..');
 
 let fails = 0, checks = 0;
@@ -14,6 +15,10 @@ const ok = (c, m) => { checks++; if (!c) { console.log('  FAIL: ' + m); fails++;
 
 const B = browser.open({ root: ROOT, seed: browser.SEED, skip: ['src/app.js'] });
 const NL = B.NL, U = NL.util;
+/* Le cours tel qu'il est écrit, avant la première construction : {naam}, {stad} et
+   {bedrijf} y sont encore, et le contrôle 6 compare les jetons. */
+const RAW = {};
+COLLECTIONS.forEach(k => { RAW[k] = JSON.parse(JSON.stringify(NL.content[k] || [])); });
 const tokens = s => String(s || '').toLowerCase().replace(/\{[a-z]+\}/g, ' ').split(/[^a-zà-ÿ'’-]+/)
   .map(t => t.replace(/^[-'’]+|[-'’]+$/g, '')).filter(t => t.length > 1);
 
@@ -146,6 +151,122 @@ NL.state.open().then(() => {
   ok(dupes <= DUPE_BUDGET, dupes + ' éléments enseignés deux fois, budget ' + DUPE_BUDGET + ' — baisser le budget quand on en retire, jamais le lever');
   ok(dupes >= DUPE_BUDGET, 'seulement ' + dupes + ' doublons : baisser DUPE_BUDGET à ' + dupes + ' pour verrouiller le gain');
   console.log('  doublons        ' + dupes + ' (budget ' + DUPE_BUDGET + ')');
+
+  /* ====================================== 5. chaque id garde son néerlandais */
+  /* Les ids sont des positions (« overleven:w3 ») : insérer, retirer ou déplacer un
+     mot donne son historique à un autre. Ajouter en fin d'unité passe ; une
+     correction du néerlandais met à jour test/data/ids.tsv dans le même commit. */
+  const IDS = path.join(__dirname, 'data', 'ids.tsv');
+  const pinned = fs.existsSync(IDS) ? fs.readFileSync(IDS, 'utf8').split(/\r?\n/).filter(Boolean).map(l => l.split('\t')) : [];
+  ok(pinned.length > 0, 'test/data/ids.tsv absent ou vide');
+  let moved = 0;
+  pinned.forEach(([id, nl]) => {
+    const it = NL.content.byId(id);
+    if (!it || it.nl !== nl) { moved++; ok(false, id + ' devait être « ' + nl + ' », est ' + (it ? '« ' + it.nl + ' »' : 'absent')); }
+  });
+  console.log('  ids             ' + (pinned.length - moved) + ' / ' + pinned.length + ' à leur place');
+
+  /* ============================================ 6. l'anglais qui reste dû */
+  /* Chaque sens et chaque texte du cours doit porter un `en`. Il ne reste rien à écrire. */
+  ok(JSON.stringify(RAW).indexOf('{naam}') >= 0, 'RAW n’a pas été pris avant la première construction : {naam} a disparu');
+  const batches = { lexiqueA1: [], lexiqueA1b: [], exemples: [], grammaire: [], references: [], scenarios: [] };
+  RAW.units.forEach((u, i) => owed(u, 'units[' + i + ']', '', []).forEach(r => {
+    if (/\.drills\[/.test(r.where)) batches.exemples.push(r);
+    else batches[u.n <= 6 ? 'lexiqueA1' : 'lexiqueA1b'].push(r);
+  }));
+  ['patterns', 'openTasks'].forEach(k => owed(RAW[k], k, '', []).forEach(r => batches.grammaire.push(r)));
+  ['register', 'hetRules', 'deRules', 'sheets'].forEach(k => owed(RAW[k], k, '', []).forEach(r => batches.references.push(r)));
+  owed(RAW.scenarios, 'scenarios', '', []).forEach(r => batches.scenarios.push(r));
+  const left = [];
+  Object.keys(batches).forEach(b => batches[b].filter(r => !r.ok).forEach(r => left.push(b + ' ' + r.where)));
+  ok(left.length === 0, 'rien n’est dû : ' + left.length + ' anglais manquent   [' + left.slice(0, 3).join(', ') + ']');
+  console.log('  anglais dû     ' + left.length + ' (rien n’est dû)');
+  /* La séance de contrôle relit chaque endroit par son `where` (test/tools/check-files.js) : chacun
+     désigne quelque chose, et un chemin qui ne désigne rien s'arrête au lieu de donner une ligne vide. */
+  const lost = [];
+  Object.keys(batches).forEach(b => batches[b].forEach(r => { try { at(RAW, r.where); } catch (e) { lost.push(r.where); } }));
+  ok(lost.length === 0, 'where : ' + lost.length + ' chemins de owed() ne désignent rien   [' + lost.slice(0, 3).join(', ') + ']');
+  let refused = '';
+  try { at(RAW, 'units[0].nowhere[3]'); } catch (e) { refused = e.message; }
+  ok(refused.indexOf('units[0].nowhere[3]') >= 0, 'where : at() rend une valeur pour un chemin qui ne désigne rien');
+
+  /* Parcours de RAW : tout objet qui porte `fr` ou `en`. */
+  const pairs6 = [];
+  const walk6 = (v, where) => {
+    if (Array.isArray(v)) { v.forEach((x, i) => walk6(x, where + '[' + i + ']')); return; }
+    if (!v || typeof v !== 'object') return;
+    if ('fr' in v || 'en' in v) pairs6.push([v, where]);
+    Object.keys(v).forEach(k => walk6(v[k], where + '.' + k));
+  };
+  COLLECTIONS.forEach(k => walk6(RAW[k], k));
+  let lonely = 0, drift = 0;
+  const sig = s => (String(s).match(/\d+|\{[a-z]+\}/g) || []).sort().join('|');
+  ok(sig('{naam} arrive à 3 h') === sig('Arrives at 3, {naam}'), 'sig : un jeton et un chiffre dans un autre ordre ne sont pas une dérive');
+  ok(sig('3 h') !== sig('4 h'), 'sig : un chiffre qui change reste une dérive');
+  pairs6.forEach(([v, where]) => {
+    if (typeof v.en === 'string' && typeof v.fr !== 'string') { lonely++; ok(false, 'un `en` sans `fr` : ' + where); }
+    if (typeof v.en === 'string' && typeof v.fr === 'string' && sig(v.fr) !== sig(v.en)) {
+      drift++; ok(false, 'les chiffres ou les {jetons} diffèrent entre fr et en : ' + where + '  « ' + v.fr + ' » / « ' + v.en + ' »');
+    }
+  });
+  console.log('  anglais        ' + lonely + ' sans fr, ' + drift + ' chiffre(s) ou jeton(s) qui diffèrent');
+
+  /* Les gardes sur l'anglais écrit. */
+  const G = NL.gloss, glossed = items.filter(it => it.unit !== 'eigen' && it.kind !== 'pattern' && G.has(it, 'en'));
+  const bySense = new Map();
+  glossed.forEach(it => G.senses(it, 'en').forEach(s => { if (!bySense.has(s)) bySense.set(s, []); bySense.get(s).push(it); }));
+  /* Les paires d'éléments qui partagent un sens anglais sans partager de sens français ni néerlandais. */
+  const clashes = its => {
+    const out = [];
+    for (let i = 0; i < its.length; i++) for (let j = i + 1; j < its.length; j++) if (!G.sameSense(its[i], its[j])) out.push([its[i], its[j]]);
+    return out;
+  };
+  { const A = { id: 'A', nl: 'aa', fr: 'x / y', en: 'e' }, Bb = { id: 'B', nl: 'bb', fr: 'x', en: 'e' }, C = { id: 'C', nl: 'cc', fr: 'y', en: 'e' };
+    const found = clashes([A, Bb, C]);
+    ok(found.length === 1 && found[0][0].id === 'B' && found[0][1].id === 'C',
+      'clashes : B et C partagent un sens anglais sans sens français commun, la garde doit le dire'); }
+  bySense.forEach((its, s) => clashes(its).forEach(p => {
+    ok(false, 'même anglais « ' + s + ' » pour deux éléments sans sens français ni néerlandais commun : ' +
+      p[0].id + ' « ' + p[0].nl + ' » et ' + p[1].id + ' « ' + p[1].nl + ' »');
+  }));
+  /* Le néerlandais u/uw glosé « you » : en Flandre, u est aussi le tutoiement, et c'est le français qui le dit. */
+  const hasU = nl => /(^|[^a-zà-ÿ])uw?(?![a-zà-ÿ])/i.test(nl);
+  const frTu = fr => /(^|[^a-zà-ÿ])((tu|te|toi|ton|ta|tes)(?![a-zà-ÿ])|t['’])/i.test(fr);
+  const uTag = fr => frTu(fr) ? '(informal, Flemish u)' : '(formal)';
+  ok(uTag('C’était comment, ton week-end ?') === '(informal, Flemish u)', 'uTag : « ton » est un tutoiement');
+  ok(uTag('Et vous ?') === '(formal)', 'uTag : « vous » est formel');
+  ok(uTag('Je t’appelle demain.') === '(informal, Flemish u)', 'uTag : « t’ » est un tutoiement');
+  ok(uTag('Il a mis la table') === '(formal)', 'uTag : « ta » ne se lit pas au milieu d’un mot');
+  glossed.forEach(it => {
+    if (G.wordClass(it, 'fr') === 'verb') ok(/^to\s+\S/i.test(it.en), it.id + ' « ' + it.nl + ' » est un verbe en français, et son anglais « ' + it.en + ' » ne commence pas par « to »');
+    if (hasU(it.nl) && /\byou(r)?\b/i.test(it.en)) { const t = uTag(it.fr);
+      ok(it.en.indexOf(t) >= 0, it.id + ' « ' + it.nl + ' » : « ' + it.en + ' » doit porter « ' + t + ' » (« (informal, Flemish u) » si le français tutoie, « (formal) » sinon)'); }
+    if (it.art) ok(!/^(the|an|a)\s/i.test(it.en), it.id + ' « ' + it.nl + ' » est un nom : « ' + it.en + ' » ne prend pas d’article');
+  });
+  /* Toute autre ligne du cours (référence, scénarios, phrases d'exemple…) dont l'anglais porte déjà une étiquette
+     de registre : si son néerlandais a u/uw, l'étiquette doit être la bonne. Une ligne sans étiquette n'est pas tenue d'en prendre une. */
+  pairs6.forEach(([v, where]) => {
+    if (typeof v.nl !== 'string' || typeof v.fr !== 'string' || typeof v.en !== 'string' || !hasU(v.nl)) return;
+    if (!/\((formal|informal)/.test(v.en)) return;
+    const t = uTag(v.fr);
+    ok(v.en.indexOf(t) >= 0, where + ' « ' + v.nl + ' » : « ' + v.en + ' » doit porter « ' + t + ' »');
+  });
+  /* Dans l'explication d'un point de grammaire, un <i> dont le texte est le même en français et en anglais est du
+     néerlandais (<i>Morgen ik ga</i>) ; <i>element</i> / <i>élément</i> diffèrent, c'est de la prose. Il porte lang="nl-BE". */
+  { let seenI = 0;
+    const iTags = s => (String(s).match(/<i(?:\s[^>]*)?>[^<]*<\/i>/g) || []);
+    const iText = t => t.replace(/<[^>]*>/g, '');
+    (RAW.patterns || []).forEach(g => {
+      const ex = g.explain;
+      if (!ex || typeof ex.fr !== 'string' || typeof ex.en !== 'string') return;
+      const en = iTags(ex.en).map(iText);
+      iTags(ex.fr).forEach(t => {
+        seenI++;
+        if (en.indexOf(iText(t)) >= 0) ok(/^<i\s[^>]*lang="nl-BE"/.test(t), g.id + ' : « ' + iText(t) + ' » est du néerlandais dans <i> : lui donner lang="nl-BE"');
+      });
+    });
+    ok(seenI > 0, 'aucun <i> dans les explications de grammaire : le contrôle est creux'); }
+  console.log('  gardes         ' + glossed.length + ' éléments glosés en anglais contrôlés');
 
   console.log('\n' + checks + ' contrôles, ' + (fails === 0 ? 'CONTENU CONFORME' : fails + ' ÉCHEC(S)'));
   process.exit(fails ? 1 : 0);

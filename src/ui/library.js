@@ -4,6 +4,12 @@
   const U = NL.util, esc = U.esc, ICON = NL.ex.ICON;
   let query = '', filter = 'alles', adding = false;
 
+  /* L'étiquette « pour qui » d'une section de référence, d'après NL.content.anchors. */
+  const anchor = k => {
+    const a = NL.content.anchors[k];
+    return '<span class="muted anchor" data-anchor="' + a + '">' + NL.t[{ fr: 'anchorFr', en: 'anchorEn', all: 'anchorAll' }[a]] + '</span>';
+  };
+
   const pips = s => {
     let h = '<span class="pips sm">';
     for (let i = 0; i < NL.srs.MAX_STAGE; i++) h += '<i class="' + (i <= s ? 'on' : '') + '"></i>';
@@ -24,7 +30,7 @@
         : filter === 'zwak' ? seen.filter(it => missed.has(it.id))
           : filter === 'sterk' ? all.filter(it => it.unit !== 'eigen' && NL.content.produced(it))   // l'ensemble et le prédicat du compteur « produits »
             : seen);
-      if (q) list = all.filter(it => U.norm(it.nl).indexOf(q) >= 0 || U.norm(it.fr).indexOf(q) >= 0 || (it.be && U.norm(it.be).indexOf(q) >= 0));
+      if (q) list = all.filter(it => U.norm(it.nl).indexOf(q) >= 0 || U.norm(NL.gloss.of(it)).indexOf(q) >= 0 || (it.be && U.norm(it.be).indexOf(q) >= 0));
 
       const groups = {};
       list.forEach(it => { (groups[it.unit] = groups[it.unit] || []).push(it); });
@@ -37,8 +43,8 @@
 
       if (adding) {
         html += '<section class="card add-form">' +
-          '<label>' + NL.t.wordsNl + '<input class="textin" id="add-nl" placeholder="de vergaderzaal"></label>' +
-          '<label>' + NL.t.wordsFr + '<input class="textin" id="add-en" placeholder="la salle de réunion"></label>' +
+          '<label>' + NL.t.wordsNl + '<input class="textin" id="add-nl" placeholder="' + NL.t.wordsPhNl + '"></label>' +
+          '<label>' + NL.t.wordsFr + '<input class="textin" id="add-en" placeholder="' + NL.t.wordsPhFr + '"></label>' +
           '<label>' + NL.t.wordsBe + ' <span class="muted">' + NL.t.wordsOptional + '</span><input class="textin" id="add-be" placeholder=""></label>' +
           '<div class="row"><button class="btn btn-good" data-act="addsave">' + NL.t.save + '</button>' +
           '<button class="btn btn-ghost" data-act="addcancel">' + NL.t.cancel + '</button></div></section>';
@@ -56,16 +62,16 @@
       } else {
         Object.keys(groups).forEach(uid => {
           const u = NL.content.unit(uid);
-          html += '<div class="voc-head">' + esc(u ? u.name : 'Mes mots') + '</div>';
+          html += '<div class="voc-head">' + esc(u ? NL.gloss.of(u.name) : NL.t.wordsMineGroup) + '</div>';
           groups[uid].forEach(it => {
             const s = NL.srs.stageOf(it);
             html += '<div class="vrow">' +
               '<button class="speaker tiny" data-say="' + esc(U.bare(it.nl)) + '" aria-label="' + NL.t.listen + '">' + ICON.speaker(17) + '</button>' +
-              '<span class="v-nl">' + (it.art ? '<span class="art ' + it.art + '">' + it.art + '</span>' : '') +
-              esc(U.bare(it.nl)) +
-              (it.be && NL.state.meta().showFlemish !== false ? '<span class="v-be">' + NL.t.wordsHere + ' ' + esc(it.be) + '</span>' : '') +
+              '<span class="v-nl"><span lang="nl-BE">' + (it.art ? '<span class="art ' + it.art + '">' + it.art + '</span>' : '') +
+              esc(U.bare(it.nl)) + '</span>' +
+              (it.be && NL.state.meta().showFlemish !== false ? '<span class="v-be">' + NL.t.wordsHere + ' <span lang="nl-BE">' + esc(it.be) + '</span></span>' : '') +
               '</span>' +
-              '<span class="v-en">' + esc(U.bareFr(it.fr)) + '</span>' +
+              '<span class="v-en">' + esc(NL.gloss.bare(it)) + '</span>' +
               pips(s) +
               (it.unit === 'eigen' ? '<button class="iconbtn tiny" data-del="' + it.id + '" aria-label="' + NL.t.del + '">' + NL.ui.I.x + '</button>' : '') +
               '</div>';
@@ -83,7 +89,7 @@
         const en = (document.getElementById('add-en') || {}).value || '';
         const be = (document.getElementById('add-be') || {}).value || '';
         if (!nl.trim() || !en.trim()) { NL.ui.toast(NL.t.wordsNeedBoth); return; }
-        NL.state.addCustom({ nl: nl.trim(), fr: en.trim(), be: be.trim() || null, kind: nl.trim().split(/\s+/).length > 2 ? 'phrase' : 'word' });
+        NL.state.addCustom({ nl: nl.trim(), [NL.lang.current()]: en.trim(), be: be.trim() || null, kind: nl.trim().split(/\s+/).length > 2 ? 'phrase' : 'word' });
         NL.content.refresh(); adding = false; NL.ui.render(); NL.ui.toast(NL.t.wordsAdded);
         return;
       }
@@ -101,13 +107,13 @@
         if (s) {
           return '<div class="wrap">' +
             '<button class="backlink" data-go="spiek">' + NL.ui.I.back + ' ' + NL.t.sheetsAll + '</button>' +
-            '<section class="card lead slim"><span class="eyebrow">' + NL.t.sheetsEyebrow + '</span>' +
-            '<h1>' + s.icon + ' ' + esc(s.title) + '</h1><p>' + esc(s.blurb) + '</p></section>' +
-            s.groups.map(g => '<div class="sheet-group"><h4>' + esc(g.h) + '</h4>' +
+            '<section class="card lead slim"><span class="eyebrow">' + NL.t.sheetsEyebrow + '</span> ' + anchor('sheets') +
+            '<h1>' + s.icon + ' ' + esc(NL.gloss.of(s.title)) + '</h1><p>' + esc(NL.gloss.of(s.blurb)) + '</p></section>' +
+            s.groups.map(g => '<div class="sheet-group"><h4>' + esc(NL.gloss.of(g.h)) + '</h4>' +
               g.rows.map(r => '<button class="sheet-row" data-say="' + esc(r.nl) + '">' +
                 '<span class="sr-say">' + ICON.speaker(16) + '</span>' +
-                '<span class="sr-body"><b>' + esc(r.nl) + '</b><i>' + esc(r.fr) + '</i>' +
-                (r.note ? '<em>' + esc(r.note) + '</em>' : '') + '</span></button>').join('') +
+                '<span class="sr-body"><b lang="nl-BE">' + esc(r.nl) + '</b><i>' + esc(NL.gloss.of(r)) + '</i>' +
+                (NL.gloss.of(r.note) ? '<em>' + esc(NL.gloss.of(r.note)) + '</em>' : '') + '</span></button>').join('') +
               '</div>').join('') +
             '</div>';
         }
@@ -119,7 +125,7 @@
         '<div class="cards">' + sheets.map(s =>
           '<button class="tile-card" data-sheetid="' + s.id + '">' +
           '<span class="tc-icon">' + s.icon + '</span>' +
-          '<span class="tc-body"><b>' + esc(s.title) + '</b><i>' + esc(s.blurb) + '</i></span>' +
+          '<span class="tc-body"><b>' + esc(NL.gloss.of(s.title)) + '</b><i>' + esc(NL.gloss.of(s.blurb)) + '</i></span>' +
           '<span class="tc-cta">' + NL.t.open + '</span></button>').join('') + '</div></div>';
     },
     click(el, d) { if (d.sheetid) NL.ui.go('spiek', d.sheetid); }
@@ -129,36 +135,46 @@
   NL.screens.register = {
     render() {
       return '<div class="wrap">' +
-        '<section class="card lead slim"><span class="eyebrow">' + NL.t.regEyebrow + '</span>' +
+        '<section class="card lead slim"><span class="eyebrow">' + NL.t.regEyebrow + '</span> ' + anchor('register') +
         '<h1>' + NL.t.regTitle + '</h1>' +
         '<p>' + NL.t.regBody + '</p></section>' +
         '<div class="reg-table"><div class="reg-head"><span>' + NL.t.regStd + '</span><span>' + NL.t.regBe + '</span></div>' +
         NL.content.register.map(r =>
           '<div class="reg-row">' +
-          '<button class="reg-cell std" data-say="' + esc(r.std) + '">' + esc(r.std) + '</button>' +
-          '<button class="reg-cell be" data-say="' + esc(r.be) + '">' + esc(r.be) +
-          (r.note ? '<em>' + esc(r.note) + '</em>' : '') + '</button>' +
+          '<button class="reg-cell std" lang="nl-BE" data-say="' + esc(r.std) + '">' + esc(r.std) + '</button>' +
+          '<button class="reg-cell be" data-say="' + esc(r.be) + '">' + '<span lang="nl-BE">' + esc(r.be) + '</span>' +
+          (NL.gloss.of(r.note) ? '<em>' + esc(NL.gloss.of(r.note)) + '</em>' : '') + '</button>' +
           '</div>').join('') +
         '</div>' +
 
-        '<h3 class="sec">' + NL.t.loansTitle + '</h3>' +
+        '<h3 class="sec">' + NL.t.loansTitle + ' ' + anchor('loans') + '</h3>' +
         '<section class="card lead slim"><p>' + NL.t.loansBody + '</p></section>' +
-        '<div class="reg-table"><div class="reg-head"><span>Flamand</span><span>Français</span></div>' +
+        '<div class="reg-table"><div class="reg-head"><span>' + NL.t.loansColBe + '</span><span>' + NL.t.loansColFr + '</span></div>' +
         NL.content.loans.map(r =>
           '<div class="reg-row">' +
-          '<button class="reg-cell be" data-say="' + esc(r.nl) + '">' + esc(r.nl) + '</button>' +
-          '<span class="reg-cell std">' + esc(r.fr) +
-          (r.note ? '<em>' + esc(r.note) + '</em>' : '') + '</span>' +
+          '<button class="reg-cell be" lang="nl-BE" data-say="' + esc(r.nl) + '">' + esc(r.nl) + '</button>' +
+          '<span class="reg-cell std" lang="fr">' + esc(NL.gloss.of(r)) +
+          (NL.gloss.of(r.note) ? '<em>' + esc(NL.gloss.of(r.note)) + '</em>' : '') + '</span>' +
           '</div>').join('') +
         '</div>' +
 
-        '<h3 class="sec">' + NL.t.fauxTitle + '</h3>' +
+        '<h3 class="sec">' + NL.t.fauxTitle + ' ' + anchor('faux') + '</h3>' +
         '<section class="card lead slim"><p>' + NL.t.fauxBody + '</p></section>' +
-        '<div class="reg-table"><div class="reg-head"><span>Néerlandais</span><span>Sens réel</span></div>' +
+        '<div class="reg-table"><div class="reg-head"><span>' + NL.t.fauxColNl + '</span><span>' + NL.t.fauxColMeaning + '</span></div>' +
         NL.content.faux.map(r =>
           '<div class="reg-row">' +
-          '<button class="reg-cell be" data-say="' + esc(r.nl) + '">' + esc(r.nl) + '</button>' +
-          '<span class="reg-cell std">' + esc(r.fr) + '<em>' + esc(r.trap) + '</em></span>' +
+          '<button class="reg-cell be" lang="nl-BE" data-say="' + esc(r.nl) + '">' + esc(r.nl) + '</button>' +
+          '<span class="reg-cell std" lang="fr">' + esc(NL.gloss.of(r)) + '<em>' + esc(r.trap) + '</em></span>' +
+          '</div>').join('') +
+        '</div>' +
+
+        '<h3 class="sec">' + NL.t.fauxEnTitle + ' ' + anchor('fauxEn') + '</h3>' +
+        '<section class="card lead slim"><p>' + NL.t.fauxEnBody + '</p></section>' +
+        '<div class="reg-table"><div class="reg-head"><span>' + NL.t.fauxColNl + '</span><span>' + NL.t.fauxColMeaning + '</span></div>' +
+        NL.content.fauxEn.map(r =>
+          '<div class="reg-row">' +
+          '<button class="reg-cell be" lang="nl-BE" data-say="' + esc(r.nl) + '">' + esc(r.nl) + '</button>' +
+          '<span class="reg-cell std" lang="en">' + esc(r.en) + '<em>' + esc(r.trap) + '</em></span>' +
           '</div>').join('') +
         '</div></div>';
     }
@@ -167,16 +183,16 @@
   /* ---------------------------------------------------- de / het */
   NL.screens.dehet = {
     render() {
-      const col = (title, rules, cls) =>
-        '<h3 class="sec">' + title + '</h3>' +
+      const col = (title, rules, cls, a) =>
+        '<h3 class="sec">' + title + ' ' + anchor(a) + '</h3>' +
         rules.map(r => '<div class="rule-row ' + cls + '">' +
-          '<b>' + esc(r.rule) + (r.sure ? '<span class="sure-tag">' + NL.t.dehetSure + '</span>' : '') + '</b>' +
-          '<button class="rule-ex" data-say="' + esc(r.ex) + '">' + esc(r.ex) + '</button></div>').join('');
+          '<b>' + esc(NL.gloss.of(r.rule)) + (r.sure ? '<span class="sure-tag">' + NL.t.dehetSure + '</span>' : '') + '</b>' +
+          '<button class="rule-ex" lang="nl-BE" data-say="' + esc(r.ex) + '">' + esc(r.ex) + '</button></div>').join('');
       return '<div class="wrap">' +
-        '<section class="card lead slim"><span class="eyebrow">de / het</span>' +
+        '<section class="card lead slim"><span class="eyebrow">' + 'de / het' + '</span>' +
         '<h1>' + NL.t.dehetTitle + '</h1><p>' + NL.t.dehetBody + '</p></section>' +
-        col(NL.t.dehetHet, NL.content.hetRules, 'het') +
-        col(NL.t.dehetDe, NL.content.deRules, 'de') +
+        col(NL.t.dehetHet, NL.content.hetRules, 'het', 'hetRules') +
+        col(NL.t.dehetDe, NL.content.deRules, 'de', 'deRules') +
         '</div>';
     }
   };
@@ -185,13 +201,13 @@
   NL.screens.klanken = {
     render() {
       return '<div class="wrap">' +
-        '<section class="card lead slim"><span class="eyebrow">' + NL.t.soundsEyebrow + '</span>' +
+        '<section class="card lead slim"><span class="eyebrow">' + NL.t.soundsEyebrow + '</span> ' + anchor('sounds') +
         '<h1>' + NL.t.soundsTitle + '</h1>' +
         '<p>' + NL.t.soundsBody + '</p></section>' +
         NL.content.sounds.map(s =>
-          '<div class="snd-row' + (s.good ? ' good' : s.warn ? ' warn' : '') + '"><div class="snd-head"><b>' + esc(s.g) + '</b><code>' + esc(s.ipa) + '</code>' +
+          '<div class="snd-row' + (s.good ? ' good' : s.warn ? ' warn' : '') + '"><div class="snd-head"><b lang="nl-BE">' + esc(s.g) + '</b><code>' + esc(s.ipa) + '</code>' +
           (s.good ? '<span class="snd-tag good">' + NL.t.soundsEasy + '</span>' : s.warn ? '<span class="snd-tag warn">' + NL.t.soundsWatch + '</span>' : '') + '</div>' +
-          '<p>' + s.say + '</p></div>').join('') +
+          '<p lang="fr">' + NL.gloss.prose(s.say) + '</p></div>').join('') +
         '</div>';
     }
   };

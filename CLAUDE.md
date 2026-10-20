@@ -41,8 +41,9 @@ goes to a design sitting (`design-sitting.md`).
 
 ## Conventions you can't infer from the code
 
-- User-facing text lives in `src/core/fr.js`. `test/smoke.js` fails the build if an
-  English interface string reaches `index.html`.
+- User-facing text lives in `src/core/fr.js` and `src/core/en.js`, under the same keys; `test/lang.js`
+  fails the build if one lacks a key or a screen mixes languages.
+- Meanings and prose are read through `NL.gloss`; the display language through `NL.lang`.
 - Storage keys keep their spelling: `vlaams-onderweg`, `vlaams/fallback`,
   `vlaams/outbox`, `vlaams/owner`, `vlaams/errors` (the local error log) and
   `vlaams/noaccount` (« continue without an account »). Renaming one orphans every
