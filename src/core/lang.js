@@ -2,12 +2,14 @@
    Absente des réglages, c'est l'anglais. Un changement ne s'applique jamais en
    pleine séance ni en pleine conversation : le shell n'appelle `apply` qu'en
    dehors d'elles, au premier écran dessiné ensuite. Le bandeau d'avis n'est pas
-   enregistré : il se dit une fois, puis `seen` l'efface. Un changement venu d'un
-   autre appareil le dit (`fromAccount`) ; la marque, comme l'avis, n'est pas enregistrée. */
+   enregistré : il se dit une fois, puis `seen` l'efface, jamais dans le tour où il
+   s'est levé. Un changement venu d'un autre appareil le dit (`fromAccount`) ; la
+   marque, comme l'avis, n'est pas enregistrée. */
 NL.lang = (function () {
   'use strict';
-  /* notice : les clés de NL.t que l'avis dit, dans l'ordre ; vide, il n'y a pas d'avis. */
-  let applied = null, notice = [], fromSync = false;
+  /* notice : les clés de NL.t que l'avis dit, dans l'ordre ; vide, il n'y a pas d'avis.
+     shown : le tour où l'avis s'est levé est fini, l'avis a donc pu être vu. */
+  let applied = null, notice = [], shown = false, fromSync = false;
 
   const current = () => NL.state.meta().displayLang === 'fr' ? 'fr' : 'en';
 
@@ -22,7 +24,13 @@ NL.lang = (function () {
     NL.content.refresh();
     document.documentElement.setAttribute('lang', NL.gloss.tag(l));
     applied = l;
-    if (!quiet) notice = bySync ? ['langSynced', 'langNotice'] : ['langNotice'];
+    if (!quiet) {
+      notice = bySync ? ['langSynced', 'langNotice'] : ['langNotice'];
+      /* render() dessine l'avis dans le tour où il se lève. Un avis dessiné puis
+         remplacé dans ce même tour n'a pas été vu : seen() ne l'efface qu'au tour d'après. */
+      shown = false;
+      setTimeout(() => { shown = true; }, 0);
+    }
     return true;
   }
 
@@ -41,7 +49,7 @@ NL.lang = (function () {
   }
 
   const text = () => notice.map(k => NL.t[k]).join(' ');
-  const seen = () => { notice = []; };
+  const seen = () => { if (shown) notice = []; };
 
   return { current, apply, set, fromAccount, notice: text, seen };
 })();

@@ -980,9 +980,13 @@ const items = NL => NL.content.allItems();
     await T1.NL.sync.flush();
     await T2.NL.sync.pull(); T2.NL.ui.render();
     ok(count(shown(T2), fr.langSynced + ' ' + fr.langNotice) === 1, '69.3: after a pull that brought French, the notice does not say the change came from another device');
+    /* #73. Dessiné puis remplacé dans le même tour, l'avis n'a pas été vu : il suit. */
     T2.NL.ui.go('leerpad');
-    ok(shown(T2).indexOf(fr.langNotice) < 0, '69.3: the notice is still there after the next go()');
-    T2.NL.ui.go('doctor'); T2.NL.state.setMeta({ theme: 'dark' });   // un réglage d'ici : l'envoi fusionne avant d'écrire
+    ok(count(shown(T2), fr.langSynced + ' ' + fr.langNotice) === 1, '73: a notice drawn and replaced in the same tick counts as seen');
+    await wait(1);
+    T2.NL.ui.go('doctor');
+    ok(shown(T2).indexOf(fr.langNotice) < 0, '69.3: the notice is still there after a go() in a later tick');
+    T2.NL.state.setMeta({ theme: 'dark' });   // un réglage d'ici : l'envoi fusionne avant d'écrire
     await wait(3);
     T1.NL.lang.set('en'); T1.NL.ui.render(); await T1.NL.sync.flush();
     await T2.NL.sync.flush(); T2.NL.ui.render();
@@ -1012,6 +1016,47 @@ const items = NL => NL.content.allItems();
     T2.NL.sync.queueAll(); await T2.NL.sync.flush(); T2.NL.ui.render();
     ok(T2.NL.lang.current() === 'en' && shown(T2).indexOf(en.langSynced) < 0, '69.3: once sent, the restored backup says the language came from another device');
     console.log('  choisie ici : l’avis seul ; venue d’ailleurs, par lecture, par envoi ou après une séance : l’avis le dit');
+  }
+
+  console.log('\nCONNEXION FINIE SUR L’ÉCRAN COMPTE');
+  {
+    /* #73. Le compte est en français ; un appareil en anglais, sans session, attend sur
+       l'écran compte. Que la connexion finisse par le code à six chiffres ou arrive d'un
+       autre onglet (supabase-js y relaie SIGNED_IN), l'accueil où elle mène dit que la
+       langue vient d'un autre appareil. app.js tourne ici : c'est lui qui redessine
+       l'écran compte quand la session arrive, dans le tour où onAuth() en part. */
+    const U = device('U', true);
+    await U.boot(); await U.signIn('onglet@example.com');
+    U.NL.lang.set('fr'); await U.NL.sync.flush();
+    const fr = U.NL.tables.fr;
+    /* La page entière, app.js compris ; les champs de l'écran compte se lisent dans vals. */
+    const page = name => {
+      const dev = { name, store: {} }, vals = {};
+      const B = browser.open({
+        root: ROOT, timers: 'real', store: dev.store, ua: 'Mozilla/5.0 Chrome/120',
+        config: { supabaseUrl: 'https://example.supabase.co', supabaseAnonKey: 'anon' }, supabase: fakeLib(dev)
+      });
+      B.ctx.document.getElementById = id => (id === 'app' ? B.app : { value: vals[id] || '' });
+      return Object.assign(dev, { NL: B.NL, root: B.app, tap: B.tap, vals });
+    };
+    const landed = (dev, how) => {
+      const shown = dev.root.innerHTML.replace(/<[^>]*>/g, ' ');
+      ok(dev.NL.ui.route === 'vandaag' && dev.NL.lang.current() === 'fr',
+        '73 (' + how + '): the sign-in landed on ' + dev.NL.ui.route + ' in ' + dev.NL.lang.current() + ', expected vandaag in French');
+      ok(count(shown, fr.langSynced + ' ' + fr.langNotice) === 1, '73 (' + how + '): vandaag does not say the language came from another device');
+    };
+    const V = page('V');
+    await wait(5);
+    ok(V.NL.ui.route === 'compte' && V.NL.lang.current() === 'en', '73: a device without a session does not open on compte in English');
+    V.vals['acc-email'] = 'onglet@example.com'; V.tap({ act: 'send' }); await wait(5);
+    V.vals['acc-code'] = '123456'; V.tap({ act: 'verify' }); await wait(20);
+    landed(V, 'six-digit code');
+    const W = page('W');
+    await wait(5);
+    W.client.auth.verifyOtp({ email: 'onglet@example.com', token: '123456', type: 'email' });
+    await wait(20);
+    landed(W, 'another tab');
+    console.log('  connexion finie sur l’écran compte, par le code ou par un autre onglet : l’accueil dit d’où vient la langue');
   }
 
   console.log('\nÉCRAN COMPTE');
