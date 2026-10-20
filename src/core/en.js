@@ -242,6 +242,7 @@ NL.tables.en = {
   setLang: 'Language',
   langOther: 'French',
   langNotice: 'Reading in English. The reference sheets are under More; each says which language it helps with.',
+  langSynced: 'Language changed on another device.',
   setPractice: 'Practice',
   setFlemish: 'Show the Flemish variant',
   setAutoplay: 'Play audio automatically',

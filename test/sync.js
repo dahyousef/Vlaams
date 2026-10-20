@@ -134,6 +134,7 @@ function device(name, withConfig, store, idb) {
     return r;
   };
   dev.offline = v => { ctx.navigator.onLine = !v; (B.listeners[v ? 'offline' : 'online'] || []).forEach(f => f()); };
+  dev.tap = d => (B.listeners.click || []).forEach(f => f({ target: { closest: () => ({ dataset: d }) } }));
   dev.fire = type => (B.listeners[type] || []).forEach(f => f());
   return dev;
 }
@@ -1057,6 +1058,55 @@ const items = NL => NL.content.allItems();
     await L3.NL.state.open();
     ok(L3.NL.state.logs().length === 2500, 'after a restore and a reload the log holds ' + L3.NL.state.logs().length + ' line(s), expected 2500');
     console.log('  journal relu sur le repli, 3 000 lignes au plus ; sauvegarde complète : 2 500 lignes aller-retour');
+  }
+
+  console.log('\nLANGUE CHANGÉE AILLEURS');
+  {
+    /* #69, 3. Le choix fait ici donne l'avis seul ; celui qui arrive d'un autre appareil,
+       par une lecture ou par un envoi, dit d'où il vient, même après une séance. */
+    const T1 = device('T1', true), T2 = device('T2', true);
+    for (const d of [T1, T2]) { await d.boot(); await d.signIn('langue@example.com'); d.NL.lang.apply(true); d.NL.ui.go('vandaag'); }
+    const fr = T1.NL.tables.fr, en = T1.NL.tables.en;
+    const shown = d => d.root.innerHTML.replace(/<[^>]*>/g, ' ');
+    const count = (s, sub) => s.split(sub).length - 1;
+    T1.NL.lang.set('fr'); T1.NL.ui.render();
+    ok(count(shown(T1), fr.langNotice) === 1 && shown(T1).indexOf(fr.langSynced) < 0, '69.3: the switch made on this device does not show the notice alone');
+    await T1.NL.sync.flush();
+    await T2.NL.sync.pull(); T2.NL.ui.render();
+    ok(count(shown(T2), fr.langSynced + ' ' + fr.langNotice) === 1, '69.3: after a pull that brought French, the notice does not say the change came from another device');
+    T2.NL.ui.go('leerpad');
+    ok(shown(T2).indexOf(fr.langNotice) < 0, '69.3: the notice is still there after the next go()');
+    T2.NL.ui.go('doctor'); T2.NL.state.setMeta({ theme: 'dark' });   // un réglage d'ici : l'envoi fusionne avant d'écrire
+    await wait(3);
+    T1.NL.lang.set('en'); T1.NL.ui.render(); await T1.NL.sync.flush();
+    await T2.NL.sync.flush(); T2.NL.ui.render();
+    ok(count(shown(T2), en.langSynced + ' ' + en.langNotice) === 1, '69.3: after a flush that brought English, doctor does not say the change came from another device');
+    T2.NL.ui.go('vandaag');
+    T2.NL.content.allItems().filter(it => it.unit !== 'eigen').slice(0, 12).forEach((it, i) => {
+      T2.NL.srs.seed(it, 1); const r = T2.NL.state.rec(it.id); r.due = Date.now() - 1000 * (i + 1); T2.NL.state.setRec(r);
+    });
+    ok(T2.NL.screens.sessie.begin('vandaag'), '69.3: no session to start'); T2.NL.ui.go('sessie');
+    T1.NL.lang.set('fr'); T1.NL.ui.render(); await T1.NL.sync.flush();
+    await T2.NL.sync.pull(); T2.NL.ui.render();
+    ok(T2.NL.t.nav[1].label === en.nav[1].label, '69.3: a synced change applied in the middle of a session');
+    T2.tap({ quitYes: '1' });
+    ok(count(shown(T2), fr.langSynced + ' ' + fr.langNotice) === 1, '69.3: after the session, the notice does not say the change came from another device');
+    /* Deux synchros contraires pendant une séance : rien n'a changé, rien ne s'annonce, et
+       aucune marque ne reste pour la sauvegarde rendue ensuite. */
+    T2.NL.ui.go('vandaag');
+    ok(T2.NL.screens.sessie.begin('vandaag'), '69.3: no second session to start'); T2.NL.ui.go('sessie');
+    T1.NL.lang.set('en'); T1.NL.ui.render(); await T1.NL.sync.flush(); await T2.NL.sync.pull();
+    await wait(3);
+    T1.NL.lang.set('fr'); T1.NL.ui.render(); await T1.NL.sync.flush(); await T2.NL.sync.pull();
+    T2.tap({ quitYes: '1' });
+    ok(shown(T2).indexOf(fr.langNotice) < 0, '69.3: two opposite syncs during a session leave a notice');
+    const backup = T2.NL.state.exportAll();
+    backup.meta = Object.assign({}, backup.meta, { displayLang: 'en' });
+    T2.NL.state.importAll(backup); T2.NL.content.refresh(); T2.NL.ui.render();   // comme restore() dans shell.js
+    ok(count(shown(T2), en.langNotice) === 1 && shown(T2).indexOf(en.langSynced) < 0, '69.3: a restored backup says the language came from another device');
+    T2.NL.sync.queueAll(); await T2.NL.sync.flush(); T2.NL.ui.render();
+    ok(T2.NL.lang.current() === 'en' && shown(T2).indexOf(en.langSynced) < 0, '69.3: once sent, the restored backup says the language came from another device');
+    console.log('  choisie ici : l’avis seul ; venue d’ailleurs, par lecture, par envoi ou après une séance : l’avis le dit');
   }
 
   console.log('\nÉCRAN COMPTE');

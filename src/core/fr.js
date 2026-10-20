@@ -243,6 +243,7 @@ NL.tables.fr = {
   setLang: 'Langue',
   langOther: 'Anglais',
   langNotice: 'Lecture en français. Les antisèches sont dans Plus ; chacune dit pour quelle langue elle est faite.',
+  langSynced: 'Langue changée sur un autre appareil.',
   setPractice: 'Exercice',
   setFlemish: 'Montrer la variante flamande',
   setAutoplay: 'Lire l’audio automatiquement',

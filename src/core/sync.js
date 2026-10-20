@@ -266,6 +266,14 @@ NL.sync = (function () {
     return data && data[0] ? data[0].data : null;
   }
 
+  /* Les réglages fusionnés prennent la place de ceux d'ici. Une langue d'affichage
+     qui change ainsi vient d'un autre appareil : NL.lang le dira dans l'avis. */
+  function takeMeta(merged) {
+    const before = NL.lang.current();
+    NL.state.setMeta(merged, true);
+    if (NL.lang.current() !== before) NL.lang.synced();
+  }
+
   /* Une ligne du serveur qui descend d'une remise à zéro antérieure à la nôtre
      est en cours d'effacement ; sans `base`, elle vient de la version
      précédente, qui écrit encore après l'époque. Ni l'une ni l'autre n'entre. */
@@ -300,7 +308,7 @@ NL.sync = (function () {
 
       if (remoteMeta) {
         const merged = mergeMeta(NL.state.meta(), remoteMeta);
-        NL.state.setMeta(merged, true);
+        takeMeta(merged);
         if (JSON.stringify(merged) !== JSON.stringify(remoteMeta)) { box.meta = true; persist(); }
       } else {
         box.meta = true; persist();
@@ -361,7 +369,7 @@ NL.sync = (function () {
       if (snap.meta) {
         /* Les réglages se fusionnent avec la copie du serveur AVANT l'envoi :
            l'XP gagnée ailleurs pendant que cet appareil était hors ligne reste. */
-        if (remoteMeta) NL.state.setMeta(mergeMeta(NL.state.meta(), remoteMeta), true);
+        if (remoteMeta) takeMeta(mergeMeta(NL.state.meta(), remoteMeta));
         const m = NL.state.meta();
         const { error } = await client.from('user_meta').upsert(
           { user_id: uid, data: m, updated_at: m.updatedAt || now }, { onConflict: 'user_id' });
