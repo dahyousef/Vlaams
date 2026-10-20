@@ -23,8 +23,22 @@ function pairUp(C) {
   COLLECTIONS.forEach(k => { C[k] = walk(C[k], k); });
   return n;
 }
-function boot(prepare, store) {
-  const B = browser.open({ root: ROOT, seed: browser.SEED, store: store || undefined, byId: 'stub', media: true, skip: ['src/app.js'],
+const T0 = Date.parse('2026-10-05T08:00:00Z');
+const fakeSupabase = () => ({
+  createClient: () => {
+    let open = true;
+    const q = { then: (res, rej) => Promise.resolve({ data: [], error: null }).then(res, rej), upsert: () => Promise.resolve({ error: null }) };
+    ['select', 'eq', 'gte', 'lt', 'delete', 'range'].forEach(k => { q[k] = () => q; });
+    return { from: () => q, auth: {
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
+      getSession: () => Promise.resolve({ data: { session: open ? { user: { id: 'uid-lang', email: 'lang@example.com' } } : null } }),
+      signOut: () => { open = false; return Promise.resolve({ error: null }); } } };
+  }
+});
+function boot(prepare, store, account) {
+  const B = browser.open({ root: ROOT, seed: browser.SEED, now: T0, store: store || undefined, byId: 'stub', media: true, skip: ['src/app.js'],
+    config: account ? { supabaseUrl: 'https://example.supabase.co', supabaseAnonKey: 'anon' } : undefined,
+    supabase: account ? fakeSupabase() : undefined,
     voices: [{ name: 'Microsoft Bart - Dutch (Belgium)', lang: 'nl-BE', localService: true }] });
   if (prepare) prepare(B.NL);
   vm.runInContext(fs.readFileSync(path.join(ROOT, 'src/app.js'), 'utf8'), B.ctx);
@@ -32,14 +46,13 @@ function boot(prepare, store) {
 }
 /* Le texte lu : balises retirées, mais aria-label, placeholder, title et alt gardés. */
 const text = html => String(html)
-  .replace(/: 1[0-9]{12}(?![0-9])/g, ": 0")
   .replace(/\s(aria-label|placeholder|title|alt)="([^"]*)"/g, ' > $2 <')
   .replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ');
 
 /* Chaque état d'écran que la personne peut voir, dans un ordre fixe. `visit(nom, html)`
    reçoit le HTML de l'écran. Deux navigateurs partis de la même graine visitent les
    mêmes états : la différence entre leurs textes est une vraie différence. */
-const SCREENS = ['vandaag', 'leerpad', 'praten', 'luisteren', 'meer', 'woorden', 'spiek', 'register', 'klanken', 'dehet', 'doctor', 'fouten'];
+const { SCREENS } = require('./lib/screens');
 function views(B, visit) {
   const NL = B.NL, S = NL.screens.sessie, answer = require('./lib/answer')(B);
   const html = () => B.app.innerHTML;
@@ -53,7 +66,7 @@ function views(B, visit) {
   /* 1. Les écrans, sur un compte entamé où quelques éléments sont ratés. */
   fresh();
   builtIn().forEach((it, i) => put(it, i % 7));
-  builtIn().slice(0, 8).forEach((it, i) => NL.state.logReview({ id: it.id, t: Date.now() - 1000 * (i + 1), ok: false, stage: 1, kind: it.kind, ex: 'type' }));
+  builtIn().slice(0, 8).forEach((it, i) => NL.state.logReview({ id: it.id, t: B.clock.now() - 1000 * (i + 1), ok: false, stage: 1, kind: it.kind, ex: 'type' }));
   SCREENS.concat(['compte']).forEach(n => { NL.ui.go(n); visit(n, html()); });
 
   /* 2. Chaque fiche. */
@@ -231,14 +244,13 @@ function interfaceCheck() {
   const m = boot(marked);
   return m.NL.state.open().then(() => {
     const dutch = dutchWords(m.NL), seen = new Map();
-    /* Les mots qu'une personne a tapés elle-même sont ses données, pas l'interface. */
-    /* Les faux amis des anglophones sont une donnée du cours, écrite en anglais dans les deux affichages. */
-    m.NL.content.fauxEn.forEach(r => [r.en, r.trap].forEach(t => t.toLowerCase().split(/[^\p{L}\p{N}]+/u).forEach(w => { if (w) dutch.add(w); })));
-    ['de vergaderzaal', 'la salle de réunion'].forEach(s => s.split(/[^\p{L}]+/u).forEach(w => dutch.add(w)));
     views(m, (n, h) => {
       /* Le texte d'une sauvegarde exportée est une donnée, pas l'interface ; les entités
-         (&middot;) sont de la ponctuation ; un mot d'une lettre ou un chiffre n'est pas un mot. */
-      text(String(h).replace(/<textarea[\s\S]*?<\/textarea>/g, ' ').replace(/&[a-z]+;/g, ' ')).replace(/⟦[^⟧]*⟧|⟪[^⟫]*⟫/g, ' ').split(/[^\p{L}\p{N}]+/u).forEach(w => {
+         (&middot;) sont de la ponctuation ; un mot d'une lettre ou un chiffre n'est pas un mot.
+         Deux autres données ne sont pas l'interface non plus : les faux amis des anglophones, écrits en anglais
+         dans les deux affichages (les cellules reg-cell std de register), et les mots qu'une personne a tapés
+         elle-même (leur ligne du dictionnaire, repérée par data-del). */
+      text(String(h).replace(/<textarea[\s\S]*?<\/textarea>/g, ' ').replace(/<span class="reg-cell std" lang="en">[\s\S]*?<\/span>/g, ' ').replace(/<div class="vrow">[\s\S]*?<\/div>/g, row => (row.indexOf('data-del=') >= 0 ? ' ' : row)).replace(/&[a-z]+;/g, ' ')).replace(/⟦[^⟧]*⟧|⟪[^⟫]*⟫/g, ' ').split(/[^\p{L}\p{N}]+/u).forEach(w => {
         w = w.toLowerCase();
         if (w.length > 1 && !/\p{N}/u.test(w) && !dutch.has(w) && !Object.prototype.hasOwnProperty.call(ALLOW, w) && !seen.has(w)) seen.set(w, n);
       });
@@ -290,12 +302,15 @@ function tableCheck(NL) {
     if (kind(f) !== kind(e)) return;
     if (typeof f === 'function') {
       ok(f.length === e.length, 'en.' + k + ' : ' + e.length + ' argument(s) au lieu de ' + f.length);
-      const rf = f(3, 7), re = e(3, 7);
-      ok(typeof rf === 'string' && typeof re === 'string', k + ' : une fonction doit rendre une chaîne');
-      if (typeof rf === 'string' && typeof re === 'string') {
-        ok(holes(rf) === holes(re), 'en.' + k + ' : chiffres ou {…} différents (« ' + rf + ' » / « ' + re + ' »)');
-        ok(rf !== re || SAME[k], 'en.' + k + ' : identique au français');
-      }
+      [[3, 7, 12], Array(f.length).fill(1)].forEach(n => {
+        const args = k === 'paceNote' ? [{ mins: n[0], cap: n[n.length - 1] }] : n;
+        const rf = f.apply(null, args), re = e.apply(null, args);
+        ok(typeof rf === 'string' && typeof re === 'string', k + ' : une fonction doit rendre une chaîne');
+        if (typeof rf === 'string' && typeof re === 'string') {
+          ok(holes(rf) === holes(re), 'en.' + k + ' : chiffres ou {…} différents (« ' + rf + ' » / « ' + re + ' »)');
+          ok(rf !== re || SAME[k], 'en.' + k + ' : identique au français');
+        }
+      });
     } else if (Array.isArray(f)) {
       ok(f.length === e.length, 'en.' + k + ' : ' + e.length + ' entrées au lieu de ' + f.length);
       if (k === 'nav') {
@@ -320,6 +335,10 @@ const English = B => { B.NL.state.setMeta({ displayLang: 'en' }); B.NL.lang.appl
 const tapOn = (B, d) => B.listeners.click.forEach(f => f({ target: { closest: () => ({ dataset: d }) } }));
 const htmlLang = B => B.ctx.document.documentElement.attrs.lang;
 const count = (s, sub) => s.split(sub).length - 1;
+/* La session arrive juste après open() : on l'attend, 5 ms de temps réel. */
+const signedIn = B => new Promise(res => setTimeout(res, 5)).then(() => {
+  ok(B.NL.sync.user && B.NL.sync.user.id === 'uid-lang', '5d : le faux compte n\'est pas ouvert');
+});
 
 /* Les feuilles d'une table deviennent ⟦préfixe:clé⟧ ; `keep` garde id et nl (la navigation). */
 function markLeaves(v, p, keep) {
@@ -397,7 +416,7 @@ function langChecks() {
         French(C);
         C.ctx.document.getElementById = id => ({ value: vals[id] || '' });
         const add = (nl, gl) => {
-          const t0 = Date.now(); while (Date.now() === t0) { /* un identifiant par milliseconde */ }
+          C.clock.advance(1); /* un identifiant par milliseconde */
           vals['add-nl'] = nl; vals['add-en'] = gl;
           NL.ui.go('woorden');
           NL.screens.woorden.click({ dataset: {} }, { act: 'addform' });
@@ -433,23 +452,29 @@ function langChecks() {
           });
         });
       }).then(() => {
-        /* 5d. Une restauration d'avant la phase 2, une remise à zéro et un changement de compte gardent le choix. */
-        const D = boot(null);
-        return D.NL.state.open().then(() => {
+        /* 5d. Une restauration d'avant la phase 2, une remise à zéro et une déconnexion gardent le choix. */
+        const D = boot(null, null, true);
+        return D.NL.state.open().then(() => signedIn(D)).then(() => {
           const NL = D.NL;
           French(D);
           NL.state.importAll({ app: 'vlaams-onderweg', v: 1, at: Date.now(), meta: { xp: 5 }, srs: [], custom: [], log: [] });
           ok(NL.state.meta().displayLang === 'fr', '5d : importAll d\'une sauvegarde sans displayLang l\'efface');
           NL.state.resetProgress();
           ok(NL.state.meta().displayLang === 'fr', '5d : resetProgress efface displayLang');
-          return NL.state.clearAll().then(() => ok(NL.state.meta().displayLang === 'fr', '5d : clearAll efface displayLang'));
+          NL.srs.seed(NL.content.allItems()[0], 2);
+          ok(NL.state.seenCount() === 1, '5d : le jeu d\'essai n\'a pas un élément vu avant la déconnexion');
+          return NL.sync.signOut().then(() => {
+            ok(NL.sync.user === null, '5d : la déconnexion n\'a pas eu lieu');
+            ok(NL.state.seenCount() === 0, '5d : la déconnexion n\'efface plus l\'appareil');
+            ok(NL.state.meta().displayLang === 'fr', '5d : la déconnexion efface displayLang');
+          });
         });
       }).then(() => {
-        /* 5d bis. Après une déconnexion (clearAll) et un rechargement sur le même stockage, l'affichage reste en français. */
-        const D = boot(null);
-        return D.NL.state.open().then(() => {
+        /* 5d bis. Après une déconnexion et un rechargement sur le même stockage, l'affichage reste en français. */
+        const D = boot(null, null, true);
+        return D.NL.state.open().then(() => signedIn(D)).then(() => {
           French(D);
-          return D.NL.state.clearAll();
+          return D.NL.sync.signOut();
         }).then(() => {
           const R = boot(null, D.store);
           return R.NL.state.open().then(() => {
@@ -473,29 +498,31 @@ function langChecks() {
         });
       }).then(() => {
         /* 5f. Dans chaque langue, aucun texte de l'autre à l'écran. */
-        const pass = (l, bad) => {
+        const OTHER = { fr: /\bEN\d+|⟦en:/, en: /⟪|⟦fr:/ };
+        const key = l => (/^fr/i.test(l) ? 'fr' : /^en/i.test(l) ? 'en' : null);
+        const foreign = (h, page) => require('./lib/langs').runs(h, page)
+          .map(r => r.text.match(OTHER[key(r.lang) || key(page)])).filter(Boolean).map(m => m[0]);
+        const planted = foreign('<p lang="fr">EN12</p><p lang="en">⟪3⟫</p>', 'en-GB');
+        ok(planted.join(' ') === 'EN12 ⟪', '5f : sur la vue plantée, le juge ne trouve que « ' + planted.join(' ') + ' »');
+        const pass = l => {
           const F = boot(markedBoth);
           return F.NL.state.open().then(() => {
             if (l === 'fr') French(F);
-            const hits = new Map(), badFr = /\bEN\d+|⟦en:/, badEn = /⟪|⟦fr:/;
+            const hits = new Map();
             views(F, (n, h) => {
               if (n === 'klanken' || n === 'register') {
                 /* Un passage sous lang="fr" ou lang="en" est jugé dans cette langue ; les autres, dans la langue lue. */
-                require('./lib/langs').runs(h, htmlLang(F)).forEach(r => {
-                  const re = /^fr/i.test(r.lang) ? badFr : /^en/i.test(r.lang) ? badEn : bad;
-                  const m = r.text.match(re);
-                  if (m && !hits.has(m[0])) hits.set(m[0], n);
-                });
+                foreign(h, htmlLang(F)).forEach(w => { if (!hits.has(w)) hits.set(w, n); });
                 return;
               }
-              const m = text(h).match(bad);
+              const m = text(h).match(OTHER[l]);
               if (m && !hits.has(m[0])) hits.set(m[0], n);
             });
             hits.forEach((n, w) => ok(false, '5f (' + l + ') : « ' + w + ' » à l\'écran (vue ' + n + ')'));
           });
         };
         /* Un navigateur par langue : l'écran d'écoute garde l'état de sa dernière visite. */
-        return pass('en', /⟪|⟦fr:/).then(() => pass('fr', /\bEN\d+|⟦en:/));
+        return pass('en').then(() => pass('fr'));
       }).then(() => {
         /* 5g. Le réglage nomme l'autre langue, et un clic change sans recharger. */
         const G = boot(null);
@@ -632,7 +659,13 @@ Promise.all([plain.NL.state.open(), paired.NL.state.open()]).then(() => {
     pairUp(NL.content);
     u.words[0].en = 'shared'; u.words[1].en = 'shared';
   });
-  return Promise.all([own.NL.state.open(), lib.NL.state.open()]).then(() => {
+  const twins = boot(NL => {
+    const u = NL.content.units[0];
+    u.words[1].fr = u.words[0].fr + 'x';
+    pairUp(NL.content);
+    u.words[0].en = 'shared / one'; u.words[1].en = 'shared / two';
+  });
+  return Promise.all([own.NL.state.open(), lib.NL.state.open(), twins.NL.state.open()]).then(() => {
     French(own);
     const NL = own.NL, G = NL.gloss;
     const items = [
@@ -668,6 +701,19 @@ Promise.all([plain.NL.state.open(), paired.NL.state.open()]).then(() => {
       if (labels.filter(l => l === 'shared').length !== 1) twice++;
     }
     ok(twice === 0, 'recall : « shared » n\'apparaît pas une seule fois dans ' + twice + ' tirages sur 100');
+    /* Deux mots au même sens anglais seulement : le sens anglais suffit à ne pas offrir l'autre en faux. */
+    const T = twins.NL, TG = T.gloss;
+    TG.use('en');
+    const tu = T.content.units[0].id;
+    const t0 = T.content.byId(tu + ':w0'), t1 = T.content.byId(tu + ':w1');
+    ok(TG.sameMeaning(t0, t1) && !TG.sameSense(t0, t1), 'recall : les jumeaux ne sont pas joints par leur seul sens anglais');
+    let offered = 0;
+    [[t0, t1], [t1, t0]].forEach(p => {
+      for (let i = 0; i < 100; i++) {
+        if (T.ex.get('recall').build(p[0]).opts.some(o => o.label === TG.of(p[1]))) offered++;
+      }
+    });
+    ok(offered === 0, 'recall : le jumeau au même sens anglais est offert en faux dans ' + offered + ' tirages sur 200');
     const words = L.content.allItems().filter(it => it.kind === 'word' && it.id !== i0.id && it.id !== i1.id);
     let clash = 0;
     for (let i = 0; i < 100; i++) {

@@ -397,25 +397,25 @@ NL.state.open().then(() => {
     /* Le sens se lit par NL.gloss, dans chaque langue lue. */
     const was = NL.gloss.current();
     ['fr', 'en'].forEach(l => {
-    NL.gloss.use(l);
-    /* Les mots qui ont un jumeau de sens sont rares : on les tire bien plus
-       souvent, sinon le hasard ne les met presque jamais face à face. */
-    const hasTwin = it => all.some(x => x !== it && x.kind === it.kind && overlap(NL.gloss.bare(x), NL.gloss.bare(it)));
-    all.forEach(it => {
-      const reps = hasTwin(it) ? 60 : 3;
-      for (let k = 0; k < reps; k++) {
-        const p = NL.ex.get('pick').build(it), r = NL.ex.get('recall').build(it);
-        built += 2;
-        p.opts.filter(o => !o.ok).forEach(o => {
-          if ((byNl[UU.norm(o.label)] || []).some(x => overlap(NL.gloss.bare(x), NL.gloss.bare(it)))) {
-            second++; example = example || NL.gloss.bare(it) + ' → ' + o.label;
-          }
-        });
-        r.opts.filter(o => !o.ok).forEach(o => {
-          if (overlap(o.label, NL.gloss.bare(it))) { second++; example = example || it.nl + ' → ' + o.label; }
-        });
-      }
-    });
+      NL.gloss.use(l);
+      /* Les mots qui ont un jumeau de sens sont rares : on les tire bien plus
+         souvent, sinon le hasard ne les met presque jamais face à face. */
+      const hasTwin = it => all.some(x => x !== it && x.kind === it.kind && overlap(NL.gloss.bare(x), NL.gloss.bare(it)));
+      all.forEach(it => {
+        const reps = hasTwin(it) ? 60 : 3;
+        for (let k = 0; k < reps; k++) {
+          const p = NL.ex.get('pick').build(it), r = NL.ex.get('recall').build(it);
+          built += 2;
+          p.opts.filter(o => !o.ok).forEach(o => {
+            if ((byNl[UU.norm(o.label)] || []).some(x => overlap(NL.gloss.bare(x), NL.gloss.bare(it)))) {
+              second++; example = example || NL.gloss.bare(it) + ' → ' + o.label;
+            }
+          });
+          r.opts.filter(o => !o.ok).forEach(o => {
+            if (overlap(o.label, NL.gloss.bare(it))) { second++; example = example || it.nl + ' → ' + o.label; }
+          });
+        }
+      });
     });
     NL.gloss.use(was);
 

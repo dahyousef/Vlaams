@@ -733,7 +733,7 @@ NL.state.open().then(() => {
       }
       const mixed = (B.app.innerHTML.match(/done-sub">[^<]*/) || [''])[0];
       S.abandon();
-      ok(mixed.includes(NL.t.doneSpoken(1).slice(0, 11)), 'the mixed summary does not say what was said: « ' + mixed + ' »');
+      ok(mixed.includes(NL.t.doneSpoken(1)), 'the mixed summary does not say what was said: « ' + mixed + ' »');
       ok(Array.from({ length: 40 }, (_, i) => NL.t.doneSpokenKept(i + 1)).some(s => mixed.includes(s)), 'the mixed summary does not say what was kept: « ' + mixed + ' »');
       console.log('  dit puis mis de côté : « ' + mixed.slice(10) + ' »');
     }
