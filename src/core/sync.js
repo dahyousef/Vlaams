@@ -197,8 +197,10 @@ NL.sync = (function () {
     return { error: null };
   }
 
-  /* Déconnexion : on envoie ce qui reste, puis on efface l'appareil pour que la
-     personne suivante ne voie rien. Pas encore rattaché, ce qui a été fait ici
+  /* Déconnexion : on envoie ce qui reste, puis on efface l'appareil. La personne
+     suivante ne voit rien de la progression ; seule la langue d'affichage reste
+     (clearAll la garde), et le compte suivant en hérite : il l'envoie si ses
+     propres réglages n'en ont pas. Pas encore rattaché, ce qui a été fait ici
      n'est pas encore au compte : on le rattache d'abord. */
   async function signOut() {
     if (!enabled || !user) return;

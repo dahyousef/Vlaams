@@ -80,9 +80,10 @@ NL.ui = (function () {
     const S = NL.screens[route] || NL.screens.vandaag;
     const full = !!FULLSCREEN[route];
     const note = NL.lang.notice();
+    const box = note ? '<div class="notice"><p>' + esc(note) + '</p></div>' : '';
     const html = full
-      ? '<div class="screen full">' + S.render(arg) + '</div>'
-      : topbar() + '<main class="screen">' + (note ? '<div class="notice"><p>' + esc(note) + '</p></div>' : '') + S.render(arg) + '</main>' + nav();
+      ? '<div class="screen full">' + (route === 'doctor' || route === 'compte' ? box : '') + S.render(arg) + '</div>'
+      : topbar() + '<main class="screen">' + box + S.render(arg) + '</main>' + nav();
     root.innerHTML = html + (sheet ? sheetHtml() : '') + (toastMsg ? '<div class="toast">' + esc(toastMsg) + '</div>' : '');
     if (S.after) S.after(arg);
   }

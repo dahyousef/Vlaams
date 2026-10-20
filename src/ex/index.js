@@ -54,17 +54,12 @@ NL.ex = (function () {
   /* Une note de prononciation se dit en mots reconnus, pas en pourcentage. */
   const wordScore = parts => NL.t.wordsHeard((parts || []).filter(p => p.ok).length, (parts || []).length);
 
-  /* Les mauvaises réponses décident de la difficulté d'un QCM. Tirées au hasard
-     dans l'unité, elles s'éliminent sans connaître le mot : la bonne est la plus
-     longue, ou la seule avec le bon article, ou la seule du bon champ lexical.
-     On les choisit donc PROCHES de la bonne réponse — même genre, longueur
-     comparable, graphie voisine — pour qu'il faille vraiment savoir. */
   /* Un leurre ne doit jamais être une autre bonne réponse. « bonjour » se dit
      « hallo » ET « goeiedag » : proposer les deux, c'est en compter un faux.
      On compare chaque sens (« s'il vous plaît / voilà » en a deux), dans les
      deux langues. Le lexique sépare les sens par « / » ; une virgule, elle,
-     appartient à la phrase et ne sépare rien. */
-  /* La comparaison vit dans NL.gloss ; NL.ex.sameSense la re-exporte. */
+     appartient à la phrase et ne sépare rien. La comparaison vit dans NL.gloss ;
+     NL.ex.sameSense la re-exporte. */
   const sameSense = NL.gloss.sameSense;
 
   /* Ce que la réponse tapée accepte pour un élément : la cible, ses variantes
@@ -82,7 +77,12 @@ NL.ex = (function () {
   /* Les réponses acceptées (`list`) comprennent-elles le néerlandais de `b` ? */
   const accepts = (list, b) => list.indexOf(U.norm(U.bare(b.nl))) >= 0;
 
-  /* "field" : 'nl' pour des mots néerlandais, 'gloss' pour des sens. Les sens se
+  /* Les mauvaises réponses décident de la difficulté d'un QCM. Tirées au hasard
+     dans l'unité, elles s'éliminent sans connaître le mot : la bonne est la plus
+     longue, ou la seule avec le bon article, ou la seule du bon champ lexical.
+     On les choisit donc PROCHES de la bonne réponse — même genre, longueur
+     comparable, graphie voisine — pour qu'il faille vraiment savoir.
+     "field" : 'nl' pour des mots néerlandais, 'gloss' pour des sens. Les sens se
      jugent dans la langue lue de l'élément : on ne pose jamais contre des
      éléments qui n'ont rien dans cette langue. */
   function others(item, n, field) {
@@ -107,7 +107,7 @@ NL.ex = (function () {
       const s = label(x);
       let sc = 0;
       if (item.art && x.art && x.art === item.art) sc += 3;        // pas de tri par de/het
-      if (NL.gloss.wordClass(x, lang) === cls) sc += 3;                             // pas de tri par nature
+      if (NL.gloss.wordClass(x, lang) === cls) sc += 3;            // pas de tri par nature
       const gap = Math.abs(s.length - len) / Math.max(len, 1);
       sc += gap < 0.2 ? 3 : gap < 0.45 ? 2 : gap < 0.7 ? 1 : 0;    // pas de tri par longueur
       const d = U.lev(U.norm(s), tn);
@@ -157,7 +157,7 @@ NL.ex = (function () {
       return { type: 'pick', item, prompt: NL.gloss.bare(item), opts };
     },
     view(t, L, phase) {
-      return '<p class="sentence prompt">' + esc(t.prompt) + '</p>' + optList(t.opts, L, phase, true);
+      return '<p class="sentence prompt" lang="' + NL.gloss.htmlLang(t.item) + '">' + esc(t.prompt) + '</p>' + optList(t.opts, L, phase, true);
     },
     ready: (t, L) => !!L.sel,
     judge: (t, L) => ({ ok: !!(L.sel && (t.opts[L.sel.i] || {}).ok) }),
@@ -187,7 +187,7 @@ NL.ex = (function () {
       const n = U.bare(t.item.nl);
       return '<div class="speaker-row">' +
         '<button class="speaker" data-say="' + esc(t.item.art + ' ' + n) + '" aria-label="' + NL.t.listen + '">' + ICON.speaker(26) + '</button>' +
-        '<div class="sentence">&hellip;&nbsp;<span lang="nl-BE">' + esc(n) + '</span><span class="gloss">' + esc(NL.gloss.bare(t.item)) + '</span></div></div>' +
+        '<div class="sentence">&hellip;&nbsp;<span lang="nl-BE">' + esc(n) + '</span><span class="gloss" lang="' + NL.gloss.htmlLang(t.item) + '">' + esc(NL.gloss.bare(t.item)) + '</span></div></div>' +
         optList(t.opts, L, phase, true);
     },
     ready: (t, L) => !!L.sel,
@@ -288,7 +288,7 @@ NL.ex = (function () {
       return { type: 'type', item, target: item.kind === 'word' ? U.bare(item.nl) : (item.drills ? item.nl : item.nl), prompt: item.kind === 'word' ? NL.gloss.bare(item) : NL.gloss.of(item) };
     },
     view(t, L, phase) {
-      return '<div class="sentence prompt">' + esc(t.prompt) + '</div>' +
+      return '<div class="sentence prompt" lang="' + NL.gloss.htmlLang(t.item) + '">' + esc(t.prompt) + '</div>' +
         '<input class="textin" type="text" value="' + esc(L.input) + '" autocomplete="off" autocapitalize="off" ' +
         'spellcheck="false" placeholder="' + NL.t.typeHere + '"' + (phase === 'ask' ? '' : ' disabled') + '>' +
         '<div class="hintline"><span>' + NL.t.specialLetters + '</span>' +
@@ -351,7 +351,7 @@ NL.ex = (function () {
       const hush = untried ? '<div class="mic-actions"><button class="btn btn-ghost" data-quiet="1">' + NL.t.cantSpeak + '</button></div>' : '';
 
       return '<div class="sentence prompt"><span lang="nl-BE">' + esc(t.target) + '</span>' + flemish(t.item.be, t.target) + '</div>' +
-        '<div class="gloss-line">' + esc(t.prompt) + '</div>' +
+        '<div class="gloss-line" lang="' + NL.gloss.htmlLang(t.item) + '">' + esc(t.prompt) + '</div>' +
         speakerRow(t.target, {}) + panel + hush;
     },
     ready(t, L) {
@@ -465,7 +465,7 @@ NL.ex = (function () {
       return { type: 'corrige', item, bad, faulty: i, other: j, target: item.nl };
     },
     view(t, L, phase) {
-      return '<div class="gloss-line">' + esc(NL.gloss.of(t.item)) + '</div>' +
+      return '<div class="gloss-line" lang="' + NL.gloss.htmlLang(t.item) + '">' + esc(NL.gloss.of(t.item)) + '</div>' +
         '<div class="corrige">' + t.bad.map((w, i) => {
           let cls = '';
           if (phase !== 'ask') { if (i === t.faulty || i === t.other) cls = ' bad'; }
@@ -496,7 +496,7 @@ NL.ex = (function () {
     },
     view(t, L, phase) {
       return '<div class="sentence prompt" lang="nl-BE">' + esc(t.item.nl) + '</div>' +
-        '<div class="gloss-line">' + esc(NL.gloss.of(t.item)) + '</div>' + optList(t.opts, L, phase, true);
+        '<div class="gloss-line" lang="' + NL.gloss.htmlLang(t.item) + '">' + esc(NL.gloss.of(t.item)) + '</div>' + optList(t.opts, L, phase, true);
     },
     ready: (t, L) => !!L.sel,
     judge: (t, L) => ({ ok: !!(L.sel && (t.opts[L.sel.i] || {}).ok) }),

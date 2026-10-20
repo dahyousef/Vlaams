@@ -22,9 +22,9 @@ NL.lang = (function () {
     return true;
   }
 
+  /* Enregistre le choix ; render() l'applique au premier écran hors séance. */
   function set(lang) {
     NL.state.setMeta({ displayLang: lang });
-    return apply(false);
   }
 
   const text = () => notice ? NL.t.langNotice : '';

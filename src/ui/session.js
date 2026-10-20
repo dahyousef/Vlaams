@@ -59,7 +59,7 @@ NL.screens.sessie = (function () {
       } catch (e) {
         /* Un élément mal formé est sauté — mais plus en silence : sans trace,
            il pouvait n'être jamais drillé sans que personne le sache. */
-        NL.errlog.note(e, 'exercice ' + name + ' · ' + it.id);
+        NL.errlog.note(e, 'exercise ' + name + ' · ' + it.id);
       }
     });
     return out;

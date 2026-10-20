@@ -5,7 +5,7 @@ NL.screens.doctor = (function () {
   'use strict';
   const esc = NL.util.esc, t = NL.t;
   const TEST = 'Goeiemorgen, alles goed met u?';
-  let S = { heard: null, mic: null, micMsg: '', rec: 'idle' };
+  let S = { heard: null, mic: null, micKey: '', rec: 'idle' };
 
   const TIERS = {
     full: { get label() { return t.tierFull; }, get note() { return t.tierFullNote; } },
@@ -79,7 +79,7 @@ NL.screens.doctor = (function () {
       (S.rec === 'rec' ? t.recStop : t.docMicTest) + '</button>' +
       (NL.speech.hasRecording() ? '<button class="btn" data-act="playrec">' + t.recYours + '</button>' : '') +
       '</div>' +
-      (S.micMsg ? '<p class="doc-verdict ' + (S.mic ? 'good' : 'bad') + '">' + esc(S.micMsg) + '</p>' : '') +
+      (S.micKey ? '<p class="doc-verdict ' + (S.mic ? 'good' : 'bad') + '">' + esc(t[S.micKey]) + '</p>' : '') +
       '</section>' +
 
       '<section class="doc-block"><h4>' + t.errTitle + '</h4>' + errorBlock() + '</section>' +
@@ -118,22 +118,22 @@ NL.screens.doctor = (function () {
       }
       if (d.act === 'recstop') { NL.speech.stopRecord(); return; }
       if (d.act === 'rec') {
-        S.rec = 'rec'; S.micMsg = t.docSpeakNow; S.mic = null; NL.ui.render();
+        S.rec = 'rec'; S.micKey = 'docSpeakNow'; S.mic = null; NL.ui.render();
         NL.speech.record({
           onstart: () => { setTimeout(() => { if (S.rec === 'rec') NL.speech.stopRecord(); }, 3000); },
           onstop: url => {
             S.rec = 'idle';
             S.mic = !!url;
-            S.micMsg = url ? t.docRecOk : t.docRecNone;
+            S.micKey = url ? 'docRecOk' : 'docRecNone';
             NL.ui.render();
           },
           onerror: kind => {
             S.rec = 'idle'; S.mic = false;
-            S.micMsg = kind === 'framed'
-              ? t.docRecFramed
-              : kind === 'denied' ? t.docRecDenied
-                : kind === 'nomic' ? t.docRecNoMic
-                  : t.docRecOther;
+            S.micKey = kind === 'framed'
+              ? 'docRecFramed'
+              : kind === 'denied' ? 'docRecDenied'
+                : kind === 'nomic' ? 'docRecNoMic'
+                  : 'docRecOther';
             NL.ui.render();
           }
         });

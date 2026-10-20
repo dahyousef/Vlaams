@@ -423,7 +423,7 @@ function langChecks() {
           NL.screens.woorden.click({ dataset: {} }, { act: 'addsave' });
         };
         add('de vergaderzaal', 'salle de réunion');
-        NL.lang.set('en');
+        NL.lang.set('en'); NL.ui.render();
         add('ik ben te laat', "I'm late");
         const mine = NL.state.customs();
         const wf = mine.find(w => w.nl === 'de vergaderzaal'), we = mine.find(w => w.nl === 'ik ben te laat');
@@ -434,7 +434,7 @@ function langChecks() {
         mine.forEach(w => { NL.content.refresh(); NL.srs.seed(NL.content.byId(w.id), 2); });
         const glosses = [wf.fr, we.en];
         ['en', 'fr'].forEach(l => {
-          if (l === 'fr') NL.lang.set('fr');
+          if (l === 'fr') { NL.lang.set('fr'); NL.ui.render(); }
           NL.content.refresh();
           mine.forEach(w => {
             const it = NL.content.byId(w.id), want = w.fr || w.en;
@@ -491,9 +491,9 @@ function langChecks() {
           const NL = E.NL, hallo = () => NL.content.allItems().find(it => it.nl === 'hallo');
           ok(hallo() && hallo().en === 'hello', '5e : le mot de l\'essai n\'a pas d\'anglais');
           ok(hallo().cognate === true, '5e : hallo n\'est pas transparent en anglais');
-          NL.lang.set('fr');
+          NL.lang.set('fr'); NL.ui.render();
           ok(hallo().cognate === false, '5e : hallo est transparent en français');
-          NL.lang.set('en');
+          NL.lang.set('en'); NL.ui.render();
           ok(hallo().cognate === true, '5e : hallo n\'est plus transparent au retour en anglais');
         });
       }).then(() => {
@@ -635,6 +635,156 @@ function anchorCheck(B) {
   ok(NL.content.fauxEn.length === 8, '6b : fauxEn a ' + NL.content.fauxEn.length + ' entrées, il en faut 8');
 }
 
+/* #69. Un appareil neuf par contrôle ; l'étiquette 69.n est le point du ticket. */
+function displayChecks() {
+  const open = prepare => { const B = boot(prepare); return B.NL.state.open().then(() => B); };
+  const due12 = N => N.content.allItems().filter(it => it.unit !== 'eigen').slice(0, 12).forEach((it, i) => {
+    N.srs.seed(it, 1); const r = N.state.rec(it.id); r.due = 1700000000000 - 1000 * (i + 1); N.state.setRec(r);
+  });
+
+  /* 69.1. Un sens montré dans l'autre langue porte cette langue. */
+  const c1 = () => open(NL => {
+    NL.content.units.forEach(u => u.words.forEach(w => { if (w.nl === 'het brood') delete w.en; }));
+    delete NL.content.scenarios.find(s => s.id === 's-bakker').steps.filter(st => st.them)[3].them.en;
+  }).then(B => {
+    const NL = B.NL, html = () => B.app.innerHTML, pages = {};
+    English(B);
+    const brood = NL.content.allItems().find(it => it.nl === 'het brood');
+    NL.srs.seed(brood, 2);
+    NL.state.logReview({ id: brood.id, t: B.clock.now() - 1000, ok: false, stage: 1, kind: brood.kind, ex: 'type' });
+    NL.ui.go('woorden'); NL.screens.woorden.input({ id: 'wsearch', value: 'brood' }); pages.woorden = html();
+    NL.screens.woorden.input({ id: 'wsearch', value: '' });
+    NL.ui.go('fouten'); pages.fouten = html();
+    NL.ui.go('scenario', 's-bakker'); pages.scenario = html();
+    for (let g = 0; html().indexOf('scn-done') < 0 && g < 60; g++) {
+      [{ step: 'next' }, { choice: '0' }, { self: '1' }, { act: 'accept' }].forEach(c => {
+        NL.screens.scenario.click({ dataset: {} }, c); pages.scenario += html();
+      });
+    }
+    NL.ui.go('luisteren'); NL.screens.luisteren.click({ dataset: {} }, { act: 'nazeggen' }); pages.nazeggen = html();
+    const tags = Object.keys(pages).map(k => pages[k]).join('').match(/<[a-z]+ class="(v-en|bub-en|rev-en)"[^>]*>/g) || [];
+    const bare = '<span class="v-en" lang="fr">' + NL.util.esc(NL.gloss.bare(brood)) + '</span>';
+    ok(['v-en', 'bub-en', 'rev-en'].every(c => tags.some(t => t.indexOf('"' + c + '"') >= 0)), '69.1 : les trois sortes de sens ne sont pas toutes à l’écran, le contrôle est creux');
+    const bad = tags.filter(t => !/ lang="(fr|en-GB)"/.test(t));
+    ok(bad.length === 0, '69.1 : ' + bad.length + ' sens sans lang="fr" ni lang="en-GB", dont ' + bad[0]);
+    ok(pages.woorden.indexOf(bare) >= 0 && pages.fouten.indexOf(bare) >= 0, '69.1 : en anglais, le sens français de het brood n’est pas marqué lang="fr" (woorden, fouten)');
+    ok(/class="bub-en" lang="fr"/.test(pages.scenario), '69.1 : la réplique sans anglais n’est pas marquée lang="fr"');
+    ok(tags.some(t => t.indexOf(' lang="en-GB"') >= 0), '69.1 : aucun sens anglais marqué lang="en-GB"');
+    /* L'exercice montre le même sens : il porte la même langue. */
+    const shownIn = id => { const E = NL.ex.get(id), t = E.build(brood); return E.view(t, { sel: null, input: '' }, 'ask'); };
+    ['pick', 'type'].forEach(id => ok(shownIn(id).indexOf('lang="fr">' + NL.util.esc(NL.gloss.bare(brood))) >= 0,
+      '69.1 : l’exercice ' + id + ' montre le sens français de het brood sans lang="fr"'));
+  });
+
+  /* 69.1 bis. Un mot à soi écrit en anglais, relu en français, garde lang="en-GB". */
+  const c1b = () => open(null).then(B => {
+    const NL = B.NL;
+    French(B);
+    NL.state.addCustom({ nl: 'de testkast', en: 'the test cupboard', be: null, kind: 'word' }); NL.content.refresh();
+    NL.ui.go('woorden'); NL.screens.woorden.input({ id: 'wsearch', value: 'testkast' });
+    const item = NL.content.allItems().find(it => it.nl === 'de testkast');
+    const want = '<span class="v-en" lang="en-GB">' + NL.util.esc(NL.gloss.bare(item)) + '</span>';
+    ok(B.app.innerHTML.indexOf(want) >= 0, '69.1 bis : en français, le sens anglais d’un mot à soi n’est pas marqué lang="en-GB"');
+  });
+
+  /* 69.2. Un changement appliqué sur doctor ou compte s'y annonce. */
+  const c2 = () => open(null).then(B => {
+    const NL = B.NL, fr = NL.tables.fr;
+    ['doctor', 'compte'].forEach(r => {
+      English(B); NL.ui.go(r);
+      NL.state.setMeta({ displayLang: 'fr' }, true);   // ce que fait une synchro
+      NL.ui.render();
+      const n = count(text(B.app.innerHTML), fr.langNotice);
+      ok(n === 1, '69.2 ' + r + ' : l’avis s’affiche ' + n + ' fois au lieu d’une');
+    });
+  });
+
+  /* 69.4. set() en pleine séance enregistre le choix, et rien d'autre. */
+  const c4 = () => open(null).then(B => {
+    const NL = B.NL, en = NL.tables.en, fr = NL.tables.fr;
+    English(B); due12(NL);
+    ok(NL.screens.sessie.begin('vandaag'), '69.4 : aucune séance à démarrer');
+    NL.ui.go('sessie');
+    NL.lang.set('fr');
+    ok(NL.state.meta().displayLang === 'fr', '69.4 : set() n’a pas enregistré le choix');
+    ok(NL.t.nav[1].label === en.nav[1].label, '69.4 : set() a changé NL.t en pleine séance');
+    ok(htmlLang(B) === 'en-GB', '69.4 : set() a changé <html lang> en pleine séance (' + htmlLang(B) + ')');
+    tapOn(B, { quitYes: '1' });
+    ok(NL.t.nav[1].label === fr.nav[1].label && htmlLang(B) === 'fr', '69.4 : après la séance, l’écran n’est pas en français');
+  });
+
+  /* 69.5. Un sens qui vaut « constructor » peut être proposé. */
+  const c5 = () => open(NL => {
+    const s = NL.content.scenarios.find(x => x.id === 's-bakker');
+    NL.content.scenarios.splice(0, NL.content.scenarios.length, s);
+    const them = s.steps.filter(st => st.them).map(st => st.them);
+    them[0].en = 'constructor'; delete them[3].en;
+  }).then(B => {
+    const NL = B.NL, html = () => B.app.innerHTML;
+    English(B);
+    NL.ui.go('luisteren');
+    NL.screens.luisteren.click({ dataset: {} }, { act: 'begrijpen' });
+    let offered = 0;
+    for (let g = 0; html().indexOf('done-stage') < 0 && g < 20; g++) {
+      if (html().indexOf('<span>constructor</span></button>') >= 0) offered++;
+      NL.screens.luisteren.click({ dataset: {} }, { opt: '0' });
+      NL.screens.luisteren.click({ dataset: {} }, { act: 'next' });
+    }
+    ok(offered >= 2, '69.5 : « constructor » proposé sur ' + offered + ' écran(s) d’écoute, au moins 2 attendus');
+  });
+
+  /* 69.6. L'étiquette du journal d'erreurs est anglaise. */
+  const c6 = () => open(null).then(B => {
+    const NL = B.NL, real = NL.ex.get;
+    let thrown = 0;
+    English(B); due12(NL);
+    NL.ex.get = n => thrown ? real(n) : Object.assign(Object.create(real(n)), { build() { thrown++; throw new Error('essai 69.6'); } });
+    NL.screens.sessie.begin('vandaag');
+    NL.ex.get = real;
+    NL.ui.go('doctor');
+    const h = B.app.innerHTML;
+    ok(thrown === 1 && h.indexOf('essai 69.6') >= 0, '69.6 : l’erreur d’essai n’est pas au journal');
+    ok(h.indexOf(' · exercise ') >= 0 && h.indexOf('exercice') < 0, '69.6 : l’étiquette du journal n’est pas « exercise »');
+  });
+
+  /* 69.9. La recherche trouve un mot par l'un ou l'autre sens, dans chaque langue. */
+  const c9 = () => open(null).then(B => {
+    const NL = B.NL;
+    [['en', English], ['fr', French]].forEach(([l, to]) => {
+      to(B); NL.ui.go('woorden');
+      ['pain', 'bread'].forEach(q => {
+        NL.screens.woorden.input({ id: 'wsearch', value: q });
+        ok(/\bhet brood\b/.test(text(B.app.innerHTML)), '69.9 (' + l + ') : chercher « ' + q + ' » ne trouve pas het brood');
+      });
+      NL.screens.woorden.input({ id: 'wsearch', value: '' });
+    });
+  });
+
+  /* 69.10. Chaque avis nomme les fiches comme l'écran. */
+  const c10 = () => open(null).then(B => {
+    const T = B.NL.tables;
+    ['fr', 'en'].forEach(l => ok(T[l].langNotice.toLowerCase().indexOf(T[l].sheetsEyebrow.toLowerCase()) >= 0,
+      '69.10 (' + l + ') : langNotice ne nomme pas les fiches « ' + T[l].sheetsEyebrow + ' »'));
+    ok(!/cheat/i.test(fs.readFileSync(path.join(ROOT, 'src/core/en.js'), 'utf8')), '69.10 : en.js dit encore « cheat »');
+  });
+
+  /* 69.11. Le verdict du micro se relit dans la langue d'après le changement. */
+  const c11 = () => open(null).then(B => {
+    const NL = B.NL, en = NL.tables.en, fr = NL.tables.fr;
+    English(B); NL.ui.go('doctor');
+    tapOn(B, { act: 'rec' });
+    return new Promise(r => setImmediate(r)).then(() => {
+      ok(text(B.app.innerHTML).indexOf(en.docRecDenied) >= 0, '69.11 : le refus du micro n’est pas affiché, le contrôle est creux');
+      NL.ui.go('vandaag'); NL.ui.openSheet('instellingen'); tapOn(B, { displayLang: 'fr' });
+      NL.ui.go('doctor');
+      const t = text(B.app.innerHTML);
+      ok(t.indexOf(fr.docRecDenied) >= 0 && t.indexOf(en.docRecDenied) < 0, '69.11 : après le passage au français, le verdict du micro reste en anglais');
+    });
+  });
+
+  return [c1, c1b, c2, c4, c5, c6, c9, c10, c11].reduce((p, c) => p.then(c), Promise.resolve());
+}
+
 const plain = boot(null), paired = boot(NL => pairUp(NL.content));
 Promise.all([plain.NL.state.open(), paired.NL.state.open()]).then(() => {
   French(plain); French(paired);
@@ -768,7 +918,7 @@ Promise.all([plain.NL.state.open(), paired.NL.state.open()]).then(() => {
         [['tussen', 'entre'], ['tegen', 'contre'], ['eigen', 'propre']].forEach(([nl, fr]) =>
           ok(WC({ kind: 'word', nl: nl, fr: fr }, 'fr') === 'other', 'wordClass : « ' + fr + ' » (' + nl + ') n’est pas un verbe')); }
       const L6 = boot(null);
-      return L6.NL.state.open().then(() => langAttrCheck(L6)).then(() => anchorCheck(L6)).then(() => addFormCheck(L6)).then(interfaceCheck);
+      return L6.NL.state.open().then(() => langAttrCheck(L6)).then(() => anchorCheck(L6)).then(() => addFormCheck(L6)).then(interfaceCheck).then(displayChecks);
     }).then(() => {
       console.log('\n' + checks + ' contrôles, ' + (fails === 0 ? 'LANGUE CONFORME' : fails + ' ÉCHEC(S)'));
       process.exit(fails ? 1 : 0);

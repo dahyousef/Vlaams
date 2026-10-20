@@ -94,5 +94,8 @@ NL.gloss = (function () {
      et le dit à un lecteur d'écran. C'est ici, et nulle part ailleurs, que cette règle s'applique. */
   const prose = html => String(html == null ? '' : html).replace(/<span class="ex">/g, '<span class="ex" lang="nl-BE">');
 
-  return { prose, use, current, other, has, langOf, of, pair, bare, senses, sameSense, sameMeaning, wordClass, cognate };
+  /* L'attribut lang d'un sens montré : celui de la langue où il se lit. */
+  const htmlLang = x => langOf(x) === 'en' ? 'en-GB' : 'fr';
+
+  return { prose, use, current, other, has, langOf, htmlLang, of, pair, bare, senses, sameSense, sameMeaning, wordClass, cognate };
 })();

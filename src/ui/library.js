@@ -30,7 +30,7 @@
         : filter === 'zwak' ? seen.filter(it => missed.has(it.id))
           : filter === 'sterk' ? all.filter(it => it.unit !== 'eigen' && NL.content.produced(it))   // l'ensemble et le prédicat du compteur « produits »
             : seen);
-      if (q) list = all.filter(it => U.norm(it.nl).indexOf(q) >= 0 || U.norm(NL.gloss.of(it)).indexOf(q) >= 0 || (it.be && U.norm(it.be).indexOf(q) >= 0));
+      if (q) list = all.filter(it => [it.nl, it.be, NL.gloss.of(it, 'fr'), NL.gloss.of(it, 'en')].some(s => !!s && U.norm(s).indexOf(q) >= 0));
 
       const groups = {};
       list.forEach(it => { (groups[it.unit] = groups[it.unit] || []).push(it); });
@@ -71,7 +71,7 @@
               esc(U.bare(it.nl)) + '</span>' +
               (it.be && NL.state.meta().showFlemish !== false ? '<span class="v-be">' + NL.t.wordsHere + ' <span lang="nl-BE">' + esc(it.be) + '</span></span>' : '') +
               '</span>' +
-              '<span class="v-en">' + esc(NL.gloss.bare(it)) + '</span>' +
+              '<span class="v-en" lang="' + NL.gloss.htmlLang(it) + '">' + esc(NL.gloss.bare(it)) + '</span>' +
               pips(s) +
               (it.unit === 'eigen' ? '<button class="iconbtn tiny" data-del="' + it.id + '" aria-label="' + NL.t.del + '">' + NL.ui.I.x + '</button>' : '') +
               '</div>';
