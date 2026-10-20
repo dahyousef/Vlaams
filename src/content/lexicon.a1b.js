@@ -4,8 +4,8 @@ NL.content = NL.content || {};
 NL.content.units = NL.content.units || [];
 (function () {
   'use strict';
-  const W = (nl, fr, art, be, note) => ({ kind: 'word', nl, fr, art, be, note });
-  const P = (nl, fr, be, note) => ({ kind: 'phrase', nl, fr, be, note });
+  const W = (nl, g, art, be, note) => ({ kind: 'word', nl, ...NL.gloss.pair(g), art, be, note });
+  const P = (nl, g, be, note) => ({ kind: 'phrase', nl, ...NL.gloss.pair(g), be, note });
   const U = o => NL.content.units.push(o);
 
   U({

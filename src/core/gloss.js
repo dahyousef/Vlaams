@@ -75,7 +75,7 @@ NL.gloss = (function () {
       if (/^to\s+\S/.test(first) && /en$/.test(U.bare(x.nl))) return 'verb';
       return 'other';
     }
-    if (/^\S+(er|ir|re|oir)$/.test(first) && first.indexOf('-') < 0 && /en$/.test(U.bare(x.nl))) return 'verb';
+    if (/^\S+(er|ir|re|oir)$/.test(first) && first.indexOf('-') < 0 && first !== 'hier' && /en$/.test(U.bare(x.nl))) return 'verb';
     return 'other';
   }
 

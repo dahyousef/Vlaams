@@ -25,7 +25,10 @@ const SCREENS = ['vandaag', 'leerpad', 'praten', 'luisteren', 'meer', 'woorden',
 /* Ce qu'aucun écran ne doit montrer, quel que soit l'état. */
 function read(name, html, state) {
   const txt = text(html), where = name + ' (' + state + ')';
-  ok(txt.length > 60, where + ' rendered almost nothing');
+  /* La dictée d'un mot nu se tape dans un champ (src/ex/index.js, R.dictation : pas de tuiles) :
+     sa page est courte par construction. Une phrase garde le plancher de 60. */
+  const bareDictation = name === 'sessie/dictation' && html.indexOf('class="textin"') >= 0;
+  ok(txt.length > (bareDictation ? 40 : 60), where + ' rendered almost nothing');
   ok(!/undefined|NaN|\[object/.test(txt), where + ' printed a hole: ' + (txt.match(/.{0,30}(undefined|NaN|\[object).{0,20}/) || [''])[0]);
   ok(!/\d\s?%/.test(txt), where + ' shows a percentage: « ' + (txt.match(/.{0,40}\d\s?%.{0,15}/) || [''])[0] + ' »');
   ok(!/ma[iî]tris|\bmaster/i.test(txt), where + ' still speaks of mastery: « ' + (txt.match(/.{0,30}(ma[iî]tris|\bmaster).{0,20}/i) || [''])[0] + ' »');
@@ -65,9 +68,9 @@ NL.state.open().then(() => {
     fresh();
     const home = text(NL.screens.vandaag.render());
     ok(home.indexOf(t.unitOne(1)) >= 0, 'on a blank account the session card does not name unit 1: « ' + home.slice(0, 90) + ' »');
-    ok(home.indexOf(units[0].name) >= 0, 'the session card gives the unit number without its name');
+    ok(home.indexOf(NL.gloss.of(units[0].name)) >= 0, 'the session card gives the unit number without its name');
     /* L'écran de la séance dit la même chose que la carte. */
-    const label = t.unitOne(1) + ' · ' + units[0].name;
+    const label = t.unitOne(1) + ' · ' + NL.gloss.of(units[0].name);
     ok(S.begin('vandaag'), 'the session did not start');
     NL.ui.go('sessie');
     const first = text(B.app.innerHTML);

@@ -5,7 +5,7 @@
 NL.content = NL.content || {};
 NL.content.patterns = (function () {
   'use strict';
-  const D = (nl, fr, gap) => ({ nl, fr, gap });
+  const D = (nl, g, gap) => ({ nl, ...NL.gloss.pair(g), gap });
 
   return [
     {

@@ -100,7 +100,7 @@ NL.content.deRules = [
   { rule: 'Les chiffres et les lettres employés comme noms', ex: 'de drie, de a' }
 ];
 
-const S = (nl, fr, note) => ({ nl, fr, note });
+const S = (nl, g, note) => ({ nl, ...NL.gloss.pair(g), note });
 NL.content.sheets = [
   {
     id: 'redden', title: 'Sauver la conversation', icon: '\u{1F9ED}',

@@ -1,4 +1,4 @@
-/* Cinq contrôles mécaniques sur le contenu. Le cours va être multiplié par dix
+/* Six contrôles mécaniques sur le contenu. Le cours va être multiplié par dix
    et il n'y a pas de relecteur néerlandophone : tout ce qu'une machine peut
    vérifier, elle le vérifie, à chaque changement.
 
@@ -7,6 +7,7 @@
    que le mot drillé. Voir TESTING.md. */
 const fs = require('fs'), path = require('path'), zlib = require('zlib');
 const browser = require('./lib/browser');
+const { COLLECTIONS, owed } = require('./lib/prose');
 const ROOT = process.argv[2] || path.join(__dirname, '..');
 
 let fails = 0, checks = 0;
@@ -14,6 +15,10 @@ const ok = (c, m) => { checks++; if (!c) { console.log('  FAIL: ' + m); fails++;
 
 const B = browser.open({ root: ROOT, seed: browser.SEED, skip: ['src/app.js'] });
 const NL = B.NL, U = NL.util;
+/* Le cours tel qu'il est écrit, avant la première construction : {naam}, {stad} et
+   {bedrijf} y sont encore, et le contrôle 6 compare les jetons. */
+const RAW = {};
+COLLECTIONS.forEach(k => { RAW[k] = JSON.parse(JSON.stringify(NL.content[k] || [])); });
 const tokens = s => String(s || '').toLowerCase().replace(/\{[a-z]+\}/g, ' ').split(/[^a-zà-ÿ'’-]+/)
   .map(t => t.replace(/^[-'’]+|[-'’]+$/g, '')).filter(t => t.length > 1);
 
@@ -160,6 +165,61 @@ NL.state.open().then(() => {
     if (!it || it.nl !== nl) { moved++; ok(false, id + ' devait être « ' + nl + ' », est ' + (it ? '« ' + it.nl + ' »' : 'absent')); }
   });
   console.log('  ids             ' + (pinned.length - moved) + ' / ' + pinned.length + ' à leur place');
+
+  /* ============================================ 6. l'anglais qui reste dû */
+  /* Chaque sens et chaque texte du cours doit finir par porter un `en`. Le reste
+     à écrire se compte par lot, et le compte ne peut que baisser. */
+  ok(JSON.stringify(RAW).indexOf('{naam}') >= 0, 'RAW n’a pas été pris avant la première construction : {naam} a disparu');
+  const BUDGET = { lexiqueA1: 0, lexiqueA1b: 263, exemples: 414, grammaire: 110, references: 218, scenarios: 135 };
+  const batches = { lexiqueA1: [], lexiqueA1b: [], exemples: [], grammaire: [], references: [], scenarios: [] };
+  RAW.units.forEach((u, i) => owed(u, 'units[' + i + ']', '', []).forEach(r => {
+    if (/\.drills\[/.test(r.where)) batches.exemples.push(r);
+    else batches[u.n <= 6 ? 'lexiqueA1' : 'lexiqueA1b'].push(r);
+  }));
+  ['patterns', 'openTasks'].forEach(k => owed(RAW[k], k, '', []).forEach(r => batches.grammaire.push(r)));
+  ['register', 'hetRules', 'deRules', 'sheets'].forEach(k => owed(RAW[k], k, '', []).forEach(r => batches.references.push(r)));
+  owed(RAW.scenarios, 'scenarios', '', []).forEach(r => batches.scenarios.push(r));
+  Object.keys(BUDGET).forEach(b => {
+    const left = batches[b].filter(r => !r.ok), n = left.length;
+    ok(n <= BUDGET[b], b + ' ' + n + ' anglais dus, budget ' + BUDGET[b] + ' — baisser le budget quand on écrit, jamais le lever   [' +
+      left.slice(0, 3).map(r => r.where).join(', ') + ']');
+    ok(n >= BUDGET[b], b + ' : seulement ' + n + ' anglais dus : baisser le budget à ' + n + ' pour verrouiller le gain');
+    console.log('  ' + (b + '            ').slice(0, 13) + n + ' / ' + batches[b].length + ' (budget ' + BUDGET[b] + ')');
+  });
+
+  /* Parcours de RAW : tout objet qui porte `fr` ou `en`. */
+  const pairs6 = [];
+  const walk6 = (v, where) => {
+    if (Array.isArray(v)) { v.forEach((x, i) => walk6(x, where + '[' + i + ']')); return; }
+    if (!v || typeof v !== 'object') return;
+    if ('fr' in v || 'en' in v) pairs6.push([v, where]);
+    Object.keys(v).forEach(k => walk6(v[k], where + '.' + k));
+  };
+  COLLECTIONS.forEach(k => walk6(RAW[k], k));
+  let lonely = 0, drift = 0;
+  const sig = s => (String(s).match(/\d+|\{[a-z]+\}/g) || []).join('|');
+  pairs6.forEach(([v, where]) => {
+    if (typeof v.en === 'string' && typeof v.fr !== 'string') { lonely++; ok(false, 'un `en` sans `fr` : ' + where); }
+    if (typeof v.en === 'string' && typeof v.fr === 'string' && sig(v.fr) !== sig(v.en)) {
+      drift++; ok(false, 'les chiffres ou les {jetons} diffèrent entre fr et en : ' + where + '  « ' + v.fr + ' » / « ' + v.en + ' »');
+    }
+  });
+  console.log('  anglais        ' + lonely + ' sans fr, ' + drift + ' chiffre(s) ou jeton(s) qui diffèrent');
+
+  /* Les gardes sur l'anglais écrit. */
+  const G = NL.gloss, glossed = items.filter(it => it.unit !== 'eigen' && it.kind !== 'pattern' && G.has(it, 'en'));
+  const bySense = new Map();
+  glossed.forEach(it => G.senses(it, 'en').forEach(s => { if (!bySense.has(s)) bySense.set(s, []); bySense.get(s).push(it); }));
+  bySense.forEach((its, s) => { for (let i = 1; i < its.length; i++) {
+    ok(G.sameSense(its[0], its[i]), 'même anglais « ' + s + ' » pour deux éléments sans sens français ni néerlandais commun : ' +
+      its[0].id + ' « ' + its[0].nl + ' » et ' + its[i].id + ' « ' + its[i].nl + ' »');
+  } });
+  glossed.forEach(it => {
+    if (G.wordClass(it, 'fr') === 'verb') ok(/^to\s+\S/i.test(it.en), it.id + ' « ' + it.nl + ' » est un verbe en français, et son anglais « ' + it.en + ' » ne commence pas par « to »');
+    if (/(^|[^a-zà-ÿ])uw?(?![a-zà-ÿ])/i.test(it.nl) && /\byou(r)?\b/i.test(it.en)) ok(/\(formal\)/.test(it.en), it.id + ' « ' + it.nl + ' » : « ' + it.en + ' » doit porter « (formal) »');
+    if (it.art) ok(!/^(the|an|a)\s/i.test(it.en), it.id + ' « ' + it.nl + ' » est un nom : « ' + it.en + ' » ne prend pas d’article');
+  });
+  console.log('  gardes         ' + glossed.length + ' éléments glosés en anglais contrôlés');
 
   console.log('\n' + checks + ' contrôles, ' + (fails === 0 ? 'CONTENU CONFORME' : fails + ' ÉCHEC(S)'));
   process.exit(fails ? 1 : 0);

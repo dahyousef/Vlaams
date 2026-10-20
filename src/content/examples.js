@@ -16,7 +16,7 @@
    - {stad} et {bedrijf} sont remplacés par les réponses de la personne. */
 (function () {
   'use strict';
-  const S = (nl, fr, gap) => ({ nl, fr, gap });
+  const S = (nl, g, gap) => ({ nl, ...NL.gloss.pair(g), gap });
 
   const EX = {
     /* ---- unité 1 : survivre ---- */

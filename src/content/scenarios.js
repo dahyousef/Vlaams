@@ -4,9 +4,9 @@
 NL.content = NL.content || {};
 NL.content.scenarios = (function () {
   'use strict';
-  const T = (nl, fr, be) => ({ them: { nl, fr, be } });
+  const T = (nl, g, be) => ({ them: { nl, ...NL.gloss.pair(g), be } });
   const Y = (ask, choices, hint) => ({ you: { ask, choices, hint } });
-  const C = (nl, fr, reply, note) => ({ nl, fr, reply, note });
+  const C = (nl, g, reply, note) => ({ nl, ...NL.gloss.pair(g), reply, note });
 
   return [
     /* ---------------- vie quotidienne ---------------- */

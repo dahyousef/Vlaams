@@ -136,10 +136,9 @@ NL.state.open().then(() => {
   ok(JSON.stringify(NL.content.allItems()).indexOf('Testdorp') < 0, 'clearing the settings left personal data behind');
   console.log('  personalisation  placeholders fill and clear cleanly');
 
-  /* French sweep: every gloss is French, none is English. */
+  /* French sweep: every built-in item has a French gloss. */
   items.forEach(i => {
     ok(i.fr, 'no French gloss on ' + i.id);
-    ok(i.en === undefined, 'English gloss survived on ' + i.id);
   });
   const built = path.join(ROOT, 'index.html');
   if (fs.existsSync(built)) {
