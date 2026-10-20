@@ -560,7 +560,8 @@ function langAttrCheck(B) {
   const planted = (b, visit) => { visit('plant', '<p>hier</p><p>merci</p><p lang="nl-BE">hier</p>'); };
   const found = langAttrFind(B, planted);
   ok(found.has('en « hier » (en-GB)') && found.has('en « merci » (en-GB)'), '6 : « hier » et « merci » sans lang="nl-BE" dans la vue anglaise ne sont pas signalés');
-  ok(!found.has('fr « hier » (fr)') && !found.has('fr « merci » (fr)'), '6 : « hier » dans un passage français est du français, pas signalé');
+  const frFound = Array.from(found.keys()).filter(k => /^fr « (hier|merci) »/.test(k));
+  ok(frFound.length === 0, '6 : « hier » dans un passage français est du français, pas signalé : ' + frFound.join(', '));
 }
 
 /* 6b. Chaque section de référence montre exactement une étiquette d'ancrage, la bonne, dans la langue lue. */
