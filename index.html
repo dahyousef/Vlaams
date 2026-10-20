@@ -5409,9 +5409,7 @@ NL.ex = (function () {
      « hallo » ET « goeiedag » : proposer les deux, c'est en compter un faux.
      On compare chaque sens (« s'il vous plaît / voilà » en a deux), dans les
      deux langues. Le lexique sépare les sens par « / » ; une virgule, elle,
-     appartient à la phrase et ne sépare rien. La comparaison vit dans NL.gloss ;
-     NL.ex.sameSense la re-exporte. */
-  const sameSense = NL.gloss.sameSense;
+     appartient à la phrase et ne sépare rien. La comparaison vit dans NL.gloss. */
 
   /* Ce que la réponse tapée accepte pour un élément : la cible, ses variantes
      flamandes (une par virgule pour un mot, la phrase entière pour une phrase) et
@@ -5424,7 +5422,7 @@ NL.ex = (function () {
       .map(x => U.norm(word ? U.bare(x) : x)).filter(Boolean));
   }
   /* Les éléments qui disent la même chose : taper l'un est juste pour l'autre. */
-  const siblings = item => NL.content.allItems().filter(x => x.id !== item.id && x.nl && sameSense(x, item));
+  const siblings = item => NL.content.allItems().filter(x => x.id !== item.id && x.nl && NL.gloss.sameSense(x, item));
   /* Les réponses acceptées (`list`) comprennent-elles le néerlandais de `b` ? */
   const accepts = (list, b) => list.indexOf(U.norm(U.bare(b.nl))) >= 0;
 
@@ -5955,7 +5953,7 @@ NL.ex = (function () {
     return '<p class="v-be">' + NL.t.hereThey + ' ' + forms.map(f => '<span lang="nl-BE">' + boldForm(item, f) + '</span>').join(', ') + '</p>';
   }
 
-  return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, recordPanel, selfRate, sameSense, wordScore, hereLine };
+  return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, recordPanel, selfRate, wordScore, hereLine };
 })();
 </script>
 <script>
@@ -6065,6 +6063,12 @@ NL.ui = (function () {
     return t.unitOne(span.from) + (u ? ' · ' + NL.gloss.of(u.name) : '');
   }
 
+  /* Le texte `x` (lu par NL.gloss) dans une balise, s'il y en a un ; sinon rien. */
+  function ifText(x, tag, cls) {
+    const s = NL.gloss.of(x);
+    return s ? '<' + tag + (cls ? ' class="' + cls + '"' : '') + '>' + esc(s) + '</' + tag + '>' : '';
+  }
+
   function sheetHtml() {
     const m = NL.state.meta();
     if (sheet === 'quit-session') {
@@ -6082,7 +6086,7 @@ NL.ui = (function () {
         '</div></div>' +
 
         '<div class="set-block"><h4>' + t.setLang + '</h4>' +
-        '<button class="btn wide" data-display-lang="' + (NL.lang.current() === 'en' ? 'fr' : 'en') + '">' + t.langOther + '</button></div>' +
+        '<button class="btn wide" data-display-lang="' + NL.gloss.other(NL.lang.current()) + '">' + t.langOther + '</button></div>' +
 
         '<div class="set-block"><h4>' + t.setPace + '</h4><div class="seg">' +
         ['calme', 'normal', 'intensif'].map(k =>
@@ -6351,7 +6355,7 @@ NL.ui = (function () {
   function onAuth() { if (route === 'compte') go('vandaag'); else render(); }
 
   return {
-    bind, render, go, toast, openSheet, closeSheet, I, card, unitLabel, onAuth,
+    bind, render, go, toast, openSheet, closeSheet, I, card, unitLabel, ifText, onAuth,
     get route() { return route; },
     boot() { const h = fromHash(); if (h) { route = h.r; arg = h.a; } render(); }
   };
@@ -6800,7 +6804,7 @@ NL.screens.sessie = (function () {
       '<div><h5>' + note + '</h5>' +
       (vl ? '' : asked || (ans ? '<p><b' + ansLang + '>' + esc(ans) + '</b></p>' : '')) +
       be + also +
-      (it && NL.gloss.of(it.note) ? '<p class="v-note">' + esc(NL.gloss.of(it.note)) + '</p>' : '') +
+      NL.ui.ifText(it && it.note, 'p', 'v-note') +
       '</div></div>' +
       '<button class="btn ' + (ok ? 'btn-good' : 'btn-bad') + ' push" data-next="1">' + NL.t.next + '</button>' +
       '</div></div>';
@@ -7309,7 +7313,7 @@ NL.screens.sessie = (function () {
         panel = '<button class="btn btn-blue wide" data-step="next">' + NL.t.next + '</button>';
       } else if (P.phase === 'choose') {
         panel = '<p class="ask">' + esc(NL.gloss.of(step.you.ask)) + '</p>' +
-          (NL.gloss.of(step.you.hint) ? '<p class="ask-hint">' + esc(NL.gloss.of(step.you.hint)) + '</p>' : '') +
+          NL.ui.ifText(step.you.hint, 'p', 'ask-hint') +
           '<div class="choices">' + step.you.choices.map((c, i) =>
             '<button class="choice" data-choice="' + i + '"><b lang="nl-BE">' + esc(c.nl) + '</b><i>' + esc(NL.gloss.of(c)) + '</i></button>').join('') +
           '</div>';
@@ -7319,7 +7323,7 @@ NL.screens.sessie = (function () {
           '<p class="say-en">' + esc(NL.gloss.of(c)) + '</p>' +
           '<button class="speaker slow inline" data-say="' + esc(c.nl) + '" data-slow="1" aria-label="' + NL.t.slow + '">' + ICON.turtle() + '</button></div>' +
           micPanel(P.speech, c.nl) +
-          (NL.gloss.of(c.note) ? '<p class="say-note">' + esc(NL.gloss.of(c.note)) + '</p>' : '');
+          NL.ui.ifText(c.note, 'p', 'say-note');
       } else if (P.phase === 'done') {
         panel = '<div class="scn-done"><h2>' + NL.t.scnOver + '</h2>' +
           '<p>' + esc(NL.gloss.of(s.outro)) + '</p>' +
@@ -7777,7 +7781,7 @@ NL.screens.luisteren = (function () {
               g.rows.map(r => '<button class="sheet-row" data-say="' + esc(r.nl) + '">' +
                 '<span class="sr-say">' + ICON.speaker(16) + '</span>' +
                 '<span class="sr-body"><b lang="nl-BE">' + esc(r.nl) + '</b><i>' + esc(NL.gloss.of(r)) + '</i>' +
-                (NL.gloss.of(r.note) ? '<em>' + esc(NL.gloss.of(r.note)) + '</em>' : '') + '</span></button>').join('') +
+                NL.ui.ifText(r.note, 'em') + '</span></button>').join('') +
               '</div>').join('') +
             '</div>';
         }
@@ -7807,7 +7811,7 @@ NL.screens.luisteren = (function () {
           '<div class="reg-row">' +
           '<button class="reg-cell std" lang="nl-BE" data-say="' + esc(r.std) + '">' + esc(r.std) + '</button>' +
           '<button class="reg-cell be" data-say="' + esc(r.be) + '">' + '<span lang="nl-BE">' + esc(r.be) + '</span>' +
-          (NL.gloss.of(r.note) ? '<em>' + esc(NL.gloss.of(r.note)) + '</em>' : '') + '</button>' +
+          NL.ui.ifText(r.note, 'em') + '</button>' +
           '</div>').join('') +
         '</div>' +
 
@@ -7818,7 +7822,7 @@ NL.screens.luisteren = (function () {
           '<div class="reg-row">' +
           '<button class="reg-cell be" lang="nl-BE" data-say="' + esc(r.nl) + '">' + esc(r.nl) + '</button>' +
           '<span class="reg-cell std" lang="fr">' + esc(NL.gloss.of(r)) +
-          (NL.gloss.of(r.note) ? '<em>' + esc(NL.gloss.of(r.note)) + '</em>' : '') + '</span>' +
+          NL.ui.ifText(r.note, 'em') + '</span>' +
           '</div>').join('') +
         '</div>' +
 
@@ -7927,13 +7931,15 @@ NL.screens.doctor = (function () {
   const TEST = 'Goeiemorgen, alles goed met u?';
   let S = { heard: null, mic: null, micKey: '', rec: 'idle' };
 
+  /* Le titre et la note d'un palier, lus dans NL.t à chaque dessin : la langue a pu changer. */
+  const tierText = (label, note) => ({ get label() { return t[label]; }, get note() { return t[note]; } });
   const TIERS = {
-    full: { get label() { return t.tierFull; }, get note() { return t.tierFullNote; } },
-    scored: { get label() { return t.tierScored; }, get note() { return t.tierScoredNote; } },
-    novoice: { get label() { return t.tierNoVoice; }, get note() { return t.tierNoVoiceNote; } },
-    refused: { get label() { return t.tierRefused; }, get note() { return t.tierRefusedNote; } },
-    compare: { get label() { return t.tierCompare; }, get note() { return t.tierCompareNote; } },
-    self: { get label() { return t.tierSelf; }, get note() { return t.tierSelfNote; } }
+    full: tierText('tierFull', 'tierFullNote'),
+    scored: tierText('tierScored', 'tierScoredNote'),
+    novoice: tierText('tierNoVoice', 'tierNoVoiceNote'),
+    refused: tierText('tierRefused', 'tierRefusedNote'),
+    compare: tierText('tierCompare', 'tierCompareNote'),
+    self: tierText('tierSelf', 'tierSelfNote')
   };
 
   function voiceRows() {

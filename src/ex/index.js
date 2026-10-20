@@ -59,9 +59,7 @@ NL.ex = (function () {
      « hallo » ET « goeiedag » : proposer les deux, c'est en compter un faux.
      On compare chaque sens (« s'il vous plaît / voilà » en a deux), dans les
      deux langues. Le lexique sépare les sens par « / » ; une virgule, elle,
-     appartient à la phrase et ne sépare rien. La comparaison vit dans NL.gloss ;
-     NL.ex.sameSense la re-exporte. */
-  const sameSense = NL.gloss.sameSense;
+     appartient à la phrase et ne sépare rien. La comparaison vit dans NL.gloss. */
 
   /* Ce que la réponse tapée accepte pour un élément : la cible, ses variantes
      flamandes (une par virgule pour un mot, la phrase entière pour une phrase) et
@@ -74,7 +72,7 @@ NL.ex = (function () {
       .map(x => U.norm(word ? U.bare(x) : x)).filter(Boolean));
   }
   /* Les éléments qui disent la même chose : taper l'un est juste pour l'autre. */
-  const siblings = item => NL.content.allItems().filter(x => x.id !== item.id && x.nl && sameSense(x, item));
+  const siblings = item => NL.content.allItems().filter(x => x.id !== item.id && x.nl && NL.gloss.sameSense(x, item));
   /* Les réponses acceptées (`list`) comprennent-elles le néerlandais de `b` ? */
   const accepts = (list, b) => list.indexOf(U.norm(U.bare(b.nl))) >= 0;
 
@@ -605,5 +603,5 @@ NL.ex = (function () {
     return '<p class="v-be">' + NL.t.hereThey + ' ' + forms.map(f => '<span lang="nl-BE">' + boldForm(item, f) + '</span>').join(', ') + '</p>';
   }
 
-  return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, recordPanel, selfRate, sameSense, wordScore, hereLine };
+  return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, recordPanel, selfRate, wordScore, hereLine };
 })();

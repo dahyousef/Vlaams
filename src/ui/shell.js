@@ -104,6 +104,12 @@ NL.ui = (function () {
     return t.unitOne(span.from) + (u ? ' · ' + NL.gloss.of(u.name) : '');
   }
 
+  /* Le texte `x` (lu par NL.gloss) dans une balise, s'il y en a un ; sinon rien. */
+  function ifText(x, tag, cls) {
+    const s = NL.gloss.of(x);
+    return s ? '<' + tag + (cls ? ' class="' + cls + '"' : '') + '>' + esc(s) + '</' + tag + '>' : '';
+  }
+
   function sheetHtml() {
     const m = NL.state.meta();
     if (sheet === 'quit-session') {
@@ -121,7 +127,7 @@ NL.ui = (function () {
         '</div></div>' +
 
         '<div class="set-block"><h4>' + t.setLang + '</h4>' +
-        '<button class="btn wide" data-display-lang="' + (NL.lang.current() === 'en' ? 'fr' : 'en') + '">' + t.langOther + '</button></div>' +
+        '<button class="btn wide" data-display-lang="' + NL.gloss.other(NL.lang.current()) + '">' + t.langOther + '</button></div>' +
 
         '<div class="set-block"><h4>' + t.setPace + '</h4><div class="seg">' +
         ['calme', 'normal', 'intensif'].map(k =>
@@ -390,7 +396,7 @@ NL.ui = (function () {
   function onAuth() { if (route === 'compte') go('vandaag'); else render(); }
 
   return {
-    bind, render, go, toast, openSheet, closeSheet, I, card, unitLabel, onAuth,
+    bind, render, go, toast, openSheet, closeSheet, I, card, unitLabel, ifText, onAuth,
     get route() { return route; },
     boot() { const h = fromHash(); if (h) { route = h.r; arg = h.a; } render(); }
   };

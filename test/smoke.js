@@ -204,6 +204,19 @@ NL.state.open().then(() => {
     ok(src.indexOf('en-GB') < 0, f + ': en-GB is written outside gloss.js; use NL.gloss.tag');
   });
 
+  /* #74. What already has a name is not written out again: the other language is
+     NL.gloss.other, the comparison of senses is read from NL.gloss alone, a tier's two
+     texts are one getter pair, and « the text, if there is any » is NL.ui.ifText. */
+  const byHand = /NL\.gloss\.of\(([\w.]+)\) \? '<\w+[^']*>' \+ esc\(NL\.gloss\.of\(\1\)\)/g;
+  sources.forEach(f => {
+    const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
+    if (f !== 'src/core/gloss.js') ok(!/=== '(en|fr)' \? '(?!\1)(?:en|fr)' : '\1'/.test(src), f + ': works out the other language by hand; use NL.gloss.other');
+    (src.match(byHand) || []).forEach(m => ok(false, f + ': ' + m + '… writes « the text, if there is any » by hand; use NL.ui.ifText'));
+  });
+  ok(!('sameSense' in NL.ex), 'NL.ex re-exports sameSense; read it from NL.gloss');
+  const doctor = fs.readFileSync(path.join(ROOT, 'src/ui/doctor.js'), 'utf8');
+  ok((doctor.match(/get label\(\)/g) || []).length === 1, 'src/ui/doctor.js writes a tier\'s getter pair more than once; use tierText');
+
   /* The suites share their helpers through test/lib, and a copy drifts from the original.
      A click goes through B.tap, there is one fake Supabase, and a due date comes from the
      suite's clock, never from an epoch written out by hand. */

@@ -113,7 +113,7 @@
               g.rows.map(r => '<button class="sheet-row" data-say="' + esc(r.nl) + '">' +
                 '<span class="sr-say">' + ICON.speaker(16) + '</span>' +
                 '<span class="sr-body"><b lang="nl-BE">' + esc(r.nl) + '</b><i>' + esc(NL.gloss.of(r)) + '</i>' +
-                (NL.gloss.of(r.note) ? '<em>' + esc(NL.gloss.of(r.note)) + '</em>' : '') + '</span></button>').join('') +
+                NL.ui.ifText(r.note, 'em') + '</span></button>').join('') +
               '</div>').join('') +
             '</div>';
         }
@@ -143,7 +143,7 @@
           '<div class="reg-row">' +
           '<button class="reg-cell std" lang="nl-BE" data-say="' + esc(r.std) + '">' + esc(r.std) + '</button>' +
           '<button class="reg-cell be" data-say="' + esc(r.be) + '">' + '<span lang="nl-BE">' + esc(r.be) + '</span>' +
-          (NL.gloss.of(r.note) ? '<em>' + esc(NL.gloss.of(r.note)) + '</em>' : '') + '</button>' +
+          NL.ui.ifText(r.note, 'em') + '</button>' +
           '</div>').join('') +
         '</div>' +
 
@@ -154,7 +154,7 @@
           '<div class="reg-row">' +
           '<button class="reg-cell be" lang="nl-BE" data-say="' + esc(r.nl) + '">' + esc(r.nl) + '</button>' +
           '<span class="reg-cell std" lang="fr">' + esc(NL.gloss.of(r)) +
-          (NL.gloss.of(r.note) ? '<em>' + esc(NL.gloss.of(r.note)) + '</em>' : '') + '</span>' +
+          NL.ui.ifText(r.note, 'em') + '</span>' +
           '</div>').join('') +
         '</div>' +
 
