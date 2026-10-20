@@ -222,7 +222,7 @@ NL.content.units = NL.content.units || [];
     phrases: [
       P('Ik ben ziek.', { fr: 'Je suis malade.', en: 'I am ill.' }),
       P('Ik voel me niet goed.', { fr: 'Je ne me sens pas bien.', en: 'I do not feel well.' }),
-      P('Ik heb pijn aan mijn rug.', { fr: 'J’ai mal au dos.', en: 'My back hurts.' }, null, { fr: 'Le néerlandais dit « douleur à mon dos », comme le français.', en: null }),
+      P('Ik heb pijn aan mijn rug.', { fr: 'J’ai mal au dos.', en: 'My back hurts.' }, null, { fr: 'Le néerlandais dit « douleur à mon dos », comme le français.', en: 'Literally “I have pain at my back”.' }),
       P('Ik heb koorts sinds gisteren.', { fr: 'J’ai de la fièvre depuis hier.', en: 'I have had a fever since yesterday.' }, null, { fr: 'Présent avec « sinds », comme en français.', en: 'Dutch uses the present tense with “sinds”: literally “I have fever since yesterday”.' }),
       P('Ik wil graag een afspraak maken.', { fr: 'Je voudrais prendre rendez-vous.', en: 'I would like to make an appointment.' }),
       P('Kan ik vandaag nog langskomen?', { fr: 'Je peux encore passer aujourd’hui ?', en: 'Can I still come by today?' }),
@@ -265,8 +265,8 @@ NL.content.units = NL.content.units || [];
     phrases: [
       P('Wat een weer!', { fr: 'Quel temps !', en: 'What weather!' }, 'Amai, wat een weer!', { fr: 'Toujours disponible, jamais déplacé, ouvre n’importe quelle conversation.', en: 'Always available, never out of place, opens any conversation.' }),
       P('Het regent weer.', { fr: 'Il pleut encore.', en: 'It is raining again.' }),
-      P('Hoe was uw weekend?', { fr: 'C’était comment, ton week-end ?', en: 'How was your weekend? (formal)' }, 'En, hoe was ’t weekend?', { fr: 'On te le demandera tous les lundis. Prépare une réponse.', en: 'You will be asked every Monday. Have an answer ready.' }),
-      P('Niks speciaals, en bij u?', { fr: 'Rien de spécial, et toi ?', en: 'Nothing special, and you? (formal)' }, null, { fr: 'Réponse complète et naturelle. Renvoyer la question est attendu.', en: 'A complete, natural answer. Asking back is expected.' }),
+      P('Hoe was uw weekend?', { fr: 'C’était comment, ton week-end ?', en: 'How was your weekend? (informal, Flemish u)' }, 'En, hoe was ’t weekend?', { fr: 'On te le demandera tous les lundis. Prépare une réponse.', en: 'You will be asked every Monday. Have an answer ready.' }),
+      P('Niks speciaals, en bij u?', { fr: 'Rien de spécial, et toi ?', en: 'Nothing special, and you? (informal, Flemish u)' }, null, { fr: 'Réponse complète et naturelle. Renvoyer la question est attendu.', en: 'A complete, natural answer. Asking back is expected.' }),
       P('We hebben gewandeld.', { fr: 'On s’est promenés.', en: 'We went for a walk.' }, null, { fr: 'Ton premier passé composé : hebben plus le participe à la fin.', en: 'Your first perfect tense: hebben plus the participle at the end.' }),
       P('Ik heb de match gezien.', { fr: 'J’ai vu le match.', en: 'I saw the match.' }),
       P('Dat was plezant.', { fr: 'C’était chouette.', en: 'That was great.' }),

@@ -76,7 +76,7 @@ NL.content.openTasks = {
   },
 
   'g-scheidbaar': {
-    ask: { fr: 'Raconte ton matin : à quelle heure tu te lèves et ce que tu emportes.', en: 'Tell your morning: what time you get up and what you take with you.' },
+    ask: { fr: 'Raconte ton matin : à quelle heure tu te lèves et ce que tu emportes.', en: 'Describe your morning: what time you get up and what you take with you.' },
     need: [
       { what: { fr: 'un verbe séparable', en: 'a separable verb' }, rx: /\b(sta|neem|kom|spreek|bel)\b[\s\S]*\b(op|mee|thuis|af)\b/i },
       { what: { fr: 'une heure', en: 'a time' }, rx: /\b(half|kwart|uur)\b/i },

@@ -796,6 +796,9 @@ NL.gloss = (function () {
     return ea.some(x => eb.indexOf(x) >= 0);
   }
 
+  /* Des mots français qui finissent comme un infinitif sans en être un. */
+  const NOT_VERBS = ['hier', 'entre', 'contre', 'propre'];
+
   /* La nature du mot, grossièrement : « oui » face à « sorry / spreken / ja » se
      résout sans connaître le mot, parce qu'un verbe ne répond pas à « oui ». */
   function wordClass(x, l) {
@@ -807,7 +810,7 @@ NL.gloss = (function () {
       if (/^to\s+\S/.test(first) && /en$/.test(U.bare(x.nl))) return 'verb';
       return 'other';
     }
-    if (/^\S+(er|ir|re|oir)$/.test(first) && first.indexOf('-') < 0 && first !== 'hier' && /en$/.test(U.bare(x.nl))) return 'verb';
+    if (/^\S+(er|ir|re|oir)$/.test(first) && first.indexOf('-') < 0 && NOT_VERBS.indexOf(first) < 0 && /en$/.test(U.bare(x.nl))) return 'verb';
     return 'other';
   }
 
@@ -3380,7 +3383,7 @@ NL.content.units = NL.content.units || [];
     words: [
       W('het brood', { fr: 'le pain', en: 'bread' }, 'het'),
       W('de pistolet', { fr: 'le pistolet', en: 'crusty bread roll' }, 'de', null, { fr: 'Emprunté au français, gardé en Flandre. Le nord dirait « broodje ».', en: 'Borrowed from French, kept in Flanders. The north would say “broodje”.' }),
-      W('de koffiekoek', { fr: 'la couque', en: 'sweet breakfast bun' }, 'de', null, { fr: 'La viennoiserie du matin. Le nord dit « zoet broodje ».', en: 'The morning pastry. The north says “zoet broodje”.' }),
+      W('de koffiekoek', { fr: 'la couque', en: 'breakfast pastry' }, 'de', null, { fr: 'La viennoiserie du matin. Le nord dit « zoet broodje ».', en: 'The morning pastry. The north says “zoet broodje”.' }),
       W('een half wit', { fr: 'un demi pain blanc', en: 'half a white loaf' }, null, null, { fr: 'Exactement ce qu’on dit au comptoir. Ajoute « gesneden » pour le faire trancher.', en: 'Exactly what you say at the counter. Add “gesneden” to have it sliced.' }),
       W('gesneden', { fr: 'tranché', en: 'sliced' }),
       W('de bakker', { fr: 'le boulanger', en: 'baker' }, 'de'),
@@ -3408,7 +3411,7 @@ NL.content.units = NL.content.units || [];
       P('Is dat alles?', { fr: 'Ce sera tout ?', en: 'Will that be all?' }, 'Is da alles?', { fr: 'C’est eux qui te le demandent. Réponse : « Ja, dat is alles ».', en: 'They are the ones who ask you. Answer: “Ja, dat is alles”.' }),
       P('Ja, dat is alles, merci.', { fr: 'Oui, c’est tout, merci.', en: 'Yes, that is all, thanks.' }),
       P('Hoeveel is het?', { fr: 'Ça fait combien ?', en: 'How much is it?' }, 'Hoeveel is ’t?'),
-      P('Ik zou graag een koffiekoek hebben.', { fr: 'Je voudrais une couque.', en: 'I would like a sweet bun.' }, null, { fr: 'La formule polie pour commander : ik zou graag ... hebben.', en: 'The polite way to order: ik zou graag ... hebben.' }),
+      P('Ik zou graag een koffiekoek hebben.', { fr: 'Je voudrais une couque.', en: 'I would like a pastry.' }, null, { fr: 'La formule polie pour commander : ik zou graag ... hebben.', en: 'The polite way to order: ik zou graag ... hebben.' }),
       P('Een pintje, alstublieft.', { fr: 'Une bière, s’il vous plaît.', en: 'A beer, please.' }),
       P('Voor hier of om mee te nemen?', { fr: 'Sur place ou à emporter ?', en: 'Eat in or take away?' }, null, { fr: 'Encore une question qu’on te pose, pas l’inverse.', en: 'Another question they ask you, not the other way round.' }),
       P('Ik heb honger.', { fr: 'J’ai faim.', en: 'I am hungry.' }),
@@ -3727,7 +3730,7 @@ NL.content.units = NL.content.units || [];
     phrases: [
       P('Ik ben ziek.', { fr: 'Je suis malade.', en: 'I am ill.' }),
       P('Ik voel me niet goed.', { fr: 'Je ne me sens pas bien.', en: 'I do not feel well.' }),
-      P('Ik heb pijn aan mijn rug.', { fr: 'J’ai mal au dos.', en: 'My back hurts.' }, null, { fr: 'Le néerlandais dit « douleur à mon dos », comme le français.', en: null }),
+      P('Ik heb pijn aan mijn rug.', { fr: 'J’ai mal au dos.', en: 'My back hurts.' }, null, { fr: 'Le néerlandais dit « douleur à mon dos », comme le français.', en: 'Literally “I have pain at my back”.' }),
       P('Ik heb koorts sinds gisteren.', { fr: 'J’ai de la fièvre depuis hier.', en: 'I have had a fever since yesterday.' }, null, { fr: 'Présent avec « sinds », comme en français.', en: 'Dutch uses the present tense with “sinds”: literally “I have fever since yesterday”.' }),
       P('Ik wil graag een afspraak maken.', { fr: 'Je voudrais prendre rendez-vous.', en: 'I would like to make an appointment.' }),
       P('Kan ik vandaag nog langskomen?', { fr: 'Je peux encore passer aujourd’hui ?', en: 'Can I still come by today?' }),
@@ -3770,8 +3773,8 @@ NL.content.units = NL.content.units || [];
     phrases: [
       P('Wat een weer!', { fr: 'Quel temps !', en: 'What weather!' }, 'Amai, wat een weer!', { fr: 'Toujours disponible, jamais déplacé, ouvre n’importe quelle conversation.', en: 'Always available, never out of place, opens any conversation.' }),
       P('Het regent weer.', { fr: 'Il pleut encore.', en: 'It is raining again.' }),
-      P('Hoe was uw weekend?', { fr: 'C’était comment, ton week-end ?', en: 'How was your weekend? (formal)' }, 'En, hoe was ’t weekend?', { fr: 'On te le demandera tous les lundis. Prépare une réponse.', en: 'You will be asked every Monday. Have an answer ready.' }),
-      P('Niks speciaals, en bij u?', { fr: 'Rien de spécial, et toi ?', en: 'Nothing special, and you? (formal)' }, null, { fr: 'Réponse complète et naturelle. Renvoyer la question est attendu.', en: 'A complete, natural answer. Asking back is expected.' }),
+      P('Hoe was uw weekend?', { fr: 'C’était comment, ton week-end ?', en: 'How was your weekend? (informal, Flemish u)' }, 'En, hoe was ’t weekend?', { fr: 'On te le demandera tous les lundis. Prépare une réponse.', en: 'You will be asked every Monday. Have an answer ready.' }),
+      P('Niks speciaals, en bij u?', { fr: 'Rien de spécial, et toi ?', en: 'Nothing special, and you? (informal, Flemish u)' }, null, { fr: 'Réponse complète et naturelle. Renvoyer la question est attendu.', en: 'A complete, natural answer. Asking back is expected.' }),
       P('We hebben gewandeld.', { fr: 'On s’est promenés.', en: 'We went for a walk.' }, null, { fr: 'Ton premier passé composé : hebben plus le participe à la fin.', en: 'Your first perfect tense: hebben plus the participle at the end.' }),
       P('Ik heb de match gezien.', { fr: 'J’ai vu le match.', en: 'I saw the match.' }),
       P('Dat was plezant.', { fr: 'C’était chouette.', en: 'That was great.' }),
@@ -3880,7 +3883,7 @@ NL.content.patterns = (function () {
       rule: { fr: 'een groot huis, mais het grote huis.', en: 'een groot huis, but het grote huis.' },
       nl: 'Het grote huis staat in de straat.', fr: 'La grande maison est dans la rue.', en: 'The big house is in the street.',
       explain: {
-        fr: 'Environ trois noms sur quatre prennent <span class="ex">de</span>, le reste prend <span class="ex">het</span>. <b>Ne traduis jamais depuis le français</b> : <span class="ex">het huis</span> est neutre alors que « la maison » est féminine, <span class="ex">de tafel</span> est un de-mot alors que « le bureau » est masculin. Les genres ne se correspondent pas du tout. Bonne nouvelle : ce n’est pas totalement arbitraire — voir la fiche <i>Les familles de het</i>. Le gain vient avec l’adjectif : il prend <span class="ex">-e</span> partout — <span class="ex">de grote fiets</span>, <span class="ex">het grote huis</span>, <span class="ex">een grote fiets</span> — sauf après <b lang="nl-BE">een</b> devant un mot <b>het</b> : <span class="ex">een groot huis</span>. Après le verbe, toujours nu : <span class="ex">het huis is groot</span>.',
+        fr: 'Environ trois noms sur quatre prennent <span class="ex">de</span>, le reste prend <span class="ex">het</span>. <b>Ne traduis jamais depuis le français</b> : <span class="ex">het huis</span> est neutre alors que « la maison » est féminine, <span class="ex">het bureau</span> est neutre alors que « le bureau » est masculin. Les genres ne se correspondent pas du tout. Bonne nouvelle : ce n’est pas totalement arbitraire — voir la fiche <i>Les familles de het</i>. Le gain vient avec l’adjectif : il prend <span class="ex">-e</span> partout — <span class="ex">de grote fiets</span>, <span class="ex">het grote huis</span>, <span class="ex">een grote fiets</span> — sauf après <b lang="nl-BE">een</b> devant un mot <b>het</b> : <span class="ex">een groot huis</span>. Après le verbe, toujours nu : <span class="ex">het huis is groot</span>.',
         en: 'About three nouns in four take <span class="ex">de</span>, the rest take <span class="ex">het</span>. <b>Never guess from the meaning</b>: English has no grammatical gender to lean on, so learn the article together with the noun — <span class="ex">het huis</span>, <span class="ex">de tafel</span>. Good news: it is not entirely arbitrary — see the sheet <i>The het families</i>. The payoff comes with the adjective: it takes <span class="ex">-e</span> everywhere — <span class="ex">de grote fiets</span>, <span class="ex">het grote huis</span>, <span class="ex">een grote fiets</span> — except after <b lang="nl-BE">een</b> before a <b>het</b> word: <span class="ex">een groot huis</span>. After the verb, always bare: <span class="ex">het huis is groot</span>.'
       },
       drills: [
@@ -3918,7 +3921,7 @@ NL.content.patterns = (function () {
         D('Ik sta elke dag om zes uur op.', { fr: 'Je me lève à six heures tous les jours.', en: 'I get up at six o’clock every day.' }, 'op'),
         D('Ik neem mijn laptop mee.', { fr: 'J’emporte mon portable.', en: 'I’m taking my laptop with me.' }, 'mee'),
         D('We spreken morgen af.', { fr: 'On se voit demain.', en: 'We’ll meet tomorrow.' }, 'af'),
-        D('Hij belt u straks op.', { fr: 'Il vous rappellera tout à l’heure.', en: 'He’ll call you later.' }, 'op'),
+        D('Hij belt u straks op.', { fr: 'Il vous appellera tout à l’heure.', en: 'He’ll call you later.' }, 'op'),
         D('Kunt u dat even uitleggen?', { fr: 'Pouvez-vous expliquer ça rapidement ?', en: 'Can you explain that quickly?' }, 'uitleggen')
       ]
     },
@@ -4034,8 +4037,8 @@ NL.content.patterns = (function () {
       S('Het brood is nog warm.', { fr: 'Le pain est encore chaud.', en: 'The bread is still warm.' }, 'brood')],
     'de pistolet': [S('Vier pistolets, graag.', { fr: 'Quatre pistolets, s’il vous plaît.', en: 'Four crusty rolls, please.' }, 'pistolets'),
       S('Een pistolet met hesp.', { fr: 'Un pistolet au jambon.', en: 'A crusty roll with ham.' }, 'pistolet')],
-    'de koffiekoek': [S('Twee koffiekoeken voor de kinderen.', { fr: 'Deux couques pour les enfants.', en: 'Two sweet buns for the children.' }, 'koffiekoeken'),
-      S('Op zondag eten wij een koffiekoek.', { fr: 'Le dimanche on mange une couque.', en: 'On Sundays we eat a sweet bun.' }, 'koffiekoek')],
+    'de koffiekoek': [S('Twee koffiekoeken voor de kinderen.', { fr: 'Deux couques pour les enfants.', en: 'Two pastries for the children.' }, 'koffiekoeken'),
+      S('Op zondag eten wij een koffiekoek.', { fr: 'Le dimanche on mange une couque.', en: 'On Sundays we eat a pastry.' }, 'koffiekoek')],
     'de bakker': [S('Ik ga snel naar de bakker.', { fr: 'Je vais vite chez le boulanger.', en: 'I’m just popping to the baker’s.' }, 'bakker'),
       S('De bakker is op maandag gesloten.', { fr: 'Le boulanger est fermé le lundi.', en: 'The baker’s is closed on Mondays.' }, 'bakker')],
     'de beenhouwer': [S('De beenhouwer in onze straat is goed.', { fr: 'Le boucher de notre rue est bon.', en: 'The butcher in our street is good.' }, 'beenhouwer'),
@@ -4231,7 +4234,7 @@ NL.content.patterns = (function () {
     'opstaan': [S('Ik sta elke dag om zes uur op.', { fr: 'Je me lève à six heures tous les jours.', en: 'I get up at six o’clock every day.' }, 'sta'),
       S('Op zondag staan wij laat op.', { fr: 'Le dimanche nous nous levons tard.', en: 'On Sundays we get up late.' }, 'staan')],
     'ontbijten': [S('Wij ontbijten samen om zeven uur.', { fr: 'Nous déjeunons ensemble à sept heures.', en: 'We have breakfast together at seven o’clock.' }, 'ontbijten'),
-      S('Ik ontbijt met een koffiekoek.', { fr: 'Je prends une couque au petit-déjeuner.', en: 'I have a sweet bun for breakfast.' }, 'ontbijt')],
+      S('Ik ontbijt met een koffiekoek.', { fr: 'Je prends une couque au petit-déjeuner.', en: 'I have a pastry for breakfast.' }, 'ontbijt')],
     'thuiskomen': [S('Ik kom rond zes uur thuis.', { fr: 'Je rentre vers dix-huit heures.', en: 'I get home around six o’clock.' }, 'kom'),
       S('Zij komt later thuis.', { fr: 'Elle rentre plus tard.', en: 'She gets home later.' }, 'komt')],
     'afspreken': [S('Zullen wij iets afspreken voor vrijdag?', { fr: 'On convient de quelque chose pour vendredi ?', en: 'Shall we arrange something for Friday?' }, 'afspreken'),
@@ -4509,7 +4512,7 @@ NL.content.openTasks = {
   },
 
   'g-scheidbaar': {
-    ask: { fr: 'Raconte ton matin : à quelle heure tu te lèves et ce que tu emportes.', en: 'Tell your morning: what time you get up and what you take with you.' },
+    ask: { fr: 'Raconte ton matin : à quelle heure tu te lèves et ce que tu emportes.', en: 'Describe your morning: what time you get up and what you take with you.' },
     need: [
       { what: { fr: 'un verbe séparable', en: 'a separable verb' }, rx: /\b(sta|neem|kom|spreek|bel)\b[\s\S]*\b(op|mee|thuis|af)\b/i },
       { what: { fr: 'une heure', en: 'a time' }, rx: /\b(half|kwart|uur)\b/i },
@@ -4846,7 +4849,7 @@ NL.content.sheets = [
       },
       {
         h: { fr: 'Réponses qui marchent', en: 'Answers that work' }, rows: [
-          S('Niks speciaals, en bij u?', { fr: 'Rien de spécial, et toi ?', en: 'Nothing special, and you? (formal)' }, { fr: 'Complet et naturel. Renvoie la question', en: 'Complete and natural. Return the question' }),
+          S('Niks speciaals, en bij u?', { fr: 'Rien de spécial, et toi ?', en: 'Nothing special, and you? (informal, Flemish u)' }, { fr: 'Complet et naturel. Renvoie la question', en: 'Complete and natural. Return the question' }),
           S('Rustig gebleven, gelukkig.', { fr: 'C’est resté calme, heureusement.', en: 'It stayed quiet, luckily.' }),
           S('We hebben gewandeld met de kinderen.', { fr: 'On s’est promenés avec les enfants.', en: 'We went for a walk with the children.' }),
           S('Het was plezant.', { fr: 'C’était chouette.', en: 'It was great.' }),
@@ -4871,7 +4874,7 @@ NL.content.sheets = [
           S('Een half wit, gesneden alstublieft.', { fr: 'Un demi pain blanc, tranché s’il vous plaît.', en: 'Half a white loaf, sliced please.' }),
           S('Mag ik twee pistolets?', { fr: 'Puis-je avoir deux pistolets ?', en: 'May I have two pistolets?' }),
           S('Ik zou graag ... hebben.', { fr: 'Je voudrais ...', en: 'I would like ...' }, { fr: 'La formule polie, remplis le trou', en: 'The polite formula, fill in the gap' }),
-          S('Doe mij maar een koffiekoek.', { fr: 'Je vais prendre une couque.', en: 'I will have a koffiekoek.' }, { fr: 'Détendu et très local', en: 'Relaxed and very local' })
+          S('Doe mij maar een koffiekoek.', { fr: 'Je vais prendre une couque.', en: 'I’ll have a pastry.' }, { fr: 'Détendu et très local', en: 'Relaxed and very local' })
         ]
       },
       {
@@ -4958,7 +4961,7 @@ NL.content.scenarios = (function () {
         T('Gesneden, ja. Nog iets anders?', { fr: 'Tranché, oui. Autre chose ?', en: 'Sliced, yes. Anything else?' }, 'Gesneden, ja. Nog iets anders?'),
         Y({ fr: 'Dis que c’est tout, et remercie.', en: 'Say that is all, and say thank you.' }, [
           C('Nee, dat is alles, merci.', { fr: 'Non, c’est tout, merci.', en: 'No, that is all, thanks.' }),
-          C('Ja, ook twee koffiekoeken alstublieft.', { fr: 'Oui, et deux couques aussi s’il vous plaît.', en: 'Yes, and two sweet buns as well, please.' }, { nl: 'Twee koffiekoeken erbij. Anders nog iets?', fr: 'Deux couques en plus. Autre chose ?', en: 'Two sweet buns as well. Anything else?', be: 'Twee koffiekoeken erbij. Anders nog iets?' })
+          C('Ja, ook twee koffiekoeken alstublieft.', { fr: 'Oui, et deux couques aussi s’il vous plaît.', en: 'Yes, and two pastries as well, please.' }, { nl: 'Twee koffiekoeken erbij. Anders nog iets?', fr: 'Deux couques en plus. Autre chose ?', en: 'Two pastries as well. Anything else?', be: 'Twee koffiekoeken erbij. Anders nog iets?' })
         ]),
         T('Dat is vier euro tachtig.', { fr: 'Ça fait quatre euros quatre-vingts.', en: 'That comes to four euros eighty.' }, 'Da’s vier euro tachtig.'),
         Y({ fr: 'Demande si tu peux payer par carte.', en: 'Ask whether you can pay by card.' }, [
@@ -5056,12 +5059,12 @@ NL.content.scenarios = (function () {
       steps: [
         T('Hey! Alles goed? Druk vandaag?', { fr: 'Hey ! Ça va ? Chargé aujourd’hui ?', en: 'Hey! How are you? Busy today?' }, 'Hey! Alles goed? Druk vandaag?'),
         Y({ fr: 'Réponds, et renvoie la question.', en: 'Answer, and ask back.' }, [
-          C('’t Gaat wel, een beetje moe. En bij u?', { fr: 'Ça va, un peu fatigué. Et toi ?', en: 'Not bad, a bit tired. And you? (formal)' }),
-          C('Ja, redelijk druk. En bij u?', { fr: 'Oui, assez chargé. Et toi ?', en: 'Yes, fairly busy. And you? (formal)' })
+          C('’t Gaat wel, een beetje moe. En bij u?', { fr: 'Ça va, un peu fatigué. Et toi ?', en: 'Not bad, a bit tired. And you? (informal, Flemish u)' }),
+          C('Ja, redelijk druk. En bij u?', { fr: 'Oui, assez chargé. Et toi ?', en: 'Yes, fairly busy. And you? (informal, Flemish u)' })
         ]),
         T('En, hoe was het weekend?', { fr: 'Alors, c’était comment le week-end ?', en: 'So, how was the weekend?' }, 'En, hoe was ’t weekend?'),
         Y({ fr: 'Parle de ton week-end.', en: 'Talk about your weekend.' }, [
-          C('Niks speciaals, en bij u?', { fr: 'Rien de spécial, et toi ?', en: 'Nothing special, and you? (formal)' }, null, { fr: 'Réponse complète. Tu ne dois d’histoire à personne.', en: 'A complete answer. You owe nobody a story.' }),
+          C('Niks speciaals, en bij u?', { fr: 'Rien de spécial, et toi ?', en: 'Nothing special, and you? (informal, Flemish u)' }, null, { fr: 'Réponse complète. Tu ne dois d’histoire à personne.', en: 'A complete answer. You owe nobody a story.' }),
           C('We hebben gewandeld met de kinderen.', { fr: 'On s’est promenés avec les enfants.', en: 'We went for a walk with the children.' }),
           C('Rustig gebleven, gelukkig.', { fr: 'C’est resté calme, heureusement.', en: 'It stayed quiet, thankfully.' })
         ]),

@@ -23,7 +23,7 @@ NL.content.scenarios = (function () {
         T('Gesneden, ja. Nog iets anders?', { fr: 'Tranché, oui. Autre chose ?', en: 'Sliced, yes. Anything else?' }, 'Gesneden, ja. Nog iets anders?'),
         Y({ fr: 'Dis que c’est tout, et remercie.', en: 'Say that is all, and say thank you.' }, [
           C('Nee, dat is alles, merci.', { fr: 'Non, c’est tout, merci.', en: 'No, that is all, thanks.' }),
-          C('Ja, ook twee koffiekoeken alstublieft.', { fr: 'Oui, et deux couques aussi s’il vous plaît.', en: 'Yes, and two sweet buns as well, please.' }, { nl: 'Twee koffiekoeken erbij. Anders nog iets?', fr: 'Deux couques en plus. Autre chose ?', en: 'Two sweet buns as well. Anything else?', be: 'Twee koffiekoeken erbij. Anders nog iets?' })
+          C('Ja, ook twee koffiekoeken alstublieft.', { fr: 'Oui, et deux couques aussi s’il vous plaît.', en: 'Yes, and two pastries as well, please.' }, { nl: 'Twee koffiekoeken erbij. Anders nog iets?', fr: 'Deux couques en plus. Autre chose ?', en: 'Two pastries as well. Anything else?', be: 'Twee koffiekoeken erbij. Anders nog iets?' })
         ]),
         T('Dat is vier euro tachtig.', { fr: 'Ça fait quatre euros quatre-vingts.', en: 'That comes to four euros eighty.' }, 'Da’s vier euro tachtig.'),
         Y({ fr: 'Demande si tu peux payer par carte.', en: 'Ask whether you can pay by card.' }, [
@@ -121,12 +121,12 @@ NL.content.scenarios = (function () {
       steps: [
         T('Hey! Alles goed? Druk vandaag?', { fr: 'Hey ! Ça va ? Chargé aujourd’hui ?', en: 'Hey! How are you? Busy today?' }, 'Hey! Alles goed? Druk vandaag?'),
         Y({ fr: 'Réponds, et renvoie la question.', en: 'Answer, and ask back.' }, [
-          C('’t Gaat wel, een beetje moe. En bij u?', { fr: 'Ça va, un peu fatigué. Et toi ?', en: 'Not bad, a bit tired. And you? (formal)' }),
-          C('Ja, redelijk druk. En bij u?', { fr: 'Oui, assez chargé. Et toi ?', en: 'Yes, fairly busy. And you? (formal)' })
+          C('’t Gaat wel, een beetje moe. En bij u?', { fr: 'Ça va, un peu fatigué. Et toi ?', en: 'Not bad, a bit tired. And you? (informal, Flemish u)' }),
+          C('Ja, redelijk druk. En bij u?', { fr: 'Oui, assez chargé. Et toi ?', en: 'Yes, fairly busy. And you? (informal, Flemish u)' })
         ]),
         T('En, hoe was het weekend?', { fr: 'Alors, c’était comment le week-end ?', en: 'So, how was the weekend?' }, 'En, hoe was ’t weekend?'),
         Y({ fr: 'Parle de ton week-end.', en: 'Talk about your weekend.' }, [
-          C('Niks speciaals, en bij u?', { fr: 'Rien de spécial, et toi ?', en: 'Nothing special, and you? (formal)' }, null, { fr: 'Réponse complète. Tu ne dois d’histoire à personne.', en: 'A complete answer. You owe nobody a story.' }),
+          C('Niks speciaals, en bij u?', { fr: 'Rien de spécial, et toi ?', en: 'Nothing special, and you? (informal, Flemish u)' }, null, { fr: 'Réponse complète. Tu ne dois d’histoire à personne.', en: 'A complete answer. You owe nobody a story.' }),
           C('We hebben gewandeld met de kinderen.', { fr: 'On s’est promenés avec les enfants.', en: 'We went for a walk with the children.' }),
           C('Rustig gebleven, gelukkig.', { fr: 'C’est resté calme, heureusement.', en: 'It stayed quiet, thankfully.' })
         ]),

@@ -313,7 +313,7 @@ NL.content.sheets = [
       },
       {
         h: { fr: 'Réponses qui marchent', en: 'Answers that work' }, rows: [
-          S('Niks speciaals, en bij u?', { fr: 'Rien de spécial, et toi ?', en: 'Nothing special, and you? (formal)' }, { fr: 'Complet et naturel. Renvoie la question', en: 'Complete and natural. Return the question' }),
+          S('Niks speciaals, en bij u?', { fr: 'Rien de spécial, et toi ?', en: 'Nothing special, and you? (informal, Flemish u)' }, { fr: 'Complet et naturel. Renvoie la question', en: 'Complete and natural. Return the question' }),
           S('Rustig gebleven, gelukkig.', { fr: 'C’est resté calme, heureusement.', en: 'It stayed quiet, luckily.' }),
           S('We hebben gewandeld met de kinderen.', { fr: 'On s’est promenés avec les enfants.', en: 'We went for a walk with the children.' }),
           S('Het was plezant.', { fr: 'C’était chouette.', en: 'It was great.' }),
@@ -338,7 +338,7 @@ NL.content.sheets = [
           S('Een half wit, gesneden alstublieft.', { fr: 'Un demi pain blanc, tranché s’il vous plaît.', en: 'Half a white loaf, sliced please.' }),
           S('Mag ik twee pistolets?', { fr: 'Puis-je avoir deux pistolets ?', en: 'May I have two pistolets?' }),
           S('Ik zou graag ... hebben.', { fr: 'Je voudrais ...', en: 'I would like ...' }, { fr: 'La formule polie, remplis le trou', en: 'The polite formula, fill in the gap' }),
-          S('Doe mij maar een koffiekoek.', { fr: 'Je vais prendre une couque.', en: 'I will have a koffiekoek.' }, { fr: 'Détendu et très local', en: 'Relaxed and very local' })
+          S('Doe mij maar een koffiekoek.', { fr: 'Je vais prendre une couque.', en: 'I’ll have a pastry.' }, { fr: 'Détendu et très local', en: 'Relaxed and very local' })
         ]
       },
       {
