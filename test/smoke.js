@@ -283,12 +283,11 @@ NL.state.open().then(() => {
      a message, a score or what the microphone heard. #77: byHand holds two patterns. The
      first is a meaning read twice through NL.gloss.of. The second is every other spelling:
      the test either way round (x ? … : '' or !x ? '' : …), the tag written out or held in a
-     variable (tagged), and esc() on the text or on an expression that names it. */
-  const tagged = name => String.raw`'<(?:\w[^'<>]*|' \+ \w+ \+ '[^'<>]*)>' \+ esc\([^;']*?(?<![\w$.])${name}(?![\w$])[^;']*?\) \+ '<\/(?:\w+|' \+ \w+ \+ ')>'`;
-  const byHand = [
-    /NL\.gloss\.of\(([\w.]+)\) \? '<\w+[^']*>' \+ esc\(NL\.gloss\.of\(\1\)\)/g,
-    new RegExp(String.raw`(?<![\w$.])([\w.]+) \? ${tagged('\\1')} : ''(?!\s*\+)|!([\w.]+) \? '' : ${tagged('\\2')}(?!\s*\+)`, 'g')
-  ];
+     variable (tagged), esc() on the text or on an expression that names it, in single or
+     double quotes, on one line or over several. */
+  const tagged = (name, q) => String.raw`${q}<(?:\w[^${q}<>]*|${q}\s*\+\s*\w+\s*\+\s*${q}[^${q}<>]*)>${q}\s*\+\s*esc\([^;'"]*?(?<![\w$.])${name}(?![\w$])[^;'"]*?\)\s*\+\s*${q}<\/(?:\w+|${q}\s*\+\s*\w+\s*\+\s*${q})>${q}`;
+  const byHand = [/NL\.gloss\.of\(([\w.]+)\) \? '<\w+[^']*>' \+ esc\(NL\.gloss\.of\(\1\)\)/g].concat(["'", '"'].map(q =>
+    new RegExp(String.raw`(?<![\w$.])([\w.]+)\s*\?\s*${tagged('\\1', q)}\s*:\s*${q}${q}(?!\s*\+)|!([\w.]+)\s*\?\s*${q}${q}\s*:\s*${tagged('\\2', q)}(?!\s*\+)`, 'g')));
   const ifTextByHand = src => byHand.reduce((all, rx) => all.concat(src.match(rx) || []), []);
   /* What the guard reads, and what it leaves alone: ifText's own line, a test that is not on
      the escaped text, a text inside two tags, and a branch with more after it. */
@@ -303,7 +302,15 @@ NL.state.open().then(() => {
     ["x = ok ? '<p>' + esc(ans) + '</p>' : '';", []],
     ["x = note ? '<div class=\"notice\"><p>' + esc(note) + '</p></div>' : '';", []],
     ["x = !msg ? '' : '<p>' + esc(msg) + '</p>' + more;", []],
-    ["x = msg ? '<p>' + esc(msg) + '</p>' : '' + more;", []]
+    ["x = msg ? '<p>' + esc(msg) + '</p>' : '' + more;", []],
+    ['x = msg ? "<p class=e>" + esc(msg) + "</p>" : "";', ['msg ? "<p class=e>" + esc(msg) + "</p>" : ""']],
+    ['x = !msg ? "" : "<" + tag + ">" + esc(NL.gloss.of(msg)) + "</" + tag + ">";', ['!msg ? "" : "<" + tag + ">" + esc(NL.gloss.of(msg)) + "</" + tag + ">"']],
+    ["x = msg\n    ? '<p>' + esc(msg) + '</p>'\n    : '';", ["msg\n    ? '<p>' + esc(msg) + '</p>'\n    : ''"]],
+    ["x = !msg\n    ? ''\n    : '<p>' + esc(msg) + '</p>';", ["!msg\n    ? ''\n    : '<p>' + esc(msg) + '</p>'"]],
+    ['x = ok ? "<p>" + esc(ans) + "</p>" : "";', []],
+    ['x = note ? "<div><p>" + esc(note) + "</p></div>" : "";', []],
+    ['x = msg ? "<p>" + esc(msg) + "</p>" : "" + more;', []],
+    ["x = msg\n    ? '<p>' + esc(msg) + '</p>'\n    : '' + more;", []]
   ]);
   sources.forEach(f => {
     const src = read(f);
