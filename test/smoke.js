@@ -247,6 +247,10 @@ NL.state.open().then(() => {
   ok(fs.readFileSync(path.join(ROOT, 'src/ui/shell.js'), 'utf8').indexOf('errCop') < 0, 'src/ui/shell.js: the backup copy reads the error log\'s texts; use backupCopied and backupCopyByHand');
   ok(typeof NL.tables.fr.backupCopied === 'string' && typeof NL.tables.fr.backupCopyByHand === 'string', 'fr.js has no backupCopied or backupCopyByHand');
   ok(typeof NL.t[NL.speech.voiceInfo().noteKey] === 'string', 'voiceInfo() has no noteKey naming a key of NL.t');
+  /* Applying the language and telling it are two calls, not one call and a flag. */
+  ok(NL.lang.apply.length === 0 && typeof NL.lang.applyAndTell === 'function', 'NL.lang.apply takes a flag; apply() is silent, applyAndTell() raises the notice');
+  sources.concat(suites).forEach(f => ok(!/lang\.apply\((true|false)\)/.test(fs.readFileSync(path.join(ROOT, f), 'utf8')),
+    f + ': passes a flag to NL.lang.apply; call apply() or applyAndTell()'));
 
   items.filter(i => i.art).forEach(i =>
     ok(i.nl.startsWith(i.art + ' '), 'article mismatch: ' + i.nl + ' / ' + i.art));
@@ -541,7 +545,7 @@ NL.state.open().then(() => {
   /* Deux mots, une même traduction : à l'écran les deux cartes « bonjour » sont
      identiques, donc l'une ou l'autre doit être acceptée. */
   {
-    NL.state.setMeta({ displayLang: 'fr' }); NL.lang.apply(true);
+    NL.state.setMeta({ displayLang: 'fr' }); NL.lang.apply();
     const hallo = items.find(i => U.bare(i.nl) === 'hallo'), goeiedag = items.find(i => U.bare(i.nl) === 'goeiedag');
     const dag = items.find(i => U.bare(i.nl) === 'dag');
     ok(hallo && goeiedag && U.norm(U.bareFr(hallo.fr)) === U.norm(U.bareFr(goeiedag.fr)),

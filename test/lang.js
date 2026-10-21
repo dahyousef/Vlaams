@@ -324,8 +324,8 @@ function tableCheck(NL) {
 
 /* 5. La langue d'affichage : le réglage, le changement qui attend la fin de la
    séance, l'avis, les mots à soi, ce que la restauration et la remise à zéro gardent. */
-const French = B => { B.NL.state.setMeta({ displayLang: 'fr' }); B.NL.lang.apply(true); };
-const English = B => { B.NL.state.setMeta({ displayLang: 'en' }); B.NL.lang.apply(true); };
+const French = B => { B.NL.state.setMeta({ displayLang: 'fr' }); B.NL.lang.apply(); };
+const English = B => { B.NL.state.setMeta({ displayLang: 'en' }); B.NL.lang.apply(); };
 const pageLang = B => B.ctx.document.documentElement.attrs.lang;
 /* La session arrive juste après open() : on l'attend, 5 ms de temps réel. */
 const signedIn = B => new Promise(res => setTimeout(res, 5)).then(() => {

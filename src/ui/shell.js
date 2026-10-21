@@ -78,7 +78,7 @@ NL.ui = (function () {
   function render() {
     applyTheme();
     /* Un changement de langue n'entre jamais en pleine séance ni en pleine conversation. */
-    if (!LANG_WAITS[route]) NL.lang.apply(false);
+    if (!LANG_WAITS[route]) NL.lang.applyAndTell();
     const S = NL.screens[route] || NL.screens.vandaag;
     const full = !!FULLSCREEN[route];
     const note = LANG_WAITS[route] ? '' : NL.lang.notice();

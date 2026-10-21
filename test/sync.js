@@ -972,7 +972,7 @@ const items = NL => NL.content.allItems();
     /* #69, 3. Le choix fait ici donne l'avis seul ; celui qui arrive d'un autre appareil,
        par une lecture ou par un envoi, dit d'où il vient, même après une séance. */
     const T1 = device('T1', true), T2 = device('T2', true);
-    for (const d of [T1, T2]) { await d.boot(); await d.signIn('langue@example.com'); d.NL.lang.apply(true); d.NL.ui.go('vandaag'); }
+    for (const d of [T1, T2]) { await d.boot(); await d.signIn('langue@example.com'); d.NL.lang.apply(); d.NL.ui.go('vandaag'); }
     const fr = T1.NL.tables.fr, en = T1.NL.tables.en;
     const shown = d => d.root.innerHTML.replace(/<[^>]*>/g, ' ');
     T1.NL.lang.set('fr'); T1.NL.ui.render();

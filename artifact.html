@@ -5286,12 +5286,12 @@ NL.content = NL.content || {};
 </script>
 <script>
 /* La langue d'affichage : un seul endroit la décide, un seul endroit l'applique.
-   Absente des réglages, c'est l'anglais. Un changement ne s'applique jamais en
-   pleine séance ni en pleine conversation : le shell n'appelle `apply` qu'en
-   dehors d'elles, au premier écran dessiné ensuite. Le bandeau d'avis n'est pas
-   enregistré : il se dit une fois, puis `seen` l'efface, jamais dans le tour où il
-   s'est levé. Un changement venu d'un autre appareil le dit (`fromAccount`) ; la
-   marque, comme l'avis, n'est pas enregistrée. */
+   Absente des réglages, c'est l'anglais. `apply` l'applique sans rien dire : le
+   démarrage l'appelle. `applyAndTell` l'applique et lève l'avis : le shell l'appelle,
+   jamais en pleine séance ni en pleine conversation, au premier écran dessiné ensuite.
+   Le bandeau d'avis n'est pas enregistré : il se dit une fois, puis `seen` l'efface,
+   jamais dans le tour où il s'est levé. Un changement venu d'un autre appareil le dit
+   (`fromAccount`) ; la marque, comme l'avis, n'est pas enregistrée. */
 NL.lang = (function () {
   'use strict';
   /* noticeKeys : les clés de NL.t que l'avis dit, dans l'ordre ; vide, il n'y a pas d'avis.
@@ -5300,9 +5300,10 @@ NL.lang = (function () {
 
   const current = () => NL.state.meta().displayLang === 'fr' ? 'fr' : 'en';
 
-  function apply(quiet) {
-    /* La marque de synchro vaut pour l'appel suivant, qu'il change la langue ou non. */
-    const bySync = fromSync; fromSync = false;
+  /* Rend vrai si la langue de l'écran a changé. La marque de synchro vaut pour
+     l'appel suivant, qu'il change la langue ou non. */
+  function apply() {
+    fromSync = false;
     const l = current();
     if (l === applied) return false;
     Object.keys(NL.t).forEach(k => { delete NL.t[k]; });
@@ -5311,14 +5312,17 @@ NL.lang = (function () {
     NL.content.refresh();
     document.documentElement.setAttribute('lang', NL.gloss.tag(l));
     applied = l;
-    if (!quiet) {
-      noticeKeys = bySync ? ['langSynced', 'langNotice'] : ['langNotice'];
-      /* render() dessine l'avis dans le tour où il se lève. Un avis dessiné puis
-         remplacé dans ce même tour n'a pas été vu : seen() ne l'efface qu'au tour d'après. */
-      shown = false;
-      setTimeout(() => { shown = true; }, 0);
-    }
     return true;
+  }
+
+  function applyAndTell() {
+    const bySync = fromSync;
+    if (!apply()) return;
+    noticeKeys = bySync ? ['langSynced', 'langNotice'] : ['langNotice'];
+    /* render() dessine l'avis dans le tour où il se lève. Un avis dessiné puis
+       remplacé dans ce même tour n'a pas été vu : seen() ne l'efface qu'au tour d'après. */
+    shown = false;
+    setTimeout(() => { shown = true; }, 0);
   }
 
   /* Enregistre le choix ; render() l'applique au premier écran hors séance. */
@@ -5338,7 +5342,7 @@ NL.lang = (function () {
   const text = () => noticeKeys.map(k => NL.t[k]).join(' ');
   const seen = () => { if (shown) noticeKeys = []; };
 
-  return { current, apply, set, fromAccount, notice: text, seen };
+  return { current, apply, applyAndTell, set, fromAccount, notice: text, seen };
 })();
 </script>
 <script>
@@ -6031,7 +6035,7 @@ NL.ui = (function () {
   function render() {
     applyTheme();
     /* Un changement de langue n'entre jamais en pleine séance ni en pleine conversation. */
-    if (!LANG_WAITS[route]) NL.lang.apply(false);
+    if (!LANG_WAITS[route]) NL.lang.applyAndTell();
     const S = NL.screens[route] || NL.screens.vandaag;
     const full = !!FULLSCREEN[route];
     const note = LANG_WAITS[route] ? '' : NL.lang.notice();
@@ -8194,7 +8198,7 @@ NL.screens.compte = (function () {
     NL.errlog.watch();
     NL.state.open().then(() => {
       const wiped = NL.state.migrate();
-      NL.lang.apply(true);
+      NL.lang.apply();
       NL.content.refresh();
       NL.state.touchDay();
       NL.ui.bind(root);
