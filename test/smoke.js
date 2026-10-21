@@ -252,6 +252,17 @@ NL.state.open().then(() => {
   sources.concat(suites).forEach(f => ok(!/lang\.apply\((true|false)\)/.test(fs.readFileSync(path.join(ROOT, f), 'utf8')),
     f + ': passes a flag to NL.lang.apply; call apply() or applyAndTell()'));
 
+  /* #74. The course as it is written is copied by raw() in test/lib/prose.js, and a tree is
+     walked by test/lib/tree.js. A function a suite calls on a child (v[k]) and on an array's
+     element, x or through forEach, is a walker written by hand. */
+  suites.forEach(f => {
+    const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
+    ok(!/JSON\.parse\(JSON\.stringify\(NL\.content/.test(src), f + ': copies the course by hand; use raw() from test/lib/prose.js');
+    src.split('\n').forEach((line, i) => (line.match(/\b\w+(?=\((?:\w+, )?v\[k\])/g) || [])
+      .filter(name => new RegExp('\\.forEach\\(' + name + '\\)|\\b' + name + '\\((?:\\w+, )?x\\b').test(src))
+      .forEach(name => ok(false, f + ':' + (i + 1) + ': ' + name + '() walks a tree by hand; use test/lib/tree.js')));
+  });
+
   items.filter(i => i.art).forEach(i =>
     ok(i.nl.startsWith(i.art + ' '), 'article mismatch: ' + i.nl + ' / ' + i.art));
 

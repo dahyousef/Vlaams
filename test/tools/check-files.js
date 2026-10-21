@@ -11,7 +11,7 @@
    d'interface.tsv a un côté vide que le contenu n'explique pas, ou lit « undefined ». */
 const fs = require('fs'), path = require('path');
 const browser = require('../lib/browser');
-const { COLLECTIONS, owed, at } = require('../lib/prose');
+const { COLLECTIONS, raw, owed, at } = require('../lib/prose');
 const { argsOf } = require('../lib/langs');
 const ROOT = process.argv[2] || path.join(__dirname, '..', '..');
 const OUT = process.argv[3];
@@ -19,8 +19,7 @@ const OUT = process.argv[3];
 const B = browser.open({ root: ROOT, seed: browser.SEED, skip: ['src/app.js'] });
 const NL = B.NL;
 /* Le cours tel qu'il est écrit, avant la première construction. */
-const RAW = {};
-COLLECTIONS.forEach(k => { RAW[k] = JSON.parse(JSON.stringify(NL.content[k] || [])); });
+const RAW = raw(NL.content);
 
 /* Une cellule tient sur une ligne : ni tabulation ni saut de ligne. */
 const cell = x => (x === null || x === undefined ? '' : String(x)).replace(/[\t\r\n]+/g, ' ');

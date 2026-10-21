@@ -6,6 +6,14 @@ const COLLECTIONS = ['units', 'patterns', 'openTasks', 'register', 'hetRules', '
 /* Un anglais lu : une chaîne non vide, pas un trou. */
 const has = x => typeof x === 'string' && x.trim() !== '';
 
+/* Le cours tel qu'il est écrit : une copie des collections, prise avant la première
+   construction (avant NL.state.open()), quand {naam}, {stad} et {bedrijf} y sont encore. */
+const raw = content => {
+  const out = {};
+  COLLECTIONS.forEach(k => { out[k] = JSON.parse(JSON.stringify(content[k] || [])); });
+  return out;
+};
+
 /* L'anglais qui reste dû : un { where, ok } par endroit qui doit porter un `en`. */
 function owed(v, where, key, out) {
   if (Array.isArray(v)) { v.forEach((x, i) => owed(x, where + '[' + i + ']', key, out)); return out; }
@@ -31,4 +39,4 @@ function at(root, where) {
   return v;
 }
 
-module.exports = { PROSE, COLLECTIONS, has, owed, at };
+module.exports = { PROSE, COLLECTIONS, has, raw, owed, at };

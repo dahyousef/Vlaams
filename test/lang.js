@@ -4,6 +4,7 @@
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const browser = require('./lib/browser');
 const { PROSE, COLLECTIONS } = require('./lib/prose');
+const tree = require('./lib/tree');
 const { runs, count, argsOf } = require('./lib/langs');
 const { fakeSupabase } = require('./lib/supabase');
 const { dueReviews } = require('./lib/seed');
@@ -13,17 +14,10 @@ const ok = (c, m) => { checks++; if (!c) { console.log('  FAIL: ' + m); fails++;
 
 function pairUp(C) {
   let n = 0;
-  const walk = (v, key) => {
-    if (Array.isArray(v)) return v.map(x => walk(x, key));
-    if (v && typeof v === 'object') {
-      if (typeof v.fr === 'string' && v.en === undefined) v.en = 'EN' + (n++);
-      Object.keys(v).forEach(k => { v[k] = walk(v[k], k); });
-      return v;
-    }
-    if (typeof v === 'string' && PROSE.indexOf(key) >= 0) return { fr: v, en: 'EN' + (n++) };
-    return v;
-  };
-  COLLECTIONS.forEach(k => { C[k] = walk(C[k], k); });
+  COLLECTIONS.forEach(k => {
+    C[k] = tree.rewrite(C[k], (s, key) => typeof s === 'string' && PROSE.indexOf(key) >= 0 ? { fr: s, en: 'EN' + (n++) } : s, k);
+    tree.visit(C[k], v => { if (v && typeof v === 'object' && typeof v.fr === 'string' && v.en === undefined) v.en = 'EN' + (n++); });
+  });
   return n;
 }
 const T0 = Date.parse('2026-10-05T08:00:00Z');
@@ -178,32 +172,18 @@ function marked(NL) {
   pairUp(NL.content);
   let n = 0;
   const mk = () => '⟪' + (n++) + '⟫';
-  const walk = (v, key) => {
-    if (Array.isArray(v)) return v.map(x => walk(x, key));
-    if (v && typeof v === 'object') { Object.keys(v).forEach(k => { v[k] = walk(v[k], k); }); return v; }
-    if (typeof v === 'string' && (key === 'fr' || key === 'en' || PROSE.indexOf(key) >= 0)) return mk();
-    return v;
-  };
-  COLLECTIONS.forEach(k => { NL.content[k] = walk(NL.content[k], k); });
+  COLLECTIONS.forEach(k => {
+    NL.content[k] = tree.rewrite(NL.content[k], (s, key) => typeof s === 'string' && (key === 'fr' || key === 'en' || PROSE.indexOf(key) >= 0) ? mk() : s, k);
+  });
   /* Les trois pages françaises : tout ce qui n'est pas du néerlandais. */
   ['sounds', 'loans', 'faux'].forEach(k => {
     NL.content[k].forEach(r => Object.keys(r).forEach(f => { if (f !== 'nl' && typeof r[f] === 'string') r[f] = mk(); }));
   });
-  const leaf = (v, p, keep) => {
-    if (typeof v === 'string') return '⟦' + p + '⟧';
-    if (typeof v === 'function') return () => '⟦' + p + '⟧';
-    if (Array.isArray(v)) return v.map((x, i) => leaf(x, p + '.' + i, keep));
-    if (v && typeof v === 'object') {
-      Object.keys(v).forEach(k => { if (!(keep && (k === 'id' || k === 'nl'))) v[k] = leaf(v[k], p + '.' + k, keep); });
-      return v;
-    }
-    return v;
-  };
   const T = NL.t;
-  Object.keys(T).forEach(k => { T[k] = leaf(T[k], k, k === 'nav'); });
+  Object.keys(T).forEach(k => { T[k] = markLeaves(T[k], k, k === 'nav'); });
   if (NL.tables) Object.keys(NL.tables).forEach(l => {
     const tb = NL.tables[l];
-    if (tb !== T) Object.keys(tb).forEach(k => { tb[k] = leaf(tb[k], l + '.' + k, k === 'nav'); });
+    if (tb !== T) Object.keys(tb).forEach(k => { tb[k] = markLeaves(tb[k], l + '.' + k, k === 'nav'); });
   });
 }
 
@@ -214,13 +194,7 @@ const DUTCH_KEYS = ['nl', 'be', 'std', 'ex', 'model', 'id', 'nlName'];
 function dutchWords(NL) {
   const set = new Set();
   const add = s => String(s).toLowerCase().split(/[^\p{L}\p{N}]+/u).forEach(w => { if (w) set.add(w); });
-  const walk = v => {
-    if (Array.isArray(v)) v.forEach(walk);
-    else if (v && typeof v === 'object') Object.keys(v).forEach(k => {
-      if (DUTCH_KEYS.indexOf(k) >= 0 && typeof v[k] === 'string') add(v[k]); else walk(v[k]);
-    });
-  };
-  Object.keys(NL.content).forEach(k => { if (typeof NL.content[k] === 'object') walk(NL.content[k]); });
+  tree.visit(NL.content, (v, key) => { if (DUTCH_KEYS.indexOf(key) >= 0 && typeof v === 'string') add(v); });
   NL.t.nav.forEach(n => add(n.nl));
   Object.keys(NL.content.DEFAULTS).forEach(k => add(NL.content.DEFAULTS[k]));
   return set;
@@ -334,25 +308,17 @@ const signedIn = B => new Promise(res => setTimeout(res, 5)).then(() => {
 
 /* Les feuilles d'une table deviennent ⟦préfixe:clé⟧ ; `keep` garde id et nl (la navigation). */
 function markLeaves(v, p, keep) {
-  if (typeof v === 'string') return '⟦' + p + '⟧';
-  if (typeof v === 'function') return () => '⟦' + p + '⟧';
-  if (Array.isArray(v)) return v.map((x, i) => markLeaves(x, p + '.' + i, keep));
-  if (v && typeof v === 'object') {
-    Object.keys(v).forEach(k => { if (!(keep && (k === 'id' || k === 'nl'))) v[k] = markLeaves(v[k], p + '.' + k, keep); });
-    return v;
-  }
-  return v;
+  return tree.rewrite(v, (x, key, where) => {
+    if (keep && (key === 'id' || key === 'nl')) return x;
+    if (typeof x === 'string') return '⟦' + where + '⟧';
+    return typeof x === 'function' ? () => '⟦' + where + '⟧' : x;
+  }, '', p);
 }
 /* 5f : le cours apparié, puis le français du cours en ⟪n⟫ et les deux tables en ⟦fr:clé⟧ et ⟦en:clé⟧. */
 function markedBoth(NL) {
   pairUp(NL.content);
   let n = 0;
-  const walk = (v, key) => {
-    if (Array.isArray(v)) return v.map(x => walk(x, key));
-    if (v && typeof v === 'object') { Object.keys(v).forEach(k => { v[k] = walk(v[k], k); }); return v; }
-    return typeof v === 'string' && key === 'fr' ? '⟪' + (n++) + '⟫' : v;
-  };
-  COLLECTIONS.forEach(k => { NL.content[k] = walk(NL.content[k], k); });
+  COLLECTIONS.forEach(k => { NL.content[k] = tree.rewrite(NL.content[k], (s, key) => typeof s === 'string' && key === 'fr' ? '⟪' + (n++) + '⟫' : s, k); });
   ['fr', 'en'].forEach(l => {
     const tb = NL.tables[l];
     Object.keys(tb).forEach(k => { tb[k] = markLeaves(tb[k], l + ':' + k, k === 'nav'); });
@@ -536,30 +502,15 @@ function langChecks() {
    lecteur d'écran ne lit pas « vandaag » à l'anglaise. Vues du cours simple, dans les deux langues. */
 function langAttrFind(B, each) {
   const NL = B.NL, U = NL.util, dutch = new Set();
-  const walk = v => {
-    if (Array.isArray(v)) v.forEach(walk);
-    else if (v && typeof v === 'object') Object.keys(v).forEach(k => {
-      if ((k === 'nl' || k === 'be') && typeof v[k] === 'string') dutch.add(U.norm(v[k])); else walk(v[k]);
-    });
-  };
-  Object.keys(NL.content).forEach(k => { if (typeof NL.content[k] === 'object') walk(NL.content[k]); });
+  tree.visit(NL.content, (v, key) => { if ((key === 'nl' || key === 'be') && typeof v === 'string') dutch.add(U.norm(v)); });
   NL.t.nav.forEach(n => dutch.add(U.norm(n.nl)));
   dutch.delete('');
   /* Un mot néerlandais qui s'écrit aussi en français ou en anglais (merci, hier, open, direct) reste cherché :
      on ne l'écarte que dans un passage qui se déclare français (ou anglais) ET dont le texte est un texte français
      (ou anglais) du cours. Un élément néerlandais qui montre « merci » sans lang="nl-BE" est une faute. */
   const gloss = { fr: new Set(), en: new Set() };
-  const gl = (set, v) => {
-    if (typeof v === 'string') set.add(U.norm(v));
-    else if (Array.isArray(v)) v.forEach(x => gl(set, x));
-    else if (v && typeof v === 'object') Object.keys(v).forEach(k => gl(set, v[k]));
-  };
-  const glWalk = v => {
-    if (Array.isArray(v)) v.forEach(glWalk);
-    else if (v && typeof v === 'object') Object.keys(v).forEach(k => { if (k === 'fr' || k === 'en') gl(gloss[k], v[k]); else glWalk(v[k]); });
-  };
-  Object.keys(NL.content).forEach(k => { if (typeof NL.content[k] === 'object') glWalk(NL.content[k]); });
-  ['fr', 'en'].forEach(l => Object.keys(NL.tables[l]).forEach(k => { if (typeof NL.tables[l][k] !== 'function') gl(gloss[l], NL.tables[l][k]); }));
+  tree.visit(NL.content, (v, key) => { if ((key === 'fr' || key === 'en') && typeof v === 'string') gloss[key].add(U.norm(v)); });
+  ['fr', 'en'].forEach(l => tree.visit(NL.tables[l], v => { if (typeof v === 'string') gloss[l].add(U.norm(v)); }));
   ok(dutch.size > 100, '6 : trop peu de mots néerlandais à chercher (' + dutch.size + ')');
   const bad = new Map();
   ['fr', 'en'].forEach(l => {
@@ -633,10 +584,7 @@ function displayChecks() {
     NL.content.units.forEach(u => u.words.forEach(w => { if (w.nl === 'het brood') delete w.en; }));
     delete NL.content.scenarios.find(s => s.id === 's-bakker').steps.filter(st => st.them)[3].them.en;
     /* Une phrase et une règle sans anglais non plus : certains exercices ne montrent qu'elles. */
-    const frOnly = v => {
-      if (Array.isArray(v)) v.forEach(frOnly);
-      else if (v && typeof v === 'object') { if (typeof v.fr === 'string') delete v.en; Object.keys(v).forEach(k => frOnly(v[k])); }
-    };
+    const frOnly = v => tree.visit(v, x => { if (x && typeof x === 'object' && typeof x.fr === 'string') delete x.en; });
     frOnly(NL.content.units.find(u => u.id === 'overleven').phrases[0]);
     frOnly(NL.content.patterns.find(g => g.id === 'g-v2'));
     frOnly(NL.content.openTasks['g-v2']);
@@ -671,11 +619,7 @@ function displayChecks() {
     const items = NL.content.allItems(), phrase = items.find(it => it.id === 'overleven:p0'), rule = items.find(it => it.id === 'g-v2');
     const flat = s => NL.util.esc(s).replace(/&nbsp;/g, ' ').replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ').trim();
     const french = new Set([flat(NL.gloss.bare(brood))]);
-    const walk = v => {
-      if (Array.isArray(v)) v.forEach(walk);
-      else if (v && typeof v === 'object') { if (typeof v.fr === 'string') french.add(flat(v.fr)); Object.keys(v).forEach(k => walk(v[k])); }
-    };
-    [brood, phrase, rule].forEach(walk);
+    [brood, phrase, rule].forEach(x => tree.visit(x, v => { if (v && typeof v === 'object' && typeof v.fr === 'string') french.add(flat(v.fr)); }));
     const words = items.filter(it => it.kind === 'word' && it.id !== brood.id && NL.gloss.has(it, 'en')).slice(0, 4);
     const fresh = () => ({ sel: null, picked: [], input: '', close: false, other: false, matchSel: null, matchGone: [], matchBad: null,
       speech: { phase: 'idle', tries: 0, selfRated: null } });
