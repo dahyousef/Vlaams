@@ -302,6 +302,16 @@ NL.state.open().then(() => {
       [['<b> & "x"', 'em'], '<em>&lt;b&gt; &amp; &quot;x&quot;</em>'],
       [[{ fr: null, en: null }, 'p', 'v-note'], '']
     ]);
+    /* #77. A meaning that is null in the language read has nothing to say to this reader,
+       even when the other language has a text, in English as in French; a meaning with a
+       text in both comes out in the one read. The page is this block's own: no other check
+       reads the language it is left in. */
+    selfTest('ifText by language', ([x, l]) => { P.gloss.use(l); return P.ui.ifText(x, 'p'); }, [
+      [[{ fr: 'texte', en: null }, 'en'], ''],
+      [[{ fr: null, en: 'text' }, 'fr'], ''],
+      [[{ fr: 'texte', en: 'text' }, 'en'], '<p>text</p>'],
+      [[{ fr: 'texte', en: 'text' }, 'fr'], '<p>texte</p>']
+    ]);
   }
 
   /* #74. What the device can do with speech is told in two keys of NL.t, read at draw time
@@ -331,8 +341,11 @@ NL.state.open().then(() => {
      of the tick are the fake browser's timers ('held', ended by B.tick()), so are the
      fields a screen reads (byId: 'stub', filled through B.fields), and the text a page
      shows, without its tags, is text() from test/lib/langs.js, or joined() where what a tag
-     splits reads as one, a bold word and the punctuation beside it. A source runs in a page
-     only through browser.open; what comes before src/app.js starts goes in its prepare. */
+     splits reads as one, a bold word and the punctuation beside it. A source runs in the
+     context of a page, B.ctx, only through browser.open; what comes before src/app.js
+     starts goes in its prepare. That check reads a call that names a page's ctx:
+     test/dehet.js runs gloss.js and the course's data in a bare context of its own, which
+     is no page, and passes it. */
   const suites = ['test', 'test/tools'].reduce((all, d) => all.concat(fs.readdirSync(path.join(ROOT, d))
     .filter(f => /\.js$/.test(f)).map(f => d + '/' + f)), []);
   suites.forEach(f => {
@@ -343,7 +356,7 @@ NL.state.open().then(() => {
     ok(!/\.setTimeout\s*=[^=]/.test(src), f + ': replaces setTimeout by hand; use timers: \'held\' and B.tick() from test/lib/browser.js');
     ok(!/\.getElementById\s*=[^=]/.test(src), f + ': fakes the page\'s fields by hand; use byId: \'stub\' and B.fields from test/lib/browser.js');
     ok(!/\.replace\(\/<\[\^>\]\*>\/g/.test(src), f + ': strips a page\'s tags by hand; use text() or joined() from test/lib/langs.js');
-    ok(!/runInContext\([^;]*\.ctx\b/.test(src), f + ': runs a source in a page by hand; load it through browser.open, with what comes before src/app.js in prepare');
+    ok(!/runInContext\([^;]*\.ctx\b/.test(src), f + ': runs a source by hand in the context of a page, B.ctx; load it through browser.open, with what comes before src/app.js in prepare');
   });
   ok(typeof langs.joined === 'function' && langs.joined('<b>al</b>, <i>zo</i>') === 'al, zo' && langs.text('<b>al</b>, <i>zo</i>') === 'al , zo',
     'test/lib/langs.js: joined() does not take each tag out with nothing in its place, beside text(), which puts a blank there');
