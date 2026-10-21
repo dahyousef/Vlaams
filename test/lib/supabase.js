@@ -86,7 +86,7 @@ function fakeSupabase() {
           return b;
         }
 
-        device.client = {
+        const client = {
           from: query,
           auth: {
             onAuthStateChange(fn) { handlers.push(fn); return { data: { subscription: { unsubscribe() {} } } }; },
@@ -106,7 +106,8 @@ function fakeSupabase() {
             signOut() { delete device.store['sb-session']; fire('SIGNED_OUT', null); return Promise.resolve({ error: null }); }
           }
         };
-        return device.client;
+        device.client = client;
+        return client;
       }
     };
   }

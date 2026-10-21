@@ -16,7 +16,7 @@ const { argsOf } = require('../lib/langs');
 const ROOT = process.argv[2] || path.join(__dirname, '..', '..');
 const OUT = process.argv[3];
 
-const B = browser.open({ root: ROOT, seed: browser.SEED, skip: ['src/app.js'] });
+const B = browser.open({ root: ROOT, seed: browser.SEED, skip: [browser.APP] });
 const NL = B.NL;
 /* Le cours tel qu'il est écrit, avant la première construction. */
 const RAW = raw(NL.content);

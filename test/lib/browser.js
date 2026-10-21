@@ -99,10 +99,14 @@ function fakeIndexedDB(data) {
 const sources = root => fs.readFileSync(path.join(root, 'build.sh'), 'utf8')
   .match(/SRC="([\s\S]*?)"/)[1].split('\n').map(s => s.trim()).filter(Boolean);
 
+/* La source qui démarre l'app, la dernière de build.sh. Une suite qui ne veut que le cours
+   et l'état la laisse de côté (skip: [browser.APP]), et prepare passe juste avant elle. */
+const APP = 'src/app.js';
+
 /* opts :
      root       dossier du dépôt (obligatoire)
      files      liste de sources à charger ; par défaut, celle de build.sh
-     skip       sources à ne pas charger (ex. ['src/app.js'])
+     skip       sources à ne pas charger (ex. [browser.APP] : le cours et l'état, sans l'app)
      prepare    fonction (NL), appelée une fois les autres sources chargées, juste avant
                 src/app.js : la suite y change le cours ou l'état avant le démarrage. Une page
                 qui ne charge pas src/app.js n'a pas ce moment : le demander échoue
@@ -262,9 +266,9 @@ function open(opts) {
 
   const skip = opts.skip || [];
   const files = (opts.files || sources(opts.root)).filter(f => skip.indexOf(f) < 0);
-  if (opts.prepare && files.indexOf('src/app.js') < 0) throw new Error('browser.open : prepare attend src/app.js, que cette page ne charge pas');
+  if (opts.prepare && files.indexOf(APP) < 0) throw new Error('browser.open : prepare attend ' + APP + ', que cette page ne charge pas');
   files.forEach(f => {
-    if (f === 'src/app.js' && opts.prepare) opts.prepare(ctx.NL);
+    if (f === APP && opts.prepare) opts.prepare(ctx.NL);
     try { vm.runInContext(fs.readFileSync(path.join(opts.root, f), 'utf8'), ctx, { filename: f }); }
     catch (e) { console.log('LOAD FAIL ' + f + ': ' + e.message); process.exit(1); }
   });
@@ -274,4 +278,4 @@ function open(opts) {
   return { ctx, NL: ctx.NL, app, store, idb, listeners, spoken, clock, mkEl, tap, tick, waiting, fields, random: M.random };
 }
 
-module.exports = { open, rng, sources, UA, SEED };
+module.exports = { open, rng, sources, UA, SEED, APP };

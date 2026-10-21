@@ -10,7 +10,8 @@
    ajout silencieusement non vérifié est exactement le trou qu'on vient de
    boucher. Soit on régénère la table, soit on inscrit le nom ci-dessous avec sa
    raison. */
-const fs = require('fs'), path = require('path'), vm = require('vm');
+const fs = require('fs'), path = require('path');
+const browser = require('./lib/browser');
 const ROOT = process.argv[2] || path.join(__dirname, '..');
 
 /* Noms absents du Wiktionnaire, vérifiés à la main. La raison est obligatoire :
@@ -37,16 +38,10 @@ fs.readFileSync(TSV, 'utf8').split('\n').forEach(l => {
 });
 
 /* ---------- le cours ---------- */
-/* gloss.js d'abord : les aides du contenu lisent le sens par NL.gloss, comme dans build.sh. */
-const ctx = { NL: { util: {}, state: {} }, console, JSON, Math, Date, Object, Array, String, Number, RegExp, Map, Set };
-ctx.window = ctx; ctx.globalThis = ctx;
-vm.createContext(ctx);
-['src/core/gloss.js', 'src/content/lexicon.a1.js', 'src/content/lexicon.a1b.js', 'src/content/grammar.js', 'src/content/examples.js']
-  .forEach(f => {
-    try { vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), ctx, { filename: f }); }
-    catch (e) { console.log('LOAD FAIL ' + f + ': ' + e.message); process.exit(1); }
-  });
-const units = (ctx.NL.content && ctx.NL.content.units) || [];
+/* Chargé comme dans les autres suites : par le faux navigateur, dans l'ordre de build.sh,
+   sans src/app.js, qui démarrerait l'app. */
+const B = browser.open({ root: ROOT, seed: browser.SEED, skip: [browser.APP] });
+const units = (B.NL.content && B.NL.content.units) || [];
 if (!units.length) { console.log('FAIL: aucun contenu chargé'); process.exit(1); }
 
 let fails = 0;

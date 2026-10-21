@@ -176,8 +176,16 @@ NL.state.open().then(() => {
      tape en quelques secondes. */
   {
     const all = NL.content.allItems();
-    const unread = all.filter(it => it.be && !formsOf(it).some(([src]) => src === 'be'));
-    ok(unread.length === 0, 'setup: no form read from « ' + t.hereThey + ' » for ' + unread.length + ' item(s) with a be variant, e.g. ' + unread.slice(0, 3).map(it => it.id).join(', '));
+    /* « Ici on dit » montre la variante flamande telle que le cours l'écrit : pour un mot,
+       chaque forme de sa liste ; pour une phrase, toute la phrase, sa ponctuation collée au
+       mot qu'elle suit. */
+    const misread = all.filter(it => it.be).map(it => ({
+      id: it.id,
+      shown: formsOf(it).filter(([src]) => src === 'be').map(([, f]) => f),
+      written: it.kind === 'word' ? it.be.split(',').map(s => s.trim()).filter(Boolean) : [it.be]
+    })).filter(m => JSON.stringify(m.shown) !== JSON.stringify(m.written));
+    ok(misread.length === 0, 'setup: « ' + t.hereThey + ' » shows the be variant otherwise than the course writes it for ' + misread.length + ' item(s), e.g. ' +
+      misread.slice(0, 3).map(m => m.id + ' ' + JSON.stringify(m.shown) + ' for ' + JSON.stringify(m.written)).join(', '));
     let forms = 0;
     all.forEach(it => {
       const target = targetOf(it), start = it.kind === 'word' ? 2 : 3;

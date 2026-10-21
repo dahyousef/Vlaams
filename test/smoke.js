@@ -130,10 +130,12 @@ const outside = (src, head) => blocks(src, head).reduce((s, b) => s.replace(b.te
    fonction nommée (`function walk`, `const walk = …`) s'appelle par son nom seul. Une méthode
    d'objet (`walk(v) {`, `walk: function`) ou un `x.walk = …` s'appelle par `this.walk` ou
    `x.walk` : pour elle, c'est le nom qualifié qui compte, hors Object.keys et ses sœurs, que
-   la méthode `keys` d'un objet ne prend pas pour elle-même. */
+   la méthode `keys` d'un objet ne prend pas pour elle-même. La tête d'un `if`, d'un `for`,
+   d'un `while`, d'un `switch` ou d'un `catch` s'écrit comme celle d'une méthode, et n'en est
+   pas une. */
 function handWalkers(src) {
   const named = /^\s*(?:(?:async\s+)?function\s+(\w+)\s*\(|(?:const|let)\s+(\w+)\s*=\s*(?:async\s+)?(?:function\b|\([^)]*\)\s*=>|\w+\s*=>))/;
-  const owned = /^\s*(?:(?:async\s+)?(\w+)\s*\([^)]*\)\s*\{|(?:(\w+)\s*:|[\w$.]+\.(\w+)\s*=)\s*(?:async\s+)?(?:function\b|\([^)]*\)\s*=>|\w+\s*=>))/;
+  const owned = /^\s*(?:(?:async\s+)?(?!(?:if|for|while|switch|catch)\b)(\w+)\s*\([^)]*\)\s*\{|(?:(\w+)\s*:|[\w$.]+\.(\w+)\s*=)\s*(?:async\s+)?(?:function\b|\([^)]*\)\s*=>|\w+\s*=>))/;
   const callsItself = f => new RegExp('(?<![\\w$.])' + f.by + f.name + '\\s*\\(|[(,]\\s*' + f.by + f.name + '\\s*[),]').test(f.body);
   return blocks(src, named).map(b => ({ line: b.line, name: b.m[1] || b.m[2], body: b.text.slice(b.m[0].length), by: '' }))
     .concat(blocks(src, owned).map(b => ({ line: b.line, name: b.m[1] || b.m[2] || b.m[3], body: b.text.slice(b.m[0].length), by: '(?!Object\\.)[\\w$.]+\\.' })))
@@ -371,11 +373,10 @@ NL.state.open().then(() => {
      of the tick are the fake browser's timers ('held', ended by B.tick()), so are the
      fields a screen reads (byId: 'stub', filled through B.fields), and the text a page
      shows, without its tags, is text() from test/lib/langs.js, or joined() where what a tag
-     splits reads as one, a bold word and the punctuation beside it. A source runs in the
-     context of a page, B.ctx, only through browser.open; what comes before src/app.js
-     starts goes in its prepare. That check reads a call that names a page's ctx:
-     test/dehet.js runs gloss.js and the course's data in a bare context of its own, which
-     is no page, and passes it. */
+     splits reads as one, a bold word and the punctuation beside it. A source runs only
+     through browser.open, in a page or in a page without the app (skip: [browser.APP]);
+     what comes before src/app.js starts goes in its prepare. The check reads any call of
+     node's vm that runs code, whatever context it is given. */
   const suites = ['test', 'test/tools'].reduce((all, d) => all.concat(fs.readdirSync(path.join(ROOT, d))
     .filter(f => /\.js$/.test(f)).map(f => d + '/' + f)), []);
   suites.forEach(f => {
@@ -386,7 +387,7 @@ NL.state.open().then(() => {
     ok(!/\.setTimeout\s*=[^=]/.test(src), f + ': replaces setTimeout by hand; use timers: \'held\' and B.tick() from test/lib/browser.js');
     ok(!/\.getElementById\s*=[^=]/.test(src), f + ': fakes the page\'s fields by hand; use byId: \'stub\' and B.fields from test/lib/browser.js');
     ok(!/\.replace\(\/<\[\^>\]\*>\/g/.test(src), f + ': strips a page\'s tags by hand; use text() or joined() from test/lib/langs.js');
-    ok(!/runInContext\([^;]*\.ctx\b/.test(src), f + ': runs a source by hand in the context of a page, B.ctx; load it through browser.open, with what comes before src/app.js in prepare');
+    ok(!/\brunIn(?:New|This)?Context\b/.test(src), f + ': runs a source by hand with node\'s vm; load it through browser.open, with what comes before src/app.js in prepare');
   });
   ok(typeof langs.joined === 'function' && langs.joined('<b>al</b>, <i>zo</i>') === 'al, zo' && langs.text('<b>al</b>, <i>zo</i>') === 'al , zo',
     'test/lib/langs.js: joined() does not take each tag out with nothing in its place, beside text(), which puts a blank there');
@@ -445,7 +446,7 @@ NL.state.open().then(() => {
     ok(ran.join(' ') === 'prepare app.js', 'test/lib/browser.js: prepare ran « ' + ran.join(' ') + ' »; wanted « prepare app.js », once the other sources were loaded and just before src/app.js');
     let without = '';
     try { browser.open({ root: ROOT, files: [], prepare: () => {} }); } catch (e) { without = e.message; }
-    ok(without.indexOf('src/app.js') >= 0, 'test/lib/browser.js: prepare on a page without src/app.js fails without saying so: « ' + without + ' »');
+    ok(without.indexOf(browser.APP) >= 0, 'test/lib/browser.js: prepare on a page without src/app.js fails without saying so: « ' + without + ' »');
   }
   console.log('  fake browser    prepare runs just before src/app.js, and fails on a page that does not load it');
 
@@ -502,16 +503,22 @@ NL.state.open().then(() => {
     ['const T = {\n  async walk(v) {\n    for (const k in v) await this.walk(v[k]);\n  }\n};', ['2 walk']],
     ['const T = {\n  walk: v => {\n    Object.keys(v).forEach(k => T.walk(v[k]));\n  }\n};', ['2 walk']],
     ['const T = {\n  walk(v) {\n    Object.keys(v).forEach(k => walk(v[k]));\n  }\n};', []],
-    ['const o = {\n  keys(o) { return Object.keys(o).length; }\n};', []]
+    ['const o = {\n  keys(o) { return Object.keys(o).length; }\n};', []],
+    ['if (o) {\n  Object.keys(o).forEach(k => rules.if(k));\n}', []],
+    ['for (const k in o) {\n  Object.keys(o[k]).forEach(j => Symbol.for(j));\n}', []],
+    ['while (o) {\n  Object.keys(o).forEach(k => q.while(k));\n}', []],
+    ['switch (o) {\n  default: Object.keys(o).forEach(k => q.switch(k));\n}', []],
+    ['catch (e) {\n  Object.keys(e).forEach(k => p.catch(k));\n}', []],
+    ['const T = {\n  format(v) {\n    Object.keys(v).forEach(k => this.format(v[k]));\n  }\n};', ['2 format']]
   ]);
   /* A loop over COLLECTIONS that calls visit() or rewrite() walks the course one collection
      at a time, whatever its argument is written as and whatever comes before the call: the
      lines such loops open on. The suite is read as codeOnly() leaves it, so a loop written in
      a string or a comment, as in this table, does not count; a suite codeOnly() loses the
      thread of is named, since what it lost would go unread. */
-  const perCollection = src => blocks(codeOnly(src).code, /(?<![\w$])COLLECTIONS\.forEach\(/)
+  const perCollection = code => blocks(code, /(?<![\w$])COLLECTIONS\.forEach\(/)
     .filter(b => /\b(visit|rewrite)\(/.test(b.text)).map(b => b.line);
-  selfTest('collection', perCollection, [
+  selfTest('collection', src => perCollection(codeOnly(src).code), [
     ['COLLECTIONS.forEach(k => tree.visit(C[k], f, k, k));', [1]],
     ['COLLECTIONS.forEach((k) => { C[k] = tree.rewrite(C[k], f, k, k); });', [1]],
     ['const n = 0;\nCOLLECTIONS.forEach(k => {\n  const x = C[k];\n  tree.visit(x, f, k, k);\n});', [2]],
@@ -521,12 +528,12 @@ NL.state.open().then(() => {
     ['const s = "a COLLECTIONS.forEach(k => tree.visit(C[k], f))";', []]
   ]);
   suites.forEach(f => {
-    const src = read(f);
+    const src = read(f), { code, found } = codeOnly(src);
     ok(!/JSON\.parse\(JSON\.stringify\(NL\.content/.test(src), f + ': copies the course by hand; use raw() from test/lib/prose.js');
     handWalkers(src).forEach(w => ok(false, f + ':' + w.line + ': ' + w.name + '() walks a tree by hand; use test/lib/tree.js'));
-    perCollection(src).forEach(line => ok(false, f + ':' + line +
+    perCollection(code).forEach(line => ok(false, f + ':' + line +
       ': walks the course one collection at a time; use visitCourse() or rewriteCourse() from test/lib/tree.js'));
-    codeOnly(src).found.forEach(x => ok(false, f + ':' + x.line + ': ' + x.what + ' as the collection check reads it, which may hide a loop'));
+    found.forEach(x => ok(false, f + ':' + x.line + ': ' + x.what + ' as the collection check reads it, which may hide a loop'));
   });
 
   /* A file of the repository is read through read(), not spelt out again at each check:

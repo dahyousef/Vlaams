@@ -25,7 +25,7 @@ function device(name, withConfig, store, idb, whole) {
      remplissent dans dev.fields.
      idb : true pour un IndexedDB neuf, ou le `idb` d'un appareil pour le recharger. */
   const B = browser.open({
-    root: ROOT, timers: 'real', skip: whole ? [] : ['src/app.js'], byId: whole ? 'stub' : null,
+    root: ROOT, timers: 'real', skip: whole ? [] : [browser.APP], byId: whole ? 'stub' : null,
     store: dev.store, idb: idb || null, ua: 'Mozilla/5.0 Chrome/120',
     config: withConfig ? { supabaseUrl: 'https://example.supabase.co', supabaseAnonKey: 'anon' } : null,
     supabase: withConfig ? fakeLib(dev) : null

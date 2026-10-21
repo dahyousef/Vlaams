@@ -9,13 +9,12 @@ const fs = require('fs'), path = require('path'), zlib = require('zlib');
 const browser = require('./lib/browser');
 const { raw, owed, at } = require('./lib/prose');
 const tree = require('./lib/tree');
-const { joined } = require('./lib/langs');
 const ROOT = process.argv[2] || path.join(__dirname, '..');
 
 let fails = 0, checks = 0;
 const ok = (c, m) => { checks++; if (!c) { console.log('  FAIL: ' + m); fails++; } };
 
-const B = browser.open({ root: ROOT, seed: browser.SEED, skip: ['src/app.js'] });
+const B = browser.open({ root: ROOT, seed: browser.SEED, skip: [browser.APP] });
 const NL = B.NL, U = NL.util;
 /* Le cours tel qu'il est écrit, avant la première construction : {naam}, {stad} et
    {bedrijf} y sont encore, et le contrôle 6 compare les jetons. */
@@ -248,15 +247,15 @@ NL.state.open().then(() => {
   /* Dans l'explication d'un point de grammaire, un <i> dont le texte est le même en français et en anglais est du
      néerlandais (<i>Morgen ik ga</i>) ; <i>element</i> / <i>élément</i> diffèrent, c'est de la prose. Il porte lang="nl-BE". */
   { let seenI = 0;
-    const iTags = s => (String(s).match(/<i(?:\s[^>]*)?>[^<]*<\/i>/g) || []);
-    const iText = joined;
+    /* Chaque <i> sans balise dedans : la balise entière, et son texte, lu dans la balise même. */
+    const iTags = s => Array.from(String(s).matchAll(/<i(?:\s[^>]*)?>([^<]*)<\/i>/g), m => ({ tag: m[0], text: m[1] }));
     (RAW.patterns || []).forEach(g => {
       const ex = g.explain;
       if (!ex || typeof ex.fr !== 'string' || typeof ex.en !== 'string') return;
-      const en = iTags(ex.en).map(iText);
-      iTags(ex.fr).forEach(t => {
+      const en = iTags(ex.en).map(i => i.text);
+      iTags(ex.fr).forEach(i => {
         seenI++;
-        if (en.indexOf(iText(t)) >= 0) ok(/^<i\s[^>]*lang="nl-BE"/.test(t), g.id + ' : « ' + iText(t) + ' » est du néerlandais dans <i> : lui donner lang="nl-BE"');
+        if (en.indexOf(i.text) >= 0) ok(/^<i\s[^>]*lang="nl-BE"/.test(i.tag), g.id + ' : « ' + i.text + ' » est du néerlandais dans <i> : lui donner lang="nl-BE"');
       });
     });
     ok(seenI > 0, 'aucun <i> dans les explications de grammaire : le contrôle est creux'); }
