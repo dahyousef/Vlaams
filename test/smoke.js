@@ -280,12 +280,35 @@ NL.state.open().then(() => {
   /* #74. What already has a name is not written out again: the other language is
      NL.gloss.other, the comparison of senses is read from NL.gloss alone, and « the text,
      if there is any » is NL.ui.ifText, whatever the text is: a meaning read through NL.gloss,
-     a message, a score or what the microphone heard. */
-  const byHand = /NL\.gloss\.of\(([\w.]+)\) \? '<\w+[^']*>' \+ esc\(NL\.gloss\.of\(\1\)\)|(?<![\w$.])([\w.]+) \? '<(\w+)[^']*>' \+ esc\(\2\) \+ '<\/\3>' : ''/g;
+     a message, a score or what the microphone heard. #77: byHand holds two patterns. The
+     first is a meaning read twice through NL.gloss.of. The second is every other spelling:
+     the test either way round (x ? … : '' or !x ? '' : …), the tag written out or held in a
+     variable (tagged), and esc() on the text or on an expression that names it. */
+  const tagged = name => String.raw`'<(?:\w[^'<>]*|' \+ \w+ \+ '[^'<>]*)>' \+ esc\([^;']*?(?<![\w$.])${name}(?![\w$])[^;']*?\) \+ '<\/(?:\w+|' \+ \w+ \+ ')>'`;
+  const byHand = [
+    /NL\.gloss\.of\(([\w.]+)\) \? '<\w+[^']*>' \+ esc\(NL\.gloss\.of\(\1\)\)/g,
+    new RegExp(String.raw`(?<![\w$.])([\w.]+) \? ${tagged('\\1')} : ''(?!\s*\+)|!([\w.]+) \? '' : ${tagged('\\2')}(?!\s*\+)`, 'g')
+  ];
+  const ifTextByHand = src => byHand.reduce((all, rx) => all.concat(src.match(rx) || []), []);
+  /* What the guard reads, and what it leaves alone: ifText's own line, a test that is not on
+     the escaped text, a text inside two tags, and a branch with more after it. */
+  selfTest('ifText by hand', ifTextByHand, [
+    ["x = NL.gloss.of(it.note) ? '<p class=\"v-note\">' + esc(NL.gloss.of(it.note)) + '</p>' : '';", ["NL.gloss.of(it.note) ? '<p class=\"v-note\">' + esc(NL.gloss.of(it.note))"]],
+    ["x = sp.partial ? '<p class=\"heard\">' + esc(sp.partial) + '</p>' : '';", ["sp.partial ? '<p class=\"heard\">' + esc(sp.partial) + '</p>' : ''"]],
+    ["x = !msg ? '' : '<p class=\"acc-err\">' + esc(msg) + '</p>';", ["!msg ? '' : '<p class=\"acc-err\">' + esc(msg) + '</p>'"]],
+    ["x = b.score ? '<' + tag + '>' + esc(b.score) + '</' + tag + '>' : '';", ["b.score ? '<' + tag + '>' + esc(b.score) + '</' + tag + '>' : ''"]],
+    ["x = it.note ? '<p class=\"v-note\">' + esc(NL.gloss.of(it.note)) + '</p>' : '';", ["it.note ? '<p class=\"v-note\">' + esc(NL.gloss.of(it.note)) + '</p>' : ''"]],
+    ["return s ? '<' + tag + (cls ? ' class=\"' + cls + '\"' : '') + '>' + esc(s) + '</' + tag + '>' : '';", []],
+    ["x = phase !== 'ask' ? '<p class=\"fix\">' + esc(t.target) + '</p>' : '';", []],
+    ["x = ok ? '<p>' + esc(ans) + '</p>' : '';", []],
+    ["x = note ? '<div class=\"notice\"><p>' + esc(note) + '</p></div>' : '';", []],
+    ["x = !msg ? '' : '<p>' + esc(msg) + '</p>' + more;", []],
+    ["x = msg ? '<p>' + esc(msg) + '</p>' : '' + more;", []]
+  ]);
   sources.forEach(f => {
     const src = read(f);
     if (f !== 'src/core/gloss.js') ok(!/=== '(en|fr)' \? '(?!\1)(?:en|fr)' : '\1'/.test(src), f + ': works out the other language by hand; use NL.gloss.other');
-    (src.match(byHand) || []).forEach(m => ok(false, f + ': ' + m + '… writes « the text, if there is any » by hand; use NL.ui.ifText'));
+    ifTextByHand(src).forEach(m => ok(false, f + ': ' + m + '… writes « the text, if there is any » by hand; use NL.ui.ifText'));
   });
   ok(!('sameSense' in NL.ex), 'NL.ex re-exports sameSense; read it from NL.gloss');
   /* NL.ui.ifText itself, on a page that loads the whole app: no text gives nothing, and a text
