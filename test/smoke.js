@@ -19,6 +19,9 @@ const NL = B.NL;
 let fails = 0;
 const ok = (cond, msg) => { if (!cond) { console.log('  FAIL: ' + msg); fails++; } };
 
+/* Le numéro de la ligne où tombe la position k du texte s. */
+const lineAt = (s, k) => s.slice(0, k).split('\n').length;
+
 /* Une source relue sans ses chaînes, ses commentaires, ses regex ni le texte de ses
    gabarits : { code, found }. Dans code, chacun de leurs caractères devient une espace,
    les sauts de ligne restent, et les numéros de ligne avec eux. Une chaîne ou une regex
@@ -26,8 +29,7 @@ const ok = (cond, msg) => { if (!cond) { console.log('  FAIL: ' + msg); fails++;
    dans found à sa ligne : la relecture a perdu le fil, elle ne passe pas en silence. */
 function codeOnly(src) {
   const out = src.split(''), found = [], frames = [];   // frames : un par ${ ouvert
-  const lineAt = k => src.slice(0, k).split('\n').length;
-  const lost = (what, k) => found.push({ line: lineAt(k), what: 'unclosed ' + what });
+  const lost = (what, k) => found.push({ line: lineAt(src, k), what: 'unclosed ' + what });
   const blank = (a, b) => { for (let k = a; k < Math.min(b, src.length); k++) if (out[k] !== '\n') out[k] = ' '; };
   /* Une barre ouvre une regex, sauf après ce qui finit une valeur : un nom (hors
      return, typeof…), un nombre, une chaîne, ) ou ]. */
@@ -97,9 +99,8 @@ function codeOnly(src) {
    laisse, avec ce que la relecture y a perdu. */
 function syntaxFindings(src) {
   const { code, found } = codeOnly(src);
-  const lineAt = k => code.slice(0, k).split('\n').length;
   [[/(?<![\w$.])var(?=\s+[\w$[{])/g, 'var'], [/\?\.(?!\d)/g, '?.']].forEach(([rx, what]) =>
-    Array.from(code.matchAll(rx)).forEach(m => found.push({ line: lineAt(m.index), what })));
+    Array.from(code.matchAll(rx)).forEach(m => found.push({ line: lineAt(code, m.index), what })));
   return found.sort((a, b) => a.line - b.line);
 }
 
@@ -164,10 +165,9 @@ function errTextActs(src) {
 /* Une relecture du code s'éprouve sur des cas écrits à la main : chaque cas est
    [source, ce que `f` doit y trouver], et un cas raté dit ce que la relecture `name` y a
    trouvé. */
-function selfTest(name, f, cases) {
-  cases.forEach(([src, want]) => ok(JSON.stringify(f(src)) === JSON.stringify(want),
+const selfTest = (name, f, cases) => cases.forEach(([src, want]) =>
+  ok(JSON.stringify(f(src)) === JSON.stringify(want),
     name + ' check on ' + JSON.stringify(src) + ' found ' + JSON.stringify(f(src)) + ', wanted ' + JSON.stringify(want)));
-}
 
 NL.state.open().then(() => {
   NL.content.refresh();
@@ -470,7 +470,7 @@ NL.state.open().then(() => {
 
   /* A check that reads code proves itself on cases written out by hand, through selfTest():
      outside it, no table of cases is run through ok() by hand. */
-  ok(!/\.forEach\(\(\[src, want\]\)/.test(outside(read('test/smoke.js'), /^function selfTest\(/)), 'test/smoke.js checks a table of cases by hand; use selfTest()');
+  ok(!/\.forEach\(\(\[src, want\]\)/.test(outside(read('test/smoke.js'), /^const selfTest = /)), 'test/smoke.js checks a table of cases by hand; use selfTest()');
 
   items.filter(i => i.art).forEach(i =>
     ok(i.nl.startsWith(i.art + ' '), 'article mismatch: ' + i.nl + ' / ' + i.art));

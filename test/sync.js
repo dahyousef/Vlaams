@@ -17,18 +17,20 @@ const { fakeSupabase, KEYS, keyOf, clone } = require('./lib/supabase');
 const { server, fakeLib, rowsFor } = fakeSupabase();
 
 /* ---------------- un appareil ---------------- */
-function device(name, withConfig, store, idb, whole) {
+/* config : false pour un appareil sans serveur ; store : le stockage d'un appareil, pour le
+   recharger ; idb : true pour un IndexedDB neuf, ou le `idb` d'un appareil pour le recharger ;
+   whole : la page entière (voir plus bas). */
+function device(name, { config = true, store, idb, whole } = {}) {
   const dev = { name, store: store || {} };
   /* Des minuteurs réels : la boîte d'envoi se vide après un délai, et c'est ce
      délai que le test attend. app.js est laissé de côté, et boot() démarre ; sur la page
      entière (whole), app.js tourne et démarre seul, et les champs que lit l'écran se
-     remplissent dans dev.fields.
-     idb : true pour un IndexedDB neuf, ou le `idb` d'un appareil pour le recharger. */
+     remplissent dans dev.fields. */
   const B = browser.open({
     root: ROOT, timers: 'real', skip: whole ? [] : [browser.APP], byId: whole ? 'stub' : null,
     store: dev.store, idb: idb || null, ua: 'Mozilla/5.0 Chrome/120',
-    config: withConfig ? { supabaseUrl: 'https://example.supabase.co', supabaseAnonKey: 'anon' } : null,
-    supabase: withConfig ? fakeLib(dev) : null
+    config: config ? { supabaseUrl: 'https://example.supabase.co', supabaseAnonKey: 'anon' } : null,
+    supabase: config ? fakeLib(dev) : null
   });
   const ctx = B.ctx, root = B.app;
   dev.ctx = ctx; dev.NL = B.NL; dev.root = root; dev.idb = B.idb; dev.fields = B.fields;
@@ -51,7 +53,7 @@ function device(name, withConfig, store, idb, whole) {
 
 /* La page entière : un appareil configuré où app.js tourne et le démarre seul, sans boot().
    Les champs que l'écran compte lit se remplissent dans dev.fields. */
-const page = name => device(name, true, null, null, true);
+const page = name => device(name, { whole: true });
 
 const items = NL => NL.content.allItems();
 /* Le texte qu'un appareil montre, balises retirées. */
@@ -60,7 +62,7 @@ const shown = dev => text(dev.root.innerHTML);
 (async () => {
   console.log('SANS CONFIGURATION');
   {
-    const d = device('local', false);
+    const d = device('local', { config: false });
     const user = await d.boot();
     ok(d.NL.sync.enabled === false, 'sync should be off without config');
     ok(user === null, 'init should resolve null without config');
@@ -74,7 +76,7 @@ const shown = dev => text(dev.root.innerHTML);
   }
 
   console.log('\nAPPAREIL A — progression anonyme puis connexion');
-  const A = device('A', true);
+  const A = device('A');
   ok(await A.boot() === null, 'A should start signed out');
   const its = items(A.NL);
   its.slice(0, 12).forEach((it, i) => A.NL.srs.grade(it, i % 3 !== 0, { ex: 'type' }));
@@ -102,7 +104,7 @@ const shown = dev => text(dev.root.innerHTML);
   ok(!!bad.error, 'a wrong code must fail');
 
   console.log('\nAPPAREIL B — même compte, appareil vierge');
-  const B = device('B', true);
+  const B = device('B');
   await B.boot();
   await B.signIn('learner@example.com');
   ok(B.NL.sync.user.id === uid, 'B signed into another account');
@@ -209,7 +211,7 @@ const shown = dev => text(dev.root.innerHTML);
   const persisted = JSON.parse(A.store['vlaams/outbox']);
   ok(Object.keys(persisted.recs).length === 5, 'outbox not persisted to storage');
   /* Un rechargement de page pendant la panne : la boîte doit se relire. */
-  const A2 = device('A2', true, JSON.parse(JSON.stringify(A.store)));
+  const A2 = device('A2', { store: JSON.parse(JSON.stringify(A.store)) });
   ok(A2.NL.sync.status().pending === A.NL.sync.status().pending, 'outbox not reloaded after a page reload: ' + A2.NL.sync.status().pending);
   server.down = false;
   await A.NL.sync.flush();
@@ -233,13 +235,13 @@ const shown = dev => text(dev.root.innerHTML);
   ok(rowsFor('srs_records', B.NL.sync.user.id).length === 0, 'second account inherited rows');
 
   /* Appareil déjà rattaché à un compte, puis un autre se connecte sans passer par la déconnexion. */
-  const C = device('C', true);
+  const C = device('C');
   await C.boot();
   await C.signIn('learner@example.com');
   ok(C.NL.state.seenCount() === 17, 'C should have 17 records');
   await wait(450);                            // la sauvegarde locale est différée
   delete C.store['sb-session'];
-  const C2 = device('C2', true, C.store);
+  const C2 = device('C2', { store: C.store });
   await C2.boot();
   ok(C2.NL.state.seenCount() === 17, 'C2 should reload local data');
   await C2.signIn('third@example.com');
@@ -251,7 +253,7 @@ const shown = dev => text(dev.root.innerHTML);
   console.log('\nREMISE À ZÉRO');
   {
     /* Deux appareils connectés au même compte, tous deux avec de la progression. */
-    const R1 = device('R1', true), R2 = device('R2', true);
+    const R1 = device('R1'), R2 = device('R2');
     await R1.boot(); await R1.signIn('reset@example.com');
     const rid = R1.NL.sync.user.id, ri = items(R1.NL);
     ri.slice(0, 10).forEach(it => R1.NL.srs.grade(it, true, { ex: 'type' }));
@@ -303,7 +305,7 @@ const shown = dev => text(dev.root.innerHTML);
     ok(R1.NL.state.meta().scenariosDone.join() === 'bakker', 'a conversation done after the reset did not travel: ' + JSON.stringify(R1.NL.state.meta().scenariosDone));
 
     /* Un appareil neuf qui se connecte ne voit que l'après. */
-    const R3 = device('R3', true);
+    const R3 = device('R3');
     await R3.boot(); await R3.signIn('reset@example.com');
     ok(R3.NL.state.seenCount() === 1, 'a new device sees ' + R3.NL.state.seenCount() + ' records, expected the single one made since the reset');
     console.log('  effacé ici, sur le serveur et sur le second appareil ; réglages, score et mots gardés');
@@ -314,7 +316,7 @@ const shown = dev => text(dev.root.innerHTML);
     R1.offline(true);
     R1.NL.state.resetProgress();
     await wait(450);
-    const R1b = device('R1b', true, JSON.parse(JSON.stringify(R1.store)));
+    const R1b = device('R1b', { store: JSON.parse(JSON.stringify(R1.store)) });
     await R1b.boot();
     await wait(20);
     ok(rowsFor('srs_records', rid).length === 0, 'a reset made offline never reached the server');
@@ -333,7 +335,7 @@ const shown = dev => text(dev.root.innerHTML);
 
   console.log('\nMIGRATION — l’ancien moteur');
   {
-    const M1 = device('M1', true);
+    const M1 = device('M1');
     await M1.boot(); await M1.signIn('old@example.com');
     const mid = M1.NL.sync.user.id, mi = items(M1.NL), EPOCH = M1.NL.state.ENGINE_EPOCH;
     /* De la progression datée d'avant le nouveau moteur, sur l'appareil et le serveur. */
@@ -343,7 +345,7 @@ const shown = dev => text(dev.root.innerHTML);
     await M1.NL.sync.flush();
     ok(rowsFor('srs_records', mid).length === 6, 'the fixture is wrong: 6 old records should be on the server');
     await wait(450);
-    const M2 = device('M2', true, JSON.parse(JSON.stringify(M1.store)));
+    const M2 = device('M2', { store: JSON.parse(JSON.stringify(M1.store)) });
     await M2.NL.state.open();
     ok(M2.NL.state.seenCount() === 6, 'the fixture is wrong: the reloaded device should hold 6 old records');
     ok(M2.NL.state.migrate() === true, 'a device carrying old progress did not migrate');
@@ -357,7 +359,7 @@ const shown = dev => text(dev.root.innerHTML);
     /* Un second appareil qui migre plus tard n'efface pas ce qui a été appris depuis. */
     M2.NL.srs.grade(mi[0], true, { ex: 'type' });
     await M2.NL.sync.flush();
-    const M3 = device('M3', true);
+    const M3 = device('M3');
     await M3.NL.state.open();
     M3.NL.state.setMeta({ dataVersion: 2 });
     M3.NL.state.migrate(); M3.NL.content.refresh(); M3.NL.ui.bind(M3.root);
@@ -390,7 +392,7 @@ const shown = dev => text(dev.root.innerHTML);
       meta: Object.assign({ dataVersion: 3, resetAt: EPOCH, xp: 40, reached: 5, scenariosDone: ['bakker', 'dokter', 'markt'], listenDone: ['les1'], updatedAt: after },
         progress ? { progress } : {})
     }) });
-    const V1 = device('V1', true, touched({ reached: 1, scenariosDone: ['bakker'], listenDone: [] }));
+    const V1 = device('V1', { store: touched({ reached: 1, scenariosDone: ['bakker'], listenDone: [] }) });
     await V1.NL.state.open();
     oi.slice(0, 2).forEach(it => V1.NL.state.logReview(oldLog(it, after), true));
     V1.NL.state.logReview(Object.assign(oldLog(oi[4], after), { base: EPOCH }), true);
@@ -404,7 +406,7 @@ const shown = dev => text(dev.root.innerHTML);
     ok(vm.xp === 40, 'the migration took the score');
     ok(V1.NL.state.migrate() === false, 'the migration ran twice on the touched device');
     /* Des réglages que seule la version précédente a jamais écrits : aucune copie de confiance. */
-    const V2 = device('V2', true, touched(null));
+    const V2 = device('V2', { store: touched(null) });
     await V2.NL.state.open();
     ok(V2.NL.state.migrate() === true, 'a device whose settings only the previous build wrote did not migrate');
     const v2 = V2.NL.state.meta();
@@ -427,7 +429,7 @@ const shown = dev => text(dev.root.innerHTML);
       putRow('srs_records', { user_id: sid, item_id: it.id, data: oldRec(it, after), updated_at: after });
       putRow('review_log', { user_id: sid, t: after, item_id: it.id, data: oldLog(it, after) });
     });
-    const S1 = device('S1', true);
+    const S1 = device('S1');
     await S1.boot(); await S1.signIn('stale-tab@example.com');
     ok(S1.NL.state.seenCount() === 0, 'a device on this build imported ' + S1.NL.state.seenCount() + ' record(s) the previous build wrote');
     ok(S1.NL.state.meta().reached === 0, 'a device on this build took the frontier the previous build wrote: ' + S1.NL.state.meta().reached);
@@ -449,7 +451,7 @@ const shown = dev => text(dev.root.innerHTML);
       putRow('srs_records', { user_id: lid, item_id: it.id, data: oldRec(it, before), updated_at: before });
       putRow('review_log', { user_id: lid, t: before, item_id: it.id, data: oldLog(it, before) });
     });
-    const L1 = device('L1', true);
+    const L1 = device('L1');
     await L1.boot(); await L1.signIn('legacy@example.com');
     const lm = L1.NL.state.meta();
     ok(L1.NL.state.seenCount() === 0, 'a fresh device took ' + L1.NL.state.seenCount() + ' old-engine record(s) at its first sync');
@@ -469,7 +471,7 @@ const shown = dev => text(dev.root.innerHTML);
     account('joined@example.com');
     putRow('user_meta', { user_id: account('joined@example.com').id, updated_at: after, data: Object.assign(
       { dataVersion: 3, resetAt: EPOCH, xp: 10, progress: zero(), updatedAt: after }, zero()) });
-    const J1 = device('J1', true), J2 = device('J2', true);
+    const J1 = device('J1'), J2 = device('J2');
     await J1.boot(); await J1.signIn('joined@example.com');
     const jid = J1.NL.sync.user.id;
     await J2.boot();
@@ -489,13 +491,13 @@ const shown = dev => text(dev.root.innerHTML);
       { dataVersion: 3, resetAt, xp: 10, progress: zero(), updatedAt: after }, zero()) });
     oi.slice(10, 12).forEach(it => putRow('srs_records', { user_id: kid, item_id: it.id, updated_at: after,
       data: Object.assign(oldRec(it, after), { stage: 1, reps: 1, base: resetAt }) }));
-    const K1 = device('K1', true), K2 = device('K2', true);
+    const K1 = device('K1'), K2 = device('K2');
     await K1.boot(); await K1.signIn('joined-reset@example.com');
     ok(K1.NL.state.seenCount() === 2, 'the fixture is wrong: the other device should hold the 2 records made since the reset');
     await K2.boot();
     oi.slice(0, 5).forEach(it => K2.NL.srs.grade(it, true, { ex: 'type' }));
     await wait(450);
-    const K2b = device('K2b', true, JSON.parse(JSON.stringify(K2.store)));
+    const K2b = device('K2b', { store: JSON.parse(JSON.stringify(K2.store)) });
     await K2b.boot(); await K2b.signIn('joined-reset@example.com');
     const onK = id => rowsFor('srs_records', kid).some(r => r.item_id === id);
     ok(oi.slice(0, 5).every(it => onK(it.id)), 'anonymous progress was not uploaded to an account reset after the epoch: ' + rowsFor('srs_records', kid).length + ' record(s) on the server');
@@ -511,7 +513,7 @@ const shown = dev => text(dev.root.innerHTML);
   console.log('\nUN APPAREIL PÉRIMÉ RÉPOND APRÈS LA REMISE À ZÉRO');
   {
     /* 5. Hors ligne, il n'a pas entendu la remise à zéro et répond sur des échelons effacés. */
-    const F1 = device('F1', true), F2 = device('F2', true);
+    const F1 = device('F1'), F2 = device('F2');
     await F1.boot(); await F1.signIn('stale-answer@example.com');
     const fid = F1.NL.sync.user.id;
     oi.slice(0, 6).forEach(it => F1.NL.srs.grade(it, true, { ex: 'type' }));
@@ -542,7 +544,7 @@ const shown = dev => text(dev.root.innerHTML);
        réglages entiers, et s'ils sont plus récents, renvoie le resetAt et le
        progress d'avant. Il passe par l'upsert du faux serveur, celui qui reflète
        les déclencheurs : keep_newer, puis keep_reset. */
-    const P1 = device('P1', true);
+    const P1 = device('P1');
     await P1.boot(); await P1.signIn('stale-settings@example.com');
     const pid = P1.NL.sync.user.id;
     P1.NL.state.setMeta({ reached: 2, scenariosDone: ['bakker'] });
@@ -575,7 +577,7 @@ const shown = dev => text(dev.root.innerHTML);
   console.log('\nREMISE À ZÉRO SANS COMPTE');
   {
     /* 6a. Un appareil que personne ne possède répond, remet à zéro, puis se connecte. */
-    const E1 = device('E1', true), E2 = device('E2', true);
+    const E1 = device('E1'), E2 = device('E2');
     await E1.boot(); await E1.signIn('eight@example.com');
     const eid = E1.NL.sync.user.id;
     oi.slice(0, 8).forEach(it => E1.NL.srs.grade(it, true, { ex: 'type' }));
@@ -591,7 +593,7 @@ const shown = dev => text(dev.root.innerHTML);
     ok(E1.NL.state.seenCount() === 8, 'a reset made signed out reached the account’s other device: it holds ' + E1.NL.state.seenCount() + ' record(s)');
 
     /* 6b. Connexion, déconnexion, remise à zéro, connexion. */
-    const G1 = device('G1', true), G2 = device('G2', true);
+    const G1 = device('G1'), G2 = device('G2');
     await G1.boot(); await G1.signIn('eight-again@example.com');
     const gid = G1.NL.sync.user.id;
     oi.slice(0, 8).forEach(it => G1.NL.srs.grade(it, true, { ex: 'type' }));
@@ -616,7 +618,7 @@ const shown = dev => text(dev.root.innerHTML);
        rendrait. */
     const kept = server.tables;
     server.tables = {}; Object.keys(KEYS).forEach(t => { server.tables[t] = new Map(); });
-    const X = device('X', true), Y = device('Y', true);
+    const X = device('X'), Y = device('Y');
     await Y.boot(); await Y.signIn('y@example.com');
     const yid = Y.NL.sync.user.id;
     oi.slice(10, 14).forEach(it => Y.NL.srs.grade(it, true, { ex: 'type' }));
@@ -649,7 +651,7 @@ const shown = dev => text(dev.root.innerHTML);
        est connecté mais pas rattaché, et rien ne part. La prochaine occasion de
        synchroniser — le réseau qui revient, l'onglet qui revient au premier
        plan — doit retenter, sans attendre un rechargement. */
-    const H1 = device('H1', true);
+    const H1 = device('H1');
     await H1.boot();
     oi.slice(0, 3).forEach(it => H1.NL.srs.grade(it, true, { ex: 'type' }));
     server.failNext = 'user_meta';
@@ -662,7 +664,7 @@ const shown = dev => text(dev.root.innerHTML);
     ok(H1.store['vlaams/owner'] === h1 && rowsFor('srs_records', h1).length === 3 && H1.NL.sync.status().pending === 0,
       'the network came back and the device stayed unattached: ' + rowsFor('srs_records', h1).length + ' record(s) on the server, ' + H1.NL.sync.status().pending + ' pending');
 
-    const H2 = device('H2', true);
+    const H2 = device('H2');
     await H2.boot();
     oi.slice(3, 5).forEach(it => H2.NL.srs.grade(it, true, { ex: 'type' }));
     server.failNext = 'user_meta';
@@ -681,7 +683,7 @@ const shown = dev => text(dev.root.innerHTML);
     /* 9. Entre une connexion et un rattachement réussi : « synchroniser
        maintenant », la déconnexion et la remise à zéro doivent encore servir le
        compte, et rien de ce qui a été fait ici ne doit se perdre. */
-    const N1 = device('N1', true);
+    const N1 = device('N1');
     await N1.boot();
     oi.slice(0, 2).forEach(it => N1.NL.srs.grade(it, true, { ex: 'type' }));
     server.failNext = 'user_meta';
@@ -691,7 +693,7 @@ const shown = dev => text(dev.root.innerHTML);
     ok(N1.store['vlaams/owner'] === n1 && rowsFor('srs_records', n1).length === 2,
       '« sync now » after a failed adoption left the device unattached: ' + rowsFor('srs_records', n1).length + ' record(s) on the server');
 
-    const N2 = device('N2', true);
+    const N2 = device('N2');
     await N2.boot();
     oi.slice(0, 3).forEach(it => N2.NL.srs.grade(it, true, { ex: 'type' }));
     server.failNext = 'user_meta';
@@ -702,7 +704,7 @@ const shown = dev => text(dev.root.innerHTML);
     ok(rowsFor('srs_records', n2).length === 3, 'signing out after a failed adoption lost the anonymous progress: ' + rowsFor('srs_records', n2).length + ' record(s) on the server');
 
     /* Une remise à zéro pressée dans cet intervalle appartient au compte. */
-    const N3 = device('N3', true), N4 = device('N4', true);
+    const N3 = device('N3'), N4 = device('N4');
     await N3.boot(); await N3.signIn('unattached-reset@example.com');
     const n3 = N3.NL.sync.user.id;
     oi.slice(0, 4).forEach(it => N3.NL.srs.grade(it, true, { ex: 'type' }));
@@ -720,7 +722,7 @@ const shown = dev => text(dev.root.innerHTML);
     ok(N3.NL.state.seenCount() === 0, 'a reset pressed while signed in but not attached was undone at attachment: the other device holds ' + N3.NL.state.seenCount() + ' record(s)');
 
     /* L'appareil n'a pas pu écrire qui le possède : il est rattaché pour cette page quand même. */
-    const N5 = device('N5', true);
+    const N5 = device('N5');
     await N5.boot();
     const write = N5.ctx.localStorage.setItem;
     N5.ctx.localStorage.setItem = (k, v) => { if (k === 'vlaams/owner') throw new Error('QuotaExceededError'); write(k, v); };
@@ -736,7 +738,7 @@ const shown = dev => text(dev.root.innerHTML);
   {
     /* 10. Ce que fait un vrai navigateur : les fiches et le journal vivent dans
        IndexedDB et sont relus au chargement suivant. */
-    const D1 = device('D1', true, null, true);
+    const D1 = device('D1', { idb: true });
     await D1.NL.state.open();
     ok(D1.NL.state.storage === 'IndexedDB', 'the fixture is wrong: the fake IndexedDB was not used');
     oi.slice(0, 5).forEach(it => D1.NL.srs.grade(it, true, { ex: 'type' }));
@@ -746,7 +748,7 @@ const shown = dev => text(dev.root.innerHTML);
     await wait(10);
     ok(D1.NL.state.importAll(clone(dump)), 'import refused');
     await wait(10);
-    const D1b = device('D1b', true, clone(D1.store), D1.idb);
+    const D1b = device('D1b', { store: clone(D1.store), idb: D1.idb });
     await D1b.NL.state.open();
     const restoredWiped = D1b.NL.state.migrate();
     ok(!restoredWiped, 'after a restore and a reload the migration fired and showed « le moteur a changé »');
@@ -754,7 +756,7 @@ const shown = dev => text(dev.root.innerHTML);
       'after a restore and a reload the device holds ' + D1b.NL.state.seenCount() + ' record(s) and ' + D1b.NL.state.logs().length + ' log line(s), expected the 5 and 5 restored');
 
     /* Ce que la version précédente laisse dans IndexedDB, écrit tel quel. */
-    const P1 = device('P1', true, null, true);
+    const P1 = device('P1', { idb: true });
     await P1.NL.state.open();
     const idbPut = (dev, store, value) => new Promise(res => {
       const r = dev.ctx.indexedDB.open('vlaams-onderweg', 1);
@@ -765,12 +767,12 @@ const shown = dev => text(dev.root.innerHTML);
       await idbPut(P1, 'log', oldLog(it, EPOCH + 3600000));
     }
     await idbPut(P1, 'meta', { k: 'meta', v: { dataVersion: 2, xp: 40, reached: 3, scenariosDone: ['bakker'], listenDone: [], updatedAt: EPOCH + 3600000 } });
-    const P2 = device('P2', true, clone(P1.store), P1.idb);
+    const P2 = device('P2', { store: clone(P1.store), idb: P1.idb });
     await P2.NL.state.open();
     ok(P2.NL.state.seenCount() === 4 && P2.NL.state.logs().length === 4, 'the fixture is wrong: the previous build’s IndexedDB should hold 4 records and 4 log lines');
     ok(P2.NL.state.migrate() === true, 'a device of the previous build using IndexedDB did not migrate');
     await wait(10);
-    const P3 = device('P3', true, clone(P2.store), P2.idb);
+    const P3 = device('P3', { store: clone(P2.store), idb: P2.idb });
     await P3.NL.state.open();
     const again = P3.NL.state.migrate();
     ok(!again && P3.NL.state.seenCount() === 0 && P3.NL.state.logs().length === 0 && P3.NL.state.meta().reached === 0,
@@ -782,7 +784,7 @@ const shown = dev => text(dev.root.innerHTML);
     const aid = account('idb-adopt@example.com').id;
     putRow('user_meta', { user_id: aid, updated_at: resetAt, data: Object.assign(
       { dataVersion: 3, resetAt, xp: 5, progress: zero(), updatedAt: resetAt }, zero()) });
-    const I1 = device('I1', true, null, true);
+    const I1 = device('I1', { idb: true });
     await I1.boot();
     oi.slice(0, 3).forEach(it => I1.NL.srs.grade(it, true, { ex: 'type' }));
     await wait(3);
@@ -791,7 +793,7 @@ const shown = dev => text(dev.root.innerHTML);
     await I1.signIn('idb-adopt@example.com');
     await wait(20);
     ok(oi.slice(3, 6).every(it => rowsFor('srs_records', aid).some(r => r.item_id === it.id)), 'the fixture is wrong: the anonymous progress was not adopted');
-    const I2 = device('I2', true, clone(I1.store), I1.idb);
+    const I2 = device('I2', { store: clone(I1.store), idb: I1.idb });
     await I2.NL.state.open();
     ok(I2.NL.state.migrate() === false && I2.NL.state.seenCount() === 3 && I2.NL.state.logs().length === 3,
       'progress adopted and rebased did not survive a reload in IndexedDB: ' + I2.NL.state.seenCount() + ' record(s), ' + I2.NL.state.logs().length + ' log line(s)');
@@ -804,7 +806,7 @@ const shown = dev => text(dev.root.innerHTML);
     /* 11a. Un appareil possédé, qui porte encore l'ancien moteur, migre pendant
        que le serveur tient une fiche qu'un autre appareil de cette version a
        écrite après l'époque : elle reste. */
-    const Q1 = device('Q1', true), Q2 = device('Q2', true);
+    const Q1 = device('Q1'), Q2 = device('Q2');
     await Q1.boot(); await Q1.signIn('cut-migrate@example.com');
     const qid = Q1.NL.sync.user.id;
     await Q2.boot(); await Q2.signIn('cut-migrate@example.com');
@@ -815,7 +817,7 @@ const shown = dev => text(dev.root.innerHTML);
     Q1.NL.srs.grade(oi[30], true, { ex: 'type' });
     await Q1.NL.sync.flush();
     await wait(450);
-    const Q2b = device('Q2b', true, clone(Q2.store));
+    const Q2b = device('Q2b', { store: clone(Q2.store) });
     await Q2b.NL.state.open();
     ok(Q2b.NL.state.migrate() === true, 'the fixture is wrong: the owned device holding old-engine records did not migrate');
     Q2b.NL.content.refresh(); Q2b.NL.ui.bind(Q2b.root);
@@ -833,7 +835,7 @@ const shown = dev => text(dev.root.innerHTML);
     oi.slice(0, 2).forEach(it => putRow('srs_records', { user_id: cid, item_id: it.id, data: oldRec(it, EPOCH - DAY), updated_at: EPOCH - DAY }));
     putRow('srs_records', { user_id: cid, item_id: oi[31].id, updated_at: after,
       data: Object.assign(oldRec(oi[31], after), { stage: 1, reps: 1, base: EPOCH }) });
-    const C1 = device('Cc', true);
+    const C1 = device('Cc');
     await C1.boot(); await C1.signIn('cut-clean@example.com');
     ok(oi.slice(0, 2).every(it => !rowsFor('srs_records', cid).some(r => r.item_id === it.id)), 'the server clean-up left old-engine rows');
     ok(rowsFor('srs_records', cid).some(r => r.item_id === oi[31].id) && !!C1.NL.state.rec(oi[31].id),
@@ -845,7 +847,7 @@ const shown = dev => text(dev.root.innerHTML);
   {
     /* 10. Remettre la progression à zéro n'efface pas ce qui a été dépensé aujourd'hui,
        ni ici, ni sur le serveur, ni après la synchro suivante. */
-    const U1 = device('U1', true), U2 = device('U2', true);
+    const U1 = device('U1'), U2 = device('U2');
     await U1.boot(); await U1.signIn('keep-day@example.com');
     await U2.boot(); await U2.signIn('keep-day@example.com');
     U1.NL.srs.spend(7);
@@ -878,7 +880,7 @@ const shown = dev => text(dev.root.innerHTML);
     const old = { app: 'vlaams-onderweg', v: 1, at: EPOCH - 1000,
       meta: { xp: 300, theme: 'dark', pace: 'fast', reached: 4, scenariosDone: ['bakker'], listenDone: ['les1'], dataVersion: 2, resetAt: 0, updatedAt: 9 },
       srs: oi.slice(0, 3).map(it => oldRec(it, EPOCH - DAY)), custom: [own], log: oi.slice(0, 3).map(it => oldLog(it, EPOCH - DAY)) };
-    const O1 = device('O1', false);
+    const O1 = device('O1', { config: false });
     await O1.NL.state.open();
     oi.slice(10, 12).forEach(it => O1.NL.srs.grade(it, false, { ex: 'type' }));
     O1.NL.state.addCustom({ id: 'x-here', nl: 'de kop', fr: 'la tasse' });
@@ -895,7 +897,7 @@ const shown = dev => text(dev.root.innerHTML);
     ok(om.dataVersion === 3 && om.resetAt > EPOCH, 'an old-engine backup left the data version or the reset stamp of the old engine');
     /* Rechargé : la migration n'a plus rien à effacer, et l'écran n'annonce rien. */
     await wait(450);
-    const O2 = device('O2', false, clone(O1.store));
+    const O2 = device('O2', { config: false, store: clone(O1.store) });
     await O2.NL.state.open();
     ok(O2.NL.state.migrate() === false && O2.NL.state.seenCount() === 0 && O2.NL.state.meta().xp === 300 && O2.NL.state.customs().length === 1,
       'after reloading an old-engine restore the device holds ' + O2.NL.state.seenCount() + ' record(s), xp ' + O2.NL.state.meta().xp);
@@ -903,7 +905,7 @@ const shown = dev => text(dev.root.innerHTML);
     /* Une sauvegarde faite depuis l'époque se restaure comme avant. */
     const fresh = clone(O1.NL.state.exportAll());
     ok(O1.NL.state.isOldBackup(fresh) === false, 'a backup made since the epoch was taken for an old-engine one');
-    const O3 = device('O3', false);
+    const O3 = device('O3', { config: false });
     await O3.NL.state.open();
     oi.slice(0, 4).forEach(it => O3.NL.srs.grade(it, true, { ex: 'type' }));
     O3.NL.state.setMeta({ reached: 2, scenariosDone: ['bakker'] });
@@ -918,7 +920,7 @@ const shown = dev => text(dev.root.innerHTML);
   console.log('\nUNE RESTAURATION VIDE LES MOTS PERSONNELS');
   {
     /* 11b. Un mot ajouté après la sauvegarde ne revient pas au chargement suivant. */
-    const W1 = device('W1', false, null, true);
+    const W1 = device('W1', { config: false, idb: true });
     await W1.NL.state.open();
     W1.NL.state.addCustom({ id: 'x-keep', nl: 'de kop', fr: 'la tasse' });
     await wait(10);
@@ -928,7 +930,7 @@ const shown = dev => text(dev.root.innerHTML);
     ok(W1.NL.state.importAll(clone(dump)), 'import refused');
     await wait(10);
     ok(W1.NL.state.customs().map(c => c.id).join() === 'x-keep', 'the restore kept the word added after the backup in memory');
-    const W2 = device('W2', false, clone(W1.store), W1.idb);
+    const W2 = device('W2', { config: false, store: clone(W1.store), idb: W1.idb });
     await W2.NL.state.open();
     ok(W2.NL.state.customs().map(c => c.id).join() === 'x-keep',
       'after a restore and a reload the words are ' + W2.NL.state.customs().map(c => c.id) + ', expected only x-keep');
@@ -938,39 +940,39 @@ const shown = dev => text(dev.root.innerHTML);
   console.log('\nLE JOURNAL SUR LE REPLI localStorage ET DANS LA SAUVEGARDE');
   {
     /* 13. Sur le repli, le journal survit à un rechargement : « Ce qui résiste » les relit. */
-    const F = device('Flog', false);
+    const F = device('Flog', { config: false });
     await F.NL.state.open();
     oi.slice(0, 5).forEach(it => F.NL.srs.grade(it, false, { ex: 'type' }));
     await wait(450);
-    const F2 = device('Flog2', false, clone(F.store));
+    const F2 = device('Flog2', { config: false, store: clone(F.store) });
     await F2.NL.state.open();
     ok(F2.NL.state.storage === 'localStorage', 'the fixture is wrong: the fallback was not used');
     F2.NL.content.refresh();
     ok(F2.NL.state.logs().length === 5 && F2.NL.srs.mistakes().length === 5,
       'after a reload on the fallback « Ce qui résiste » lists ' + F2.NL.srs.mistakes().length + ' item(s), expected the 5 missed');
     /* Au plus 3 000 lignes dans localStorage, les dernières. */
-    const big = device('Fbig', false);
+    const big = device('Fbig', { config: false });
     await big.NL.state.open();
     for (let i = 0; i < 3200; i++) big.NL.state.logReview({ id: oi[i % 50].id, t: 1e12 + i, ok: false, stage: 1, kind: 'word', ex: 'type' });
     await wait(450);
-    const big2 = device('Fbig2', false, clone(big.store));
+    const big2 = device('Fbig2', { config: false, store: clone(big.store) });
     await big2.NL.state.open();
     const bl = big2.NL.state.logs();
     ok(bl.length === 3000 && bl[bl.length - 1].t === 1e12 + 3199 && bl[0].t === 1e12 + 200,
       'the fallback kept ' + bl.length + ' log line(s), expected the last 3000');
 
     /* 14. La sauvegarde garde tout le journal, pas ses 2 000 dernières lignes. */
-    const L1 = device('L1', false, null, true);
+    const L1 = device('L1', { config: false, idb: true });
     await L1.NL.state.open();
     for (let i = 0; i < 2500; i++) L1.NL.state.logReview({ id: oi[i % 50].id, t: Date.now() - 2500 + i, ok: i % 2 === 0, stage: 1, kind: 'word', ex: 'type' });
     const full = clone(L1.NL.state.exportAll());
     ok(full.log.length === 2500, 'the backup holds ' + full.log.length + ' log line(s), expected 2500');
-    const L2 = device('L2', false, null, true);
+    const L2 = device('L2', { config: false, idb: true });
     await L2.NL.state.open();
     ok(L2.NL.state.importAll(clone(full)), 'import refused');
     ok(L2.NL.state.logs().length === 2500, 'the restore brought back ' + L2.NL.state.logs().length + ' log line(s), expected 2500');
     await wait(20);
-    const L3 = device('L3', false, clone(L2.store), L2.idb);
+    const L3 = device('L3', { config: false, store: clone(L2.store), idb: L2.idb });
     await L3.NL.state.open();
     ok(L3.NL.state.logs().length === 2500, 'after a restore and a reload the log holds ' + L3.NL.state.logs().length + ' line(s), expected 2500');
     console.log('  journal relu sur le repli, 3 000 lignes au plus ; sauvegarde complète : 2 500 lignes aller-retour');
@@ -980,7 +982,7 @@ const shown = dev => text(dev.root.innerHTML);
   {
     /* #69, 3. Le choix fait ici donne l'avis seul ; celui qui arrive d'un autre appareil,
        par une lecture ou par un envoi, dit d'où il vient, même après une séance. */
-    const T1 = device('T1', true), T2 = device('T2', true);
+    const T1 = device('T1'), T2 = device('T2');
     for (const d of [T1, T2]) { await d.boot(); await d.signIn('langue@example.com'); d.NL.lang.apply(); d.NL.ui.go('vandaag'); }
     const fr = T1.NL.tables.fr, en = T1.NL.tables.en;
     T1.NL.lang.set('fr'); T1.NL.ui.render();
@@ -1033,7 +1035,7 @@ const shown = dev => text(dev.root.innerHTML);
        autre onglet (supabase-js y relaie SIGNED_IN), l'accueil où elle mène dit que la
        langue vient d'un autre appareil. app.js tourne ici : c'est lui qui redessine
        l'écran compte quand la session arrive, dans le tour où onAuth() en part. */
-    const U = device('U', true);
+    const U = device('U');
     await U.boot(); await U.signIn('onglet@example.com');
     U.NL.lang.set('fr'); await U.NL.sync.flush();
     const fr = U.NL.tables.fr;

@@ -76,12 +76,13 @@ const targetOf = it => it.kind === 'word' ? U.bare(it.nl) : it.nl;
 
 /* Les formes que le panneau présente comme justes : toutes celles qu'imprime
    « Ici on dit », et la liste also. Lues dans le HTML du panneau : c'est ce
-   que la personne voit. */
+   que la personne voit. Chaque forme flamande y est son propre passage en
+   nl-BE, lu tel quel ; le cours se lit, lui, en coupant sa liste aux
+   virgules. Les deux côtés ne se lisent pas de la même façon : un panneau
+   qui fondrait la liste en un seul passage ne passerait pas pour juste. */
 const decode = s => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&amp;/g, '&');
 const formsOf = it => {
-  const line = decode(joined(NL.ex.hereLine(it, '', true))).trim();
-  const body = line.indexOf(t.hereThey) === 0 ? line.slice(t.hereThey.length).trim() : '';
-  const be = !body ? [] : it.kind === 'word' ? body.split(',').map(s => s.trim()).filter(Boolean) : [body];
+  const be = (NL.ex.hereLine(it, '', true).match(/<span lang="nl-BE">[\s\S]*?<\/span>/g) || []).map(s => decode(joined(s)).trim());
   return be.map(f => ['be', f]).concat((it.also || []).map(f => ['also', f]));
 };
 
