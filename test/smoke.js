@@ -143,6 +143,14 @@ function errTextActs(src) {
   return out;
 }
 
+/* Une relecture du code s'éprouve sur des cas écrits à la main : chaque cas est
+   [source, ce que `f` doit y trouver], et un cas raté dit ce que la relecture `name` y a
+   trouvé. */
+function selfTest(name, f, cases) {
+  cases.forEach(([src, want]) => ok(JSON.stringify(f(src)) === JSON.stringify(want),
+    name + ' check on ' + JSON.stringify(src) + ' found ' + JSON.stringify(f(src)) + ', wanted ' + JSON.stringify(want)));
+}
+
 NL.state.open().then(() => {
   NL.content.refresh();
   const items = NL.content.allItems();
@@ -211,19 +219,19 @@ NL.state.open().then(() => {
      n'en ont aucun ; les cas ci-dessous prouvent que la relecture voit encore quelque
      chose, et qu'elle ne compte ni les chaînes ni les commentaires. */
   const found = src => syntaxFindings(src).map(f => f.line + ' ' + f.what);
-  [['var x = 1;', ['1 var']],
-   ['const a = 1;\nconst b = a?.c;', ['2 ?.']],
-   ['f?.(); a?.[0];', ['1 ?.', '1 ?.']],
-   ['const s = "Quoi ?. var x";', []],
-   ['// a?.b var y\n/* var z;\n a?.b */ const n = 1;', []],
-   ['const r = /["?.]/g; var q;', ['1 var']],
-   ["if (n) return /'/.test(s) ? 1 : 2;", []],
-   ['const d = a / b; const s = "?.";', []],
-   ['const n = c?.5:1; o.var = 2; const variable = 3;', []],
-   ['const t = `a ?. var ${x?.y} b`;', ['1 ?.']],
-   ['const s = "abc\nvar x;', ['1 unclosed string', '2 var']]
-  ].forEach(([src, want]) => ok(JSON.stringify(found(src)) === JSON.stringify(want),
-    'syntax check on ' + JSON.stringify(src) + ' found ' + JSON.stringify(found(src)) + ', wanted ' + JSON.stringify(want)));
+  selfTest('syntax', found, [
+    ['var x = 1;', ['1 var']],
+    ['const a = 1;\nconst b = a?.c;', ['2 ?.']],
+    ['f?.(); a?.[0];', ['1 ?.', '1 ?.']],
+    ['const s = "Quoi ?. var x";', []],
+    ['// a?.b var y\n/* var z;\n a?.b */ const n = 1;', []],
+    ['const r = /["?.]/g; var q;', ['1 var']],
+    ["if (n) return /'/.test(s) ? 1 : 2;", []],
+    ['const d = a / b; const s = "?.";', []],
+    ['const n = c?.5:1; o.var = 2; const variable = 3;', []],
+    ['const t = `a ?. var ${x?.y} b`;', ['1 ?.']],
+    ['const s = "abc\nvar x;', ['1 unclosed string', '2 var']]
+  ]);
   const sources = browser.sources(ROOT);
   /* sw.js n'est pas dans SRC : build.sh le copie à côté de la page (cp … dist/), et
      chaque appareil qui ouvre l'app l'installe. Les .js des lignes cp sont donc relus
@@ -291,26 +299,23 @@ NL.state.open().then(() => {
   console.log('  suites          ' + suites.length + ' files: no hand-built click, no second fake Supabase, no due date from a bare epoch, no timer, page field or tag-stripper of their own');
 
   /* #74. A name says what it holds. What is typed into « Mes mots » beside the Dutch is a
-     gloss (GLOSSARY.md), in either language; the doctor's two texts say what the device
-     can do with speech, which is not an item's tier; the notice's list holds keys of NL.t,
-     and its flag says its tick is over; only the error log's own copy (errcopy) shows its
-     two texts, and the backup's copy has its own; and voiceInfo() hands back a key of NL.t,
-     read as t[v.noteKey]. */
+     gloss (GLOSSARY.md), in either language; the notice's list holds keys of NL.t; only the
+     error log's own copy (errcopy) shows its two texts, and the backup's copy has its own;
+     and voiceInfo() hands back a key of NL.t, read as t[v.noteKey]. The old names kept out
+     are the ones main had: a name that lived only on a branch has nowhere to come back from. */
   sources.concat(suites).forEach(f => {
     const src = read(f);
-    ok(!/\bwords(Ph)?(Fr|Meaning)\b|\badd-(en|meaning)\b/.test(src), f + ': names the gloss typed into « Mes mots » by an old name; it is wordsGloss, wordsPhGloss and add-gloss');
-    ok(!/\btierText\b/.test(src), f + ': names the doctor\'s speech texts after a tier; it is capabilityText');
+    ok(!/\bwords(Ph)?Fr\b|\badd-en\b/.test(src), f + ': names the gloss typed into « Mes mots » by an old name; it is wordsGloss, wordsPhGloss and add-gloss');
     ok(!/\bv\.note\b|voiceInfo\(\)\.note\b/.test(src), f + ': reads the voice report\'s key under its old name; it is noteKey');
   });
-  ok(!/\bconst (en|meaning)\b/.test(read('src/ui/library.js')), 'src/ui/library.js: the gloss typed into « Mes mots » is held under an old name; it is gloss');
+  ok(!/\bconst en\b/.test(read('src/ui/library.js')), 'src/ui/library.js: the gloss typed into « Mes mots » is held under an old name; it is gloss');
   ok(!/\bnotice\s*=[^=]/.test(read('src/core/lang.js')), 'src/core/lang.js: the notice\'s list of keys is named notice; it is noticeKeys');
-  ok(!/\bshown\b/.test(read('src/core/lang.js')), 'src/core/lang.js: the flag that says the notice\'s tick is over is named shown; it is tickOver');
-  [["if (d.act === 'errcopy') copy(t.errCopied, t.errCopyByHand);", { errcopy: 1, wrong: [] }],
-   ["if (d.act === 'errcopy' || d.act === 'save') copy(t.errCopied, t.errCopyByHand);", { errcopy: 1, wrong: [{ line: 1, act: 'save' }] }],
-   ["if (d.act === 'save') {\n  copy(t.errCopied);\n}", { errcopy: 0, wrong: [{ line: 1, act: 'save' }] }],
-   ["if (d.act === 'save' || d.act === 'errcopy') {\n  copy(t.errCopyByHand);\n}", { errcopy: 1, wrong: [{ line: 1, act: 'save' }] }]
-  ].forEach(([src, want]) => ok(JSON.stringify(errTextActs(src)) === JSON.stringify(want),
-    'error-text check on ' + JSON.stringify(src) + ' found ' + JSON.stringify(errTextActs(src)) + ', wanted ' + JSON.stringify(want)));
+  selfTest('error-text', errTextActs, [
+    ["if (d.act === 'errcopy') copy(t.errCopied, t.errCopyByHand);", { errcopy: 1, wrong: [] }],
+    ["if (d.act === 'errcopy' || d.act === 'save') copy(t.errCopied, t.errCopyByHand);", { errcopy: 1, wrong: [{ line: 1, act: 'save' }] }],
+    ["if (d.act === 'save') {\n  copy(t.errCopied);\n}", { errcopy: 0, wrong: [{ line: 1, act: 'save' }] }],
+    ["if (d.act === 'save' || d.act === 'errcopy') {\n  copy(t.errCopyByHand);\n}", { errcopy: 1, wrong: [{ line: 1, act: 'save' }] }]
+  ]);
   const errActs = sources.map(f => Object.assign({ f }, errTextActs(read(f))));
   errActs.forEach(a => a.wrong.forEach(w => ok(false, a.f + ':' + w.line + ': the ' + w.act + ' act shows the error log\'s texts; only errcopy does, and the backup has backupCopied and backupCopyByHand')));
   ok(errActs.some(a => a.errcopy > 0), 'no source opens a block on the errcopy act: the error log\'s copy was moved or renamed, and the check above reads nothing');
@@ -327,29 +332,29 @@ NL.state.open().then(() => {
      only: test/lib holds the walkers, and src/content/index.js copies the course on purpose
      when it builds it (build(), about line 37). */
   const walks = src => handWalkers(src).map(w => w.line + ' ' + w.name);
-  [['function walk(v) { if (v && typeof v === \'object\') Object.keys(v).forEach(k => walk(v[k])); }', ['1 walk']],
-   ['const flat = (o, out) => {\n  for (const k in o) flat(o[k], out);\n  return out;\n};', ['1 flat']],
-   ['const each = v => { if (v && typeof v === \'object\') Object.values(v).forEach(each); };', ['1 each']],
-   ['  const strip = function (v) {\n    Object.entries(v).forEach(([k, x]) => { if (x && typeof x === \'object\') strip(x); });\n  };', ['1 strip']],
-   ['function size(o) {\n  return Object.keys(o).length;\n}\nfunction walk(t) {\n  if (Array.isArray(t)) t.forEach(walk);\n  else Object.keys(t).forEach(k => walk(t[k]));\n}', ['4 walk']],
-   ['async function walk(v) {\n  for (const k in v) await walk(v[k]);\n}', ['1 walk']],
-   ['const each = async (v) => { Object.values(v).forEach(each); };', ['1 each']],
-   ['function files(d) {\n  return fs.readdirSync(d).flatMap(f => /\\./.test(f) ? [f] : files(d + \'/\' + f));\n}', []],
-   ['const visit = C => Object.keys(C).forEach(k => tree.visit(C[k], f));', []]
-  ].forEach(([src, want]) => ok(JSON.stringify(walks(src)) === JSON.stringify(want),
-    'walker check on ' + JSON.stringify(src) + ' found ' + JSON.stringify(walks(src)) + ', wanted ' + JSON.stringify(want)));
+  selfTest('walker', walks, [
+    ['function walk(v) { if (v && typeof v === \'object\') Object.keys(v).forEach(k => walk(v[k])); }', ['1 walk']],
+    ['const flat = (o, out) => {\n  for (const k in o) flat(o[k], out);\n  return out;\n};', ['1 flat']],
+    ['const each = v => { if (v && typeof v === \'object\') Object.values(v).forEach(each); };', ['1 each']],
+    ['  const strip = function (v) {\n    Object.entries(v).forEach(([k, x]) => { if (x && typeof x === \'object\') strip(x); });\n  };', ['1 strip']],
+    ['function size(o) {\n  return Object.keys(o).length;\n}\nfunction walk(t) {\n  if (Array.isArray(t)) t.forEach(walk);\n  else Object.keys(t).forEach(k => walk(t[k]));\n}', ['4 walk']],
+    ['async function walk(v) {\n  for (const k in v) await walk(v[k]);\n}', ['1 walk']],
+    ['const each = async (v) => { Object.values(v).forEach(each); };', ['1 each']],
+    ['function files(d) {\n  return fs.readdirSync(d).flatMap(f => /\\./.test(f) ? [f] : files(d + \'/\' + f));\n}', []],
+    ['const visit = C => Object.keys(C).forEach(k => tree.visit(C[k], f));', []]
+  ]);
   /* A loop over COLLECTIONS that calls visit() or rewrite() walks the course one collection
      at a time, whatever its argument is written as and whatever comes before the call: the
      lines such loops open on. A quote or a word just before the name is the inside of a
      string, as in this table, and does not count. */
   const perCollection = src => blocks(src, /(?<!['"\w$])COLLECTIONS\.forEach\(/)
     .filter(b => /\b(visit|rewrite)\(/.test(b.text)).map(b => b.line);
-  [['COLLECTIONS.forEach(k => tree.visit(C[k], f, k, k));', [1]],
-   ['COLLECTIONS.forEach((k) => { C[k] = tree.rewrite(C[k], f, k, k); });', [1]],
-   ['const n = 0;\nCOLLECTIONS.forEach(k => {\n  const x = C[k];\n  tree.visit(x, f, k, k);\n});', [2]],
-   ['COLLECTIONS.forEach(k => owed(C[k], k, \'\', out));', []]
-  ].forEach(([src, want]) => ok(JSON.stringify(perCollection(src)) === JSON.stringify(want),
-    'collection check on ' + JSON.stringify(src) + ' found ' + JSON.stringify(perCollection(src)) + ', wanted ' + JSON.stringify(want)));
+  selfTest('collection', perCollection, [
+    ['COLLECTIONS.forEach(k => tree.visit(C[k], f, k, k));', [1]],
+    ['COLLECTIONS.forEach((k) => { C[k] = tree.rewrite(C[k], f, k, k); });', [1]],
+    ['const n = 0;\nCOLLECTIONS.forEach(k => {\n  const x = C[k];\n  tree.visit(x, f, k, k);\n});', [2]],
+    ['COLLECTIONS.forEach(k => owed(C[k], k, \'\', out));', []]
+  ]);
   suites.forEach(f => {
     const src = read(f);
     ok(!/JSON\.parse\(JSON\.stringify\(NL\.content/.test(src), f + ': copies the course by hand; use raw() from test/lib/prose.js');
@@ -363,6 +368,10 @@ NL.state.open().then(() => {
   read('test/smoke.js').split('\n').forEach((l, i) => {
     if (/readFileSync\(path\.join\(ROOT,/.test(l) && !/^const read = /.test(l)) ok(false, 'test/smoke.js:' + (i + 1) + ': reads a file of the repository by hand; use read()');
   });
+
+  /* A check that reads code proves itself on cases written out by hand, through selfTest():
+     outside it, no table of cases is run through ok() by hand. */
+  ok(!/\.forEach\(\(\[src, want\]\)/.test(outside(read('test/smoke.js'), /^function selfTest\(/)), 'test/smoke.js checks a table of cases by hand; use selfTest()');
 
   items.filter(i => i.art).forEach(i =>
     ok(i.nl.startsWith(i.art + ' '), 'article mismatch: ' + i.nl + ' / ' + i.art));
