@@ -317,7 +317,8 @@ NL.state.open().then(() => {
   /* The fake browser's 'held' timers keep a real tick's rules, which lang.js's 5b counts on:
      nothing runs before B.tick(), then every timer runs in the order it was set; clearTimeout
      takes one out, before the tick or during it; a timer set during the tick waits for the
-     next. An unknown mode fails and names itself. This page loads no source, only timers. */
+     next. B.waiting() counts the timers that wait. An unknown mode fails and names itself.
+     These pages load no source, only timers. */
   {
     const H = browser.open({ root: ROOT, files: [], timers: 'held' });
     const ran = [];
@@ -326,16 +327,32 @@ NL.state.open().then(() => {
     H.ctx.setTimeout(() => { ran.push('c'); H.ctx.clearTimeout(d); }, 0);
     const d = H.ctx.setTimeout(() => ran.push('d'), 0);
     H.ctx.clearTimeout(b);
-    const before = ran.join(' ');
+    const before = ran.join(' '), waitedBefore = H.waiting();
     H.tick();
-    const first = ran.join(' ');
+    const first = ran.join(' '), waitedFirst = H.waiting();
     H.tick();
     ok(before === '' && first === 'a c' && ran.join(' ') === 'a c next', 'test/lib/browser.js: held timers ran « ' + before + ' » before B.tick(), « ' + first + ' » at the first tick and « ' + ran.join(' ') + ' » by the second; wanted « », « a c » and « a c next »');
+    ok(waitedBefore === 3 && waitedFirst === 1 && H.waiting() === 0, 'test/lib/browser.js: B.waiting() counted ' + waitedBefore + ', ' + waitedFirst + ' and ' + H.waiting() + ' held timers; wanted 3 before the first tick, 1 after it and 0 after the second');
     let unknown = '';
     try { browser.open({ root: ROOT, files: [], timers: 'hold' }); } catch (e) { unknown = e.message; }
     ok(unknown.indexOf('hold') >= 0, 'test/lib/browser.js: an unknown timers mode fails without naming itself: « ' + unknown + ' »');
+    /* An error in a held timer comes out of B.tick(), the suite's own call, once the tick's other
+       timers have run; onTimerError, when given, receives it instead. */
+    const E = browser.open({ root: ROOT, files: [], timers: 'held' });
+    const after = [];
+    E.ctx.setTimeout(() => { throw new Error('boom'); }, 0);
+    E.ctx.setTimeout(() => after.push('next'), 0);
+    let thrown = '';
+    try { E.tick(); } catch (e) { thrown = e.message; }
+    ok(thrown === 'boom' && after.join(' ') === 'next', 'test/lib/browser.js: an error in a held timer came out of B.tick() as « ' + thrown + ' » and the timer after it ran « ' + after.join(' ') + ' »; wanted « boom » and « next »');
+    const caught = [];
+    const C = browser.open({ root: ROOT, files: [], timers: 'held', onTimerError: e => caught.push(e.message) });
+    C.ctx.setTimeout(() => { throw new Error('boom'); }, 0);
+    let out = '';
+    try { C.tick(); } catch (e) { out = e.message; }
+    ok(out === '' && caught.join(' ') === 'boom', 'test/lib/browser.js: with onTimerError, a held timer\'s error came out of B.tick() as « ' + out + ' » and reached the handler as « ' + caught.join(' ') + ' »; wanted « » and « boom »');
   }
-  console.log('  fake browser    held timers wait for B.tick(), run in order and can be cleared; an unknown mode names itself');
+  console.log('  fake browser    held timers wait for B.tick(), run in order, can be cleared and are counted, and their errors come out of B.tick(); an unknown mode names itself');
 
   /* #74. A name says what it holds. What is typed into « Mes mots » beside the Dutch is a
      gloss (GLOSSARY.md), in either language; the notice's list holds keys of NL.t; only the

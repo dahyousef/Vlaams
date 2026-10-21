@@ -343,7 +343,11 @@ function langChecks() {
       const N = B.NL, S = N.screens.sessie, html = () => B.app.innerHTML;
       const fr = N.tables.fr, en = N.tables.en;
       dueReviews(N, 12, T0);
+      /* Le tour du démarrage est fini avant le premier geste de la personne. Chaque essai part
+         d'un tour fini et finit le sien. */
+      B.tick();
       const waits = (what, enter) => {
+        ok(B.waiting() === 0, '5b ' + what + ' : ' + B.waiting() + ' minuteur(s) d\'avant attendent encore B.tick()');
         enter();
         const before = text(html());
         N.state.setMeta({ displayLang: 'fr' }, true);   // ce que fait une synchro
@@ -361,9 +365,18 @@ function langChecks() {
         N.ui.go('vandaag');
         ok(count(text(html()), fr.langNotice) === 0, '5b ' + what + ' : l\'avis revient à l\'écran d\'après, un tour plus tard');
         English(B); N.ui.go('vandaag');
+        B.tick();
       };
       waits('séance', () => { ok(S.begin('vandaag'), '5b : aucune séance à démarrer'); N.ui.go('sessie'); });
       waits('conversation', () => N.ui.go('scenario', N.content.scenarios[0].id));
+      /* Deux avis levés dans un même tour attendent un seul minuteur, et le tour d'après les efface. */
+      N.state.setMeta({ displayLang: 'fr' }, true); N.lang.applyAndTell();
+      N.state.setMeta({ displayLang: 'en' }, true);
+      const waited = B.waiting();
+      N.lang.applyAndTell();
+      ok(B.waiting() === waited, '5b : un second avis dans le même tour pose un second minuteur (' + waited + ' puis ' + B.waiting() + ' en attente)');
+      B.tick(); N.lang.seen();
+      ok(N.lang.notice() === '', '5b : l\'avis levé deux fois dans un tour est encore là au tour d\'après');
 
       /* 5c. Un mot à soi garde la langue où il a été tapé, et se lit dans cette langue. */
       const C = boot(null);

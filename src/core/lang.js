@@ -8,8 +8,9 @@
 NL.lang = (function () {
   'use strict';
   /* noticeKeys : les clés de NL.t que l'avis dit, dans l'ordre ; vide, il n'y a pas d'avis.
-     tickOver : le tour où l'avis s'est levé est fini ; seen() peut alors l'effacer. */
-  let applied = null, noticeKeys = [], tickOver = false, fromSync = false;
+     tickOver : le tour où l'avis s'est levé est fini ; seen() peut alors l'effacer.
+     tickTimer : le minuteur qui finit ce tour ; un second avis du même tour le remplace. */
+  let applied = null, noticeKeys = [], tickOver = false, tickTimer = 0, fromSync = false;
 
   const current = () => NL.state.meta().displayLang === 'fr' ? 'fr' : 'en';
 
@@ -35,7 +36,8 @@ NL.lang = (function () {
     /* render() dessine l'avis dans le tour où il se lève. Un avis dessiné puis
        remplacé dans ce même tour n'a pas été vu : seen() ne l'efface qu'au tour d'après. */
     tickOver = false;
-    setTimeout(() => { tickOver = true; }, 0);
+    clearTimeout(tickTimer);
+    tickTimer = setTimeout(() => { tickOver = true; }, 0);
   }
 
   /* Enregistre le choix ; render() l'applique au premier écran hors séance. */
