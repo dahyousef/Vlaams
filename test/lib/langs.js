@@ -1,3 +1,15 @@
+/* Ce que les suites lisent d'un HTML, écrit une fois.
+
+     const { text, runs, count, argsOf } = require('./lib/langs');
+     text(html)          le texte que l'écran montre, balises retirées
+     runs(html, lang)    ses passages de texte, chacun avec la langue qu'il déclare
+     count(s, sub)       combien de fois `sub` paraît dans `s`
+     argsOf(k, f, nums)  ce qu'une fonction des tables fr et en reçoit dans un test */
+
+/* Le texte que l'écran montre : chaque balise devient un blanc, &nbsp; une espace, et les
+   blancs se ramènent à un seul. */
+const text = html => String(html).replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+
 /* Les passages de texte d'un HTML et la langue que chacun déclare : celle de l'attribut
    lang le plus proche qui l'enveloppe, sinon celle de la racine. */
 const VOID = /^(area|base|br|col|embed|hr|img|input|link|meta|source|track|wbr)$/i;
@@ -32,4 +44,4 @@ const count = (s, sub) => s.split(sub).length - 1;
    dans `nums` ; paceNote, comme à l'écran, un rythme fait du premier et du dernier. */
 const argsOf = (k, f, nums) => k === 'paceNote' ? [{ mins: nums[0], cap: nums[nums.length - 1] }] : nums.slice(0, f.length);
 
-module.exports = { runs, count, argsOf };
+module.exports = { text, runs, count, argsOf };

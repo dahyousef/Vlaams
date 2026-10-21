@@ -3,9 +3,8 @@
    appareil à l'autre, la révision la plus récente qui gagne, la fusion des
    réglages, la boîte d'envoi qui survit à une panne réseau, l'effacement quand un
    autre compte se connecte, et l'inertie totale sans configuration. */
-const fs = require('fs'), path = require('path'), { runInContext } = require('vm');
 const browser = require('./lib/browser');
-const { count } = require('./lib/langs');
+const { text, count } = require('./lib/langs');
 const { dueReviews } = require('./lib/seed');
 const ROOT = process.argv[2];
 
@@ -18,18 +17,21 @@ const { fakeSupabase, KEYS, keyOf, clone } = require('./lib/supabase');
 const { server, fakeLib, rowsFor } = fakeSupabase();
 
 /* ---------------- un appareil ---------------- */
-function device(name, withConfig, store, idb) {
+function device(name, withConfig, store, idb, whole) {
   const dev = { name, store: store || {} };
   /* Des minuteurs réels : la boîte d'envoi se vide après un délai, et c'est ce
-     délai que le test attend. app.js est laissé de côté : boot() démarre, ou page() le lance.
+     délai que le test attend. app.js est laissé de côté, et boot() démarre ; sur la page
+     entière (whole), app.js tourne et démarre seul, et les champs que lit l'écran se
+     remplissent dans dev.fields.
      idb : true pour un IndexedDB neuf, ou le `idb` d'un appareil pour le recharger. */
   const B = browser.open({
-    root: ROOT, timers: 'real', skip: ['src/app.js'], store: dev.store, idb: idb || null, ua: 'Mozilla/5.0 Chrome/120',
+    root: ROOT, timers: 'real', skip: whole ? [] : ['src/app.js'], byId: whole ? 'stub' : null,
+    store: dev.store, idb: idb || null, ua: 'Mozilla/5.0 Chrome/120',
     config: withConfig ? { supabaseUrl: 'https://example.supabase.co', supabaseAnonKey: 'anon' } : null,
     supabase: withConfig ? fakeLib(dev) : null
   });
   const ctx = B.ctx, root = B.app;
-  dev.ctx = ctx; dev.NL = B.NL; dev.root = root; dev.idb = B.idb;
+  dev.ctx = ctx; dev.NL = B.NL; dev.root = root; dev.idb = B.idb; dev.fields = B.fields;
   dev.boot = async () => {
     await dev.NL.state.open(); dev.NL.content.refresh();
     dev.NL.ui.bind(root);
@@ -48,18 +50,12 @@ function device(name, withConfig, store, idb) {
 }
 
 /* La page entière : un appareil configuré où app.js tourne et le démarre seul, sans boot().
-   Les champs que l'écran compte lit se remplissent dans dev.vals. */
-function page(name) {
-  const dev = device(name, true);
-  dev.vals = {};
-  dev.ctx.document.getElementById = id => (id === 'app' ? dev.root : { value: dev.vals[id] || '' });
-  runInContext(fs.readFileSync(path.join(ROOT, 'src/app.js'), 'utf8'), dev.ctx);
-  return dev;
-}
+   Les champs que l'écran compte lit se remplissent dans dev.fields. */
+const page = name => device(name, true, null, null, true);
 
 const items = NL => NL.content.allItems();
 /* Le texte qu'un appareil montre, balises retirées. */
-const shown = dev => dev.root.innerHTML.replace(/<[^>]*>/g, ' ');
+const shown = dev => text(dev.root.innerHTML);
 
 (async () => {
   console.log('SANS CONFIGURATION');
@@ -1052,8 +1048,8 @@ const shown = dev => dev.root.innerHTML.replace(/<[^>]*>/g, ' ');
     const V = page('V');
     await wait(5);
     onCompte(V);
-    V.vals['acc-email'] = 'onglet@example.com'; V.tap({ act: 'send' }); await wait(5);
-    V.vals['acc-code'] = '123456'; V.tap({ act: 'verify' }); await wait(20);
+    V.fields['acc-email'] = 'onglet@example.com'; V.tap({ act: 'send' }); await wait(5);
+    V.fields['acc-code'] = '123456'; V.tap({ act: 'verify' }); await wait(20);
     landed(V, 'six-digit code');
     const W = page('W');
     await wait(5);

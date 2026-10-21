@@ -17,7 +17,7 @@ const B = browser.open({
 const NL = B.NL, S = NL.screens.sessie, t = NL.t;
 const answer = require('./lib/answer')(B);
 
-const text = html => String(html).replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ');
+const { text } = require('./lib/langs');
 const put = (it, rung, due) => { NL.srs.seed(it, rung); const r = NL.state.rec(it.id); r.due = due; NL.state.setRec(r); };
 const fresh = () => { NL.state.clearAll(); NL.content.refresh(); B.clock.set(T0); };
 const { SCREENS } = require('./lib/screens');

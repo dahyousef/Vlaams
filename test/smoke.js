@@ -273,8 +273,10 @@ NL.state.open().then(() => {
 
   /* The suites share their helpers through test/lib, and a copy drifts from the original.
      A click goes through B.tap, there is one fake Supabase, a due date comes from the
-     suite's clock, never from an epoch written out by hand, and timers that wait for the
-     end of the tick are the fake browser's timers: 'held', ended by B.tick(). */
+     suite's clock, never from an epoch written out by hand, timers that wait for the end
+     of the tick are the fake browser's timers ('held', ended by B.tick()), so are the
+     fields a screen reads (byId: 'stub', filled through B.fields), and the text a page
+     shows, without its tags, is text() from test/lib/langs.js. */
   const suites = ['test', 'test/tools'].reduce((all, d) => all.concat(fs.readdirSync(path.join(ROOT, d))
     .filter(f => /\.js$/.test(f)).map(f => d + '/' + f)), []);
   suites.forEach(f => {
@@ -283,8 +285,10 @@ NL.state.open().then(() => {
     ok(!/createClient\s*(:|\([^)]*\)\s*\{)/.test(src), f + ': defines a second fake Supabase; use test/lib/supabase.js');
     ok(!/\.due\s*=\s*\d{10,}/.test(src), f + ': writes a due date from a bare epoch; use the suite clock, as test/lib/seed.js does');
     ok(!/\.setTimeout\s*=[^=]/.test(src), f + ': replaces setTimeout by hand; use timers: \'held\' and B.tick() from test/lib/browser.js');
+    ok(!/\.getElementById\s*=[^=]/.test(src), f + ': fakes the page\'s fields by hand; use byId: \'stub\' and B.fields from test/lib/browser.js');
+    ok(!/\.replace\(\/<\[\^>\]\*>\/g,\s*' '\)/.test(src), f + ': strips a page\'s tags by hand; use text() from test/lib/langs.js');
   });
-  console.log('  suites          ' + suites.length + ' files: no hand-built click, no second fake Supabase, no due date from a bare epoch, no timer replaced by hand');
+  console.log('  suites          ' + suites.length + ' files: no hand-built click, no second fake Supabase, no due date from a bare epoch, no timer, page field or tag-stripper of their own');
 
   /* #74. A name says what it holds. What is typed into « Mes mots » beside the Dutch is a
      gloss (GLOSSARY.md), in either language; the doctor's two texts say what the device

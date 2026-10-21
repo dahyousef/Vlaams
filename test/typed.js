@@ -22,7 +22,7 @@ const B = browser.open(Object.assign({ seed: browser.SEED }, OPTS));
 const NL = B.NL, S = NL.screens.sessie, U = NL.util, t = NL.t;
 const answer = require('./lib/answer')(B);
 
-const text = html => String(html).replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+const { text } = require('./lib/langs');
 const fresh = () => { S.abandon(); NL.state.clearAll(); NL.content.refresh(); B.clock.set(T0); };
 const find = nl => NL.content.allItems().find(x => x.nl === nl);
 const say = s => '« ' + s + ' »';

@@ -15,6 +15,7 @@
      B.idb           le contenu de l'IndexedDB — si `idb` est donné
      B.listeners     tous les écouteurs posés, par type d'événement
      B.tap(d)        un clic sur un élément dont le dataset est d, tel que le shell le reçoit
+     B.fields        la valeur de chaque champ qu'un écran lit (B.fields['add-nl'] = '…') — si `byId` vaut 'stub'
      B.clock         l'horloge : now(), set(ms), advance(ms) — si `now` est donné
      B.spoken        ce que la synthèse vocale a prononcé — si `voices` est donné
      B.tick()        la fin du tour : les minuteurs mis de côté partent — si `timers` vaut 'held' */
@@ -112,7 +113,7 @@ const sources = root => fs.readFileSync(path.join(root, 'build.sh'), 'utf8')
      media      true → micro (refusé), MediaRecorder, presse-papiers, FileReader
      blobs      true → Blob, URL, Audio
      framed     true → la page tourne dans un cadre (window.top n'est pas window)
-     byId       'stub' : getElementById rend un élément pour tout identifiant ; défaut : null
+     byId       'stub' : getElementById rend un champ pour tout identifiant, de valeur B.fields[id] ; défaut : null
      location   champs ajoutés à location
      store      un localStorage existant (rechargement de page)
      idb        true → un IndexedDB vide ; un objet → celui d'une page précédente (B.idb) ;
@@ -139,6 +140,7 @@ function open(opts) {
     };
   }
   const app = mkEl('div');
+  const fields = {};
 
   const fakeClock = opts.now != null;
   const clock = {
@@ -186,7 +188,7 @@ function open(opts) {
     document: {
       readyState: 'complete', visibilityState: 'visible',
       documentElement: { attrs: {}, setAttribute(k, v) { this.attrs[k] = v; }, removeAttribute(k) { delete this.attrs[k]; } },
-      getElementById: id => (id === 'app' ? app : opts.byId === 'stub' ? mkEl('input') : null),
+      getElementById: id => (id === 'app' ? app : opts.byId === 'stub' ? Object.assign(mkEl('input'), { value: fields[id] || '' }) : null),
       querySelector: () => null, querySelectorAll: () => [],
       addEventListener: listen,
       activeElement: { tagName: 'BODY' }, createElement: mkEl, body: { appendChild() {} },
@@ -249,7 +251,7 @@ function open(opts) {
 
   const tap = d => (listeners.click || []).forEach(f => f({ target: { closest: () => ({ dataset: d }) } }));
 
-  return { ctx, NL: ctx.NL, app, store, idb, listeners, spoken, clock, mkEl, tap, tick, random: M.random };
+  return { ctx, NL: ctx.NL, app, store, idb, listeners, spoken, clock, mkEl, tap, tick, fields, random: M.random };
 }
 
 module.exports = { open, rng, sources, UA, SEED };

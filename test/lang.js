@@ -5,7 +5,7 @@ const fs = require('fs'), path = require('path'), vm = require('vm');
 const browser = require('./lib/browser');
 const { PROSE } = require('./lib/prose');
 const tree = require('./lib/tree');
-const { runs, count, argsOf } = require('./lib/langs');
+const { text: tagless, runs, count, argsOf } = require('./lib/langs');
 const { fakeSupabase } = require('./lib/supabase');
 const { dueReviews } = require('./lib/seed');
 const ROOT = process.argv[2] || path.join(__dirname, '..');
@@ -32,10 +32,8 @@ function boot(prepare, store, account, timers) {
   vm.runInContext(fs.readFileSync(path.join(ROOT, 'src/app.js'), 'utf8'), B.ctx);
   return B;
 }
-/* Le texte lu : balises retirées, mais aria-label, placeholder, title et alt gardés. */
-const text = html => String(html)
-  .replace(/\s(aria-label|placeholder|title|alt)="([^"]*)"/g, ' > $2 <')
-  .replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ');
+/* Le texte lu : text() de test/lib/langs.js, avec aria-label, placeholder, title et alt gardés. */
+const text = html => tagless(String(html).replace(/\s(aria-label|placeholder|title|alt)="([^"]*)"/g, ' > $2 <'));
 
 /* Chaque état d'écran que la personne peut voir, dans un ordre fixe. `visit(nom, html)`
    reçoit le HTML de l'écran. Deux navigateurs partis de la même graine visitent les
@@ -370,12 +368,11 @@ function langChecks() {
       /* 5c. Un mot à soi garde la langue où il a été tapé, et se lit dans cette langue. */
       const C = boot(null);
       return C.NL.state.open().then(() => {
-        const NL = C.NL, vals = {};
+        const NL = C.NL;
         French(C);
-        C.ctx.document.getElementById = id => ({ value: vals[id] || '' });
         const add = (nl, gl) => {
           C.clock.advance(1); /* un identifiant par milliseconde */
-          vals['add-nl'] = nl; vals['add-gloss'] = gl;
+          C.fields['add-nl'] = nl; C.fields['add-gloss'] = gl;
           NL.ui.go('woorden');
           NL.screens.woorden.click({ dataset: {} }, { act: 'addform' });
           NL.screens.woorden.click({ dataset: {} }, { act: 'addsave' });
