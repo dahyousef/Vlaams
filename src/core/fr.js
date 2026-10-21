@@ -198,13 +198,13 @@ NL.tables.fr = {
   missTile: n => n === 0 ? 'Rien pour l’instant' : n === 1 ? 'Un élément souvent raté' : n + ' éléments souvent ratés',
   missRow: (wrong, total) => 'raté ' + wrong + ' fois sur ' + total,
   missStart: n => n === 1 ? 'Travailler cet élément' : 'Travailler les ' + n + ' plus ratés',
-  wordsNl: 'Néerlandais', wordsFr: 'Français', wordsBe: 'Comme on dit ici',
+  wordsNl: 'Néerlandais', wordsMeaning: 'Français', wordsBe: 'Comme on dit ici',
   wordsOptional: '(facultatif)',
   wordsNeedBoth: 'Le néerlandais et le français sont nécessaires.',
   wordsAdded: 'Ajouté — il reviendra tout seul.',
   wordsHere: 'ici :',
   wordsPhNl: 'de vergaderzaal',
-  wordsPhFr: 'la salle de réunion',
+  wordsPhMeaning: 'la salle de réunion',
   wordsMineGroup: 'Mes mots',
 
   /* --- fiches --- */
@@ -338,7 +338,7 @@ NL.tables.fr = {
   tierCompareNote: 'Pas de reconnaissance vocale ici. Tu peux quand même t’enregistrer et te comparer au modèle, ce qui est une vraie méthode de travail.',
   tierSelf: 'Auto-évaluation',
   tierSelfNote: 'Ni reconnaissance ni enregistrement disponibles. Les exercices oraux te demandent de dire la phrase puis de te juger honnêtement. Ça marche, mais une page hébergée hors d’un cadre te donnerait mieux.',
-  /* le rapport de voix : speech.voiceInfo() rend la clé, l'écran la lit au dessin */
+  /* le rapport de voix : speech.voiceInfo().noteKey rend la clé, l'écran la lit au dessin */
   voiceNoteBe: 'Voix flamande trouvée.',
   voiceNoteNl: 'Seule une voix des Pays-Bas est installée : l’audio a donc l’accent du nord, avec un g raclé là où la Flandre utilise un g doux.',
   voiceNoteNone: 'Aucune voix néerlandaise trouvée. L’audio retombe sur la voix par défaut du navigateur et ne sonnera pas néerlandais.',
@@ -350,6 +350,7 @@ NL.tables.fr = {
   errCount: n => n === 1 ? 'Une erreur enregistrée. Rien ne quitte cet appareil : copie le texte pour l’envoyer.' : n + ' erreurs enregistrées. Rien ne quitte cet appareil : copie le texte pour l’envoyer.',
   errCopy: 'Copier', errClear: 'Vider la liste',
   errCopied: 'Copié.', errCopyByHand: 'Sélectionne le texte et copie-le à la main.',
+  backupCopied: 'Copié.', backupCopyByHand: 'Sélectionne le texte et copie-le à la main.',
   docFixTitle: 'Installer la voix flamande sur Windows',
   docFixSteps: [
     'Paramètres → Heure et langue → Langue et région',

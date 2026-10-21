@@ -234,6 +234,20 @@ NL.state.open().then(() => {
   });
   console.log('  suites          ' + suites.length + ' files: no hand-built click, no second fake Supabase, no due date from a bare epoch');
 
+  /* #74. A name says what it holds. The meaning typed into « Mes mots » is in either
+     language; the notice's list holds keys of NL.t; the backup's copy has its own two
+     texts; and voiceInfo() hands back a key of NL.t, read as t[v.noteKey]. */
+  sources.concat(suites).forEach(f => {
+    const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
+    ok(!/\bwords(Ph)?Fr\b|\badd-en\b/.test(src), f + ': names the meaning of « Mes mots » after one language; it is wordsMeaning, wordsPhMeaning and add-meaning');
+    ok(!/\bv\.note\b|voiceInfo\(\)\.note\b/.test(src), f + ': reads the voice report\'s key under its old name; it is noteKey');
+  });
+  ok(!/\bconst en\b/.test(fs.readFileSync(path.join(ROOT, 'src/ui/library.js'), 'utf8')), 'src/ui/library.js: the meaning typed into « Mes mots » is held in en; it is meaning');
+  ok(!/\bnotice\s*=[^=]/.test(fs.readFileSync(path.join(ROOT, 'src/core/lang.js'), 'utf8')), 'src/core/lang.js: the notice\'s list of keys is named notice; it is noticeKeys');
+  ok(fs.readFileSync(path.join(ROOT, 'src/ui/shell.js'), 'utf8').indexOf('errCop') < 0, 'src/ui/shell.js: the backup copy reads the error log\'s texts; use backupCopied and backupCopyByHand');
+  ok(typeof NL.tables.fr.backupCopied === 'string' && typeof NL.tables.fr.backupCopyByHand === 'string', 'fr.js has no backupCopied or backupCopyByHand');
+  ok(typeof NL.t[NL.speech.voiceInfo().noteKey] === 'string', 'voiceInfo() has no noteKey naming a key of NL.t');
+
   items.filter(i => i.art).forEach(i =>
     ok(i.nl.startsWith(i.art + ' '), 'article mismatch: ' + i.nl + ' / ' + i.art));
 

@@ -48,7 +48,7 @@ NL.speech = (function () {
     quality,                                  // 'be' | 'nl' | 'none' | 'unknown'
     name: voiceNow() ? voiceNow().name : null,
     lang: voiceNow() ? voiceNow().lang : null,
-    note: quality === 'be' ? 'voiceNoteBe'
+    noteKey: quality === 'be' ? 'voiceNoteBe'
       : quality === 'nl' ? 'voiceNoteNl'
         : 'voiceNoteNone'
   });

@@ -153,7 +153,7 @@ NL.ui = (function () {
         (NL.sync.enabled ? accountBlock() : '') +
 
         '<div class="set-block"><h4>' + t.setVoice + '</h4>' +
-        '<p class="set-note ' + (v.quality === 'be' ? 'good' : 'warn') + '">' + esc(t[v.note]) +
+        '<p class="set-note ' + (v.quality === 'be' ? 'good' : 'warn') + '">' + esc(t[v.noteKey]) +
         (v.name ? ' <span class="muted">(' + esc(v.name) + ')</span>' : '') + '</p>' +
         '<p class="set-note ' + (mic ? 'warn' : 'good') + '">' + esc(micLine(mic)) + '</p>' +
         '<button class="btn btn-blue wide" data-go="doctor">' + t.setDoctor + '</button></div>' +
@@ -333,7 +333,7 @@ NL.ui = (function () {
             const ok = navigator.clipboard
               ? navigator.clipboard.writeText(box.value).then(() => true).catch(() => false)
               : Promise.resolve(document.execCommand && document.execCommand('copy'));
-            Promise.resolve(ok).then(good => toast(good ? t.errCopied : t.errCopyByHand));
+            Promise.resolve(ok).then(good => toast(good ? t.backupCopied : t.backupCopyByHand));
           }
           return;
         }

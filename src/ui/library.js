@@ -44,7 +44,7 @@
       if (adding) {
         html += '<section class="card add-form">' +
           '<label>' + NL.t.wordsNl + '<input class="textin" id="add-nl" placeholder="' + NL.t.wordsPhNl + '"></label>' +
-          '<label>' + NL.t.wordsFr + '<input class="textin" id="add-en" placeholder="' + NL.t.wordsPhFr + '"></label>' +
+          '<label>' + NL.t.wordsMeaning + '<input class="textin" id="add-meaning" placeholder="' + NL.t.wordsPhMeaning + '"></label>' +
           '<label>' + NL.t.wordsBe + ' <span class="muted">' + NL.t.wordsOptional + '</span><input class="textin" id="add-be" placeholder=""></label>' +
           '<div class="row"><button class="btn btn-good" data-act="addsave">' + NL.t.save + '</button>' +
           '<button class="btn btn-ghost" data-act="addcancel">' + NL.t.cancel + '</button></div></section>';
@@ -86,10 +86,10 @@
       if (d.act === 'filter') { filter = el.dataset.f; query = ''; NL.ui.render(); return; }
       if (d.act === 'addsave') {
         const nl = (document.getElementById('add-nl') || {}).value || '';
-        const en = (document.getElementById('add-en') || {}).value || '';
+        const meaning = (document.getElementById('add-meaning') || {}).value || '';
         const be = (document.getElementById('add-be') || {}).value || '';
-        if (!nl.trim() || !en.trim()) { NL.ui.toast(NL.t.wordsNeedBoth); return; }
-        NL.state.addCustom({ nl: nl.trim(), [NL.lang.current()]: en.trim(), be: be.trim() || null, kind: nl.trim().split(/\s+/).length > 2 ? 'phrase' : 'word' });
+        if (!nl.trim() || !meaning.trim()) { NL.ui.toast(NL.t.wordsNeedBoth); return; }
+        NL.state.addCustom({ nl: nl.trim(), [NL.lang.current()]: meaning.trim(), be: be.trim() || null, kind: nl.trim().split(/\s+/).length > 2 ? 'phrase' : 'word' });
         NL.content.refresh(); adding = false; NL.ui.render(); NL.ui.toast(NL.t.wordsAdded);
         return;
       }
@@ -171,6 +171,8 @@
         '<h3 class="sec">' + NL.t.fauxEnTitle + ' ' + anchor('fauxEn') + '</h3>' +
         '<section class="card lead slim"><p>' + NL.t.fauxEnBody + '</p></section>' +
         '<div class="reg-table"><div class="reg-head"><span>' + NL.t.fauxColNl + '</span><span>' + NL.t.fauxColMeaning + '</span></div>' +
+        /* r.en, et non NL.gloss.of(r) : les faux amis d'un anglophone sont en anglais dans les
+           deux affichages (src/content/reference.js). */
         NL.content.fauxEn.map(r =>
           '<div class="reg-row">' +
           '<button class="reg-cell be" lang="nl-BE" data-say="' + esc(r.nl) + '">' + esc(r.nl) + '</button>' +

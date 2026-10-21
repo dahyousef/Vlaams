@@ -7,9 +7,9 @@
    marque, comme l'avis, n'est pas enregistrée. */
 NL.lang = (function () {
   'use strict';
-  /* notice : les clés de NL.t que l'avis dit, dans l'ordre ; vide, il n'y a pas d'avis.
+  /* noticeKeys : les clés de NL.t que l'avis dit, dans l'ordre ; vide, il n'y a pas d'avis.
      shown : le tour où l'avis s'est levé est fini, l'avis a donc pu être vu. */
-  let applied = null, notice = [], shown = false, fromSync = false;
+  let applied = null, noticeKeys = [], shown = false, fromSync = false;
 
   const current = () => NL.state.meta().displayLang === 'fr' ? 'fr' : 'en';
 
@@ -25,7 +25,7 @@ NL.lang = (function () {
     document.documentElement.setAttribute('lang', NL.gloss.tag(l));
     applied = l;
     if (!quiet) {
-      notice = bySync ? ['langSynced', 'langNotice'] : ['langNotice'];
+      noticeKeys = bySync ? ['langSynced', 'langNotice'] : ['langNotice'];
       /* render() dessine l'avis dans le tour où il se lève. Un avis dessiné puis
          remplacé dans ce même tour n'a pas été vu : seen() ne l'efface qu'au tour d'après. */
       shown = false;
@@ -48,8 +48,8 @@ NL.lang = (function () {
     if (current() !== before) fromSync = true;
   }
 
-  const text = () => notice.map(k => NL.t[k]).join(' ');
-  const seen = () => { if (shown) notice = []; };
+  const text = () => noticeKeys.map(k => NL.t[k]).join(' ');
+  const seen = () => { if (shown) noticeKeys = []; };
 
   return { current, apply, set, fromAccount, notice: text, seen };
 })();

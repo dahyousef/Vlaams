@@ -407,7 +407,7 @@ function langChecks() {
         C.ctx.document.getElementById = id => ({ value: vals[id] || '' });
         const add = (nl, gl) => {
           C.clock.advance(1); /* un identifiant par milliseconde */
-          vals['add-nl'] = nl; vals['add-en'] = gl;
+          vals['add-nl'] = nl; vals['add-meaning'] = gl;
           NL.ui.go('woorden');
           NL.screens.woorden.click({ dataset: {} }, { act: 'addform' });
           NL.screens.woorden.click({ dataset: {} }, { act: 'addsave' });
@@ -588,7 +588,7 @@ function addFormCheck(B) {
     set(B);
     NL.ui.go('woorden');
     B.tap({ act: 'addform' });
-    const m = /<label>([^<]*)<input class="textin" id="add-en"/.exec(B.app.innerHTML);
+    const m = /<label>([^<]*)<input class="textin" id="add-meaning"/.exec(B.app.innerHTML);
     ok(m && name.test(m[1]), '6c : en ' + l + ', le champ enregistré sous « ' + NL.lang.current() + ' » est étiqueté « ' + (m && m[1]) + ' »');
     B.tap({ act: 'addcancel' });
   });

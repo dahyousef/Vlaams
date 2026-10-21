@@ -24,7 +24,7 @@ NL.state.open().then(() => {
   ok(home.includes(NL.t.todayStart), 'no session button on a blank account');
   Object.keys(NL.tables.fr).forEach(k => { const f = NL.tables.fr[k], e = NL.tables.en[k]; if (typeof f === 'string' && f.length >= 12 && f !== e) ok(home.indexOf(f) < 0, 'the other language leaked onto the home screen: ' + k); });
   console.log('  home screen     ' + home.length + ' chars, session offered');
-  console.log('  voice report    ' + NL.t[NL.speech.voiceInfo().note].slice(0, 60) + '…');
+  console.log('  voice report    ' + NL.t[NL.speech.voiceInfo().noteKey].slice(0, 60) + '…');
   console.log('  mic verdict     listenBlocked=' + NL.speech.listenBlocked() + ', tier=' + NL.speech.tier().id);
   ok(NL.speech.listenBlocked() === 'browser', 'Opera should report no recogniser');
   ok(NL.speech.tier().id === 'self' || NL.speech.tier().id === 'compare', 'Opera tier should be compare or self');

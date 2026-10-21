@@ -1075,13 +1075,13 @@ NL.tables.fr = {
   missTile: n => n === 0 ? 'Rien pour l’instant' : n === 1 ? 'Un élément souvent raté' : n + ' éléments souvent ratés',
   missRow: (wrong, total) => 'raté ' + wrong + ' fois sur ' + total,
   missStart: n => n === 1 ? 'Travailler cet élément' : 'Travailler les ' + n + ' plus ratés',
-  wordsNl: 'Néerlandais', wordsFr: 'Français', wordsBe: 'Comme on dit ici',
+  wordsNl: 'Néerlandais', wordsMeaning: 'Français', wordsBe: 'Comme on dit ici',
   wordsOptional: '(facultatif)',
   wordsNeedBoth: 'Le néerlandais et le français sont nécessaires.',
   wordsAdded: 'Ajouté — il reviendra tout seul.',
   wordsHere: 'ici :',
   wordsPhNl: 'de vergaderzaal',
-  wordsPhFr: 'la salle de réunion',
+  wordsPhMeaning: 'la salle de réunion',
   wordsMineGroup: 'Mes mots',
 
   /* --- fiches --- */
@@ -1215,7 +1215,7 @@ NL.tables.fr = {
   tierCompareNote: 'Pas de reconnaissance vocale ici. Tu peux quand même t’enregistrer et te comparer au modèle, ce qui est une vraie méthode de travail.',
   tierSelf: 'Auto-évaluation',
   tierSelfNote: 'Ni reconnaissance ni enregistrement disponibles. Les exercices oraux te demandent de dire la phrase puis de te juger honnêtement. Ça marche, mais une page hébergée hors d’un cadre te donnerait mieux.',
-  /* le rapport de voix : speech.voiceInfo() rend la clé, l'écran la lit au dessin */
+  /* le rapport de voix : speech.voiceInfo().noteKey rend la clé, l'écran la lit au dessin */
   voiceNoteBe: 'Voix flamande trouvée.',
   voiceNoteNl: 'Seule une voix des Pays-Bas est installée : l’audio a donc l’accent du nord, avec un g raclé là où la Flandre utilise un g doux.',
   voiceNoteNone: 'Aucune voix néerlandaise trouvée. L’audio retombe sur la voix par défaut du navigateur et ne sonnera pas néerlandais.',
@@ -1227,6 +1227,7 @@ NL.tables.fr = {
   errCount: n => n === 1 ? 'Une erreur enregistrée. Rien ne quitte cet appareil : copie le texte pour l’envoyer.' : n + ' erreurs enregistrées. Rien ne quitte cet appareil : copie le texte pour l’envoyer.',
   errCopy: 'Copier', errClear: 'Vider la liste',
   errCopied: 'Copié.', errCopyByHand: 'Sélectionne le texte et copie-le à la main.',
+  backupCopied: 'Copié.', backupCopyByHand: 'Sélectionne le texte et copie-le à la main.',
   docFixTitle: 'Installer la voix flamande sur Windows',
   docFixSteps: [
     'Paramètres → Heure et langue → Langue et région',
@@ -1476,13 +1477,13 @@ NL.tables.en = {
   missTile: n => n === 0 ? 'Nothing for now' : n === 1 ? 'One item often missed' : n + ' items often missed',
   missRow: (wrong, total) => 'missed ' + wrong + ' times out of ' + total,
   missStart: n => n === 1 ? 'Practise this item' : 'Practise the ' + n + ' most missed',
-  wordsNl: 'Dutch', wordsFr: 'English', wordsBe: 'As they say here',
+  wordsNl: 'Dutch', wordsMeaning: 'English', wordsBe: 'As they say here',
   wordsOptional: '(optional)',
   wordsNeedBoth: 'Dutch and the translation are both needed.',
   wordsAdded: 'Added — it will come back by itself.',
   wordsHere: 'here:',
   wordsPhNl: 'de vergaderzaal',
-  wordsPhFr: 'the meeting room',
+  wordsPhMeaning: 'the meeting room',
   wordsMineGroup: 'My words',
 
   /* --- fiches --- */
@@ -1616,7 +1617,7 @@ NL.tables.en = {
   tierCompareNote: 'No speech recognition here. You can still record yourself and compare with the model, which is a real way to work.',
   tierSelf: 'Self-assessment',
   tierSelfNote: 'Neither recognition nor recording is available. Spoken exercises ask you to say the sentence, then judge yourself honestly. It works, but a page hosted outside a frame would give you more.',
-  /* le rapport de voix : speech.voiceInfo() rend la clé, l'écran la lit au dessin */
+  /* le rapport de voix : speech.voiceInfo().noteKey rend la clé, l'écran la lit au dessin */
   voiceNoteBe: 'Flemish voice found.',
   voiceNoteNl: 'Only a voice from the Netherlands is installed: the audio therefore has the northern accent, with a scraped g where Flanders uses a soft g.',
   voiceNoteNone: 'No Dutch voice found. The audio falls back on the browser’s default voice and will not sound Dutch.',
@@ -1628,6 +1629,7 @@ NL.tables.en = {
   errCount: n => n === 1 ? 'One error recorded. Nothing leaves this device: copy the text to send it.' : n + ' errors recorded. Nothing leaves this device: copy the text to send it.',
   errCopy: 'Copy', errClear: 'Clear the list',
   errCopied: 'Copied.', errCopyByHand: 'Select the text and copy it by hand.',
+  backupCopied: 'Copied.', backupCopyByHand: 'Select the text and copy it by hand.',
   docFixTitle: 'Install the Flemish voice on Windows',
   docFixSteps: [
     'Settings → Time & language → Language & region',
@@ -2550,7 +2552,7 @@ NL.speech = (function () {
     quality,                                  // 'be' | 'nl' | 'none' | 'unknown'
     name: voiceNow() ? voiceNow().name : null,
     lang: voiceNow() ? voiceNow().lang : null,
-    note: quality === 'be' ? 'voiceNoteBe'
+    noteKey: quality === 'be' ? 'voiceNoteBe'
       : quality === 'nl' ? 'voiceNoteNl'
         : 'voiceNoteNone'
   });
@@ -5305,9 +5307,9 @@ NL.content = NL.content || {};
    marque, comme l'avis, n'est pas enregistrée. */
 NL.lang = (function () {
   'use strict';
-  /* notice : les clés de NL.t que l'avis dit, dans l'ordre ; vide, il n'y a pas d'avis.
+  /* noticeKeys : les clés de NL.t que l'avis dit, dans l'ordre ; vide, il n'y a pas d'avis.
      shown : le tour où l'avis s'est levé est fini, l'avis a donc pu être vu. */
-  let applied = null, notice = [], shown = false, fromSync = false;
+  let applied = null, noticeKeys = [], shown = false, fromSync = false;
 
   const current = () => NL.state.meta().displayLang === 'fr' ? 'fr' : 'en';
 
@@ -5323,7 +5325,7 @@ NL.lang = (function () {
     document.documentElement.setAttribute('lang', NL.gloss.tag(l));
     applied = l;
     if (!quiet) {
-      notice = bySync ? ['langSynced', 'langNotice'] : ['langNotice'];
+      noticeKeys = bySync ? ['langSynced', 'langNotice'] : ['langNotice'];
       /* render() dessine l'avis dans le tour où il se lève. Un avis dessiné puis
          remplacé dans ce même tour n'a pas été vu : seen() ne l'efface qu'au tour d'après. */
       shown = false;
@@ -5346,8 +5348,8 @@ NL.lang = (function () {
     if (current() !== before) fromSync = true;
   }
 
-  const text = () => notice.map(k => NL.t[k]).join(' ');
-  const seen = () => { if (shown) notice = []; };
+  const text = () => noticeKeys.map(k => NL.t[k]).join(' ');
+  const seen = () => { if (shown) noticeKeys = []; };
 
   return { current, apply, set, fromAccount, notice: text, seen };
 })();
@@ -6117,7 +6119,7 @@ NL.ui = (function () {
         (NL.sync.enabled ? accountBlock() : '') +
 
         '<div class="set-block"><h4>' + t.setVoice + '</h4>' +
-        '<p class="set-note ' + (v.quality === 'be' ? 'good' : 'warn') + '">' + esc(t[v.note]) +
+        '<p class="set-note ' + (v.quality === 'be' ? 'good' : 'warn') + '">' + esc(t[v.noteKey]) +
         (v.name ? ' <span class="muted">(' + esc(v.name) + ')</span>' : '') + '</p>' +
         '<p class="set-note ' + (mic ? 'warn' : 'good') + '">' + esc(micLine(mic)) + '</p>' +
         '<button class="btn btn-blue wide" data-go="doctor">' + t.setDoctor + '</button></div>' +
@@ -6297,7 +6299,7 @@ NL.ui = (function () {
             const ok = navigator.clipboard
               ? navigator.clipboard.writeText(box.value).then(() => true).catch(() => false)
               : Promise.resolve(document.execCommand && document.execCommand('copy'));
-            Promise.resolve(ok).then(good => toast(good ? t.errCopied : t.errCopyByHand));
+            Promise.resolve(ok).then(good => toast(good ? t.backupCopied : t.backupCopyByHand));
           }
           return;
         }
@@ -7061,7 +7063,7 @@ NL.screens.sessie = (function () {
       if (v.quality !== 'be') {
         html += '<button class="notice" data-go="doctor">' +
           '<b>' + (v.quality === 'nl' ? t.voiceNorthTitle : t.voiceNoneTitle) + '</b>' +
-          '<p>' + esc(t[v.note]) + ' ' + t.voiceFix + '</p></button>';
+          '<p>' + esc(t[v.noteKey]) + ' ' + t.voiceFix + '</p></button>';
       }
 
       /* La série enregistrée ne change qu'à la séance suivante : un jour sauté, elle est déjà coupée.
@@ -7717,7 +7719,7 @@ NL.screens.luisteren = (function () {
       if (adding) {
         html += '<section class="card add-form">' +
           '<label>' + NL.t.wordsNl + '<input class="textin" id="add-nl" placeholder="' + NL.t.wordsPhNl + '"></label>' +
-          '<label>' + NL.t.wordsFr + '<input class="textin" id="add-en" placeholder="' + NL.t.wordsPhFr + '"></label>' +
+          '<label>' + NL.t.wordsMeaning + '<input class="textin" id="add-meaning" placeholder="' + NL.t.wordsPhMeaning + '"></label>' +
           '<label>' + NL.t.wordsBe + ' <span class="muted">' + NL.t.wordsOptional + '</span><input class="textin" id="add-be" placeholder=""></label>' +
           '<div class="row"><button class="btn btn-good" data-act="addsave">' + NL.t.save + '</button>' +
           '<button class="btn btn-ghost" data-act="addcancel">' + NL.t.cancel + '</button></div></section>';
@@ -7759,10 +7761,10 @@ NL.screens.luisteren = (function () {
       if (d.act === 'filter') { filter = el.dataset.f; query = ''; NL.ui.render(); return; }
       if (d.act === 'addsave') {
         const nl = (document.getElementById('add-nl') || {}).value || '';
-        const en = (document.getElementById('add-en') || {}).value || '';
+        const meaning = (document.getElementById('add-meaning') || {}).value || '';
         const be = (document.getElementById('add-be') || {}).value || '';
-        if (!nl.trim() || !en.trim()) { NL.ui.toast(NL.t.wordsNeedBoth); return; }
-        NL.state.addCustom({ nl: nl.trim(), [NL.lang.current()]: en.trim(), be: be.trim() || null, kind: nl.trim().split(/\s+/).length > 2 ? 'phrase' : 'word' });
+        if (!nl.trim() || !meaning.trim()) { NL.ui.toast(NL.t.wordsNeedBoth); return; }
+        NL.state.addCustom({ nl: nl.trim(), [NL.lang.current()]: meaning.trim(), be: be.trim() || null, kind: nl.trim().split(/\s+/).length > 2 ? 'phrase' : 'word' });
         NL.content.refresh(); adding = false; NL.ui.render(); NL.ui.toast(NL.t.wordsAdded);
         return;
       }
@@ -7844,6 +7846,8 @@ NL.screens.luisteren = (function () {
         '<h3 class="sec">' + NL.t.fauxEnTitle + ' ' + anchor('fauxEn') + '</h3>' +
         '<section class="card lead slim"><p>' + NL.t.fauxEnBody + '</p></section>' +
         '<div class="reg-table"><div class="reg-head"><span>' + NL.t.fauxColNl + '</span><span>' + NL.t.fauxColMeaning + '</span></div>' +
+        /* r.en, et non NL.gloss.of(r) : les faux amis d'un anglophone sont en anglais dans les
+           deux affichages (src/content/reference.js). */
         NL.content.fauxEn.map(r =>
           '<div class="reg-row">' +
           '<button class="reg-cell be" lang="nl-BE" data-say="' + esc(r.nl) + '">' + esc(r.nl) + '</button>' +
