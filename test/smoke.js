@@ -20,13 +20,12 @@ const NL = B.NL;
 let fails = 0;
 const ok = (cond, msg) => { if (!cond) { console.log('  FAIL: ' + msg); fails++; } };
 
-/* Les `var` et les `?.` d'une source, chacun avec sa ligne. La source est d'abord
-   relue sans ses chaînes, ses commentaires, ses regex ni le texte de ses gabarits :
-   chacun de leurs caractères devient une espace, les sauts de ligne restent, et les
-   numéros de ligne avec eux. Une chaîne ou une regex encore ouverte en fin de ligne,
-   ou quoi que ce soit d'ouvert en fin de fichier, est signalé à sa ligne : la
-   relecture a perdu le fil, elle ne passe pas en silence. */
-function syntaxFindings(src) {
+/* Une source relue sans ses chaînes, ses commentaires, ses regex ni le texte de ses
+   gabarits : { code, found }. Dans code, chacun de leurs caractères devient une espace,
+   les sauts de ligne restent, et les numéros de ligne avec eux. Une chaîne ou une regex
+   encore ouverte en fin de ligne, ou quoi que ce soit d'ouvert en fin de fichier, est
+   dans found à sa ligne : la relecture a perdu le fil, elle ne passe pas en silence. */
+function codeOnly(src) {
   const out = src.split(''), found = [], frames = [];   // frames : un par ${ ouvert
   const lineAt = k => src.slice(0, k).split('\n').length;
   const lost = (what, k) => found.push({ line: lineAt(k), what: 'unclosed ' + what });
@@ -92,7 +91,14 @@ function syntaxFindings(src) {
     }
   }
   frames.forEach(f => lost('template', f.at));
-  const code = out.join('');
+  return { code: out.join(''), found };
+}
+
+/* Les `var` et les `?.` d'une source, chacun avec sa ligne, lus dans ce que codeOnly() en
+   laisse, avec ce que la relecture y a perdu. */
+function syntaxFindings(src) {
+  const { code, found } = codeOnly(src);
+  const lineAt = k => code.slice(0, k).split('\n').length;
   [[/(?<![\w$.])var(?=\s+[\w$[{])/g, 'var'], [/\?\.(?!\d)/g, '?.']].forEach(([rx, what]) =>
     Array.from(code.matchAll(rx)).forEach(m => found.push({ line: lineAt(m.index), what })));
   return found.sort((a, b) => a.line - b.line);
@@ -118,26 +124,36 @@ function blocks(src, head) {
 /* La source sans les blocs qui s'ouvrent sur `head`. */
 const outside = (src, head) => blocks(src, head).reduce((s, b) => s.replace(b.text, ''), src);
 
-/* Les fonctions d'une source qui parcourent un arbre à la main : une fonction nommée qui
-   s'appelle elle-même, ou se passe elle-même (forEach(walk)), en allant de clé en clé
-   (Object.keys, values, entries, ou for … in). Ni son nom ni son argument ne comptent, ni
-   `async`. Une méthode d'objet, ou `x.y = function`, n'est pas cherchée : elle s'appelle
-   par `this.` ou `x.`, que la recherche du nom écarte. */
+/* Les fonctions d'une source qui parcourent un arbre à la main : une fonction qui s'appelle
+   elle-même, ou se passe elle-même (forEach(walk)), en allant de clé en clé (Object.keys,
+   values, entries, ou for … in). Ni son nom ni son argument ne comptent, ni `async`. Une
+   fonction nommée (`function walk`, `const walk = …`) s'appelle par son nom seul. Une méthode
+   d'objet (`walk(v) {`, `walk: function`) ou un `x.walk = …` s'appelle par `this.walk` ou
+   `x.walk` : pour elle, c'est le nom qualifié qui compte, hors Object.keys et ses sœurs, que
+   la méthode `keys` d'un objet ne prend pas pour elle-même. */
 function handWalkers(src) {
   const named = /^\s*(?:(?:async\s+)?function\s+(\w+)\s*\(|(?:const|let)\s+(\w+)\s*=\s*(?:async\s+)?(?:function\b|\([^)]*\)\s*=>|\w+\s*=>))/;
-  return blocks(src, named).map(b => ({ line: b.line, name: b.m[1] || b.m[2], body: b.text.slice(b.m[0].length) }))
-    .filter(f => new RegExp('(?<![\\w$.])' + f.name + '\\s*\\(|[(,]\\s*' + f.name + '\\s*[),]').test(f.body) &&
-      /Object\.(keys|values|entries)\(|for\s*\(\s*(const|let)\s+\w+\s+in\b/.test(f.body));
+  const owned = /^\s*(?:(?:async\s+)?(\w+)\s*\([^)]*\)\s*\{|(?:(\w+)\s*:|[\w$.]+\.(\w+)\s*=)\s*(?:async\s+)?(?:function\b|\([^)]*\)\s*=>|\w+\s*=>))/;
+  const callsItself = f => new RegExp('(?<![\\w$.])' + f.by + f.name + '\\s*\\(|[(,]\\s*' + f.by + f.name + '\\s*[),]').test(f.body);
+  return blocks(src, named).map(b => ({ line: b.line, name: b.m[1] || b.m[2], body: b.text.slice(b.m[0].length), by: '' }))
+    .concat(blocks(src, owned).map(b => ({ line: b.line, name: b.m[1] || b.m[2] || b.m[3], body: b.text.slice(b.m[0].length), by: '(?!Object\\.)[\\w$.]+\\.' })))
+    .filter(f => callsItself(f) && /Object\.(keys|values|entries)\(|for\s*\(\s*(const|let)\s+\w+\s+in\b/.test(f.body))
+    .sort((a, b) => a.line - b.line);
 }
 
 /* Les actes d'une source et les textes du journal d'erreurs : combien de blocs s'ouvrent sur
    l'acte errcopy, et chaque autre acte dont le bloc montre errCopied ou errCopyByHand. Tous
-   les actes de la ligne qui ouvre le bloc comptent, pas le premier seul : avec
-   `act === 'save' || act === 'errcopy'`, les deux actes partagent le bloc. */
+   les actes de la condition qui ouvre le bloc comptent, pas le premier seul : avec
+   `act === 'save' || act === 'errcopy'`, les deux actes partagent le bloc. Une condition dont
+   la ligne finit sur || ou && continue sur la suivante, et l'acte d'une ligne qui continue
+   une condition est lu avec elle, pas comme un bloc à lui. */
 function errTextActs(src) {
-  const out = { errcopy: 0, wrong: [] };
-  blocks(src, /\bact === '[\w-]+'/).forEach(b => {
-    const acts = Array.from(b.text.split('\n')[0].matchAll(/\bact === '([\w-]+)'/g), m => m[1]);
+  const out = { errcopy: 0, wrong: [] }, lines = src.split('\n');
+  const goesOn = k => k >= 0 && /(\|\||&&)\s*$/.test(lines[k]);
+  blocks(src, /\bact === '[\w-]+'/).filter(b => !goesOn(b.line - 2)).forEach(b => {
+    let k = b.line - 1;
+    while (goesOn(k) && k + 1 < lines.length) k++;
+    const acts = Array.from(lines.slice(b.line - 1, k + 1).join('\n').matchAll(/\bact === '([\w-]+)'/g), m => m[1]);
     if (acts.indexOf('errcopy') >= 0) out.errcopy++;
     if (/\berrCop(ied|yByHand)\b/.test(b.text)) acts.filter(a => a !== 'errcopy').forEach(a => out.wrong.push({ line: b.line, act: a }));
   });
@@ -390,7 +406,9 @@ NL.state.open().then(() => {
     ["if (d.act === 'errcopy') copy(t.errCopied, t.errCopyByHand);", { errcopy: 1, wrong: [] }],
     ["if (d.act === 'errcopy' || d.act === 'save') copy(t.errCopied, t.errCopyByHand);", { errcopy: 1, wrong: [{ line: 1, act: 'save' }] }],
     ["if (d.act === 'save') {\n  copy(t.errCopied);\n}", { errcopy: 0, wrong: [{ line: 1, act: 'save' }] }],
-    ["if (d.act === 'save' || d.act === 'errcopy') {\n  copy(t.errCopyByHand);\n}", { errcopy: 1, wrong: [{ line: 1, act: 'save' }] }]
+    ["if (d.act === 'save' || d.act === 'errcopy') {\n  copy(t.errCopyByHand);\n}", { errcopy: 1, wrong: [{ line: 1, act: 'save' }] }],
+    ["if (d.act === 'errcopy' ||\n    d.act === 'save') {\n  copy(t.errCopyByHand);\n}", { errcopy: 1, wrong: [{ line: 1, act: 'save' }] }],
+    ["if (d.act === 'save' ||\n    d.act === 'errcopy') {\n  copy(t.errCopyByHand);\n}", { errcopy: 1, wrong: [{ line: 1, act: 'save' }] }]
   ]);
   const errActs = sources.map(f => Object.assign({ f }, errTextActs(read(f))));
   errActs.forEach(a => a.wrong.forEach(w => ok(false, a.f + ':' + w.line + ': the ' + w.act + ' act shows the error log\'s texts; only errcopy does, and the backup has backupCopied and backupCopyByHand')));
@@ -417,19 +435,28 @@ NL.state.open().then(() => {
     ['async function walk(v) {\n  for (const k in v) await walk(v[k]);\n}', ['1 walk']],
     ['const each = async (v) => { Object.values(v).forEach(each); };', ['1 each']],
     ['function files(d) {\n  return fs.readdirSync(d).flatMap(f => /\\./.test(f) ? [f] : files(d + \'/\' + f));\n}', []],
-    ['const visit = C => Object.keys(C).forEach(k => tree.visit(C[k], f));', []]
+    ['const visit = C => Object.keys(C).forEach(k => tree.visit(C[k], f));', []],
+    ['const T = {\n  walk(v) {\n    Object.keys(v).forEach(k => this.walk(v[k]));\n  }\n};', ['2 walk']],
+    ['const T = {\n  walk: function (v) {\n    for (const k in v) T.walk(v[k]);\n  }\n};', ['2 walk']],
+    ['T.each = v => { if (v && typeof v === \'object\') Object.values(v).forEach(T.each); };', ['1 each']],
+    ['NL.x.walk = async function (v) {\n  for (const k in v) await NL.x.walk(v[k]);\n};', ['1 walk']],
+    ['const o = {\n  keys(o) { return Object.keys(o).length; }\n};', []]
   ]);
   /* A loop over COLLECTIONS that calls visit() or rewrite() walks the course one collection
      at a time, whatever its argument is written as and whatever comes before the call: the
-     lines such loops open on. A quote or a word just before the name is the inside of a
-     string, as in this table, and does not count. */
-  const perCollection = src => blocks(src, /(?<!['"\w$])COLLECTIONS\.forEach\(/)
+     lines such loops open on. The suite is read as codeOnly() leaves it, so a loop written in
+     a string or a comment, as in this table, does not count; a suite codeOnly() loses the
+     thread of is named, since what it lost would go unread. */
+  const perCollection = src => blocks(codeOnly(src).code, /(?<![\w$])COLLECTIONS\.forEach\(/)
     .filter(b => /\b(visit|rewrite)\(/.test(b.text)).map(b => b.line);
   selfTest('collection', perCollection, [
     ['COLLECTIONS.forEach(k => tree.visit(C[k], f, k, k));', [1]],
     ['COLLECTIONS.forEach((k) => { C[k] = tree.rewrite(C[k], f, k, k); });', [1]],
     ['const n = 0;\nCOLLECTIONS.forEach(k => {\n  const x = C[k];\n  tree.visit(x, f, k, k);\n});', [2]],
-    ['COLLECTIONS.forEach(k => owed(C[k], k, \'\', out));', []]
+    ['COLLECTIONS.forEach(k => owed(C[k], k, \'\', out));', []],
+    ['// COLLECTIONS.forEach(k => tree.visit(C[k], f));', []],
+    ['/*\n  COLLECTIONS.forEach(k => tree.visit(C[k], f));\n*/', []],
+    ['const s = "a COLLECTIONS.forEach(k => tree.visit(C[k], f))";', []]
   ]);
   suites.forEach(f => {
     const src = read(f);
@@ -437,6 +464,7 @@ NL.state.open().then(() => {
     handWalkers(src).forEach(w => ok(false, f + ':' + w.line + ': ' + w.name + '() walks a tree by hand; use test/lib/tree.js'));
     perCollection(src).forEach(line => ok(false, f + ':' + line +
       ': walks the course one collection at a time; use visitCourse() or rewriteCourse() from test/lib/tree.js'));
+    codeOnly(src).found.forEach(x => ok(false, f + ':' + x.line + ': ' + x.what + ' as the collection check reads it, which may hide a loop'));
   });
 
   /* A file of the repository is read through read(), not spelt out again at each check:
