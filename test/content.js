@@ -7,7 +7,7 @@
    que le mot drillé. Voir TESTING.md. */
 const fs = require('fs'), path = require('path'), zlib = require('zlib');
 const browser = require('./lib/browser');
-const { COLLECTIONS, raw, owed, at } = require('./lib/prose');
+const { raw, owed, at } = require('./lib/prose');
 const tree = require('./lib/tree');
 const ROOT = process.argv[2] || path.join(__dirname, '..');
 
@@ -195,13 +195,13 @@ NL.state.open().then(() => {
   const sig = s => (String(s).match(/\d+|\{[a-z]+\}/g) || []).sort().join('|');
   ok(sig('{naam} arrive à 3 h') === sig('Arrives at 3, {naam}'), 'sig : un jeton et un chiffre dans un autre ordre ne sont pas une dérive');
   ok(sig('3 h') !== sig('4 h'), 'sig : un chiffre qui change reste une dérive');
-  COLLECTIONS.forEach(k => tree.visit(RAW[k], (v, key, where) => {
+  tree.visitCourse(RAW, (v, key, where) => {
     if (!v || typeof v !== 'object') return;
     if (typeof v.en === 'string' && typeof v.fr !== 'string') { lonely++; ok(false, 'un `en` sans `fr` : ' + where); }
     if (typeof v.en === 'string' && typeof v.fr === 'string' && sig(v.fr) !== sig(v.en)) {
       drift++; ok(false, 'les chiffres ou les {jetons} diffèrent entre fr et en : ' + where + '  « ' + v.fr + ' » / « ' + v.en + ' »');
     }
-  }, k, k));
+  });
   console.log('  anglais        ' + lonely + ' sans fr, ' + drift + ' chiffre(s) ou jeton(s) qui diffèrent');
 
   /* Les gardes sur l'anglais écrit. */
@@ -238,12 +238,12 @@ NL.state.open().then(() => {
   });
   /* Toute autre ligne du cours (référence, scénarios, phrases d'exemple…) dont l'anglais porte déjà une étiquette
      de registre : si son néerlandais a u/uw, l'étiquette doit être la bonne. Une ligne sans étiquette n'est pas tenue d'en prendre une. */
-  COLLECTIONS.forEach(k => tree.visit(RAW[k], (v, key, where) => {
+  tree.visitCourse(RAW, (v, key, where) => {
     if (!v || typeof v.nl !== 'string' || typeof v.fr !== 'string' || typeof v.en !== 'string' || !hasU(v.nl)) return;
     if (!/\((formal|informal)/.test(v.en)) return;
     const t = uTag(v.fr);
     ok(v.en.indexOf(t) >= 0, where + ' « ' + v.nl + ' » : « ' + v.en + ' » doit porter « ' + t + ' »');
-  }, k, k));
+  });
   /* Dans l'explication d'un point de grammaire, un <i> dont le texte est le même en français et en anglais est du
      néerlandais (<i>Morgen ik ga</i>) ; <i>element</i> / <i>élément</i> diffèrent, c'est de la prose. Il porte lang="nl-BE". */
   { let seenI = 0;

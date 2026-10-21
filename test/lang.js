@@ -3,7 +3,7 @@
    montrerait une fois le contenu traduit, sans attendre la traduction. */
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const browser = require('./lib/browser');
-const { PROSE, COLLECTIONS } = require('./lib/prose');
+const { PROSE } = require('./lib/prose');
 const tree = require('./lib/tree');
 const { runs, count, argsOf } = require('./lib/langs');
 const { fakeSupabase } = require('./lib/supabase');
@@ -14,10 +14,8 @@ const ok = (c, m) => { checks++; if (!c) { console.log('  FAIL: ' + m); fails++;
 
 function pairUp(C) {
   let n = 0;
-  COLLECTIONS.forEach(k => {
-    C[k] = tree.rewrite(C[k], (s, key) => typeof s === 'string' && PROSE.indexOf(key) >= 0 ? { fr: s, en: 'EN' + (n++) } : s, k);
-    tree.visit(C[k], v => { if (v && typeof v === 'object' && typeof v.fr === 'string' && v.en === undefined) v.en = 'EN' + (n++); });
-  });
+  tree.rewriteCourse(C, (s, key) => typeof s === 'string' && PROSE.indexOf(key) >= 0 ? { fr: s, en: 'EN' + (n++) } : s);
+  tree.visitCourse(C, v => { if (v && typeof v === 'object' && typeof v.fr === 'string' && v.en === undefined) v.en = 'EN' + (n++); });
   return n;
 }
 const T0 = Date.parse('2026-10-05T08:00:00Z');
@@ -172,9 +170,7 @@ function marked(NL) {
   pairUp(NL.content);
   let n = 0;
   const mk = () => '⟪' + (n++) + '⟫';
-  COLLECTIONS.forEach(k => {
-    NL.content[k] = tree.rewrite(NL.content[k], (s, key) => typeof s === 'string' && (key === 'fr' || key === 'en' || PROSE.indexOf(key) >= 0) ? mk() : s, k);
-  });
+  tree.rewriteCourse(NL.content, (s, key) => typeof s === 'string' && (key === 'fr' || key === 'en' || PROSE.indexOf(key) >= 0) ? mk() : s);
   /* Les trois pages françaises : tout ce qui n'est pas du néerlandais. */
   ['sounds', 'loans', 'faux'].forEach(k => {
     NL.content[k].forEach(r => Object.keys(r).forEach(f => { if (f !== 'nl' && typeof r[f] === 'string') r[f] = mk(); }));
@@ -318,7 +314,7 @@ function markLeaves(v, p, keep) {
 function markedBoth(NL) {
   pairUp(NL.content);
   let n = 0;
-  COLLECTIONS.forEach(k => { NL.content[k] = tree.rewrite(NL.content[k], (s, key) => typeof s === 'string' && key === 'fr' ? '⟪' + (n++) + '⟫' : s, k); });
+  tree.rewriteCourse(NL.content, (s, key) => typeof s === 'string' && key === 'fr' ? '⟪' + (n++) + '⟫' : s);
   ['fr', 'en'].forEach(l => {
     const tb = NL.tables[l];
     Object.keys(tb).forEach(k => { tb[k] = markLeaves(tb[k], l + ':' + k, k === 'nav'); });
@@ -381,7 +377,7 @@ function langChecks() {
         C.ctx.document.getElementById = id => ({ value: vals[id] || '' });
         const add = (nl, gl) => {
           C.clock.advance(1); /* un identifiant par milliseconde */
-          vals['add-nl'] = nl; vals['add-meaning'] = gl;
+          vals['add-nl'] = nl; vals['add-gloss'] = gl;
           NL.ui.go('woorden');
           NL.screens.woorden.click({ dataset: {} }, { act: 'addform' });
           NL.screens.woorden.click({ dataset: {} }, { act: 'addsave' });
@@ -547,7 +543,7 @@ function addFormCheck(B) {
     set(B);
     NL.ui.go('woorden');
     B.tap({ act: 'addform' });
-    const m = /<label>([^<]*)<input class="textin" id="add-meaning"/.exec(B.app.innerHTML);
+    const m = /<label>([^<]*)<input class="textin" id="add-gloss"/.exec(B.app.innerHTML);
     ok(m && name.test(m[1]), '6c : en ' + l + ', le champ enregistré sous « ' + NL.lang.current() + ' » est étiqueté « ' + (m && m[1]) + ' »');
     B.tap({ act: 'addcancel' });
   });

@@ -1062,13 +1062,13 @@ NL.tables.fr = {
   missTile: n => n === 0 ? 'Rien pour l’instant' : n === 1 ? 'Un élément souvent raté' : n + ' éléments souvent ratés',
   missRow: (wrong, total) => 'raté ' + wrong + ' fois sur ' + total,
   missStart: n => n === 1 ? 'Travailler cet élément' : 'Travailler les ' + n + ' plus ratés',
-  wordsNl: 'Néerlandais', wordsMeaning: 'Français', wordsBe: 'Comme on dit ici',
+  wordsNl: 'Néerlandais', wordsGloss: 'Français', wordsBe: 'Comme on dit ici',
   wordsOptional: '(facultatif)',
   wordsNeedBoth: 'Le néerlandais et le français sont nécessaires.',
   wordsAdded: 'Ajouté — il reviendra tout seul.',
   wordsHere: 'ici :',
   wordsPhNl: 'de vergaderzaal',
-  wordsPhMeaning: 'la salle de réunion',
+  wordsPhGloss: 'la salle de réunion',
   wordsMineGroup: 'Mes mots',
 
   /* --- fiches --- */
@@ -1464,13 +1464,13 @@ NL.tables.en = {
   missTile: n => n === 0 ? 'Nothing for now' : n === 1 ? 'One item often missed' : n + ' items often missed',
   missRow: (wrong, total) => 'missed ' + wrong + ' times out of ' + total,
   missStart: n => n === 1 ? 'Practise this item' : 'Practise the ' + n + ' most missed',
-  wordsNl: 'Dutch', wordsMeaning: 'English', wordsBe: 'As they say here',
+  wordsNl: 'Dutch', wordsGloss: 'English', wordsBe: 'As they say here',
   wordsOptional: '(optional)',
   wordsNeedBoth: 'Dutch and the translation are both needed.',
   wordsAdded: 'Added — it will come back by itself.',
   wordsHere: 'here:',
   wordsPhNl: 'de vergaderzaal',
-  wordsPhMeaning: 'the meeting room',
+  wordsPhGloss: 'the meeting room',
   wordsMineGroup: 'My words',
 
   /* --- fiches --- */
@@ -7709,7 +7709,7 @@ NL.screens.luisteren = (function () {
       if (adding) {
         html += '<section class="card add-form">' +
           '<label>' + NL.t.wordsNl + '<input class="textin" id="add-nl" placeholder="' + NL.t.wordsPhNl + '"></label>' +
-          '<label>' + NL.t.wordsMeaning + '<input class="textin" id="add-meaning" placeholder="' + NL.t.wordsPhMeaning + '"></label>' +
+          '<label>' + NL.t.wordsGloss + '<input class="textin" id="add-gloss" placeholder="' + NL.t.wordsPhGloss + '"></label>' +
           '<label>' + NL.t.wordsBe + ' <span class="muted">' + NL.t.wordsOptional + '</span><input class="textin" id="add-be" placeholder=""></label>' +
           '<div class="row"><button class="btn btn-good" data-act="addsave">' + NL.t.save + '</button>' +
           '<button class="btn btn-ghost" data-act="addcancel">' + NL.t.cancel + '</button></div></section>';
@@ -7751,10 +7751,10 @@ NL.screens.luisteren = (function () {
       if (d.act === 'filter') { filter = el.dataset.f; query = ''; NL.ui.render(); return; }
       if (d.act === 'addsave') {
         const nl = (document.getElementById('add-nl') || {}).value || '';
-        const meaning = (document.getElementById('add-meaning') || {}).value || '';
+        const gloss = (document.getElementById('add-gloss') || {}).value || '';
         const be = (document.getElementById('add-be') || {}).value || '';
-        if (!nl.trim() || !meaning.trim()) { NL.ui.toast(NL.t.wordsNeedBoth); return; }
-        NL.state.addCustom({ nl: nl.trim(), [NL.lang.current()]: meaning.trim(), be: be.trim() || null, kind: nl.trim().split(/\s+/).length > 2 ? 'phrase' : 'word' });
+        if (!nl.trim() || !gloss.trim()) { NL.ui.toast(NL.t.wordsNeedBoth); return; }
+        NL.state.addCustom({ nl: nl.trim(), [NL.lang.current()]: gloss.trim(), be: be.trim() || null, kind: nl.trim().split(/\s+/).length > 2 ? 'phrase' : 'word' });
         NL.content.refresh(); adding = false; NL.ui.render(); NL.ui.toast(NL.t.wordsAdded);
         return;
       }
@@ -7930,15 +7930,16 @@ NL.screens.doctor = (function () {
   const TEST = 'Goeiemorgen, alles goed met u?';
   let S = { heard: null, mic: null, micKey: '', rec: 'idle' };
 
-  /* Le titre et la note d'un palier, lus dans NL.t à chaque dessin : la langue a pu changer. */
-  const tierText = (label, note) => ({ get label() { return t[label]; }, get note() { return t[note]; } });
+  /* Le titre et la note de ce que l'appareil sait faire de la parole, lus dans NL.t à chaque
+     dessin : la langue a pu changer. */
+  const capabilityText = (label, note) => ({ get label() { return t[label]; }, get note() { return t[note]; } });
   const TIERS = {
-    full: tierText('tierFull', 'tierFullNote'),
-    scored: tierText('tierScored', 'tierScoredNote'),
-    novoice: tierText('tierNoVoice', 'tierNoVoiceNote'),
-    refused: tierText('tierRefused', 'tierRefusedNote'),
-    compare: tierText('tierCompare', 'tierCompareNote'),
-    self: tierText('tierSelf', 'tierSelfNote')
+    full: capabilityText('tierFull', 'tierFullNote'),
+    scored: capabilityText('tierScored', 'tierScoredNote'),
+    novoice: capabilityText('tierNoVoice', 'tierNoVoiceNote'),
+    refused: capabilityText('tierRefused', 'tierRefusedNote'),
+    compare: capabilityText('tierCompare', 'tierCompareNote'),
+    self: capabilityText('tierSelf', 'tierSelfNote')
   };
 
   function voiceRows() {

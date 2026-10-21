@@ -97,6 +97,36 @@ function syntaxFindings(src) {
   return found.sort((a, b) => a.line - b.line);
 }
 
+/* Les blocs d'une source qui s'ouvrent sur une ligne où `head` se trouve : { line, m, text }.
+   Un bloc va jusqu'à la ligne qui revient au retrait de sa tête, l'accolade ou le crochet
+   qui le ferme compris. Il suit le retrait, pas la syntaxe : il sert aux gardes, sur du code
+   tenu. */
+function blocks(src, head) {
+  const lines = src.split('\n'), out = [];
+  const indent = l => l.match(/^\s*/)[0].length;
+  lines.forEach((l, i) => {
+    const m = head.exec(l);
+    if (!m) return;
+    let j = i + 1;
+    while (j < lines.length && (lines[j].trim() === '' || indent(lines[j]) > indent(l))) j++;
+    if (j < lines.length && indent(lines[j]) === indent(l) && /^\s*[}\])]/.test(lines[j])) j++;
+    out.push({ line: i + 1, m, text: lines.slice(i, j).join('\n') });
+  });
+  return out;
+}
+/* La source sans les blocs qui s'ouvrent sur `head`. */
+const outside = (src, head) => blocks(src, head).reduce((s, b) => s.replace(b.text, ''), src);
+
+/* Les fonctions d'une source qui parcourent un arbre à la main : une fonction nommée qui
+   s'appelle elle-même, ou se passe elle-même (forEach(walk)), en allant de clé en clé
+   (Object.keys, values, entries, ou for … in). Ni son nom ni son argument ne comptent. */
+function handWalkers(src) {
+  const named = /^\s*(?:function\s+(\w+)\s*\(|(?:const|let)\s+(\w+)\s*=\s*(?:function\b|\([^)]*\)\s*=>|\w+\s*=>))/;
+  return blocks(src, named).map(b => ({ line: b.line, name: b.m[1] || b.m[2], body: b.text.slice(b.m[0].length) }))
+    .filter(f => new RegExp('(?<![\\w$.])' + f.name + '\\s*\\(|[(,]\\s*' + f.name + '\\s*[),]').test(f.body) &&
+      /Object\.(keys|values|entries)\(|for\s*\(\s*(const|let)\s+\w+\s+in\b/.test(f.body));
+}
+
 NL.state.open().then(() => {
   NL.content.refresh();
   const items = NL.content.allItems();
@@ -207,8 +237,9 @@ NL.state.open().then(() => {
   });
 
   /* #74. What already has a name is not written out again: the other language is
-     NL.gloss.other, the comparison of senses is read from NL.gloss alone, a tier's two
-     texts are one getter pair, and « the text, if there is any » is NL.ui.ifText. */
+     NL.gloss.other, the comparison of senses is read from NL.gloss alone, the getter pair
+     of a speech text is written once, in capabilityText, and « the text, if there is
+     any » is NL.ui.ifText. */
   const byHand = /NL\.gloss\.of\(([\w.]+)\) \? '<\w+[^']*>' \+ esc\(NL\.gloss\.of\(\1\)\)/g;
   sources.forEach(f => {
     const src = read(f);
@@ -217,11 +248,12 @@ NL.state.open().then(() => {
   });
   ok(!('sameSense' in NL.ex), 'NL.ex re-exports sameSense; read it from NL.gloss');
   const doctor = read('src/ui/doctor.js');
-  ok((doctor.match(/get label\(\)/g) || []).length === 1, 'src/ui/doctor.js writes a tier\'s getter pair more than once; use tierText');
+  ok(!/\bget (label|note)\(\)/.test(outside(doctor, /^\s*const capabilityText = /)), 'src/ui/doctor.js writes a speech text\'s getter pair by hand; use capabilityText');
 
-  /* Rebuilt settings keep the device's language in one place, withDeviceLang. */
+  /* Rebuilt settings keep the device's language in one place: outside withDeviceLang,
+     nothing sets their displayLang. */
   const state = read('src/core/state.js');
-  ok((state.match(/\.displayLang\s*=[^=]/g) || []).length === 1, 'src/core/state.js gives rebuilt settings the device\'s language in more than one place; use withDeviceLang');
+  ok(!/\.displayLang\s*=[^=]/.test(outside(state, /^\s*function withDeviceLang\(/)), 'src/core/state.js gives rebuilt settings the device\'s language by hand; use withDeviceLang');
 
   /* The suites share their helpers through test/lib, and a copy drifts from the original.
      A click goes through B.tap, there is one fake Supabase, and a due date comes from the
@@ -236,19 +268,24 @@ NL.state.open().then(() => {
   });
   console.log('  suites          ' + suites.length + ' files: no hand-built click, no second fake Supabase, no due date from a bare epoch');
 
-  /* #74. A name says what it holds. The meaning typed into « Mes mots » is in either
-     language; the notice's list holds keys of NL.t, and its flag says its tick is over;
-     the backup's copy has its own two texts; and voiceInfo() hands back a key of NL.t,
+  /* #74. A name says what it holds. What is typed into « Mes mots » beside the Dutch is a
+     gloss (GLOSSARY.md), in either language; the doctor's two texts say what the device
+     can do with speech, which is not an item's tier; the notice's list holds keys of NL.t,
+     and its flag says its tick is over; only the error log's own copy (errcopy) shows its
+     two texts, and the backup's copy has its own; and voiceInfo() hands back a key of NL.t,
      read as t[v.noteKey]. */
   sources.concat(suites).forEach(f => {
     const src = read(f);
-    ok(!/\bwords(Ph)?Fr\b|\badd-en\b/.test(src), f + ': names the meaning of « Mes mots » after one language; it is wordsMeaning, wordsPhMeaning and add-meaning');
+    ok(!/\bwords(Ph)?(Fr|Meaning)\b|\badd-(en|meaning)\b/.test(src), f + ': names the gloss typed into « Mes mots » by an old name; it is wordsGloss, wordsPhGloss and add-gloss');
+    ok(!/\btierText\b/.test(src), f + ': names the doctor\'s speech texts after a tier; it is capabilityText');
     ok(!/\bv\.note\b|voiceInfo\(\)\.note\b/.test(src), f + ': reads the voice report\'s key under its old name; it is noteKey');
   });
-  ok(!/\bconst en\b/.test(read('src/ui/library.js')), 'src/ui/library.js: the meaning typed into « Mes mots » is held in en; it is meaning');
+  ok(!/\bconst (en|meaning)\b/.test(read('src/ui/library.js')), 'src/ui/library.js: the gloss typed into « Mes mots » is held under an old name; it is gloss');
   ok(!/\bnotice\s*=[^=]/.test(read('src/core/lang.js')), 'src/core/lang.js: the notice\'s list of keys is named notice; it is noticeKeys');
   ok(!/\bshown\b/.test(read('src/core/lang.js')), 'src/core/lang.js: the flag that says the notice\'s tick is over is named shown; it is tickOver');
-  ok(read('src/ui/shell.js').indexOf('errCop') < 0, 'src/ui/shell.js: the backup copy reads the error log\'s texts; use backupCopied and backupCopyByHand');
+  sources.forEach(f => blocks(read(f), /\bact === '([\w-]+)'/)
+    .filter(b => b.m[1] !== 'errcopy' && /\berrCop(ied|yByHand)\b/.test(b.text))
+    .forEach(b => ok(false, f + ':' + b.line + ': the ' + b.m[1] + ' act shows the error log\'s texts; only errcopy does, and the backup has backupCopied and backupCopyByHand')));
   ok(typeof NL.tables.fr.backupCopied === 'string' && typeof NL.tables.fr.backupCopyByHand === 'string', 'fr.js has no backupCopied or backupCopyByHand');
   ok(typeof NL.t[NL.speech.voiceInfo().noteKey] === 'string', 'voiceInfo() has no noteKey naming a key of NL.t');
   /* Applying the language and telling it are two calls, not one call and a flag. */
@@ -257,19 +294,34 @@ NL.state.open().then(() => {
     f + ': passes a flag to NL.lang.apply; call apply() or applyAndTell()'));
 
   /* #74. The course as it is written is copied by raw() in test/lib/prose.js, and a tree is
-     walked by test/lib/tree.js. A function a suite calls on a child (v[k]) and on an array's
-     element, x or through forEach, is a walker written by hand. */
+     walked by test/lib/tree.js, the whole course by its visitCourse() and rewriteCourse().
+     A walker written by hand is what handWalkers() finds. These guards read the suites
+     only: test/lib holds the walkers, and src/content/index.js copies the course on purpose
+     when it builds it (build(), about line 37). */
+  const walks = src => handWalkers(src).map(w => w.line + ' ' + w.name);
+  [['function walk(v) { if (v && typeof v === \'object\') Object.keys(v).forEach(k => walk(v[k])); }', ['1 walk']],
+   ['const flat = (o, out) => {\n  for (const k in o) flat(o[k], out);\n  return out;\n};', ['1 flat']],
+   ['const each = v => { if (v && typeof v === \'object\') Object.values(v).forEach(each); };', ['1 each']],
+   ['  const strip = function (v) {\n    Object.entries(v).forEach(([k, x]) => { if (x && typeof x === \'object\') strip(x); });\n  };', ['1 strip']],
+   ['function size(o) {\n  return Object.keys(o).length;\n}\nfunction walk(t) {\n  if (Array.isArray(t)) t.forEach(walk);\n  else Object.keys(t).forEach(k => walk(t[k]));\n}', ['4 walk']],
+   ['function files(d) {\n  return fs.readdirSync(d).flatMap(f => /\\./.test(f) ? [f] : files(d + \'/\' + f));\n}', []],
+   ['const visit = C => Object.keys(C).forEach(k => tree.visit(C[k], f));', []]
+  ].forEach(([src, want]) => ok(JSON.stringify(walks(src)) === JSON.stringify(want),
+    'walker check on ' + JSON.stringify(src) + ' found ' + JSON.stringify(walks(src)) + ', wanted ' + JSON.stringify(want)));
+  const perCollection = /COLLECTIONS\.forEach\(\s*\w+\s*=>\s*\{?[^;]*?\b(visit|rewrite)\(/g;
   suites.forEach(f => {
     const src = read(f);
     ok(!/JSON\.parse\(JSON\.stringify\(NL\.content/.test(src), f + ': copies the course by hand; use raw() from test/lib/prose.js');
-    src.split('\n').forEach((line, i) => (line.match(/\b\w+(?=\((?:\w+, )?v\[k\])/g) || [])
-      .filter(name => new RegExp('\\.forEach\\(' + name + '\\)|\\b' + name + '\\((?:\\w+, )?x\\b').test(src))
-      .forEach(name => ok(false, f + ':' + (i + 1) + ': ' + name + '() walks a tree by hand; use test/lib/tree.js')));
+    handWalkers(src).forEach(w => ok(false, f + ':' + w.line + ': ' + w.name + '() walks a tree by hand; use test/lib/tree.js'));
+    Array.from(src.matchAll(perCollection)).forEach(m => ok(false, f + ':' + src.slice(0, m.index).split('\n').length +
+      ': walks the course one collection at a time; use visitCourse() or rewriteCourse() from test/lib/tree.js'));
   });
 
-  /* A file of the repository is read through read(), not spelt out again at each check. */
-  ok((read('test/smoke.js').match(/readFileSync\(path\.join\(ROOT,/g) || []).length === 1,
-    'test/smoke.js reads a file of the repository by hand; use read()');
+  /* A file of the repository is read through read(), not spelt out again at each check:
+     outside read() itself, no line of this suite reads a path under ROOT. */
+  read('test/smoke.js').split('\n').forEach((l, i) => {
+    if (/readFileSync\(path\.join\(ROOT,/.test(l) && !/^const read = /.test(l)) ok(false, 'test/smoke.js:' + (i + 1) + ': reads a file of the repository by hand; use read()');
+  });
 
   items.filter(i => i.art).forEach(i =>
     ok(i.nl.startsWith(i.art + ' '), 'article mismatch: ' + i.nl + ' / ' + i.art));

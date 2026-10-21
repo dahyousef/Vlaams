@@ -199,7 +199,7 @@ function view(screen, arg) {
   ctx.document.getElementById = id => {
     const e = mkEl('input');
     if (id === 'add-nl') e.value = 'de vergaderzaal';
-    if (id === 'add-meaning') e.value = 'la salle de réunion';
+    if (id === 'add-gloss') e.value = 'la salle de réunion';
     if (id === 'add-be') e.value = '';
     if (id === 'app') return app;
     return e;

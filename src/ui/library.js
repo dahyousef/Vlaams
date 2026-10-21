@@ -44,7 +44,7 @@
       if (adding) {
         html += '<section class="card add-form">' +
           '<label>' + NL.t.wordsNl + '<input class="textin" id="add-nl" placeholder="' + NL.t.wordsPhNl + '"></label>' +
-          '<label>' + NL.t.wordsMeaning + '<input class="textin" id="add-meaning" placeholder="' + NL.t.wordsPhMeaning + '"></label>' +
+          '<label>' + NL.t.wordsGloss + '<input class="textin" id="add-gloss" placeholder="' + NL.t.wordsPhGloss + '"></label>' +
           '<label>' + NL.t.wordsBe + ' <span class="muted">' + NL.t.wordsOptional + '</span><input class="textin" id="add-be" placeholder=""></label>' +
           '<div class="row"><button class="btn btn-good" data-act="addsave">' + NL.t.save + '</button>' +
           '<button class="btn btn-ghost" data-act="addcancel">' + NL.t.cancel + '</button></div></section>';
@@ -86,10 +86,10 @@
       if (d.act === 'filter') { filter = el.dataset.f; query = ''; NL.ui.render(); return; }
       if (d.act === 'addsave') {
         const nl = (document.getElementById('add-nl') || {}).value || '';
-        const meaning = (document.getElementById('add-meaning') || {}).value || '';
+        const gloss = (document.getElementById('add-gloss') || {}).value || '';
         const be = (document.getElementById('add-be') || {}).value || '';
-        if (!nl.trim() || !meaning.trim()) { NL.ui.toast(NL.t.wordsNeedBoth); return; }
-        NL.state.addCustom({ nl: nl.trim(), [NL.lang.current()]: meaning.trim(), be: be.trim() || null, kind: nl.trim().split(/\s+/).length > 2 ? 'phrase' : 'word' });
+        if (!nl.trim() || !gloss.trim()) { NL.ui.toast(NL.t.wordsNeedBoth); return; }
+        NL.state.addCustom({ nl: nl.trim(), [NL.lang.current()]: gloss.trim(), be: be.trim() || null, kind: nl.trim().split(/\s+/).length > 2 ? 'phrase' : 'word' });
         NL.content.refresh(); adding = false; NL.ui.render(); NL.ui.toast(NL.t.wordsAdded);
         return;
       }

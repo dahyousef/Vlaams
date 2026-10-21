@@ -198,13 +198,13 @@ NL.tables.fr = {
   missTile: n => n === 0 ? 'Rien pour l’instant' : n === 1 ? 'Un élément souvent raté' : n + ' éléments souvent ratés',
   missRow: (wrong, total) => 'raté ' + wrong + ' fois sur ' + total,
   missStart: n => n === 1 ? 'Travailler cet élément' : 'Travailler les ' + n + ' plus ratés',
-  wordsNl: 'Néerlandais', wordsMeaning: 'Français', wordsBe: 'Comme on dit ici',
+  wordsNl: 'Néerlandais', wordsGloss: 'Français', wordsBe: 'Comme on dit ici',
   wordsOptional: '(facultatif)',
   wordsNeedBoth: 'Le néerlandais et le français sont nécessaires.',
   wordsAdded: 'Ajouté — il reviendra tout seul.',
   wordsHere: 'ici :',
   wordsPhNl: 'de vergaderzaal',
-  wordsPhMeaning: 'la salle de réunion',
+  wordsPhGloss: 'la salle de réunion',
   wordsMineGroup: 'Mes mots',
 
   /* --- fiches --- */

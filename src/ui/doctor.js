@@ -7,15 +7,16 @@ NL.screens.doctor = (function () {
   const TEST = 'Goeiemorgen, alles goed met u?';
   let S = { heard: null, mic: null, micKey: '', rec: 'idle' };
 
-  /* Le titre et la note d'un palier, lus dans NL.t à chaque dessin : la langue a pu changer. */
-  const tierText = (label, note) => ({ get label() { return t[label]; }, get note() { return t[note]; } });
+  /* Le titre et la note de ce que l'appareil sait faire de la parole, lus dans NL.t à chaque
+     dessin : la langue a pu changer. */
+  const capabilityText = (label, note) => ({ get label() { return t[label]; }, get note() { return t[note]; } });
   const TIERS = {
-    full: tierText('tierFull', 'tierFullNote'),
-    scored: tierText('tierScored', 'tierScoredNote'),
-    novoice: tierText('tierNoVoice', 'tierNoVoiceNote'),
-    refused: tierText('tierRefused', 'tierRefusedNote'),
-    compare: tierText('tierCompare', 'tierCompareNote'),
-    self: tierText('tierSelf', 'tierSelfNote')
+    full: capabilityText('tierFull', 'tierFullNote'),
+    scored: capabilityText('tierScored', 'tierScoredNote'),
+    novoice: capabilityText('tierNoVoice', 'tierNoVoiceNote'),
+    refused: capabilityText('tierRefused', 'tierRefusedNote'),
+    compare: capabilityText('tierCompare', 'tierCompareNote'),
+    self: capabilityText('tierSelf', 'tierSelfNote')
   };
 
   function voiceRows() {
