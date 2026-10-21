@@ -161,15 +161,17 @@ function open(opts) {
   const run = f => { try { f(); } catch (e) { onTimerError(e); } };
   /* 'held' : un minuteur attend tick() et part alors avec les autres, dans l'ordre où ils ont
      été posés ; clearTimeout le retire, même pendant tick(). Un minuteur posé pendant tick()
-     attend le suivant. Un mode inconnu échoue ici au lieu de devenir 'sync'. */
+     attend le suivant. Un mode inconnu échoue ici, en se nommant, au lieu de devenir 'sync'. */
   const held = new Map();
   let lastTimer = 0;
   const tick = () => Array.from(held.keys()).forEach(id => { const f = held.get(id); if (held.delete(id)) run(f); });
-  const timers = {
+  const modes = {
     sync: { set: f => { run(f); return 0; }, clear: () => {} },
     held: { set: f => { held.set(++lastTimer, f); return lastTimer; }, clear: id => { held.delete(id); } },
     real: { set: setTimeout, clear: clearTimeout }
-  }[opts.timers || 'sync'];
+  };
+  const timers = modes[opts.timers || 'sync'];
+  if (!timers) throw new Error('browser.open : le mode de minuteurs « ' + opts.timers + ' » n\'existe pas (' + Object.keys(modes).join(', ') + ')');
 
   const ctx = {
     console,

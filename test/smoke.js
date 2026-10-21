@@ -297,7 +297,10 @@ NL.state.open().then(() => {
      suite's clock, never from an epoch written out by hand, timers that wait for the end
      of the tick are the fake browser's timers ('held', ended by B.tick()), so are the
      fields a screen reads (byId: 'stub', filled through B.fields), and the text a page
-     shows, without its tags, is text() from test/lib/langs.js. */
+     shows, without its tags, is text() from test/lib/langs.js. A strip that puts nothing in
+     place of a tag is not that text, and the check leaves it alone: it joins what the tags
+     split, a bold word and the punctuation beside it (test/typed.js) or a key and its label
+     (test/lang.js), or reads the inside of one <i> of the course as written (test/content.js). */
   const suites = ['test', 'test/tools'].reduce((all, d) => all.concat(fs.readdirSync(path.join(ROOT, d))
     .filter(f => /\.js$/.test(f)).map(f => d + '/' + f)), []);
   suites.forEach(f => {
@@ -310,6 +313,29 @@ NL.state.open().then(() => {
     ok(!/\.replace\(\/<\[\^>\]\*>\/g,\s*' '\)/.test(src), f + ': strips a page\'s tags by hand; use text() from test/lib/langs.js');
   });
   console.log('  suites          ' + suites.length + ' files: no hand-built click, no second fake Supabase, no due date from a bare epoch, no timer, page field or tag-stripper of their own');
+
+  /* The fake browser's 'held' timers keep a real tick's rules, which lang.js's 5b counts on:
+     nothing runs before B.tick(), then every timer runs in the order it was set; clearTimeout
+     takes one out, before the tick or during it; a timer set during the tick waits for the
+     next. An unknown mode fails and names itself. This page loads no source, only timers. */
+  {
+    const H = browser.open({ root: ROOT, files: [], timers: 'held' });
+    const ran = [];
+    H.ctx.setTimeout(() => { ran.push('a'); H.ctx.setTimeout(() => ran.push('next'), 0); }, 0);
+    const b = H.ctx.setTimeout(() => ran.push('b'), 0);
+    H.ctx.setTimeout(() => { ran.push('c'); H.ctx.clearTimeout(d); }, 0);
+    const d = H.ctx.setTimeout(() => ran.push('d'), 0);
+    H.ctx.clearTimeout(b);
+    const before = ran.join(' ');
+    H.tick();
+    const first = ran.join(' ');
+    H.tick();
+    ok(before === '' && first === 'a c' && ran.join(' ') === 'a c next', 'test/lib/browser.js: held timers ran « ' + before + ' » before B.tick(), « ' + first + ' » at the first tick and « ' + ran.join(' ') + ' » by the second; wanted « », « a c » and « a c next »');
+    let unknown = '';
+    try { browser.open({ root: ROOT, files: [], timers: 'hold' }); } catch (e) { unknown = e.message; }
+    ok(unknown.indexOf('hold') >= 0, 'test/lib/browser.js: an unknown timers mode fails without naming itself: « ' + unknown + ' »');
+  }
+  console.log('  fake browser    held timers wait for B.tick(), run in order and can be cleared; an unknown mode names itself');
 
   /* #74. A name says what it holds. What is typed into « Mes mots » beside the Dutch is a
      gloss (GLOSSARY.md), in either language; the notice's list holds keys of NL.t; only the
