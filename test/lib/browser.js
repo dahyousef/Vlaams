@@ -23,6 +23,7 @@
      B.listeners     tous les écouteurs posés, par type d'événement
      B.tap(d)        un clic sur un élément dont le dataset est d, tel que le shell le reçoit
      B.fields        la valeur de chaque champ qu'un écran lit (B.fields['add-nl'] = '…') — si `byId` vaut 'stub'
+     B.events        les gestes faits sur ces champs, dans l'ordre (« select <id> ») — si `byId` vaut 'stub'
      B.clock         l'horloge : now(), set(ms), advance(ms) — si `now` est donné
      B.spoken        ce que la synthèse vocale a prononcé — si `voices` est donné
      B.tick()        la fin du tour : les minuteurs mis de côté partent — si `timers` vaut 'held'
@@ -157,6 +158,7 @@ function open(opts) {
   }
   const app = mkEl('div');
   const fields = {};
+  const events = [];
 
   const fakeClock = opts.now != null;
   const clock = {
@@ -220,7 +222,7 @@ function open(opts) {
     document: {
       readyState: 'complete', visibilityState: 'visible',
       documentElement: { attrs: {}, setAttribute(k, v) { this.attrs[k] = v; }, removeAttribute(k) { delete this.attrs[k]; } },
-      getElementById: id => (id === 'app' ? app : opts.byId === 'stub' ? Object.assign(mkEl('input'), { value: fields[id] || '' }) : null),
+      getElementById: id => (id === 'app' ? app : opts.byId === 'stub' ? Object.assign(mkEl('input'), { value: fields[id] || '', select() { events.push('select ' + id); } }) : null),
       querySelector: () => null, querySelectorAll: () => [],
       addEventListener: listen,
       activeElement: { tagName: 'BODY' }, createElement: mkEl, body: { appendChild() {} },
@@ -286,7 +288,7 @@ function open(opts) {
 
   const tap = d => (listeners.click || []).forEach(f => f({ target: { closest: () => ({ dataset: d }) } }));
 
-  return { ctx, NL: ctx.NL, app, store, idb, listeners, spoken, clock, mkEl, tap, tick, waiting, fields, random: M.random };
+  return { ctx, NL: ctx.NL, app, store, idb, listeners, spoken, clock, mkEl, tap, tick, waiting, fields, events, random: M.random };
 }
 
 module.exports = { open, rng, sources, UA, SEED, APP };

@@ -383,8 +383,8 @@ NL.state.open().then(async () => {
     P.NL.ui.go('doctor');
     const t = P.NL.t;
     const acts = [
-      ['copy-backup', () => P.fields['backup-out'], t.backupCopied, t.backupCopyByHand],
-      ['errcopy', () => P.NL.errlog.text(), t.errCopied, t.errCopyByHand]
+      ['copy-backup', 'backup-out', () => P.fields['backup-out'], t.backupCopied, t.backupCopyByHand],
+      ['errcopy', 'err-out', () => P.NL.errlog.text(), t.errCopied, t.errCopyByHand]
     ];
     /* Le presse-papiers : true l'accepte, false le refuse, null l'ôte ; de même l'ancienne commande. */
     const ways = [
@@ -394,14 +394,16 @@ NL.state.open().then(async () => {
       ['the old command refusing', null, false],
       ['neither', null, null]
     ];
-    for (const [act, text, copied, byHand] of acts) {
+    /* Le champ copié est sélectionné avant toute copie : l'ancienne commande copie la sélection. */
+    for (const [act, box, text, copied, byHand] of acts) {
       for (const [way, clip, cmd] of ways) {
-        const did = [];
+        const did = P.events;
+        did.length = 0;
         P.ctx.navigator.clipboard = clip === null ? undefined : { writeText: s => { did.push('writeText ' + s); return clip ? Promise.resolve() : Promise.reject(new Error('refused')); } };
         P.ctx.document.execCommand = cmd === null ? undefined : c => { did.push('execCommand ' + c); return cmd; };
         P.tap({ act });
         await settle();
-        const wrote = clip !== null ? 'writeText ' + text() : cmd !== null ? 'execCommand copy' : '';
+        const wrote = 'select ' + box + (clip !== null ? ' | writeText ' + text() : cmd !== null ? ' | execCommand copy' : '');
         const toast = (P.app.innerHTML.match(/<div class="toast">([^<]*)<\/div>/) || [])[1];
         const said = clip === true || cmd === true ? copied : byHand;
         ok(did.join(' | ') === wrote, act + ' with ' + way + ' did « ' + did.join(' | ') + ' »; wanted « ' + wrote + ' »');
