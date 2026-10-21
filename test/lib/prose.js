@@ -18,11 +18,7 @@ const has = x => typeof x === 'string' && x.trim() !== '';
 
 /* Le cours tel qu'il est écrit : une copie des collections, prise avant la première
    construction (avant NL.state.open()), quand {naam}, {stad} et {bedrijf} y sont encore. */
-function raw(content) {
-  const out = {};
-  COLLECTIONS.forEach(k => { out[k] = JSON.parse(JSON.stringify(content[k] || [])); });
-  return out;
-}
+const raw = content => Object.fromEntries(COLLECTIONS.map(k => [k, JSON.parse(JSON.stringify(content[k] || []))]));
 
 /* L'anglais qui reste dû : un { where, ok } par endroit qui doit porter un `en`. */
 function owed(v, where, key, out) {

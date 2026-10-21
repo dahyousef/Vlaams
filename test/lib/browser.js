@@ -8,7 +8,14 @@
    Tout est éteint par défaut : chaque suite allume ce dont elle a besoin, et ce
    qu'elle allume se lit en tête de fichier.
 
-     const B = require('./lib/browser').open({ root: ROOT, seed: SEED, now: T0 });
+     const browser = require('./lib/browser');
+     browser.SEED        la graine des suites ; SEED=… dans l'environnement en rejoue une autre
+     browser.UA          des userAgent nommés : OPR, EDG, IOS (Chrome sur iPhone), SAF (Safari sur iPhone)
+     browser.APP         la source qui démarre l'app ; skip: [browser.APP] la laisse de côté
+     browser.sources(root)  les sources de build.sh, dans son ordre
+     browser.rng(seed)   un hasard qui se rejoue : la même graine, les mêmes nombres
+
+     const B = browser.open({ root: ROOT, seed: browser.SEED, now: T0 });   ses options : au-dessus de open()
      B.NL            l'application chargée
      B.app           l'élément #app (lire B.app.innerHTML)
      B.store         le localStorage
@@ -114,8 +121,8 @@ const APP = 'src/app.js';
      now        horloge de départ en ms ; absente, l'horloge est la vraie
      timers     'sync' (défaut) : setTimeout s'exécute tout de suite ; 'real' : le vrai ;
                 'held' : il attend B.tick(), comme un vrai minuteur attend la fin du tour
-     onTimerError  ce que devient une erreur dans un minuteur 'sync' ou 'held' (défaut : 'sync'
-                l'ignore, 'held' la laisse sortir de B.tick())
+     onTimerError  ce que devient une erreur dans un minuteur 'sync' (défaut : elle est ignorée) ;
+                avec un autre mode, open() échoue ('held' laisse l'erreur sortir de B.tick())
      ua         navigator.userAgent
      voices     tableau de voix → speechSynthesis existe ; absent, il n'existe pas
      recogniser true → webkitSpeechRecognition existe (ctx.__saidNext, ctx.__denyNext)
@@ -167,11 +174,12 @@ function open(opts) {
   if (opts.seed != null) { M = Object.create(Math); M.random = rng(opts.seed); }
 
   /* Une erreur dans un minuteur. 'sync' le fait partir dans l'appel même à setTimeout : levée là,
-     elle tomberait dans le code de l'app, ce qu'un vrai minuteur ne fait jamais ; elle est ignorée.
-     'held' le fait partir dans tick(), que la suite appelle : la première erreur du tour en sort,
-     une fois tous ses minuteurs partis, et la suite échoue. onTimerError, donné, les reçoit toutes. */
+     elle tomberait dans le code de l'app, ce qu'un vrai minuteur ne fait jamais ; elle est ignorée,
+     ou remise à onTimerError s'il est donné. 'held' le fait partir dans tick(), que la suite
+     appelle : la première erreur du tour en sort, une fois tous ses minuteurs partis, et la suite
+     échoue. onTimerError ne sert qu'à 'sync' : donné avec un autre mode, open() échoue en le
+     nommant, au lieu de le laisser attendre une erreur qui ne lui viendra pas. */
   const onTimerError = opts.onTimerError || (() => {});
-  const run = f => { try { f(); } catch (e) { onTimerError(e); } };
   /* 'held' : un minuteur attend tick() et part alors avec les autres, dans l'ordre où ils ont
      été posés ; clearTimeout le retire, même pendant tick(). Un minuteur posé pendant tick()
      attend le suivant. Un mode inconnu échoue ici, en se nommant, au lieu de devenir 'sync'. */
@@ -179,18 +187,21 @@ function open(opts) {
   let lastTimer = 0;
   const tick = () => {
     const errors = [];
-    const runHeld = opts.onTimerError ? run : f => { try { f(); } catch (e) { errors.push(e); } };
-    Array.from(held.keys()).forEach(id => { const f = held.get(id); if (held.delete(id)) runHeld(f); });
+    Array.from(held.keys()).forEach(id => {
+      const f = held.get(id);
+      if (held.delete(id)) { try { f(); } catch (e) { errors.push(e); } }
+    });
     if (errors.length) throw errors[0];
   };
   const waiting = () => held.size;
   const modes = {
-    sync: { set: f => { run(f); return 0; }, clear: () => {} },
+    sync: { set: f => { try { f(); } catch (e) { onTimerError(e); } return 0; }, clear: () => {} },
     held: { set: f => { held.set(++lastTimer, f); return lastTimer; }, clear: id => { held.delete(id); } },
     real: { set: setTimeout, clear: clearTimeout }
   };
   const timers = modes[opts.timers || 'sync'];
   if (!timers) throw new Error('browser.open : le mode de minuteurs « ' + opts.timers + ' » n\'existe pas (' + Object.keys(modes).join(', ') + ')');
+  if (opts.onTimerError && timers !== modes.sync) throw new Error('browser.open : onTimerError ne sert qu\'aux minuteurs \'sync\', pas aux minuteurs « ' + opts.timers + ' »');
 
   const ctx = {
     console,

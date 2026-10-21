@@ -11,7 +11,8 @@ n'y a qu'une seule liste. Il faut Node et un `sh` (sous Windows, celui de Git).
 
 | Test | Ce qu'il vérifie |
 | --- | --- |
-| `smoke.js` | Le contenu, l'échelle, chaque type d'exercice, la notation, la qualité des leurres, l'orthographe, que le build ne garde aucune des chaînes d'interface néerlandaises connues non traduites, qu'il déclare `<html lang="en-GB">` et porte la description anglaise (l'anglais est l'affichage par défaut ; `lang.js` contrôle les deux tables d'interface), et qu'aucune source listée dans `build.sh` n'emploie `var` ni le chaînage optionnel `?.` (les chaînes, les commentaires et les regex ne comptent pas), et que `index.html` et `artifact.html` sortent du build en LF, sans retour chariot ; qu'aucune source hors `gloss.js` ne construise un attribut `lang` à la main ni n'écrive `en-GB` ; et qu'aucune suite ne refasse ce que `test/lib` partage : un clic construit à la main (`B.tap`), un second faux Supabase (`test/lib/supabase.js`), une échéance tirée d'une date écrite en dur (`test/lib/seed.js`), un minuteur remplacé à la main (`timers: 'held'` et `B.tick()`, `test/lib/browser.js`), un champ de page simulé à la main (`byId: 'stub'` et `B.fields`), un HTML dépouillé de ses balises à la main (`text()`, ou `joined()` quand ce qu'une balise sépare se lit d'un tenant, `test/lib/langs.js`), une source lancée à la main par le `vm` de node, dans le contexte d'une page ou dans un contexte à elle (`browser.open`, et `prepare` pour ce qui précède `src/app.js`, `test/lib/browser.js`), une copie du cours tel qu'il est écrit (`raw()`, `test/lib/prose.js`), un arbre parcouru à la main, par une fonction, une méthode d'objet ou un `x.y = function`, la tête d'un `if`, d'un `for`, d'un `while`, d'un `switch` ou d'un `catch` n'étant pas une méthode (`test/lib/tree.js`), ou le cours collection par collection (`visitCourse()` et `rewriteCourse()`), une boucle écrite dans une chaîne ou un commentaire mise à part, et une suite où cette relecture perd le fil (une chaîne, une regex, un gabarit ou un commentaire qui ne se ferme pas) nommée à sa ligne ; et qu'aucune source ni aucune suite ne réécrive ce qui a déjà un nom — l'autre langue (`NL.gloss.other`), « le texte, s'il y en a un » (`NL.ui.ifText`, qu'il soit un sens lu par `NL.gloss`, un message, un score ou ce que le micro a entendu, le test écrit dans un sens ou dans l'autre, la balise écrite en toutes lettres ou tenue dans une variable, `esc()` posé sur le texte ou sur une expression qui le lit, entre guillemets simples ou doubles, sur une ligne ou plusieurs ; `ifText` ne rend rien sans texte, ni pour un sens qui vaut `null` dans la langue lue, même quand l'autre langue en a un, en anglais comme en français ; et le texte échappé dans sa balise, avec sa classe), la comparaison des sens (lue dans `NL.gloss` seul), la langue de l'appareil dans des réglages reconstruits (`withDeviceLang`), la langue appliquée sans rien dire ou annoncée (`apply()`, `applyAndTell()`) — ni ne revienne à un ancien nom : `wordsFr`, `wordsPhFr`, `add-en`, `en` dans `library.js`, `voiceInfo().note`, `notice` dans `lang.js`, les textes du journal d'erreurs ailleurs que dans sa propre copie (`errcopy`), chaque acte d'une condition lu, même sur plusieurs lignes ; que, dans `TIERS` (`doctor.js`), chaque `id` que rend `NL.speech.tier()` tienne les deux textes de ce que l'appareil sait faire de la parole en deux clés de `NL.t`, `labelKey` et `noteKey`, lues au dessin, sans accesseur ; que les minuteurs `'held'` du faux navigateur suivent les règles d'un vrai tour (rien ne part avant `B.tick()`, puis tout part dans l'ordre de pose ; `clearTimeout` retire un minuteur avant le tour ou pendant ; un minuteur posé pendant le tour attend le suivant), qu'un mode de minuteurs inconnu échoue en se nommant, que `B.waiting()` compte les minuteurs `'held'` qui attendent, et qu'une erreur dans l'un d'eux sorte de `B.tick()` une fois les autres partis, sauf si `onTimerError` la prend ; que `prepare` parte juste avant `src/app.js`, les autres sources chargées, et échoue sur une page qui ne charge pas `src/app.js` ; et que `smoke.js` lise les fichiers du dépôt par son seul `read()` et éprouve ses relectures par son seul `selfTest()` |
+| `smoke.js` | Le contenu, l'échelle, chaque type d'exercice, la notation, la qualité des leurres, l'orthographe ; que le build ne garde aucune des chaînes d'interface néerlandaises connues non traduites, qu'il déclare `<html lang="en-GB">` et porte la description anglaise (l'anglais est l'affichage par défaut ; `lang.js` contrôle les deux tables d'interface), et que `index.html` et `artifact.html` en sortent en LF, sans retour chariot ; que `NL.ui.ifText` ne rende rien sans texte, ni pour un sens qui vaut `null` dans la langue lue, même quand l'autre langue en a un, en anglais comme en français, et rende le texte échappé dans sa balise, avec sa classe ; et les gardes qui relisent les sources et les suites comme du texte, listées sous « Les gardes de `smoke.js` » |
+| `helpers.js` | Les aides de `test/lib` dont chaque suite dépend sans les voir : les minuteurs `'held'` du faux navigateur suivent les règles d'un vrai tour (rien ne part avant `B.tick()`, puis tout part dans l'ordre de pose ; `clearTimeout` retire un minuteur avant le tour ou pendant ; un minuteur posé pendant le tour attend le suivant), `B.waiting()` compte ceux qui attendent, une erreur dans l'un d'eux sort de `B.tick()` une fois les autres partis, et un mode de minuteurs inconnu échoue en se nommant ; `onTimerError` ne sert qu'aux minuteurs `'sync'`, dont il reçoit l'erreur que, sans lui, ils ignorent, et échoue en se nommant à côté d'un autre mode ; `prepare` part juste avant `src/app.js`, les autres sources chargées, et échoue sur une page qui ne charge pas `src/app.js` ; `joined()` ôte chaque balise sans rien à sa place, là où `text()` met une espace (`test/lib/langs.js`) |
 | `lang.js` | La langue d'affichage (contrôles 2 à 6) : le cours chargé tel quel puis « apparié » (un anglais factice par sens et par texte), aucune chaîne d'interface hors des deux tables, mêmes clés, même forme, mêmes chiffres et mêmes `{…}` dans `fr.js` et `en.js`, aucun écran qui mêle les langues, le réglage, le changement qui attend la fin de la séance et l'avis qui l'annonce (un écran ouvert dans le tour où l'avis s'est levé le montre encore, un écran d'un tour suivant ne le montre plus ; deux avis levés dans un même tour n'attendent qu'un minuteur, et chaque essai part d'un tour fini), ce que la restauration et la remise à zéro gardent, et le néerlandais du cours déclaré comme tel (`lang`), le sens montré dans l'autre langue marqué comme tel, à l'écran et dans chaque exercice du registre, l'avis sur doctor et compte, et la recherche par l'un ou l'autre sens ; elle ne voit pas le néerlandais cité dans la prose française ou anglaise (« … »), qui reste sans balise |
 | `dehet.js` | Chaque nom du cours confronté au Wiktionnaire : `de` ou `het`, sur la fiche **et** dans ses phrases d'exemple ; le cours chargé par `browser.open`, sans `src/app.js`, comme dans les autres suites |
 | `content.js` | L'orthographe contre 410 000 formes néerlandaises, que chaque exercice promis se construise vraiment, qu'une phrase d'exemple n'emprunte pas de vocabulaire à une unité ultérieure, et les éléments enseignés deux fois ; le contrôle 5 : chaque id garde son néerlandais, le 6 : l'anglais qui reste dû ; un « u » ou « uw » néerlandais glosé « you » porte « (informal, Flemish u) » quand le français tutoie, « (formal) » sinon ; un `<i>` d'une explication de grammaire qui se lit pareil en français et en anglais est du néerlandais, et porte `lang="nl-BE"` |
@@ -64,6 +65,55 @@ Ce que plusieurs suites font vit une fois dans `test/lib/`, et chaque fichier y
 dit en tête ce qu'il offre : une suite le prend là au lieu de le refaire. Ses
 dates partent de l'horloge de la suite (`T0`), chacune différente : deux
 écritures dans la même milliseconde ne testent rien.
+
+## Les gardes de `smoke.js`
+
+`smoke.js` relit aussi les sources et les suites comme du texte, sans les lancer. Il
+refuse :
+
+- dans les sources listées par `build.sh`, `var` et le chaînage optionnel `?.` (les
+  chaînes, les commentaires et les regex ne comptent pas) ;
+- hors de `gloss.js`, un attribut `lang` construit à la main, ou `en-GB` écrit en
+  toutes lettres ;
+- dans une suite, ce que `test/lib` partage, refait à la main :
+  - un clic construit à la main (`B.tap`) ;
+  - un second faux Supabase (`test/lib/supabase.js`) ;
+  - une échéance tirée d'une date écrite en dur (`test/lib/seed.js`) ;
+  - un minuteur remplacé à la main (`timers: 'held'` et `B.tick()`,
+    `test/lib/browser.js`) ;
+  - un champ de page simulé à la main (`byId: 'stub'` et `B.fields`) ;
+  - un HTML dépouillé de ses balises à la main (`text()`, ou `joined()` quand ce
+    qu'une balise sépare se lit d'un tenant, `test/lib/langs.js`) ;
+  - une source lancée à la main par le `vm` de node, dans le contexte d'une page ou
+    dans un contexte à elle (`browser.open`, et `prepare` pour ce qui précède
+    `src/app.js`, `test/lib/browser.js`) ;
+  - une copie du cours tel qu'il est écrit (`raw()`, `test/lib/prose.js`) ;
+  - un arbre parcouru à la main, par une fonction, une méthode d'objet ou un
+    `x.y = function`, la tête d'un `if`, d'un `for`, d'un `while`, d'un `switch` ou
+    d'un `catch` n'étant pas une méthode (`test/lib/tree.js`) ;
+  - le cours parcouru collection par collection (`visitCourse()` et
+    `rewriteCourse()`), une boucle écrite dans une chaîne ou un commentaire mise à
+    part ; une suite où cette relecture perd le fil (une chaîne, une regex, un
+    gabarit ou un commentaire qui ne se ferme pas) est nommée à sa ligne ;
+- dans une source ou une suite, ce qui a déjà un nom, écrit de nouveau :
+  - l'autre langue (`NL.gloss.other`) ;
+  - « le texte, s'il y en a un » (`NL.ui.ifText`), qu'il soit un sens lu par
+    `NL.gloss`, un message, un score ou ce que le micro a entendu, le test écrit
+    dans un sens ou dans l'autre, la balise écrite en toutes lettres ou tenue dans
+    une variable, `esc()` posé sur le texte ou sur une expression qui le lit, entre
+    guillemets simples ou doubles, sur une ligne ou plusieurs ;
+  - la comparaison des sens (lue dans `NL.gloss` seul) ;
+  - la langue de l'appareil dans des réglages reconstruits (`withDeviceLang`) ;
+  - la langue appliquée sans rien dire ou annoncée (`apply()`, `applyAndTell()`) ;
+- un ancien nom revenu : `wordsFr`, `wordsPhFr`, `add-en`, `en` dans `library.js`,
+  `voiceInfo().note`, `notice` dans `lang.js`, les textes du journal d'erreurs
+  ailleurs que dans sa propre copie (`errcopy`), chaque acte d'une condition lu,
+  même sur plusieurs lignes ;
+- dans `TIERS` (`doctor.js`), un `id` que rend `NL.speech.tier()` sans les deux
+  textes de ce que l'appareil sait faire de la parole en deux clés de `NL.t`,
+  `labelKey` et `noteKey`, lues au dessin, ou un accesseur à leur place ;
+- dans `smoke.js` même, un fichier du dépôt lu autrement que par son `read()`, ou
+  une relecture éprouvée autrement que par son `selfTest()`.
 
 ## Ce que les tests ne voient pas
 

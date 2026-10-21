@@ -1,7 +1,13 @@
 /* Le parcours d'un arbre : le cours, ou une table de l'interface. Écrit une fois, pour
    toutes les suites. Un élément de tableau garde la clé de son tableau, et un chemin
    s'écrit comme ceux d'owed() (units[3].words[0].fr) : at() le relit. owed() garde son
-   propre parcours : il s'arrête à une paire et saute fr et en, ce que visit ne sait pas faire. */
+   propre parcours : il s'arrête à une paire et saute fr et en, ce que visit ne sait pas faire.
+
+     const tree = require('./lib/tree');
+     tree.visit(v, fn, key, where)    chaque nœud, avant ses enfants : fn(nœud, clé, chemin)
+     tree.rewrite(v, fn, key, where)  chaque feuille remplacée par fn(feuille, clé, chemin) ; garder ce qu'il rend
+     tree.visitCourse(C, fn)          visit sur chaque collection du cours
+     tree.rewriteCourse(C, fn)        rewrite sur chaque collection, remise à sa place */
 const { COLLECTIONS } = require('./prose');
 
 /* Chaque nœud, avant ses enfants : fn(nœud, clé, chemin). fn peut changer le nœud. */
