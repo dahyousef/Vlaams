@@ -86,7 +86,7 @@ NL.ui = (function () {
     const html = full
       ? '<div class="screen full">' + noticeHtml + S.render(arg) + '</div>'
       : topbar() + '<main class="screen">' + noticeHtml + S.render(arg) + '</main>' + nav();
-    root.innerHTML = html + (sheet ? sheetHtml() : '') + (toastMsg ? '<div class="toast">' + esc(toastMsg) + '</div>' : '');
+    root.innerHTML = html + (sheet ? sheetHtml() : '') + ifText(toastMsg, 'div', 'toast');
     if (S.after) S.after(arg);
   }
 

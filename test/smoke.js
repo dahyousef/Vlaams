@@ -279,14 +279,30 @@ NL.state.open().then(() => {
 
   /* #74. What already has a name is not written out again: the other language is
      NL.gloss.other, the comparison of senses is read from NL.gloss alone, and « the text,
-     if there is any » is NL.ui.ifText. */
-  const byHand = /NL\.gloss\.of\(([\w.]+)\) \? '<\w+[^']*>' \+ esc\(NL\.gloss\.of\(\1\)\)/g;
+     if there is any » is NL.ui.ifText, whatever the text is: a meaning read through NL.gloss,
+     a message, a score or what the microphone heard. */
+  const byHand = /NL\.gloss\.of\(([\w.]+)\) \? '<\w+[^']*>' \+ esc\(NL\.gloss\.of\(\1\)\)|(?<![\w$.])([\w.]+) \? '<(\w+)[^']*>' \+ esc\(\2\) \+ '<\/\3>' : ''/g;
   sources.forEach(f => {
     const src = read(f);
     if (f !== 'src/core/gloss.js') ok(!/=== '(en|fr)' \? '(?!\1)(?:en|fr)' : '\1'/.test(src), f + ': works out the other language by hand; use NL.gloss.other');
     (src.match(byHand) || []).forEach(m => ok(false, f + ': ' + m + '… writes « the text, if there is any » by hand; use NL.ui.ifText'));
   });
   ok(!('sameSense' in NL.ex), 'NL.ex re-exports sameSense; read it from NL.gloss');
+  /* NL.ui.ifText itself, on a page that loads the whole app: no text gives nothing, and a text
+     comes out escaped in its tag, with its class if it has one. A meaning with nothing to say
+     in either language gives nothing too. */
+  {
+    const P = browser.open({ root: ROOT, seed: browser.SEED, byId: 'stub' }).NL;
+    selfTest('ifText', args => P.ui.ifText.apply(null, args), [
+      [['', 'p'], ''],
+      [[null, 'p', 'heard'], ''],
+      [[undefined, 'div', 'toast'], ''],
+      [['a', 'p'], '<p>a</p>'],
+      [['3/4', 'p', 'bub-score'], '<p class="bub-score">3/4</p>'],
+      [['<b> & "x"', 'em'], '<em>&lt;b&gt; &amp; &quot;x&quot;</em>'],
+      [[{ fr: null, en: null }, 'p', 'v-note'], '']
+    ]);
+  }
 
   /* #74. What the device can do with speech is told in two keys of NL.t, read at draw time
      as home.js and shell.js read t[v.noteKey]: in doctor.js's TIERS, each tier that

@@ -5686,7 +5686,7 @@ NL.ex = (function () {
       } else if (sp.phase === 'listening') {
         panel = '<div class="mic-panel live"><button class="mic big listening" data-mic="stop" aria-label="' + NL.t.stop + '">' + ICON.mic(34) + '</button>' +
           '<p class="mic-why">' + NL.t.micListening + '</p>' +
-          (sp.partial ? '<p class="heard">' + esc(sp.partial) + '</p>' : '') + '</div>';
+          NL.ui.ifText(sp.partial, 'p', 'heard') + '</div>';
       } else if (sp.phase === 'done') {
         panel = '<div class="mic-panel ' + (sp.ok ? 'good' : 'bad') + '">' +
           '<div class="score-row"><span class="score">' + wordScore(sp.parts) + '</span>' +
@@ -6057,7 +6057,7 @@ NL.ui = (function () {
     const html = full
       ? '<div class="screen full">' + noticeHtml + S.render(arg) + '</div>'
       : topbar() + '<main class="screen">' + noticeHtml + S.render(arg) + '</main>' + nav();
-    root.innerHTML = html + (sheet ? sheetHtml() : '') + (toastMsg ? '<div class="toast">' + esc(toastMsg) + '</div>' : '');
+    root.innerHTML = html + (sheet ? sheetHtml() : '') + ifText(toastMsg, 'div', 'toast');
     if (S.after) S.after(arg);
   }
 
@@ -7317,7 +7317,7 @@ NL.screens.sessie = (function () {
         }
         return '<div class="bub you"><div><p class="bub-nl" lang="nl-BE">' + esc(b.nl) + '</p>' +
           '<p class="bub-en"' + NL.gloss.langAttr(b) + '>' + esc(NL.gloss.of(b)) + '</p>' +
-          (b.score ? '<p class="bub-score">' + esc(b.score) + '</p>' : '') + '</div></div>';
+          NL.ui.ifText(b.score, 'p', 'bub-score') + '</div></div>';
       }).join('');
 
       let panel = '';
@@ -7446,7 +7446,7 @@ NL.screens.sessie = (function () {
     if (blocked) return NL.ex.recordPanel(sp, target, blocked);
     if (sp.phase === 'listening') {
       return '<div class="mic-panel live"><button class="mic big listening" data-mic="stop" aria-label="' + NL.t.stop + '">' + ICON.mic(32) + '</button>' +
-        '<p class="mic-why">' + NL.t.micListening + '</p>' + (sp.partial ? '<p class="heard">' + esc(sp.partial) + '</p>' : '') + '</div>';
+        '<p class="mic-why">' + NL.t.micListening + '</p>' + NL.ui.ifText(sp.partial, 'p', 'heard') + '</div>';
     }
     if (sp.phase === 'done') {
       return '<div class="mic-panel ' + (sp.ok ? 'good' : 'bad') + '">' +
@@ -7588,7 +7588,7 @@ NL.screens.luisteren = (function () {
     }
     if (sp.phase === 'listening') {
       return '<div class="mic-panel live"><button class="mic big listening" data-act="micstop">' + ICON.mic(32) + '</button>' +
-        '<p class="mic-why">' + NL.t.micListening + '</p>' + (sp.partial ? '<p class="heard">' + esc(sp.partial) + '</p>' : '') + '</div>';
+        '<p class="mic-why">' + NL.t.micListening + '</p>' + NL.ui.ifText(sp.partial, 'p', 'heard') + '</div>';
     }
     if (sp.phase === 'done') {
       return '<div class="mic-panel ' + (sp.ok ? 'good' : 'bad') + '">' +
@@ -8127,7 +8127,7 @@ NL.screens.compte = (function () {
         '<p>' + t.accSentTo(esc(email)) + '</p>' +
         '<label class="acc-field"><span>' + t.accCode + '</span>' +
         '<input class="textin acc-code" id="acc-code" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="123456"></label>' +
-        (msg ? '<p class="acc-err">' + esc(msg) + '</p>' : '') +
+        NL.ui.ifText(msg, 'p', 'acc-err') +
         '<div class="acc-actions">' +
         '<button class="btn btn-primary wide" data-act="verify"' + (busy ? ' disabled' : '') + '>' + t.accVerify + '</button>' +
         '<button class="btn btn-ghost wide" data-act="resend"' + (busy ? ' disabled' : '') + '>' + t.accResend + '</button>' +
@@ -8139,7 +8139,7 @@ NL.screens.compte = (function () {
         '<p>' + t.accBody + '</p>' +
         '<label class="acc-field"><span>' + t.accEmail + '</span>' +
         '<input class="textin" id="acc-email" type="email" autocomplete="email" value="' + esc(email) + '" placeholder="' + NL.t.accEmailPh + '"></label>' +
-        (msg ? '<p class="acc-err">' + esc(msg) + '</p>' : '') +
+        NL.ui.ifText(msg, 'p', 'acc-err') +
         '<div class="acc-actions">' +
         '<button class="btn btn-primary wide" data-act="send"' + (busy ? ' disabled' : '') + '>' + (busy ? t.accSending : t.accSend) + '</button>' +
         '<button class="btn btn-ghost wide" data-act="skip">' + t.accSkip + '</button>' +

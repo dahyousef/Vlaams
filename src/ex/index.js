@@ -323,7 +323,7 @@ NL.ex = (function () {
       } else if (sp.phase === 'listening') {
         panel = '<div class="mic-panel live"><button class="mic big listening" data-mic="stop" aria-label="' + NL.t.stop + '">' + ICON.mic(34) + '</button>' +
           '<p class="mic-why">' + NL.t.micListening + '</p>' +
-          (sp.partial ? '<p class="heard">' + esc(sp.partial) + '</p>' : '') + '</div>';
+          NL.ui.ifText(sp.partial, 'p', 'heard') + '</div>';
       } else if (sp.phase === 'done') {
         panel = '<div class="mic-panel ' + (sp.ok ? 'good' : 'bad') + '">' +
           '<div class="score-row"><span class="score">' + wordScore(sp.parts) + '</span>' +
