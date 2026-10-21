@@ -345,6 +345,11 @@ function langChecks() {
     return B.NL.state.open().then(() => {
       const N = B.NL, S = N.screens.sessie, html = () => B.app.innerHTML;
       const fr = N.tables.fr, en = N.tables.en;
+      /* Les minuteurs de B attendent tick(). Partis aussitôt, ils finiraient le tour où
+         l'avis se lève avant l'écran suivant : seen() l'effacerait sans que rien ne le voie. */
+      const later = [];
+      B.ctx.setTimeout = f => { later.push(f); return 0; };
+      const tick = () => later.splice(0).forEach(f => f());
       dueReviews(N, 12, T0);
       const waits = (what, enter) => {
         enter();
@@ -359,7 +364,10 @@ function langChecks() {
         ok(pageLang(B) === 'fr', '5b ' + what + ' : <html lang> vaut « ' + pageLang(B) + ' » après la sortie');
         ok(count(t, fr.langNotice) === 1, '5b ' + what + ' : l\'avis s\'affiche ' + count(t, fr.langNotice) + ' fois au lieu d\'une');
         N.ui.go('leerpad');
-        ok(count(text(html()), fr.langNotice) === 0, '5b ' + what + ' : l\'avis revient au go() suivant');
+        ok(count(text(html()), fr.langNotice) === 1, '5b ' + what + ' : l\'avis remplacé dans le tour où il s\'est levé est perdu');
+        tick();
+        N.ui.go('vandaag');
+        ok(count(text(html()), fr.langNotice) === 0, '5b ' + what + ' : l\'avis revient à l\'écran d\'après, un tour plus tard');
         English(B); N.ui.go('vandaag');
       };
       waits('séance', () => { ok(S.begin('vandaag'), '5b : aucune séance à démarrer'); N.ui.go('sessie'); });

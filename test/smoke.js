@@ -237,8 +237,9 @@ NL.state.open().then(() => {
   console.log('  suites          ' + suites.length + ' files: no hand-built click, no second fake Supabase, no due date from a bare epoch');
 
   /* #74. A name says what it holds. The meaning typed into « Mes mots » is in either
-     language; the notice's list holds keys of NL.t; the backup's copy has its own two
-     texts; and voiceInfo() hands back a key of NL.t, read as t[v.noteKey]. */
+     language; the notice's list holds keys of NL.t, and its flag says its tick is over;
+     the backup's copy has its own two texts; and voiceInfo() hands back a key of NL.t,
+     read as t[v.noteKey]. */
   sources.concat(suites).forEach(f => {
     const src = read(f);
     ok(!/\bwords(Ph)?Fr\b|\badd-en\b/.test(src), f + ': names the meaning of « Mes mots » after one language; it is wordsMeaning, wordsPhMeaning and add-meaning');
@@ -246,6 +247,7 @@ NL.state.open().then(() => {
   });
   ok(!/\bconst en\b/.test(read('src/ui/library.js')), 'src/ui/library.js: the meaning typed into « Mes mots » is held in en; it is meaning');
   ok(!/\bnotice\s*=[^=]/.test(read('src/core/lang.js')), 'src/core/lang.js: the notice\'s list of keys is named notice; it is noticeKeys');
+  ok(!/\bshown\b/.test(read('src/core/lang.js')), 'src/core/lang.js: the flag that says the notice\'s tick is over is named shown; it is tickOver');
   ok(read('src/ui/shell.js').indexOf('errCop') < 0, 'src/ui/shell.js: the backup copy reads the error log\'s texts; use backupCopied and backupCopyByHand');
   ok(typeof NL.tables.fr.backupCopied === 'string' && typeof NL.tables.fr.backupCopyByHand === 'string', 'fr.js has no backupCopied or backupCopyByHand');
   ok(typeof NL.t[NL.speech.voiceInfo().noteKey] === 'string', 'voiceInfo() has no noteKey naming a key of NL.t');

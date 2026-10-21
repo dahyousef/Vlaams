@@ -3,6 +3,7 @@
    appareil à l'autre, la révision la plus récente qui gagne, la fusion des
    réglages, la boîte d'envoi qui survit à une panne réseau, l'effacement quand un
    autre compte se connecte, et l'inertie totale sans configuration. */
+const fs = require('fs'), path = require('path'), { runInContext } = require('vm');
 const browser = require('./lib/browser');
 const { count } = require('./lib/langs');
 const { dueReviews } = require('./lib/seed');
@@ -46,7 +47,19 @@ function device(name, withConfig, store, idb) {
   return dev;
 }
 
+/* La page entière : un appareil configuré où app.js tourne et le démarre seul, sans boot().
+   Les champs que l'écran compte lit se remplissent dans dev.vals. */
+function page(name) {
+  const dev = device(name, true);
+  dev.vals = {};
+  dev.ctx.document.getElementById = id => (id === 'app' ? dev.root : { value: dev.vals[id] || '' });
+  runInContext(fs.readFileSync(path.join(ROOT, 'src/app.js'), 'utf8'), dev.ctx);
+  return dev;
+}
+
 const items = NL => NL.content.allItems();
+/* Le texte qu'un appareil montre, balises retirées. */
+const shown = dev => dev.root.innerHTML.replace(/<[^>]*>/g, ' ');
 
 (async () => {
   console.log('SANS CONFIGURATION');
@@ -974,7 +987,6 @@ const items = NL => NL.content.allItems();
     const T1 = device('T1', true), T2 = device('T2', true);
     for (const d of [T1, T2]) { await d.boot(); await d.signIn('langue@example.com'); d.NL.lang.apply(); d.NL.ui.go('vandaag'); }
     const fr = T1.NL.tables.fr, en = T1.NL.tables.en;
-    const shown = d => d.root.innerHTML.replace(/<[^>]*>/g, ' ');
     T1.NL.lang.set('fr'); T1.NL.ui.render();
     ok(count(shown(T1), fr.langNotice) === 1 && shown(T1).indexOf(fr.langSynced) < 0, '69.3: the switch made on this device does not show the notice alone');
     await T1.NL.sync.flush();
@@ -1029,30 +1041,23 @@ const items = NL => NL.content.allItems();
     await U.boot(); await U.signIn('onglet@example.com');
     U.NL.lang.set('fr'); await U.NL.sync.flush();
     const fr = U.NL.tables.fr;
-    /* La page entière, app.js compris ; les champs de l'écran compte se lisent dans vals. */
-    const page = name => {
-      const dev = { name, store: {} }, vals = {};
-      const B = browser.open({
-        root: ROOT, timers: 'real', store: dev.store, ua: 'Mozilla/5.0 Chrome/120',
-        config: { supabaseUrl: 'https://example.supabase.co', supabaseAnonKey: 'anon' }, supabase: fakeLib(dev)
-      });
-      B.ctx.document.getElementById = id => (id === 'app' ? B.app : { value: vals[id] || '' });
-      return Object.assign(dev, { NL: B.NL, root: B.app, tap: B.tap, vals });
-    };
     const landed = (dev, how) => {
-      const shown = dev.root.innerHTML.replace(/<[^>]*>/g, ' ');
       ok(dev.NL.ui.route === 'vandaag' && dev.NL.lang.current() === 'fr',
         '73 (' + how + '): the sign-in landed on ' + dev.NL.ui.route + ' in ' + dev.NL.lang.current() + ', expected vandaag in French');
-      ok(count(shown, fr.langSynced + ' ' + fr.langNotice) === 1, '73 (' + how + '): vandaag does not say the language came from another device');
+      ok(count(shown(dev), fr.langSynced + ' ' + fr.langNotice) === 1, '73 (' + how + '): vandaag does not say the language came from another device');
     };
+    /* Sans session, la page s'ouvre sur l'écran compte, en anglais : la connexion y finit. */
+    const onCompte = dev => ok(dev.NL.ui.route === 'compte' && dev.NL.lang.current() === 'en',
+      '73 (' + dev.name + '): a device without a session does not open on compte in English');
     const V = page('V');
     await wait(5);
-    ok(V.NL.ui.route === 'compte' && V.NL.lang.current() === 'en', '73: a device without a session does not open on compte in English');
+    onCompte(V);
     V.vals['acc-email'] = 'onglet@example.com'; V.tap({ act: 'send' }); await wait(5);
     V.vals['acc-code'] = '123456'; V.tap({ act: 'verify' }); await wait(20);
     landed(V, 'six-digit code');
     const W = page('W');
     await wait(5);
+    onCompte(W);
     W.client.auth.verifyOtp({ email: 'onglet@example.com', token: '123456', type: 'email' });
     await wait(20);
     landed(W, 'another tab');
