@@ -55,12 +55,6 @@ NL.ex = (function () {
   /* Une note de prononciation se dit en mots reconnus, pas en pourcentage. */
   const wordScore = parts => NL.t.wordsHeard((parts || []).filter(p => p.ok).length, (parts || []).length);
 
-  /* Un leurre ne doit jamais être une autre bonne réponse. « bonjour » se dit
-     « hallo » ET « goeiedag » : proposer les deux, c'est en compter un faux.
-     On compare chaque sens (« s'il vous plaît / voilà » en a deux), dans les
-     deux langues. Le lexique sépare les sens par « / » ; une virgule, elle,
-     appartient à la phrase et ne sépare rien. La comparaison vit dans NL.gloss. */
-
   /* Ce que la réponse tapée accepte pour un élément : la cible, ses variantes
      flamandes (une par virgule pour un mot, la phrase entière pour une phrase) et
      sa liste « also ». Un mot se tape avec ou sans article, comme la cible. */
@@ -97,7 +91,12 @@ NL.ex = (function () {
       pool = pool.concat(NL.content.allItems().filter(x =>
         x.kind === item.kind && x.unit !== item.unit && x.id !== item.id && NL.gloss.has(x, lang) && NL.srs.isSeen(x)));
     }
-    /* Ni un synonyme, ni une réponse que l'un des deux accepte : « dag » face à
+    /* Un leurre ne doit jamais être une autre bonne réponse. « bonjour » se dit
+       « hallo » ET « goeiedag » : proposer les deux, c'est en compter un faux.
+       On compare chaque sens (« s'il vous plaît / voilà » en a deux), dans les
+       deux langues : c'est NL.gloss.sameMeaning. Le lexique sépare les sens par
+       « / » ; une virgule, elle, appartient à la phrase et ne sépare rien. Ni un
+       synonyme, ni une réponse que l'un des deux accepte : « dag » face à
        « bonjour » ne doit pas offrir « hallo » comme faux. */
     const mine = accepted(item);
     pool = pool.filter(x => U.norm(label(x)) !== tn && !NL.gloss.sameMeaning(x, item) && !accepts(mine, x) && !accepts(accepted(x), item));

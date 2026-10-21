@@ -3,6 +3,8 @@
 const path = require('path'), fs = require('fs');
 const browser = require('./lib/browser');
 const ROOT = process.argv[2];
+/* A file of the repository, read as it is. */
+const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
 
 /* Le contenu, le planificateur et les exercices : ni interface, ni synchro, ni
    phrases d'exemple. */
@@ -181,13 +183,13 @@ NL.state.open().then(() => {
      chaque appareil qui ouvre l'app l'installe. Les .js des lignes cp sont donc relus
      aussi. vendor/supabase.js, du code tiers, entre dans la page par cat : il n'est
      sur aucune des deux listes, et la relecture ne le lit pas. */
-  const copied = (fs.readFileSync(path.join(ROOT, 'build.sh'), 'utf8').match(/^cp .* dist\/\s*$/gm) || [])
+  const copied = (read('build.sh').match(/^cp .* dist\/\s*$/gm) || [])
     .flatMap(l => l.trim().split(/\s+/).slice(1, -1)).filter(f => /\.js$/.test(f));
   const why = { 'var': 'a var declaration, use const, or let where it changes', '?.': 'optional chaining (?.)' };
   let seen = 0;
   ok(sources.length > 0, 'the syntax check read no source file from build.sh');
   ok(copied.length > 0, 'the syntax check read no .js file from a cp … dist/ line of build.sh');
-  sources.concat(copied).forEach(f => syntaxFindings(fs.readFileSync(path.join(ROOT, f), 'utf8')).forEach(x => {
+  sources.concat(copied).forEach(f => syntaxFindings(read(f)).forEach(x => {
     ok(false, f + ':' + x.line + ': ' + (why[x.what] || x.what + ', as the syntax check reads it'));
     seen++;
   }));
@@ -199,7 +201,7 @@ NL.state.open().then(() => {
      en-GB written outside gloss.js, is a second source, and the two drift apart. */
   ok(sources.indexOf('src/core/gloss.js') >= 0, 'the lang check looks for src/core/gloss.js, which build.sh no longer lists');
   sources.filter(f => f !== 'src/core/gloss.js').forEach(f => {
-    const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
+    const src = read(f);
     ok(!/[^\w-]lang="'\s*\+/.test(src), f + ': a lang attribute is built by hand; use NL.gloss.langAttr');
     ok(src.indexOf('en-GB') < 0, f + ': en-GB is written outside gloss.js; use NL.gloss.tag');
   });
@@ -209,16 +211,16 @@ NL.state.open().then(() => {
      texts are one getter pair, and « the text, if there is any » is NL.ui.ifText. */
   const byHand = /NL\.gloss\.of\(([\w.]+)\) \? '<\w+[^']*>' \+ esc\(NL\.gloss\.of\(\1\)\)/g;
   sources.forEach(f => {
-    const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
+    const src = read(f);
     if (f !== 'src/core/gloss.js') ok(!/=== '(en|fr)' \? '(?!\1)(?:en|fr)' : '\1'/.test(src), f + ': works out the other language by hand; use NL.gloss.other');
     (src.match(byHand) || []).forEach(m => ok(false, f + ': ' + m + '… writes « the text, if there is any » by hand; use NL.ui.ifText'));
   });
   ok(!('sameSense' in NL.ex), 'NL.ex re-exports sameSense; read it from NL.gloss');
-  const doctor = fs.readFileSync(path.join(ROOT, 'src/ui/doctor.js'), 'utf8');
+  const doctor = read('src/ui/doctor.js');
   ok((doctor.match(/get label\(\)/g) || []).length === 1, 'src/ui/doctor.js writes a tier\'s getter pair more than once; use tierText');
 
   /* Rebuilt settings keep the device's language in one place, withDeviceLang. */
-  const state = fs.readFileSync(path.join(ROOT, 'src/core/state.js'), 'utf8');
+  const state = read('src/core/state.js');
   ok((state.match(/\.displayLang\s*=[^=]/g) || []).length === 1, 'src/core/state.js gives rebuilt settings the device\'s language in more than one place; use withDeviceLang');
 
   /* The suites share their helpers through test/lib, and a copy drifts from the original.
@@ -227,7 +229,7 @@ NL.state.open().then(() => {
   const suites = ['test', 'test/tools'].reduce((all, d) => all.concat(fs.readdirSync(path.join(ROOT, d))
     .filter(f => /\.js$/.test(f)).map(f => d + '/' + f)), []);
   suites.forEach(f => {
-    const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
+    const src = read(f);
     ok(!/target:\s*\{\s*closest:\s*\(\)\s*=>\s*\(\{\s*dataset/.test(src), f + ': builds a click by hand; use B.tap from test/lib/browser.js');
     ok(!/createClient\s*(:|\([^)]*\)\s*\{)/.test(src), f + ': defines a second fake Supabase; use test/lib/supabase.js');
     ok(!/\.due\s*=\s*\d{10,}/.test(src), f + ': writes a due date from a bare epoch; use the suite clock, as test/lib/seed.js does');
@@ -238,30 +240,34 @@ NL.state.open().then(() => {
      language; the notice's list holds keys of NL.t; the backup's copy has its own two
      texts; and voiceInfo() hands back a key of NL.t, read as t[v.noteKey]. */
   sources.concat(suites).forEach(f => {
-    const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
+    const src = read(f);
     ok(!/\bwords(Ph)?Fr\b|\badd-en\b/.test(src), f + ': names the meaning of « Mes mots » after one language; it is wordsMeaning, wordsPhMeaning and add-meaning');
     ok(!/\bv\.note\b|voiceInfo\(\)\.note\b/.test(src), f + ': reads the voice report\'s key under its old name; it is noteKey');
   });
-  ok(!/\bconst en\b/.test(fs.readFileSync(path.join(ROOT, 'src/ui/library.js'), 'utf8')), 'src/ui/library.js: the meaning typed into « Mes mots » is held in en; it is meaning');
-  ok(!/\bnotice\s*=[^=]/.test(fs.readFileSync(path.join(ROOT, 'src/core/lang.js'), 'utf8')), 'src/core/lang.js: the notice\'s list of keys is named notice; it is noticeKeys');
-  ok(fs.readFileSync(path.join(ROOT, 'src/ui/shell.js'), 'utf8').indexOf('errCop') < 0, 'src/ui/shell.js: the backup copy reads the error log\'s texts; use backupCopied and backupCopyByHand');
+  ok(!/\bconst en\b/.test(read('src/ui/library.js')), 'src/ui/library.js: the meaning typed into « Mes mots » is held in en; it is meaning');
+  ok(!/\bnotice\s*=[^=]/.test(read('src/core/lang.js')), 'src/core/lang.js: the notice\'s list of keys is named notice; it is noticeKeys');
+  ok(read('src/ui/shell.js').indexOf('errCop') < 0, 'src/ui/shell.js: the backup copy reads the error log\'s texts; use backupCopied and backupCopyByHand');
   ok(typeof NL.tables.fr.backupCopied === 'string' && typeof NL.tables.fr.backupCopyByHand === 'string', 'fr.js has no backupCopied or backupCopyByHand');
   ok(typeof NL.t[NL.speech.voiceInfo().noteKey] === 'string', 'voiceInfo() has no noteKey naming a key of NL.t');
   /* Applying the language and telling it are two calls, not one call and a flag. */
   ok(NL.lang.apply.length === 0 && typeof NL.lang.applyAndTell === 'function', 'NL.lang.apply takes a flag; apply() is silent, applyAndTell() raises the notice');
-  sources.concat(suites).forEach(f => ok(!/lang\.apply\((true|false)\)/.test(fs.readFileSync(path.join(ROOT, f), 'utf8')),
+  sources.concat(suites).forEach(f => ok(!/lang\.apply\((true|false)\)/.test(read(f)),
     f + ': passes a flag to NL.lang.apply; call apply() or applyAndTell()'));
 
   /* #74. The course as it is written is copied by raw() in test/lib/prose.js, and a tree is
      walked by test/lib/tree.js. A function a suite calls on a child (v[k]) and on an array's
      element, x or through forEach, is a walker written by hand. */
   suites.forEach(f => {
-    const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
+    const src = read(f);
     ok(!/JSON\.parse\(JSON\.stringify\(NL\.content/.test(src), f + ': copies the course by hand; use raw() from test/lib/prose.js');
     src.split('\n').forEach((line, i) => (line.match(/\b\w+(?=\((?:\w+, )?v\[k\])/g) || [])
       .filter(name => new RegExp('\\.forEach\\(' + name + '\\)|\\b' + name + '\\((?:\\w+, )?x\\b').test(src))
       .forEach(name => ok(false, f + ':' + (i + 1) + ': ' + name + '() walks a tree by hand; use test/lib/tree.js')));
   });
+
+  /* A file of the repository is read through read(), not spelt out again at each check. */
+  ok((read('test/smoke.js').match(/readFileSync\(path\.join\(ROOT,/g) || []).length === 1,
+    'test/smoke.js reads a file of the repository by hand; use read()');
 
   items.filter(i => i.art).forEach(i =>
     ok(i.nl.startsWith(i.art + ' '), 'article mismatch: ' + i.nl + ' / ' + i.art));
