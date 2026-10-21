@@ -65,10 +65,10 @@ Important means the task cannot be trusted until it is fixed: incorrect or fragi
 requirement, damage you would block a merge over. Polish is Minor. Something the brief mandates that this
 rubric calls a defect is Important, labelled plan-mandated.
 
-Each Minor, smells included, is `fix` or `open`. `fix` when its fix stays in the task's files and changes no
-behaviour the brief states: the task's fix round makes it. `open` when the brief's own code dictates it, or
-its fix reaches past the task's files: it goes to the log, and the closing review turns it into a fix or a
-ticket. `Approved` means no Critical, no Important and no `fix`.
+No Minor outlives its task. Each Minor, smells included, is a change you want made, and this task's fix
+round makes it: give each one a fix that keeps the behaviour the brief and the ADRs state, in whatever files
+it needs, the brief's own code included. A Minor whose only fix changes stated behaviour goes through « Fix or
+design » below, as an Important would. `Approved` means no Critical, no Important and no Minor.
 
 ## Fix or design
 
@@ -82,7 +82,7 @@ Write the full report to the path your dispatch names, in this form:
 
     ### Spec Compliance   ✅ / ❌ with file:line / ⚠️ cannot verify from the diff
     ### Strengths
-    ### Issues            Critical / Important / Minor — each with file:line, what, why, fix; each Minor `fix` or `open`
+    ### Issues            Critical / Important / Minor — each with file:line, what, why, fix
     ### Assessment        Task quality: Approved | Needs fixes — one or two sentences
 
 Your final message, at most 10 lines:
@@ -90,12 +90,11 @@ Your final message, at most 10 lines:
     REVIEW: Approved | Needs fixes
     ISSUES: <critical>/<important>/<minor>
     DESIGN: yes | no — <one line reason when yes>
-    OPEN: <the `open` Minors, one line, or none>
     REPORT: <path>
 
 ## Re-review
 
 When your dispatch says "re-review", you get the fix diff and the previous report. Check only that each
-Critical, Important and `fix` issue of the previous report is fixed, and that the fix introduced nothing
-new. Write your report to the path your dispatch names (`task-<N>-rereview-<k>.md`, beside the previous one,
-so a second re-review does not overwrite the first). Same final message.
+issue of the previous report, Minors included, is fixed, and that the fix introduced nothing new. Write your
+report to the path your dispatch names (`task-<N>-rereview-<k>.md`, beside the previous one, so a second
+re-review does not overwrite the first). Same final message.
