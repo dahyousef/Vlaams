@@ -440,6 +440,9 @@ NL.state.open().then(() => {
     ['const T = {\n  walk: function (v) {\n    for (const k in v) T.walk(v[k]);\n  }\n};', ['2 walk']],
     ['T.each = v => { if (v && typeof v === \'object\') Object.values(v).forEach(T.each); };', ['1 each']],
     ['NL.x.walk = async function (v) {\n  for (const k in v) await NL.x.walk(v[k]);\n};', ['1 walk']],
+    ['const T = {\n  async walk(v) {\n    for (const k in v) await this.walk(v[k]);\n  }\n};', ['2 walk']],
+    ['const T = {\n  walk: v => {\n    Object.keys(v).forEach(k => T.walk(v[k]));\n  }\n};', ['2 walk']],
+    ['const T = {\n  walk(v) {\n    Object.keys(v).forEach(k => walk(v[k]));\n  }\n};', []],
     ['const o = {\n  keys(o) { return Object.keys(o).length; }\n};', []]
   ]);
   /* A loop over COLLECTIONS that calls visit() or rewrite() walks the course one collection
