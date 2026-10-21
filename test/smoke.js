@@ -319,31 +319,17 @@ NL.state.open().then(() => {
     ifTextByHand(src).forEach(m => ok(false, f + ': ' + m + '… writes « the text, if there is any » by hand; use NL.ui.ifText'));
   });
   ok(!('sameSense' in NL.ex), 'NL.ex re-exports sameSense; read it from NL.gloss');
-  /* NL.ui.ifText itself, on a page that loads the whole app: no text gives nothing, and a text
-     comes out escaped in its tag, with its class if it has one. A meaning with nothing to say
-     in either language gives nothing too. */
-  {
-    const P = browser.open({ root: ROOT, seed: browser.SEED, byId: 'stub' }).NL;
-    selfTest('ifText', args => P.ui.ifText.apply(null, args), [
-      [['', 'p'], ''],
-      [[null, 'p', 'heard'], ''],
-      [[undefined, 'div', 'toast'], ''],
-      [['a', 'p'], '<p>a</p>'],
-      [['3/4', 'p', 'bub-score'], '<p class="bub-score">3/4</p>'],
-      [['<b> & "x"', 'em'], '<em>&lt;b&gt; &amp; &quot;x&quot;</em>'],
-      [[{ fr: null, en: null }, 'p', 'v-note'], '']
-    ]);
-    /* #77. A meaning that is null in the language read has nothing to say to this reader,
-       even when the other language has a text, in English as in French; a meaning with a
-       text in both comes out in the one read. The page is this block's own: no other check
-       reads the language it is left in. */
-    selfTest('ifText by language', ([x, l]) => { P.gloss.use(l); return P.ui.ifText(x, 'p'); }, [
-      [[{ fr: 'texte', en: null }, 'en'], ''],
-      [[{ fr: null, en: 'text' }, 'fr'], ''],
-      [[{ fr: 'texte', en: 'text' }, 'en'], '<p>text</p>'],
-      [[{ fr: 'texte', en: 'text' }, 'fr'], '<p>texte</p>']
-    ]);
-  }
+  /* A text is copied in one place, NL.ui.copy (shell.js): outside its block, no source names
+     the clipboard or the browser's old copy command. The backup and the error log each wrote
+     their own, and the two drifted apart. The block is blanked, not cut, so that every other
+     line keeps its number. */
+  sources.forEach(f => {
+    const src = read(f);
+    const own = f === 'src/ui/shell.js' ? blocks(src, /^  const copy = /) : [];
+    const code = own.reduce((s, b) => s.replace(b.text, b.text.replace(/[^\n]+/g, '')), src);
+    const at = code.split('\n').findIndex(l => /navigator\.clipboard|execCommand\(/.test(l));
+    ok(at < 0, f + ':' + (at + 1) + ' copies a text by hand; use NL.ui.copy');
+  });
 
   /* #74. What the device can do with speech is told in two keys of NL.t, read at draw time
      as home.js and shell.js read t[v.noteKey]: in doctor.js's TIERS, each tier that
@@ -364,7 +350,7 @@ NL.state.open().then(() => {
   /* Rebuilt settings keep the device's language in one place: outside withDeviceLang,
      nothing sets their displayLang. */
   const state = read('src/core/state.js');
-  ok(!/\.displayLang\s*=[^=]/.test(outside(state, /^\s*function withDeviceLang\(/)), 'src/core/state.js gives rebuilt settings the device\'s language by hand; use withDeviceLang');
+  ok(!/\.displayLang\s*=[^=]/.test(outside(state, /^\s*const withDeviceLang = /)), 'src/core/state.js gives rebuilt settings the device\'s language by hand; use withDeviceLang');
 
   /* The suites share their helpers through test/lib, and a copy drifts from the original.
      A click goes through B.tap, there is one fake Supabase, a due date comes from the

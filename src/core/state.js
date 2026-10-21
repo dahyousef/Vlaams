@@ -188,10 +188,10 @@ NL.state = (function () {
   }
   /* La langue d'affichage est un choix de l'appareil, pas de la progression : des réglages
      reconstruits sans langue gardent celle de l'appareil. */
-  function withDeviceLang(next) {
+  const withDeviceLang = next => {
     if (!next.displayLang && meta.displayLang) next.displayLang = meta.displayLang;
     return next;
-  }
+  };
   function clearAll() {
     mem.srs.clear(); mem.custom.clear(); mem.log = [];
     meta = withDeviceLang(defaults());

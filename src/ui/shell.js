@@ -105,10 +105,10 @@ NL.ui = (function () {
   }
 
   /* Le texte `x` (lu par NL.gloss) dans une balise, s'il y en a un ; sinon rien. */
-  function ifText(x, tag, cls) {
+  const ifText = (x, tag, cls) => {
     const s = NL.gloss.of(x);
     return s ? '<' + tag + (cls ? ' class="' + cls + '"' : '') + '>' + esc(s) + '</' + tag + '>' : '';
-  }
+  };
 
   function sheetHtml() {
     const m = NL.state.meta();
@@ -265,6 +265,17 @@ NL.ui = (function () {
       '<button class="btn btn-ghost wide" data-close="1">' + t.close + '</button>') });
   }
 
+  /* Copie `text` : par le presse-papiers s'il existe, sinon par l'ancienne commande du
+     navigateur, qui copie ce qui est sélectionné — `box`, sélectionné d'abord, d'où l'on peut
+     aussi copier à la main. Rend la promesse d'un booléen : copié ou non. La sauvegarde et le
+     journal d'erreurs (doctor.js) copient par ici. */
+  const copy = (text, box) => {
+    if (box) box.select();
+    return navigator.clipboard
+      ? navigator.clipboard.writeText(text).then(() => true).catch(() => false)
+      : Promise.resolve(!!(document.execCommand && document.execCommand('copy')));
+  };
+
   function openPaste() {
     openSheet({ custom: card(t.setImport,
       '<p>' + t.pasteHow + '</p>' +
@@ -328,13 +339,7 @@ NL.ui = (function () {
         if (d.act === 'paste-show') { openPaste(); return; }
         if (d.act === 'copy-backup') {
           const box = document.getElementById('backup-out');
-          if (box) {
-            box.select();
-            const ok = navigator.clipboard
-              ? navigator.clipboard.writeText(box.value).then(() => true).catch(() => false)
-              : Promise.resolve(document.execCommand && document.execCommand('copy'));
-            Promise.resolve(ok).then(good => toast(good ? t.backupCopied : t.backupCopyByHand));
-          }
+          if (box) copy(box.value, box).then(good => toast(good ? t.backupCopied : t.backupCopyByHand));
           return;
         }
         if (d.act === 'paste-backup') {
@@ -396,7 +401,7 @@ NL.ui = (function () {
   function onAuth() { if (route === 'compte') go('vandaag'); else render(); }
 
   return {
-    bind, render, go, toast, openSheet, closeSheet, I, card, unitLabel, ifText, onAuth,
+    bind, render, go, toast, openSheet, closeSheet, I, card, unitLabel, ifText, copy, onAuth,
     get route() { return route; },
     boot() { const h = fromHash(); if (h) { route = h.r; arg = h.a; } render(); }
   };

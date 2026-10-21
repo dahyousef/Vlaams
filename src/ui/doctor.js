@@ -110,12 +110,8 @@ NL.screens.doctor = (function () {
       if (d.act === 'playrec') { NL.speech.playRecording(); return; }
       if (d.act === 'errclear') { NL.errlog.clear(); NL.ui.render(); return; }
       if (d.act === 'errcopy') {
-        const box = document.getElementById('err-out');
-        if (box) box.select();
-        const done = navigator.clipboard
-          ? navigator.clipboard.writeText(NL.errlog.text()).then(() => true).catch(() => false)
-          : Promise.resolve(!!(document.execCommand && document.execCommand('copy')));
-        Promise.resolve(done).then(good => NL.ui.toast(good ? t.errCopied : t.errCopyByHand));
+        NL.ui.copy(NL.errlog.text(), document.getElementById('err-out'))
+          .then(good => NL.ui.toast(good ? t.errCopied : t.errCopyByHand));
         return;
       }
       if (d.act === 'recstop') { NL.speech.stopRecord(); return; }
