@@ -272,8 +272,9 @@ NL.state.open().then(() => {
   ok(!/\.displayLang\s*=[^=]/.test(outside(state, /^\s*function withDeviceLang\(/)), 'src/core/state.js gives rebuilt settings the device\'s language by hand; use withDeviceLang');
 
   /* The suites share their helpers through test/lib, and a copy drifts from the original.
-     A click goes through B.tap, there is one fake Supabase, and a due date comes from the
-     suite's clock, never from an epoch written out by hand. */
+     A click goes through B.tap, there is one fake Supabase, a due date comes from the
+     suite's clock, never from an epoch written out by hand, and timers that wait for the
+     end of the tick are the fake browser's timers: 'held', ended by B.tick(). */
   const suites = ['test', 'test/tools'].reduce((all, d) => all.concat(fs.readdirSync(path.join(ROOT, d))
     .filter(f => /\.js$/.test(f)).map(f => d + '/' + f)), []);
   suites.forEach(f => {
@@ -281,8 +282,9 @@ NL.state.open().then(() => {
     ok(!/target:\s*\{\s*closest:\s*\(\)\s*=>\s*\(\{\s*dataset/.test(src), f + ': builds a click by hand; use B.tap from test/lib/browser.js');
     ok(!/createClient\s*(:|\([^)]*\)\s*\{)/.test(src), f + ': defines a second fake Supabase; use test/lib/supabase.js');
     ok(!/\.due\s*=\s*\d{10,}/.test(src), f + ': writes a due date from a bare epoch; use the suite clock, as test/lib/seed.js does');
+    ok(!/\.setTimeout\s*=[^=]/.test(src), f + ': replaces setTimeout by hand; use timers: \'held\' and B.tick() from test/lib/browser.js');
   });
-  console.log('  suites          ' + suites.length + ' files: no hand-built click, no second fake Supabase, no due date from a bare epoch');
+  console.log('  suites          ' + suites.length + ' files: no hand-built click, no second fake Supabase, no due date from a bare epoch, no timer replaced by hand');
 
   /* #74. A name says what it holds. What is typed into « Mes mots » beside the Dutch is a
      gloss (GLOSSARY.md), in either language; the doctor's two texts say what the device

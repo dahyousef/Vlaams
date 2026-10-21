@@ -16,7 +16,8 @@
      B.listeners     tous les écouteurs posés, par type d'événement
      B.tap(d)        un clic sur un élément dont le dataset est d, tel que le shell le reçoit
      B.clock         l'horloge : now(), set(ms), advance(ms) — si `now` est donné
-     B.spoken        ce que la synthèse vocale a prononcé — si `voices` est donné */
+     B.spoken        ce que la synthèse vocale a prononcé — si `voices` est donné
+     B.tick()        la fin du tour : les minuteurs mis de côté partent — si `timers` vaut 'held' */
 const fs = require('fs'), path = require('path'), vm = require('vm');
 
 /* Générateur déterministe : un test qui échoue au hasard vaut moins que pas de
@@ -102,8 +103,9 @@ const sources = root => fs.readFileSync(path.join(root, 'build.sh'), 'utf8')
      skip       sources à ne pas charger (ex. ['src/app.js'])
      seed       graine de Math.random ; absente, le hasard est le vrai
      now        horloge de départ en ms ; absente, l'horloge est la vraie
-     timers     'sync' (défaut) : setTimeout s'exécute tout de suite ; 'real' : le vrai
-     onTimerError  ce que devient une erreur dans un minuteur 'sync' (défaut : ignorée)
+     timers     'sync' (défaut) : setTimeout s'exécute tout de suite ; 'real' : le vrai ;
+                'held' : il attend B.tick(), comme un vrai minuteur attend la fin du tour
+     onTimerError  ce que devient une erreur dans un minuteur 'sync' ou 'held' (défaut : ignorée)
      ua         navigator.userAgent
      voices     tableau de voix → speechSynthesis existe ; absent, il n'existe pas
      recogniser true → webkitSpeechRecognition existe (ctx.__saidNext, ctx.__denyNext)
@@ -154,12 +156,23 @@ function open(opts) {
   if (opts.seed != null) { M = Object.create(Math); M.random = rng(opts.seed); }
 
   const onTimerError = opts.onTimerError || (() => {});
-  const syncTimers = opts.timers !== 'real';
+  const run = f => { try { f(); } catch (e) { onTimerError(e); } };
+  /* 'held' : un minuteur attend tick() et part alors avec les autres, dans l'ordre où ils ont
+     été posés ; clearTimeout le retire, même pendant tick(). Un minuteur posé pendant tick()
+     attend le suivant. Un mode inconnu échoue ici au lieu de devenir 'sync'. */
+  const held = new Map();
+  let lastTimer = 0;
+  const tick = () => Array.from(held.keys()).forEach(id => { const f = held.get(id); if (held.delete(id)) run(f); });
+  const timers = {
+    sync: { set: f => { run(f); return 0; }, clear: () => {} },
+    held: { set: f => { held.set(++lastTimer, f); return lastTimer; }, clear: id => { held.delete(id); } },
+    real: { set: setTimeout, clear: clearTimeout }
+  }[opts.timers || 'sync'];
 
   const ctx = {
     console,
-    setTimeout: syncTimers ? f => { try { f(); } catch (e) { onTimerError(e); } return 0; } : setTimeout,
-    clearTimeout: syncTimers ? () => {} : clearTimeout,
+    setTimeout: timers.set,
+    clearTimeout: timers.clear,
     setInterval: () => 0, clearInterval() {}, requestAnimationFrame: f => f(),
     Math: M, Date: fakeClock ? FakeDate : Date,
     JSON, Map, Set, RegExp, Array, Object, String, Number, Promise, Error, Boolean,
@@ -236,7 +249,7 @@ function open(opts) {
 
   const tap = d => (listeners.click || []).forEach(f => f({ target: { closest: () => ({ dataset: d }) } }));
 
-  return { ctx, NL: ctx.NL, app, store, idb, listeners, spoken, clock, mkEl, tap, random: M.random };
+  return { ctx, NL: ctx.NL, app, store, idb, listeners, spoken, clock, mkEl, tap, tick, random: M.random };
 }
 
 module.exports = { open, rng, sources, UA, SEED };

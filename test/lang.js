@@ -19,11 +19,12 @@ function pairUp(C) {
   return n;
 }
 const T0 = Date.parse('2026-10-05T08:00:00Z');
-/* account : un serveur neuf, et l'appareil déjà connecté. */
-function boot(prepare, store, account) {
+/* account : un serveur neuf, et l'appareil déjà connecté.
+   timers : 'held' pour des minuteurs qui attendent B.tick() ; absent, ils partent aussitôt. */
+function boot(prepare, store, account, timers) {
   const dev = { store: store || {} };
   if (account) dev.store['sb-session'] = JSON.stringify({ user: { id: 'uid-lang', email: 'lang@example.com' } });
-  const B = browser.open({ root: ROOT, seed: browser.SEED, now: T0, store: dev.store, byId: 'stub', media: true, skip: ['src/app.js'],
+  const B = browser.open({ root: ROOT, seed: browser.SEED, now: T0, store: dev.store, byId: 'stub', media: true, skip: ['src/app.js'], timers,
     config: account ? { supabaseUrl: 'https://example.supabase.co', supabaseAnonKey: 'anon' } : undefined,
     supabase: account ? fakeSupabase().fakeLib(dev) : undefined,
     voices: [{ name: 'Microsoft Bart - Dutch (Belgium)', lang: 'nl-BE', localService: true }] });
@@ -336,16 +337,13 @@ function langChecks() {
     ok(pageLang(A) === 'en-GB', '5a : <html lang> vaut « ' + pageLang(A) + ' » au lieu de en-GB');
     ok(NL.t.nav[1].label === NL.tables.en.nav[1].label, '5a : NL.t n\'est pas la table anglaise');
 
-    /* 5b. Un changement qui arrive en pleine séance ou conversation attend le premier écran d'après. */
-    const B = boot(null);
+    /* 5b. Un changement qui arrive en pleine séance ou conversation attend le premier écran d'après.
+       Les minuteurs de B attendent B.tick(). Partis aussitôt, ils finiraient le tour où
+       l'avis se lève avant l'écran suivant : seen() l'effacerait sans que rien ne le voie. */
+    const B = boot(null, null, false, 'held');
     return B.NL.state.open().then(() => {
       const N = B.NL, S = N.screens.sessie, html = () => B.app.innerHTML;
       const fr = N.tables.fr, en = N.tables.en;
-      /* Les minuteurs de B attendent tick(). Partis aussitôt, ils finiraient le tour où
-         l'avis se lève avant l'écran suivant : seen() l'effacerait sans que rien ne le voie. */
-      const later = [];
-      B.ctx.setTimeout = f => { later.push(f); return 0; };
-      const tick = () => later.splice(0).forEach(f => f());
       dueReviews(N, 12, T0);
       const waits = (what, enter) => {
         enter();
@@ -361,7 +359,7 @@ function langChecks() {
         ok(count(t, fr.langNotice) === 1, '5b ' + what + ' : l\'avis s\'affiche ' + count(t, fr.langNotice) + ' fois au lieu d\'une');
         N.ui.go('leerpad');
         ok(count(text(html()), fr.langNotice) === 1, '5b ' + what + ' : l\'avis remplacé dans le tour où il s\'est levé est perdu');
-        tick();
+        B.tick();
         N.ui.go('vandaag');
         ok(count(text(html()), fr.langNotice) === 0, '5b ' + what + ' : l\'avis revient à l\'écran d\'après, un tour plus tard');
         English(B); N.ui.go('vandaag');
