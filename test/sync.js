@@ -21,7 +21,7 @@ const { server, fakeLib, rowsFor } = fakeSupabase();
 function device(name, withConfig, store, idb) {
   const dev = { name, store: store || {} };
   /* Des minuteurs réels : la boîte d'envoi se vide après un délai, et c'est ce
-     délai que le test attend. app.js est laissé de côté, le test démarre lui-même.
+     délai que le test attend. app.js est laissé de côté : boot() démarre, ou page() le lance.
      idb : true pour un IndexedDB neuf, ou le `idb` d'un appareil pour le recharger. */
   const B = browser.open({
     root: ROOT, timers: 'real', skip: ['src/app.js'], store: dev.store, idb: idb || null, ua: 'Mozilla/5.0 Chrome/120',

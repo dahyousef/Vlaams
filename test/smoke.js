@@ -119,12 +119,28 @@ const outside = (src, head) => blocks(src, head).reduce((s, b) => s.replace(b.te
 
 /* Les fonctions d'une source qui parcourent un arbre à la main : une fonction nommée qui
    s'appelle elle-même, ou se passe elle-même (forEach(walk)), en allant de clé en clé
-   (Object.keys, values, entries, ou for … in). Ni son nom ni son argument ne comptent. */
+   (Object.keys, values, entries, ou for … in). Ni son nom ni son argument ne comptent, ni
+   `async`. Une méthode d'objet, ou `x.y = function`, n'est pas cherchée : elle s'appelle
+   par `this.` ou `x.`, que la recherche du nom écarte. */
 function handWalkers(src) {
-  const named = /^\s*(?:function\s+(\w+)\s*\(|(?:const|let)\s+(\w+)\s*=\s*(?:function\b|\([^)]*\)\s*=>|\w+\s*=>))/;
+  const named = /^\s*(?:(?:async\s+)?function\s+(\w+)\s*\(|(?:const|let)\s+(\w+)\s*=\s*(?:async\s+)?(?:function\b|\([^)]*\)\s*=>|\w+\s*=>))/;
   return blocks(src, named).map(b => ({ line: b.line, name: b.m[1] || b.m[2], body: b.text.slice(b.m[0].length) }))
     .filter(f => new RegExp('(?<![\\w$.])' + f.name + '\\s*\\(|[(,]\\s*' + f.name + '\\s*[),]').test(f.body) &&
       /Object\.(keys|values|entries)\(|for\s*\(\s*(const|let)\s+\w+\s+in\b/.test(f.body));
+}
+
+/* Les actes d'une source et les textes du journal d'erreurs : combien de blocs s'ouvrent sur
+   l'acte errcopy, et chaque autre acte dont le bloc montre errCopied ou errCopyByHand. Tous
+   les actes de la ligne qui ouvre le bloc comptent, pas le premier seul : avec
+   `act === 'save' || act === 'errcopy'`, les deux actes partagent le bloc. */
+function errTextActs(src) {
+  const out = { errcopy: 0, wrong: [] };
+  blocks(src, /\bact === '[\w-]+'/).forEach(b => {
+    const acts = Array.from(b.text.split('\n')[0].matchAll(/\bact === '([\w-]+)'/g), m => m[1]);
+    if (acts.indexOf('errcopy') >= 0) out.errcopy++;
+    if (/\berrCop(ied|yByHand)\b/.test(b.text)) acts.filter(a => a !== 'errcopy').forEach(a => out.wrong.push({ line: b.line, act: a }));
+  });
+  return out;
 }
 
 NL.state.open().then(() => {
@@ -283,9 +299,15 @@ NL.state.open().then(() => {
   ok(!/\bconst (en|meaning)\b/.test(read('src/ui/library.js')), 'src/ui/library.js: the gloss typed into « Mes mots » is held under an old name; it is gloss');
   ok(!/\bnotice\s*=[^=]/.test(read('src/core/lang.js')), 'src/core/lang.js: the notice\'s list of keys is named notice; it is noticeKeys');
   ok(!/\bshown\b/.test(read('src/core/lang.js')), 'src/core/lang.js: the flag that says the notice\'s tick is over is named shown; it is tickOver');
-  sources.forEach(f => blocks(read(f), /\bact === '([\w-]+)'/)
-    .filter(b => b.m[1] !== 'errcopy' && /\berrCop(ied|yByHand)\b/.test(b.text))
-    .forEach(b => ok(false, f + ':' + b.line + ': the ' + b.m[1] + ' act shows the error log\'s texts; only errcopy does, and the backup has backupCopied and backupCopyByHand')));
+  [["if (d.act === 'errcopy') copy(t.errCopied, t.errCopyByHand);", { errcopy: 1, wrong: [] }],
+   ["if (d.act === 'errcopy' || d.act === 'save') copy(t.errCopied, t.errCopyByHand);", { errcopy: 1, wrong: [{ line: 1, act: 'save' }] }],
+   ["if (d.act === 'save') {\n  copy(t.errCopied);\n}", { errcopy: 0, wrong: [{ line: 1, act: 'save' }] }],
+   ["if (d.act === 'save' || d.act === 'errcopy') {\n  copy(t.errCopyByHand);\n}", { errcopy: 1, wrong: [{ line: 1, act: 'save' }] }]
+  ].forEach(([src, want]) => ok(JSON.stringify(errTextActs(src)) === JSON.stringify(want),
+    'error-text check on ' + JSON.stringify(src) + ' found ' + JSON.stringify(errTextActs(src)) + ', wanted ' + JSON.stringify(want)));
+  const errActs = sources.map(f => Object.assign({ f }, errTextActs(read(f))));
+  errActs.forEach(a => a.wrong.forEach(w => ok(false, a.f + ':' + w.line + ': the ' + w.act + ' act shows the error log\'s texts; only errcopy does, and the backup has backupCopied and backupCopyByHand')));
+  ok(errActs.some(a => a.errcopy > 0), 'no source opens a block on the errcopy act: the error log\'s copy was moved or renamed, and the check above reads nothing');
   ok(typeof NL.tables.fr.backupCopied === 'string' && typeof NL.tables.fr.backupCopyByHand === 'string', 'fr.js has no backupCopied or backupCopyByHand');
   ok(typeof NL.t[NL.speech.voiceInfo().noteKey] === 'string', 'voiceInfo() has no noteKey naming a key of NL.t');
   /* Applying the language and telling it are two calls, not one call and a flag. */
@@ -304,16 +326,29 @@ NL.state.open().then(() => {
    ['const each = v => { if (v && typeof v === \'object\') Object.values(v).forEach(each); };', ['1 each']],
    ['  const strip = function (v) {\n    Object.entries(v).forEach(([k, x]) => { if (x && typeof x === \'object\') strip(x); });\n  };', ['1 strip']],
    ['function size(o) {\n  return Object.keys(o).length;\n}\nfunction walk(t) {\n  if (Array.isArray(t)) t.forEach(walk);\n  else Object.keys(t).forEach(k => walk(t[k]));\n}', ['4 walk']],
+   ['async function walk(v) {\n  for (const k in v) await walk(v[k]);\n}', ['1 walk']],
+   ['const each = async (v) => { Object.values(v).forEach(each); };', ['1 each']],
    ['function files(d) {\n  return fs.readdirSync(d).flatMap(f => /\\./.test(f) ? [f] : files(d + \'/\' + f));\n}', []],
    ['const visit = C => Object.keys(C).forEach(k => tree.visit(C[k], f));', []]
   ].forEach(([src, want]) => ok(JSON.stringify(walks(src)) === JSON.stringify(want),
     'walker check on ' + JSON.stringify(src) + ' found ' + JSON.stringify(walks(src)) + ', wanted ' + JSON.stringify(want)));
-  const perCollection = /COLLECTIONS\.forEach\(\s*\w+\s*=>\s*\{?[^;]*?\b(visit|rewrite)\(/g;
+  /* A loop over COLLECTIONS that calls visit() or rewrite() walks the course one collection
+     at a time, whatever its argument is written as and whatever comes before the call: the
+     lines such loops open on. A quote or a word just before the name is the inside of a
+     string, as in this table, and does not count. */
+  const perCollection = src => blocks(src, /(?<!['"\w$])COLLECTIONS\.forEach\(/)
+    .filter(b => /\b(visit|rewrite)\(/.test(b.text)).map(b => b.line);
+  [['COLLECTIONS.forEach(k => tree.visit(C[k], f, k, k));', [1]],
+   ['COLLECTIONS.forEach((k) => { C[k] = tree.rewrite(C[k], f, k, k); });', [1]],
+   ['const n = 0;\nCOLLECTIONS.forEach(k => {\n  const x = C[k];\n  tree.visit(x, f, k, k);\n});', [2]],
+   ['COLLECTIONS.forEach(k => owed(C[k], k, \'\', out));', []]
+  ].forEach(([src, want]) => ok(JSON.stringify(perCollection(src)) === JSON.stringify(want),
+    'collection check on ' + JSON.stringify(src) + ' found ' + JSON.stringify(perCollection(src)) + ', wanted ' + JSON.stringify(want)));
   suites.forEach(f => {
     const src = read(f);
     ok(!/JSON\.parse\(JSON\.stringify\(NL\.content/.test(src), f + ': copies the course by hand; use raw() from test/lib/prose.js');
     handWalkers(src).forEach(w => ok(false, f + ':' + w.line + ': ' + w.name + '() walks a tree by hand; use test/lib/tree.js'));
-    Array.from(src.matchAll(perCollection)).forEach(m => ok(false, f + ':' + src.slice(0, m.index).split('\n').length +
+    perCollection(src).forEach(line => ok(false, f + ':' + line +
       ': walks the course one collection at a time; use visitCourse() or rewriteCourse() from test/lib/tree.js'));
   });
 
