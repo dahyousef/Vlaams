@@ -261,9 +261,8 @@ NL.state.open().then(() => {
   });
 
   /* #74. What already has a name is not written out again: the other language is
-     NL.gloss.other, the comparison of senses is read from NL.gloss alone, the getter pair
-     of a speech text is written once, in capabilityText, and « the text, if there is
-     any » is NL.ui.ifText. */
+     NL.gloss.other, the comparison of senses is read from NL.gloss alone, and « the text,
+     if there is any » is NL.ui.ifText. */
   const byHand = /NL\.gloss\.of\(([\w.]+)\) \? '<\w+[^']*>' \+ esc\(NL\.gloss\.of\(\1\)\)/g;
   sources.forEach(f => {
     const src = read(f);
@@ -271,8 +270,22 @@ NL.state.open().then(() => {
     (src.match(byHand) || []).forEach(m => ok(false, f + ': ' + m + '… writes « the text, if there is any » by hand; use NL.ui.ifText'));
   });
   ok(!('sameSense' in NL.ex), 'NL.ex re-exports sameSense; read it from NL.gloss');
+
+  /* #74. What the device can do with speech is told in two keys of NL.t, read at draw time
+     as home.js and shell.js read t[v.noteKey]: in doctor.js's TIERS, each tier that
+     NL.speech.tier() can name holds { labelKey, noteKey }, two keys of NL.t, and no getter
+     stands in for them. */
   const doctor = read('src/ui/doctor.js');
-  ok(!/\bget (label|note)\(\)/.test(outside(doctor, /^\s*const capabilityText = /)), 'src/ui/doctor.js writes a speech text\'s getter pair by hand; use capabilityText');
+  const tierKeys = {};
+  ((doctor.match(/const TIERS = \{([\s\S]*?)\r?\n  \};/) || [])[1] || '').split(/\r?\n/).forEach(l => {
+    const m = /^\s*(\w+): \{ labelKey: '(\w+)', noteKey: '(\w+)' \},?$/.exec(l);
+    if (m) tierKeys[m[1]] = [m[2], m[3]];
+  });
+  const tierIds = (read('src/core/speech.js').match(/\{ id: '\w+'/g) || []).map(s => s.slice(7, -1));
+  ok(tierIds.length > 0, 'src/core/speech.js: tier() names no tier this check can read; the check on TIERS reads nothing');
+  tierIds.forEach(id => ok(!!tierKeys[id] && tierKeys[id].every(k => typeof NL.t[k] === 'string'),
+    'src/ui/doctor.js: TIERS.' + id + ' does not hold { labelKey, noteKey }, two keys of NL.t read at draw time'));
+  ok(!/\bget (label|note)\(\)/.test(doctor), 'src/ui/doctor.js reads a speech text through a getter; TIERS hold keys, read as t[info.labelKey] and t[info.noteKey]');
 
   /* Rebuilt settings keep the device's language in one place: outside withDeviceLang,
      nothing sets their displayLang. */

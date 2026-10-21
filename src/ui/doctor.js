@@ -7,16 +7,15 @@ NL.screens.doctor = (function () {
   const TEST = 'Goeiemorgen, alles goed met u?';
   let S = { heard: null, mic: null, micKey: '', rec: 'idle' };
 
-  /* Le titre et la note de ce que l'appareil sait faire de la parole, lus dans NL.t à chaque
-     dessin : la langue a pu changer. */
-  const capabilityText = (label, note) => ({ get label() { return t[label]; }, get note() { return t[note]; } });
+  /* Le titre et la note de ce que l'appareil sait faire de la parole : deux clés de NL.t,
+     lues au dessin comme home.js et shell.js lisent t[v.noteKey], car la langue a pu changer. */
   const TIERS = {
-    full: capabilityText('tierFull', 'tierFullNote'),
-    scored: capabilityText('tierScored', 'tierScoredNote'),
-    novoice: capabilityText('tierNoVoice', 'tierNoVoiceNote'),
-    refused: capabilityText('tierRefused', 'tierRefusedNote'),
-    compare: capabilityText('tierCompare', 'tierCompareNote'),
-    self: capabilityText('tierSelf', 'tierSelfNote')
+    full: { labelKey: 'tierFull', noteKey: 'tierFullNote' },
+    scored: { labelKey: 'tierScored', noteKey: 'tierScoredNote' },
+    novoice: { labelKey: 'tierNoVoice', noteKey: 'tierNoVoiceNote' },
+    refused: { labelKey: 'tierRefused', noteKey: 'tierRefusedNote' },
+    compare: { labelKey: 'tierCompare', noteKey: 'tierCompareNote' },
+    self: { labelKey: 'tierSelf', noteKey: 'tierSelfNote' }
   };
 
   function voiceRows() {
@@ -53,7 +52,7 @@ NL.screens.doctor = (function () {
 
       '<section class="doc-tier ' + tier.id + '">' +
       '<span class="eyebrow">' + t.docTierTitle + '</span>' +
-      '<h2>' + info.label + '</h2><p>' + info.note + '</p>' +
+      '<h2>' + t[info.labelKey] + '</h2><p>' + t[info.noteKey] + '</p>' +
       (tier.framed ? '<p class="doc-framed">' + t.docFramed + '</p>' : '') +
       '</section>' +
 
