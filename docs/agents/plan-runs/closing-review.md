@@ -22,11 +22,12 @@ Your dispatch names the run file and the run's base commit.
 4. Read the area reviewers' final messages and the Issues of their reports. Read the diff only around a
    Critical or Important item.
 5. Check the checklist against the diff's stat and the areas' answers.
-6. Leave nothing open. Each of these becomes a fix or a ticket: your findings and the area reviewers', the
-   log's Open lines, and every ticket the plan promises to file.
+6. Leave nothing open. Each of these becomes a fix or a ticket, Minors included, and a finding that still
+   holds is never closed by a reason alone: your findings and the area reviewers', the log's Open lines, and
+   every ticket the plan promises to file.
    - A fix stays in files the run changed and needs no decision the plan lacks. Write all of them as one
      brief, `<WS>/briefs/task-closing.md`, in `design-sitting.md`'s form, class `mechanical`, a red check for
-     each.
+     each, refactors aside (`CLAUDE.md`).
    - A ticket is filed with `gh issue create --parent <the spec issue CLAUDE.md names> --label needs-triage`
      (`docs/agents/issue-tracker.md`): one subject per ticket, at most about six items.
 

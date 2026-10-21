@@ -48,7 +48,7 @@ verify from the diff alone is a ⚠️ item, not a reason to search wider.
 
 Every site the diff changes has its own red: a check that fails without that site's change. A change made at
 several sites (each exercise, each screen) needs a check that fails at each, or one check that walks them all.
-A site with no red is Important.
+A site with no red is Important, unless its change is a refactor: `CLAUDE.md` says what a refactor's check is.
 
 ## Part 2: Code quality
 

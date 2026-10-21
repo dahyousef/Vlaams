@@ -29,6 +29,8 @@ own suite; the older `test/smoke.js` and `test/sync.js` do it too. Any suite may
 `NL.srs` to set up or read state, as `test/pace.js` calls `compose()` and `needsVoice()`.
 
 Every fix leaves a test that fails on the old code. Write it, watch it fail, then fix it.
+A refactor (a name, a layout, a duplicate folded, a repeated run removed) changes no
+behaviour, so no test can fail on the old code: the suite staying green is its check.
 
 ## Running a plan
 
