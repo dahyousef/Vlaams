@@ -22,7 +22,7 @@ const B = browser.open(Object.assign({ seed: browser.SEED }, OPTS));
 const NL = B.NL, S = NL.screens.sessie, U = NL.util, t = NL.t;
 const answer = require('./lib/answer')(B);
 
-const { text } = require('./lib/langs');
+const { text, joined } = require('./lib/langs');
 const fresh = () => { S.abandon(); NL.state.clearAll(); NL.content.refresh(); B.clock.set(T0); };
 const find = nl => NL.content.allItems().find(x => x.nl === nl);
 const say = s => '« ' + s + ' »';
@@ -79,7 +79,7 @@ const targetOf = it => it.kind === 'word' ? U.bare(it.nl) : it.nl;
    que la personne voit. */
 const decode = s => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&amp;/g, '&');
 const formsOf = it => {
-  const line = decode(NL.ex.hereLine(it, '', true).replace(/<[^>]*>/g, '')).trim();
+  const line = decode(joined(NL.ex.hereLine(it, '', true))).trim();
   const body = line.indexOf(t.hereThey) === 0 ? line.slice(t.hereThey.length).trim() : '';
   const be = !body ? [] : it.kind === 'word' ? body.split(',').map(s => s.trim()).filter(Boolean) : [body];
   return be.map(f => ['be', f]).concat((it.also || []).map(f => ['also', f]));

@@ -2,6 +2,7 @@
    the content model, the scheduler and all ten exercise types. */
 const path = require('path'), fs = require('fs');
 const browser = require('./lib/browser');
+const langs = require('./lib/langs');
 const ROOT = process.argv[2];
 /* A file of the repository, read as it is. */
 const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
@@ -297,10 +298,9 @@ NL.state.open().then(() => {
      suite's clock, never from an epoch written out by hand, timers that wait for the end
      of the tick are the fake browser's timers ('held', ended by B.tick()), so are the
      fields a screen reads (byId: 'stub', filled through B.fields), and the text a page
-     shows, without its tags, is text() from test/lib/langs.js. A strip that puts nothing in
-     place of a tag is not that text, and the check leaves it alone: it joins what the tags
-     split, a bold word and the punctuation beside it (test/typed.js) or a key and its label
-     (test/lang.js), or reads the inside of one <i> of the course as written (test/content.js). */
+     shows, without its tags, is text() from test/lib/langs.js, or joined() where what a tag
+     splits reads as one, a bold word and the punctuation beside it. A source runs in a page
+     only through browser.open; what comes before src/app.js starts goes in its prepare. */
   const suites = ['test', 'test/tools'].reduce((all, d) => all.concat(fs.readdirSync(path.join(ROOT, d))
     .filter(f => /\.js$/.test(f)).map(f => d + '/' + f)), []);
   suites.forEach(f => {
@@ -310,9 +310,12 @@ NL.state.open().then(() => {
     ok(!/\.due\s*=\s*\d{10,}/.test(src), f + ': writes a due date from a bare epoch; use the suite clock, as test/lib/seed.js does');
     ok(!/\.setTimeout\s*=[^=]/.test(src), f + ': replaces setTimeout by hand; use timers: \'held\' and B.tick() from test/lib/browser.js');
     ok(!/\.getElementById\s*=[^=]/.test(src), f + ': fakes the page\'s fields by hand; use byId: \'stub\' and B.fields from test/lib/browser.js');
-    ok(!/\.replace\(\/<\[\^>\]\*>\/g,\s*' '\)/.test(src), f + ': strips a page\'s tags by hand; use text() from test/lib/langs.js');
+    ok(!/\.replace\(\/<\[\^>\]\*>\/g/.test(src), f + ': strips a page\'s tags by hand; use text() or joined() from test/lib/langs.js');
+    ok(!/runInContext\([^;]*\.ctx\b/.test(src), f + ': runs a source in a page by hand; load it through browser.open, with what comes before src/app.js in prepare');
   });
-  console.log('  suites          ' + suites.length + ' files: no hand-built click, no second fake Supabase, no due date from a bare epoch, no timer, page field or tag-stripper of their own');
+  ok(typeof langs.joined === 'function' && langs.joined('<b>al</b>, <i>zo</i>') === 'al, zo' && langs.text('<b>al</b>, <i>zo</i>') === 'al , zo',
+    'test/lib/langs.js: joined() does not take each tag out with nothing in its place, beside text(), which puts a blank there');
+  console.log('  suites          ' + suites.length + ' files: no hand-built click, no second fake Supabase, no due date from a bare epoch, no timer, page field, tag-stripper or hand-run source of their own');
 
   /* The fake browser's 'held' timers keep a real tick's rules, which lang.js's 5b counts on:
      nothing runs before B.tick(), then every timer runs in the order it was set; clearTimeout
@@ -353,6 +356,23 @@ NL.state.open().then(() => {
     ok(out === '' && caught.join(' ') === 'boom', 'test/lib/browser.js: with onTimerError, a held timer\'s error came out of B.tick() as « ' + out + ' » and reached the handler as « ' + caught.join(' ') + ' »; wanted « » and « boom »');
   }
   console.log('  fake browser    held timers wait for B.tick(), run in order, can be cleared and are counted, and their errors come out of B.tick(); an unknown mode names itself');
+
+  /* prepare(NL) runs once every other source is loaded, just before src/app.js starts the
+     app: test/lang.js changes its course there. A page that does not load src/app.js has no
+     such moment, and asking for one fails. */
+  {
+    const ran = [];
+    browser.open({ root: ROOT, seed: browser.SEED, byId: 'stub', prepare: N => {
+      ran.push(N.ui && N.content ? 'prepare' : 'prepare before the sources');
+      const watch = N.errlog.watch;
+      N.errlog.watch = () => { ran.push('app.js'); watch(); };
+    } });
+    ok(ran.join(' ') === 'prepare app.js', 'test/lib/browser.js: prepare ran « ' + ran.join(' ') + ' »; wanted « prepare app.js », once the other sources were loaded and just before src/app.js');
+    let without = '';
+    try { browser.open({ root: ROOT, files: [], prepare: () => {} }); } catch (e) { without = e.message; }
+    ok(without.indexOf('src/app.js') >= 0, 'test/lib/browser.js: prepare on a page without src/app.js fails without saying so: « ' + without + ' »');
+  }
+  console.log('  fake browser    prepare runs just before src/app.js, and fails on a page that does not load it');
 
   /* #74. A name says what it holds. What is typed into « Mes mots » beside the Dutch is a
      gloss (GLOSSARY.md), in either language; the notice's list holds keys of NL.t; only the

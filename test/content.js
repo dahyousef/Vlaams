@@ -9,6 +9,7 @@ const fs = require('fs'), path = require('path'), zlib = require('zlib');
 const browser = require('./lib/browser');
 const { raw, owed, at } = require('./lib/prose');
 const tree = require('./lib/tree');
+const { joined } = require('./lib/langs');
 const ROOT = process.argv[2] || path.join(__dirname, '..');
 
 let fails = 0, checks = 0;
@@ -248,7 +249,7 @@ NL.state.open().then(() => {
      néerlandais (<i>Morgen ik ga</i>) ; <i>element</i> / <i>élément</i> diffèrent, c'est de la prose. Il porte lang="nl-BE". */
   { let seenI = 0;
     const iTags = s => (String(s).match(/<i(?:\s[^>]*)?>[^<]*<\/i>/g) || []);
-    const iText = t => t.replace(/<[^>]*>/g, '');
+    const iText = joined;
     (RAW.patterns || []).forEach(g => {
       const ex = g.explain;
       if (!ex || typeof ex.fr !== 'string' || typeof ex.en !== 'string') return;

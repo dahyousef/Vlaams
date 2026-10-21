@@ -103,6 +103,9 @@ const sources = root => fs.readFileSync(path.join(root, 'build.sh'), 'utf8')
      root       dossier du dépôt (obligatoire)
      files      liste de sources à charger ; par défaut, celle de build.sh
      skip       sources à ne pas charger (ex. ['src/app.js'])
+     prepare    fonction (NL), appelée une fois les autres sources chargées, juste avant
+                src/app.js : la suite y change le cours ou l'état avant le démarrage. Une page
+                qui ne charge pas src/app.js n'a pas ce moment : le demander échoue
      seed       graine de Math.random ; absente, le hasard est le vrai
      now        horloge de départ en ms ; absente, l'horloge est la vraie
      timers     'sync' (défaut) : setTimeout s'exécute tout de suite ; 'real' : le vrai ;
@@ -258,7 +261,10 @@ function open(opts) {
   vm.createContext(ctx);
 
   const skip = opts.skip || [];
-  (opts.files || sources(opts.root)).filter(f => skip.indexOf(f) < 0).forEach(f => {
+  const files = (opts.files || sources(opts.root)).filter(f => skip.indexOf(f) < 0);
+  if (opts.prepare && files.indexOf('src/app.js') < 0) throw new Error('browser.open : prepare attend src/app.js, que cette page ne charge pas');
+  files.forEach(f => {
+    if (f === 'src/app.js' && opts.prepare) opts.prepare(ctx.NL);
     try { vm.runInContext(fs.readFileSync(path.join(opts.root, f), 'utf8'), ctx, { filename: f }); }
     catch (e) { console.log('LOAD FAIL ' + f + ': ' + e.message); process.exit(1); }
   });

@@ -1,7 +1,7 @@
 /* La langue d'affichage. Le cours se charge tel quel, ou « apparié » : chaque sens et
    chaque texte reçoit un anglais factice (EN0, EN1…). L'écran montre alors ce qu'il
    montrerait une fois le contenu traduit, sans attendre la traduction. */
-const fs = require('fs'), path = require('path'), vm = require('vm');
+const fs = require('fs'), path = require('path');
 const browser = require('./lib/browser');
 const { PROSE } = require('./lib/prose');
 const tree = require('./lib/tree');
@@ -19,18 +19,16 @@ function pairUp(C) {
   return n;
 }
 const T0 = Date.parse('2026-10-05T08:00:00Z');
-/* account : un serveur neuf, et l'appareil déjà connecté.
+/* prepare : ce que l'essai change dans l'app chargée, avant que src/app.js la démarre.
+   account : un serveur neuf, et l'appareil déjà connecté.
    timers : 'held' pour des minuteurs qui attendent B.tick() ; absent, ils partent aussitôt. */
 function boot(prepare, store, account, timers) {
   const dev = { store: store || {} };
   if (account) dev.store['sb-session'] = JSON.stringify({ user: { id: 'uid-lang', email: 'lang@example.com' } });
-  const B = browser.open({ root: ROOT, seed: browser.SEED, now: T0, store: dev.store, byId: 'stub', media: true, skip: ['src/app.js'], timers,
+  return browser.open({ root: ROOT, seed: browser.SEED, now: T0, store: dev.store, byId: 'stub', media: true, prepare, timers,
     config: account ? { supabaseUrl: 'https://example.supabase.co', supabaseAnonKey: 'anon' } : undefined,
     supabase: account ? fakeSupabase().fakeLib(dev) : undefined,
     voices: [{ name: 'Microsoft Bart - Dutch (Belgium)', lang: 'nl-BE', localService: true }] });
-  if (prepare) prepare(B.NL);
-  vm.runInContext(fs.readFileSync(path.join(ROOT, 'src/app.js'), 'utf8'), B.ctx);
-  return B;
 }
 /* Le texte lu : text() de test/lib/langs.js, avec aria-label, placeholder, title et alt gardés. */
 const text = html => tagless(String(html).replace(/\s(aria-label|placeholder|title|alt)="([^"]*)"/g, ' > $2 <'));
@@ -866,8 +864,7 @@ Promise.all([plain.NL.state.open(), paired.NL.state.open()]).then(() => {
       }
     }
     ok(clash === 0, 'match : ' + clash + ' paires de cartes identiques que fits ne joint pas');
-    const read = () => (lib.app.innerHTML.match(/<span class="opt-key">\d<\/span><span>[^<]*<\/span>/g) || [])
-      .map(s => s.replace(/<[^>]*>/g, '').replace(/^\d/, ''));
+    const read = () => Array.from(lib.app.innerHTML.matchAll(/<span class="opt-key">\d<\/span><span>([^<]*)<\/span>/g), m => m[1]);
     let dup = 0, screens = 0;
     for (let k = 0; k < 7; k++) {
       L.ui.go('luisteren');
