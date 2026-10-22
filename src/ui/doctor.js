@@ -9,13 +9,13 @@ NL.screens.doctor = (function () {
 
   /* Le titre et la note de ce que l'appareil sait faire de la parole : deux clés de NL.t,
      lues au dessin comme home.js et shell.js lisent t[v.noteKey], car la langue a pu changer. */
-  const TIERS = {
-    full: { labelKey: 'tierFull', noteKey: 'tierFullNote' },
-    scored: { labelKey: 'tierScored', noteKey: 'tierScoredNote' },
-    novoice: { labelKey: 'tierNoVoice', noteKey: 'tierNoVoiceNote' },
-    refused: { labelKey: 'tierRefused', noteKey: 'tierRefusedNote' },
-    compare: { labelKey: 'tierCompare', noteKey: 'tierCompareNote' },
-    self: { labelKey: 'tierSelf', noteKey: 'tierSelfNote' }
+  const CAPABILITIES = {
+    full: { labelKey: 'capabilityFull', noteKey: 'capabilityFullNote' },
+    scored: { labelKey: 'capabilityScored', noteKey: 'capabilityScoredNote' },
+    novoice: { labelKey: 'capabilityNoVoice', noteKey: 'capabilityNoVoiceNote' },
+    refused: { labelKey: 'capabilityRefused', noteKey: 'capabilityRefusedNote' },
+    compare: { labelKey: 'capabilityCompare', noteKey: 'capabilityCompareNote' },
+    self: { labelKey: 'capabilitySelf', noteKey: 'capabilitySelfNote' }
   };
 
   function voiceRows() {
@@ -40,8 +40,8 @@ NL.screens.doctor = (function () {
 
   function render() {
     const v = NL.speech.voiceInfo();
-    const tier = NL.speech.tier();
-    const info = TIERS[tier.id];
+    const capability = NL.speech.capability();
+    const info = CAPABILITIES[capability.id];
     const allVoices = (NL.speech.voices() || []).length;
 
     return '<div class="lesson"><div class="lesson-head">' +
@@ -50,10 +50,10 @@ NL.screens.doctor = (function () {
       '</div>' +
       '<div class="lesson-body"><div class="stage doc">' +
 
-      '<section class="doc-tier ' + tier.id + '">' +
-      '<span class="eyebrow">' + t.docTierTitle + '</span>' +
+      '<section class="doc-capability ' + capability.id + '">' +
+      '<span class="eyebrow">' + t.docCapabilityTitle + '</span>' +
       '<h2>' + t[info.labelKey] + '</h2><p>' + t[info.noteKey] + '</p>' +
-      (tier.framed ? '<p class="doc-framed">' + t.docFramed + '</p>' : '') +
+      (capability.framed ? '<p class="doc-framed">' + t.docFramed + '</p>' : '') +
       '</section>' +
 
       '<section class="doc-block">' +

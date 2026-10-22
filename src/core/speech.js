@@ -237,12 +237,12 @@ NL.speech = (function () {
     return best;
   }
 
-  /* Which tier this browser puts you in — the audio doctor reports this. */
-  function tier() {
+  /* What this browser can do with speech — the audio doctor reports this. */
+  function capability() {
     const framed = window.self !== window.top;
     if (refused) return { id: 'refused', framed };
     /* « Noté, accent du nord » suppose une voix des Pays-Bas. Sans aucune voix
-       néerlandaise, c'est un autre niveau, et il faut le dire. */
+       néerlandaise, c'est une autre capacité, et il faut le dire. */
     if (canListen() && quality === 'be') return { id: 'full', framed };
     if (canListen() && quality === 'nl') return { id: 'scored', framed };
     if (canListen()) return { id: 'novoice', framed };
@@ -253,6 +253,6 @@ NL.speech = (function () {
   return {
     canSpeak, say, stop, voiceInfo, rescanVoices: scan, voices: () => voices,
     canListen, listenBlocked, noService, listen, abort, score, ratio, micRefused,
-    canRecord, hasRecording, record, stopRecord, playRecording, playBoth, clearRecording, tier, browserName
+    canRecord, hasRecording, record, stopRecord, playRecording, playBoth, clearRecording, capability, browserName
   };
 })();

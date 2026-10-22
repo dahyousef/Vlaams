@@ -519,13 +519,13 @@ h1,h2,h3,h4,h5{font-family:var(--display);font-weight:700;letter-spacing:-.02em;
 
 /* --- docteur audio --- */
 .stage.doc{display:flex;flex-direction:column;gap:14px;padding-bottom:20px}
-.doc-tier{background:var(--card);border:1.5px solid var(--line);border-radius:var(--r-lg);padding:18px}
-.doc-tier.full{border-color:var(--goed);background:var(--goed-soft)}
-.doc-tier.scored{border-color:var(--goud);background:var(--goud-soft)}
-.doc-tier.compare{border-color:var(--groen);background:var(--groen-soft)}
-.doc-tier.self,.doc-tier.novoice,.doc-tier.refused{border-color:var(--amber);background:var(--amber-soft)}
-.doc-tier h2{font-size:20px;margin:4px 0 6px}
-.doc-tier p{margin:0;font-size:14px;color:var(--ink-2);max-width:52ch}
+.doc-capability{background:var(--card);border:1.5px solid var(--line);border-radius:var(--r-lg);padding:18px}
+.doc-capability.full{border-color:var(--goed);background:var(--goed-soft)}
+.doc-capability.scored{border-color:var(--goud);background:var(--goud-soft)}
+.doc-capability.compare{border-color:var(--groen);background:var(--groen-soft)}
+.doc-capability.self,.doc-capability.novoice,.doc-capability.refused{border-color:var(--amber);background:var(--amber-soft)}
+.doc-capability h2{font-size:20px;margin:4px 0 6px}
+.doc-capability p{margin:0;font-size:14px;color:var(--ink-2);max-width:52ch}
 .doc-framed{margin-top:10px !important;font-size:13px !important;padding-top:10px;border-top:1px dashed var(--line-2)}
 .doc-block{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px}
 .doc-block h4{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-bottom:10px}
@@ -1171,7 +1171,7 @@ NL.tables.fr = {
   docHeard: 'Tu as entendu quelque chose ?',
   docPlayTest: 'Jouer la phrase test',
   docMicTest: 'Tester le micro',
-  docTierTitle: 'Ton niveau actuel',
+  docCapabilityTitle: 'Ce que cet appareil sait faire',
   docVoiceBe: 'flamande', docVoiceNl: 'nord',
   docFramed: 'Cette page tourne dans un cadre intégré. Certains navigateurs refusent le micro dans ce cas, quelle que soit ton autorisation : ouvre l’app dans son propre onglet.',
   docNoServiceOpera: 'pas de service de reconnaissance vocale. Ce n’est pas réparable côté code.',
@@ -1190,18 +1190,18 @@ NL.tables.fr = {
   docRecDenied: 'Autorisation refusée. Clique sur l’icône de cadenas dans la barre d’adresse pour l’accorder.',
   docRecNoMic: 'Aucun micro détecté sur cette machine.',
   docRecOther: 'Le micro n’est pas disponible ici.',
-  tierFull: 'Complet',
-  tierFullNote: 'Voix flamande et reconnaissance vocale : tout fonctionne, y compris la notation automatique de ce que tu dis.',
-  tierScored: 'Noté, accent du nord',
-  tierScoredNote: 'La reconnaissance fonctionne, mais la voix est néerlandaise du nord. Installe la voix flamande ci-dessous et tu passes au niveau complet.',
-  tierNoVoice: 'Noté, sans voix néerlandaise',
-  tierNoVoiceNote: 'La reconnaissance est disponible, mais aucune voix néerlandaise n’est installée : les modèles audio ne sonneront pas néerlandais. Installe la voix flamande ci-dessous.',
-  tierRefused: 'Micro refusé',
-  tierRefusedNote: 'Le navigateur a refusé l’accès au micro. Autorise-le avec l’icône de cadenas dans la barre d’adresse, puis teste le micro ci-dessous. En attendant, les exercices oraux te demandent de t’évaluer toi-même.',
-  tierCompare: 'Enregistre et compare',
-  tierCompareNote: 'Pas de reconnaissance vocale ici. Tu peux quand même t’enregistrer et te comparer au modèle, ce qui est une vraie méthode de travail.',
-  tierSelf: 'Auto-évaluation',
-  tierSelfNote: 'Ni reconnaissance ni enregistrement disponibles. Les exercices oraux te demandent de dire la phrase puis de te juger honnêtement. Ça marche, mais une page hébergée hors d’un cadre te donnerait mieux.',
+  capabilityFull: 'Complet',
+  capabilityFullNote: 'Voix flamande et reconnaissance vocale : tout fonctionne, y compris la notation automatique de ce que tu dis.',
+  capabilityScored: 'Noté, accent du nord',
+  capabilityScoredNote: 'La reconnaissance fonctionne, mais la voix est néerlandaise du nord. Installe la voix flamande ci-dessous et tout fonctionnera.',
+  capabilityNoVoice: 'Noté, sans voix néerlandaise',
+  capabilityNoVoiceNote: 'La reconnaissance est disponible, mais aucune voix néerlandaise n’est installée : les modèles audio ne sonneront pas néerlandais. Installe la voix flamande ci-dessous.',
+  capabilityRefused: 'Micro refusé',
+  capabilityRefusedNote: 'Le navigateur a refusé l’accès au micro. Autorise-le avec l’icône de cadenas dans la barre d’adresse, puis teste le micro ci-dessous. En attendant, les exercices oraux te demandent de t’évaluer toi-même.',
+  capabilityCompare: 'Enregistre et compare',
+  capabilityCompareNote: 'Pas de reconnaissance vocale ici. Tu peux quand même t’enregistrer et te comparer au modèle, ce qui est une vraie méthode de travail.',
+  capabilitySelf: 'Auto-évaluation',
+  capabilitySelfNote: 'Ni reconnaissance ni enregistrement disponibles. Les exercices oraux te demandent de dire la phrase puis de te juger honnêtement. Ça marche, mais une page hébergée hors d’un cadre te donnerait mieux.',
   /* le rapport de voix : speech.voiceInfo().noteKey rend la clé, l'écran la lit au dessin */
   voiceNoteBe: 'Voix flamande trouvée.',
   voiceNoteNl: 'Seule une voix des Pays-Bas est installée : l’audio a donc l’accent du nord, avec un g raclé là où la Flandre utilise un g doux.',
@@ -1573,7 +1573,7 @@ NL.tables.en = {
   docHeard: 'Did you hear something?',
   docPlayTest: 'Play the test sentence',
   docMicTest: 'Test the microphone',
-  docTierTitle: 'Your current level',
+  docCapabilityTitle: 'What this device can do',
   docVoiceBe: 'Flemish', docVoiceNl: 'northern',
   docFramed: 'This page is running in an embedded frame. Some browsers refuse the microphone in that case, whatever permission you give: open the app in its own tab.',
   docNoServiceOpera: 'no speech recognition service. This cannot be fixed in code.',
@@ -1592,18 +1592,18 @@ NL.tables.en = {
   docRecDenied: 'Permission refused. Click the padlock icon in the address bar to grant it.',
   docRecNoMic: 'No microphone detected on this machine.',
   docRecOther: 'The microphone is not available here.',
-  tierFull: 'Full',
-  tierFullNote: 'Flemish voice and speech recognition: everything works, including automatic scoring of what you say.',
-  tierScored: 'Scored, northern accent',
-  tierScoredNote: 'Recognition works, but the voice is northern Dutch. Install the Flemish voice below and you reach the full level.',
-  tierNoVoice: 'Scored, no Dutch voice',
-  tierNoVoiceNote: 'Recognition is available, but no Dutch voice is installed: the audio models will not sound Dutch. Install the Flemish voice below.',
-  tierRefused: 'Microphone refused',
-  tierRefusedNote: 'The browser refused access to the microphone. Allow it with the padlock icon in the address bar, then test the microphone below. Meanwhile, spoken exercises ask you to rate yourself.',
-  tierCompare: 'Record and compare',
-  tierCompareNote: 'No speech recognition here. You can still record yourself and compare with the model, which is a real way to work.',
-  tierSelf: 'Self-assessment',
-  tierSelfNote: 'Neither recognition nor recording is available. Spoken exercises ask you to say the sentence, then judge yourself honestly. It works, but a page hosted outside a frame would give you more.',
+  capabilityFull: 'Full',
+  capabilityFullNote: 'Flemish voice and speech recognition: everything works, including automatic scoring of what you say.',
+  capabilityScored: 'Scored, northern accent',
+  capabilityScoredNote: 'Recognition works, but the voice is northern Dutch. Install the Flemish voice below and everything will work.',
+  capabilityNoVoice: 'Scored, no Dutch voice',
+  capabilityNoVoiceNote: 'Recognition is available, but no Dutch voice is installed: the audio models will not sound Dutch. Install the Flemish voice below.',
+  capabilityRefused: 'Microphone refused',
+  capabilityRefusedNote: 'The browser refused access to the microphone. Allow it with the padlock icon in the address bar, then test the microphone below. Meanwhile, spoken exercises ask you to rate yourself.',
+  capabilityCompare: 'Record and compare',
+  capabilityCompareNote: 'No speech recognition here. You can still record yourself and compare with the model, which is a real way to work.',
+  capabilitySelf: 'Self-assessment',
+  capabilitySelfNote: 'Neither recognition nor recording is available. Spoken exercises ask you to say the sentence, then judge yourself honestly. It works, but a page hosted outside a frame would give you more.',
   /* le rapport de voix : speech.voiceInfo().noteKey rend la clé, l'écran la lit au dessin */
   voiceNoteBe: 'Flemish voice found.',
   voiceNoteNl: 'Only a voice from the Netherlands is installed: the audio therefore has the northern accent, with a scraped g where Flanders uses a soft g.',
@@ -2728,12 +2728,12 @@ NL.speech = (function () {
     return best;
   }
 
-  /* Which tier this browser puts you in — the audio doctor reports this. */
-  function tier() {
+  /* What this browser can do with speech — the audio doctor reports this. */
+  function capability() {
     const framed = window.self !== window.top;
     if (refused) return { id: 'refused', framed };
     /* « Noté, accent du nord » suppose une voix des Pays-Bas. Sans aucune voix
-       néerlandaise, c'est un autre niveau, et il faut le dire. */
+       néerlandaise, c'est une autre capacité, et il faut le dire. */
     if (canListen() && quality === 'be') return { id: 'full', framed };
     if (canListen() && quality === 'nl') return { id: 'scored', framed };
     if (canListen()) return { id: 'novoice', framed };
@@ -2744,7 +2744,7 @@ NL.speech = (function () {
   return {
     canSpeak, say, stop, voiceInfo, rescanVoices: scan, voices: () => voices,
     canListen, listenBlocked, noService, listen, abort, score, ratio, micRefused,
-    canRecord, hasRecording, record, stopRecord, playRecording, playBoth, clearRecording, tier, browserName
+    canRecord, hasRecording, record, stopRecord, playRecording, playBoth, clearRecording, capability, browserName
   };
 })();
 </script>
@@ -6225,13 +6225,15 @@ NL.ui = (function () {
 
   /* Copie `text` : par le presse-papiers s'il existe, sinon par l'ancienne commande du
      navigateur, qui copie ce qui est sélectionné — `box`, sélectionné d'abord, d'où l'on peut
-     aussi copier à la main. Rend la promesse d'un booléen : copié ou non. La sauvegarde et le
-     journal d'erreurs (doctor.js) copient par ici. */
+     aussi copier à la main. Sans presse-papiers ni `box` à sélectionner, il n'y a rien à copier
+     que la sélection de quelqu'un d'autre : la promesse rend false et la commande ne part pas.
+     Rend la promesse d'un booléen : copié ou non. La sauvegarde et le journal d'erreurs
+     (doctor.js) copient par ici. */
   const copy = (text, box) => {
     if (box) box.select();
     return navigator.clipboard
       ? navigator.clipboard.writeText(text).then(() => true).catch(() => false)
-      : Promise.resolve(!!(document.execCommand && document.execCommand('copy')));
+      : Promise.resolve(!!(box && document.execCommand && document.execCommand('copy')));
   };
 
   function openPaste() {
@@ -7939,13 +7941,13 @@ NL.screens.doctor = (function () {
 
   /* Le titre et la note de ce que l'appareil sait faire de la parole : deux clés de NL.t,
      lues au dessin comme home.js et shell.js lisent t[v.noteKey], car la langue a pu changer. */
-  const TIERS = {
-    full: { labelKey: 'tierFull', noteKey: 'tierFullNote' },
-    scored: { labelKey: 'tierScored', noteKey: 'tierScoredNote' },
-    novoice: { labelKey: 'tierNoVoice', noteKey: 'tierNoVoiceNote' },
-    refused: { labelKey: 'tierRefused', noteKey: 'tierRefusedNote' },
-    compare: { labelKey: 'tierCompare', noteKey: 'tierCompareNote' },
-    self: { labelKey: 'tierSelf', noteKey: 'tierSelfNote' }
+  const CAPABILITIES = {
+    full: { labelKey: 'capabilityFull', noteKey: 'capabilityFullNote' },
+    scored: { labelKey: 'capabilityScored', noteKey: 'capabilityScoredNote' },
+    novoice: { labelKey: 'capabilityNoVoice', noteKey: 'capabilityNoVoiceNote' },
+    refused: { labelKey: 'capabilityRefused', noteKey: 'capabilityRefusedNote' },
+    compare: { labelKey: 'capabilityCompare', noteKey: 'capabilityCompareNote' },
+    self: { labelKey: 'capabilitySelf', noteKey: 'capabilitySelfNote' }
   };
 
   function voiceRows() {
@@ -7970,8 +7972,8 @@ NL.screens.doctor = (function () {
 
   function render() {
     const v = NL.speech.voiceInfo();
-    const tier = NL.speech.tier();
-    const info = TIERS[tier.id];
+    const capability = NL.speech.capability();
+    const info = CAPABILITIES[capability.id];
     const allVoices = (NL.speech.voices() || []).length;
 
     return '<div class="lesson"><div class="lesson-head">' +
@@ -7980,10 +7982,10 @@ NL.screens.doctor = (function () {
       '</div>' +
       '<div class="lesson-body"><div class="stage doc">' +
 
-      '<section class="doc-tier ' + tier.id + '">' +
-      '<span class="eyebrow">' + t.docTierTitle + '</span>' +
+      '<section class="doc-capability ' + capability.id + '">' +
+      '<span class="eyebrow">' + t.docCapabilityTitle + '</span>' +
       '<h2>' + t[info.labelKey] + '</h2><p>' + t[info.noteKey] + '</p>' +
-      (tier.framed ? '<p class="doc-framed">' + t.docFramed + '</p>' : '') +
+      (capability.framed ? '<p class="doc-framed">' + t.docFramed + '</p>' : '') +
       '</section>' +
 
       '<section class="doc-block">' +

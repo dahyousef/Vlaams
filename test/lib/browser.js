@@ -17,6 +17,9 @@
 
      const B = browser.open({ root: ROOT, seed: browser.SEED, now: T0 });   ses options : au-dessus de open()
      B.NL            l'application chargée
+     B.ctx           l'objet global de la page (B.ctx.navigator, B.ctx.document…)
+     B.mkEl(tag)     un faux élément
+     B.random        le Math.random de la page, à graine — si `seed` est donné
      B.app           l'élément #app (lire B.app.innerHTML)
      B.store         le localStorage
      B.idb           le contenu de l'IndexedDB — si `idb` est donné
