@@ -5,6 +5,10 @@
      const { server, fakeLib, rowsFor } = require('./lib/supabase').fakeSupabase();
      browser.open({ …, store: dev.store, supabase: fakeLib(dev) })
 
+     KEYS            les colonnes clés de chaque table
+     keyOf(table, row)  la clé d'une ligne dans la table du serveur
+     clone(v)        une copie profonde
+
    Chaque appel à fakeSupabase() est un serveur neuf. dev.store est le localStorage de
    l'appareil : sa session y vit sous 'sb-session', et la poser avant open() ouvre l'appareil
    déjà connecté. dev.client est le client que l'app a créé : un autre onglet du même

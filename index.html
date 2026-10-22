@@ -6238,13 +6238,15 @@ NL.ui = (function () {
 
   /* Copie `text` : par le presse-papiers s'il existe, sinon par l'ancienne commande du
      navigateur, qui copie ce qui est sélectionné — `box`, sélectionné d'abord, d'où l'on peut
-     aussi copier à la main. Rend la promesse d'un booléen : copié ou non. La sauvegarde et le
-     journal d'erreurs (doctor.js) copient par ici. */
+     aussi copier à la main. Sans presse-papiers ni `box` à sélectionner, il n'y a rien à copier
+     que la sélection de quelqu'un d'autre : la promesse rend false et la commande ne part pas.
+     Rend la promesse d'un booléen : copié ou non. La sauvegarde et le journal d'erreurs
+     (doctor.js) copient par ici. */
   const copy = (text, box) => {
     if (box) box.select();
     return navigator.clipboard
       ? navigator.clipboard.writeText(text).then(() => true).catch(() => false)
-      : Promise.resolve(!!(document.execCommand && document.execCommand('copy')));
+      : Promise.resolve(!!(box && document.execCommand && document.execCommand('copy')));
   };
 
   function openPaste() {

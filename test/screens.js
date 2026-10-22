@@ -394,22 +394,33 @@ NL.state.open().then(async () => {
       ['the old command refusing', null, false],
       ['neither', null, null]
     ];
-    /* Le champ copié est sélectionné avant toute copie : l'ancienne commande copie la sélection. */
+    /* Le champ copié est sélectionné avant toute copie : l'ancienne commande copie la sélection.
+       P.events garde, dans l'ordre, le « select <id> » que le champ de la page y écrit et les
+       appels des faux (presse-papiers, ancienne commande) : le contrôle compare cette suite. */
     for (const [act, box, text, copied, byHand] of acts) {
       for (const [way, clip, cmd] of ways) {
-        const did = P.events;
-        did.length = 0;
-        P.ctx.navigator.clipboard = clip === null ? undefined : { writeText: s => { did.push('writeText ' + s); return clip ? Promise.resolve() : Promise.reject(new Error('refused')); } };
-        P.ctx.document.execCommand = cmd === null ? undefined : c => { did.push('execCommand ' + c); return cmd; };
+        P.events.length = 0;
+        P.ctx.navigator.clipboard = clip === null ? undefined : { writeText: s => { P.events.push('writeText ' + s); return clip ? Promise.resolve() : Promise.reject(new Error('refused')); } };
+        P.ctx.document.execCommand = cmd === null ? undefined : c => { P.events.push('execCommand ' + c); return cmd; };
         P.tap({ act });
         await settle();
         const wrote = 'select ' + box + (clip !== null ? ' | writeText ' + text() : cmd !== null ? ' | execCommand copy' : '');
         const toast = (P.app.innerHTML.match(/<div class="toast">([^<]*)<\/div>/) || [])[1];
         const said = clip === true || cmd === true ? copied : byHand;
-        ok(did.join(' | ') === wrote, act + ' with ' + way + ' did « ' + did.join(' | ') + ' »; wanted « ' + wrote + ' »');
+        ok(P.events.join(' | ') === wrote, act + ' with ' + way + ' did « ' + P.events.join(' | ') + ' »; wanted « ' + wrote + ' »');
         ok(toast === said, act + ' with ' + way + ' showed « ' + toast + ' »; wanted « ' + said + ' »');
         P.tick();
       }
+    }
+    /* Sans presse-papiers ni champ à sélectionner, l'ancienne commande copierait une sélection
+       qui n'est pas la nôtre : copy() rend false et ne la lance pas. */
+    {
+      P.events.length = 0;
+      P.ctx.navigator.clipboard = undefined;
+      P.ctx.document.execCommand = c => { P.events.push('execCommand ' + c); return true; };
+      const got = await P.NL.ui.copy('x', null);
+      ok(got === false, 'NL.ui.copy(\'x\', null) with only the old command gave ' + got + '; wanted false');
+      ok(P.events.join(' | ') === '', 'NL.ui.copy(\'x\', null) with only the old command did « ' + P.events.join(' | ') + ' »; wanted nothing');
     }
     console.log('  sauvegarde et journal : le presse-papiers, sinon l’ancienne commande ; « ' + t.backupCopied + ' » si l’un a copié, sinon « ' + t.backupCopyByHand + ' »');
   }
