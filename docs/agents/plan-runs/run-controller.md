@@ -10,6 +10,8 @@ rulings, and you stay small. This file is the whole of your job.
   you append to it.
 - The **Status** table and the **Rulings** of `<WS>/progress.md` — not its log.
 - `git log -1 --oneline` in the run's worktree.
+- If `run.md` says `Mode: one session`: `one-session.md`. It adds a drafting lane and changes the sittings,
+  the news and the measures; where it differs from this file, it wins.
 
 Never read a diff, a report, a brief or source code: task controllers do. A return that is not enough to act
 on is a reason to ask the maintainer, not to read the code. Read no agent or session listings: act only on your
@@ -32,8 +34,8 @@ task controllers' notices.
 6. Tell the maintainer in one short paragraph.
 7. By state:
    - `done` or `fallback`: the next task. (A fallback review returns `done`.)
-   - `needs ruling`: ask the maintainer the question as given. Add a line to **Rulings** (date, task,
-     question, answer). Dispatch the same task again with the ruling in its prompt. Whenever you dispatch a task
+   - `needs ruling`: ask the maintainer the question as given. Add a line to **Rulings** (date, commit, task,
+     question, answer, in the ledger's form). Dispatch the same task again with the ruling in its prompt. Whenever you dispatch a task
      for which Rulings has a line, put that line's answer in the prompt.
    - `needs design`: launch a design sitting (see « Launching a sitting », with `design-sitting.md`'s
      prompt), tell the maintainer its name, and stop the run. The task waits for that sitting; its brief comes
@@ -64,8 +66,8 @@ The dispatch prompt:
 - A launched session starts in the run's worktree, so the background-session guard does not move it.
 - Never continue a run with `--resume` or `--continue`: a resumed run rewrites its whole context into the
   cache. A new sitting starts from the files.
-- After a compaction or a resume, a hook reminds you to re-read this file and the Status table. Do it before
-  the next dispatch.
+- After a compaction or a resume, a hook reminds you to re-read this file and the ledger's Status table,
+  Batches table and Rulings. Do it before the next dispatch.
 
 ## Launching a sitting
 
@@ -74,7 +76,7 @@ the run's worktree, with this command (PowerShell):
 
     & "$env:USERPROFILE\.local\bin\claude.exe" --bg --remote-control "<name>" -n "<name>" --model opus --settings '{\"env\":{\"CLAUDE_CODE_AUTO_COMPACT_WINDOW\":\"200000\"}}' -- "<prompt>"
 
-- `<name>` takes the form `Vlaams phase 2 — <what it is> <n>`.
+- `<name>` takes the form `Vlaams phase <n> — <what it is> <k>`.
 - `<prompt>` is the start prompt (below), a design sitting's prompt, or « Read `<WS>/briefs/task-<N>.md` and
   follow it. Run file: `<WS>/run.md`. ».
 - The quotes inside `--settings` are escaped because Windows PowerShell 5.1 drops unescaped ones from an
@@ -123,6 +125,8 @@ Once per plan, in the run's worktree, create `<WS>` = `.superpowers/sdd/<plan na
 - `global-constraints.md`: the plan's Global Constraints and Review Focus, word for word;
 - `briefs/task-<N>.md`: each task's full text from the plan, checked as `design-sitting.md` says before a
   brief is approved;
+- for each `fan-out` task, `drafts/<kind>/format.md`: its brief's Format and Reader focus sections, word for
+  word;
 - empty folders `reports/`, `reviews/`, `tmp/`.
 
 `run.md`:
@@ -135,6 +139,9 @@ Once per plan, in the run's worktree, create `<WS>` = `.superpowers/sdd/<plan na
     Workspace (<WS>): <absolute path>
     Tickets: task 1 → #<n>, task 2 → #<n>     (or: none)
     Plan: <path>
+    Mode: one session        (only for a one-session run, one-session.md; leave the line out for sittings)
+    Fan-out: task <id> — kind <kind> — after <ids> — Split: <command> — Check: <command> — merged by task <id>
+                             (one line per fan-out task)
     Sittings: (the run controller appends one `Sitting:` line per sitting below)
 
 The first sitting is launched with the command, from the run's worktree, by whichever Claude session the

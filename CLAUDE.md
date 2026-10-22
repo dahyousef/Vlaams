@@ -39,7 +39,9 @@ prompt in `run-controller.md`: never `--resume` a run. The run controller hands 
 a time to a task controller and reads only the ledger's status table and rulings, and
 returns of at most 10 lines. Every task in a plan carries `Class: engine` or
 `Class: mechanical`, which sets the models. Design never happens inside an implementer: it
-goes to a design sitting (`design-sitting.md`).
+goes to a design sitting (`design-sitting.md`). Phase 3 alone runs as one session, with a
+drafting lane beside the code lane (`one-session.md`); the maintainer decides at its end
+whether that stays.
 
 ## Conventions you can't infer from the code
 

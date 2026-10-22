@@ -44,8 +44,8 @@ fallback tasks sit above it, still unreviewed.
 
 ## The roles you dispatch
 
-Give each one its model explicitly, and tell it: its final message is at most 10 lines; everything longer
-goes to the report file you name. Dispatch each one in the foreground and wait for its return; never end
+Give each one its model explicitly and a description that starts with `task <N>` (the measures group by it),
+and tell it: its final message is at most 10 lines; everything longer goes to the report file you name. Dispatch each one in the foreground and wait for its return; never end
 your turn while one runs.
 
 | Role | Model | Its instructions |
