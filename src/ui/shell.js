@@ -78,7 +78,7 @@ NL.ui = (function () {
   function render() {
     applyTheme();
     /* Un changement de langue n'entre jamais en pleine séance ni en pleine conversation. */
-    if (!LANG_WAITS[route]) NL.lang.apply(false);
+    if (!LANG_WAITS[route]) NL.lang.applyAndTell();
     const S = NL.screens[route] || NL.screens.vandaag;
     const full = !!FULLSCREEN[route];
     const note = LANG_WAITS[route] ? '' : NL.lang.notice();
@@ -86,7 +86,7 @@ NL.ui = (function () {
     const html = full
       ? '<div class="screen full">' + noticeHtml + S.render(arg) + '</div>'
       : topbar() + '<main class="screen">' + noticeHtml + S.render(arg) + '</main>' + nav();
-    root.innerHTML = html + (sheet ? sheetHtml() : '') + (toastMsg ? '<div class="toast">' + esc(toastMsg) + '</div>' : '');
+    root.innerHTML = html + (sheet ? sheetHtml() : '') + ifText(toastMsg, 'div', 'toast');
     if (S.after) S.after(arg);
   }
 
@@ -103,6 +103,12 @@ NL.ui = (function () {
     const u = NL.content.units.find(x => x.n === span.from);
     return t.unitOne(span.from) + (u ? ' · ' + NL.gloss.of(u.name) : '');
   }
+
+  /* Le texte `x` (lu par NL.gloss) dans une balise, s'il y en a un ; sinon rien. */
+  const ifText = (x, tag, cls) => {
+    const s = NL.gloss.of(x);
+    return s ? '<' + tag + (cls ? ' class="' + cls + '"' : '') + '>' + esc(s) + '</' + tag + '>' : '';
+  };
 
   function sheetHtml() {
     const m = NL.state.meta();
@@ -121,7 +127,7 @@ NL.ui = (function () {
         '</div></div>' +
 
         '<div class="set-block"><h4>' + t.setLang + '</h4>' +
-        '<button class="btn wide" data-display-lang="' + (NL.lang.current() === 'en' ? 'fr' : 'en') + '">' + t.langOther + '</button></div>' +
+        '<button class="btn wide" data-display-lang="' + NL.gloss.other(NL.lang.current()) + '">' + t.langOther + '</button></div>' +
 
         '<div class="set-block"><h4>' + t.setPace + '</h4><div class="seg">' +
         ['calme', 'normal', 'intensif'].map(k =>
@@ -147,7 +153,7 @@ NL.ui = (function () {
         (NL.sync.enabled ? accountBlock() : '') +
 
         '<div class="set-block"><h4>' + t.setVoice + '</h4>' +
-        '<p class="set-note ' + (v.quality === 'be' ? 'good' : 'warn') + '">' + esc(t[v.note]) +
+        '<p class="set-note ' + (v.quality === 'be' ? 'good' : 'warn') + '">' + esc(t[v.noteKey]) +
         (v.name ? ' <span class="muted">(' + esc(v.name) + ')</span>' : '') + '</p>' +
         '<p class="set-note ' + (mic ? 'warn' : 'good') + '">' + esc(micLine(mic)) + '</p>' +
         '<button class="btn btn-blue wide" data-go="doctor">' + t.setDoctor + '</button></div>' +
@@ -259,6 +265,17 @@ NL.ui = (function () {
       '<button class="btn btn-ghost wide" data-close="1">' + t.close + '</button>') });
   }
 
+  /* Copie `text` : par le presse-papiers s'il existe, sinon par l'ancienne commande du
+     navigateur, qui copie ce qui est sélectionné — `box`, sélectionné d'abord, d'où l'on peut
+     aussi copier à la main. Rend la promesse d'un booléen : copié ou non. La sauvegarde et le
+     journal d'erreurs (doctor.js) copient par ici. */
+  const copy = (text, box) => {
+    if (box) box.select();
+    return navigator.clipboard
+      ? navigator.clipboard.writeText(text).then(() => true).catch(() => false)
+      : Promise.resolve(!!(document.execCommand && document.execCommand('copy')));
+  };
+
   function openPaste() {
     openSheet({ custom: card(t.setImport,
       '<p>' + t.pasteHow + '</p>' +
@@ -322,13 +339,7 @@ NL.ui = (function () {
         if (d.act === 'paste-show') { openPaste(); return; }
         if (d.act === 'copy-backup') {
           const box = document.getElementById('backup-out');
-          if (box) {
-            box.select();
-            const ok = navigator.clipboard
-              ? navigator.clipboard.writeText(box.value).then(() => true).catch(() => false)
-              : Promise.resolve(document.execCommand && document.execCommand('copy'));
-            Promise.resolve(ok).then(good => toast(good ? t.errCopied : t.errCopyByHand));
-          }
+          if (box) copy(box.value, box).then(good => toast(good ? t.backupCopied : t.backupCopyByHand));
           return;
         }
         if (d.act === 'paste-backup') {
@@ -390,7 +401,7 @@ NL.ui = (function () {
   function onAuth() { if (route === 'compte') go('vandaag'); else render(); }
 
   return {
-    bind, render, go, toast, openSheet, closeSheet, I, card, unitLabel, onAuth,
+    bind, render, go, toast, openSheet, closeSheet, I, card, unitLabel, ifText, copy, onAuth,
     get route() { return route; },
     boot() { const h = fromHash(); if (h) { route = h.r; arg = h.a; } render(); }
   };

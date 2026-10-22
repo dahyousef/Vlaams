@@ -1,3 +1,13 @@
+/* Le cours tel que les suites le lisent : ses champs de prose, et l'anglais qu'ils doivent.
+
+     const { PROSE, COLLECTIONS, has, raw, owed, at } = require('./lib/prose');
+     PROSE        les champs de texte libre du cours, ceux qui deviennent { fr, en }
+     COLLECTIONS  les collections du cours, où ils vivent
+     has(x)       un anglais lu : une chaîne non vide, pas un trou
+     raw(content) une copie du cours tel qu'il est écrit, prise avant NL.state.open()
+     owed(v, where, key, out)  l'anglais qui reste dû : un { where, ok } par endroit
+     at(root, where)  ce qu'un `where` d'owed() désigne dans `root` */
+
 /* Les champs de texte libre du cours — ceux qui deviennent { fr, en } — et les
    collections où ils vivent. Une seule liste, pour toutes les suites. */
 const PROSE = ['name', 'blurb', 'note', 'title', 'rule', 'explain', 'ask', 'what', 'h', 'place', 'outro', 'hint'];
@@ -5,6 +15,10 @@ const COLLECTIONS = ['units', 'patterns', 'openTasks', 'register', 'hetRules', '
 
 /* Un anglais lu : une chaîne non vide, pas un trou. */
 const has = x => typeof x === 'string' && x.trim() !== '';
+
+/* Le cours tel qu'il est écrit : une copie des collections, prise avant la première
+   construction (avant NL.state.open()), quand {naam}, {stad} et {bedrijf} y sont encore. */
+const raw = content => Object.fromEntries(COLLECTIONS.map(k => [k, JSON.parse(JSON.stringify(content[k] || []))]));
 
 /* L'anglais qui reste dû : un { where, ok } par endroit qui doit porter un `en`. */
 function owed(v, where, key, out) {
@@ -31,4 +45,4 @@ function at(root, where) {
   return v;
 }
 
-module.exports = { PROSE, COLLECTIONS, has, owed, at };
+module.exports = { PROSE, COLLECTIONS, has, raw, owed, at };

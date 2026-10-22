@@ -1,10 +1,11 @@
 /* La langue d'affichage. Le cours se charge tel quel, ou « apparié » : chaque sens et
    chaque texte reçoit un anglais factice (EN0, EN1…). L'écran montre alors ce qu'il
    montrerait une fois le contenu traduit, sans attendre la traduction. */
-const fs = require('fs'), path = require('path'), vm = require('vm');
+const fs = require('fs'), path = require('path');
 const browser = require('./lib/browser');
-const { PROSE, COLLECTIONS } = require('./lib/prose');
-const { runs, count, argsOf } = require('./lib/langs');
+const { PROSE } = require('./lib/prose');
+const tree = require('./lib/tree');
+const { text, runs, count, argsOf } = require('./lib/langs');
 const { fakeSupabase } = require('./lib/supabase');
 const { dueReviews } = require('./lib/seed');
 const ROOT = process.argv[2] || path.join(__dirname, '..');
@@ -13,36 +14,25 @@ const ok = (c, m) => { checks++; if (!c) { console.log('  FAIL: ' + m); fails++;
 
 function pairUp(C) {
   let n = 0;
-  const walk = (v, key) => {
-    if (Array.isArray(v)) return v.map(x => walk(x, key));
-    if (v && typeof v === 'object') {
-      if (typeof v.fr === 'string' && v.en === undefined) v.en = 'EN' + (n++);
-      Object.keys(v).forEach(k => { v[k] = walk(v[k], k); });
-      return v;
-    }
-    if (typeof v === 'string' && PROSE.indexOf(key) >= 0) return { fr: v, en: 'EN' + (n++) };
-    return v;
-  };
-  COLLECTIONS.forEach(k => { C[k] = walk(C[k], k); });
+  tree.rewriteCourse(C, (s, key) => typeof s === 'string' && PROSE.indexOf(key) >= 0 ? { fr: s, en: 'EN' + (n++) } : s);
+  tree.visitCourse(C, v => { if (v && typeof v === 'object' && typeof v.fr === 'string' && v.en === undefined) v.en = 'EN' + (n++); });
   return n;
 }
 const T0 = Date.parse('2026-10-05T08:00:00Z');
-/* account : un serveur neuf, et l'appareil déjà connecté. */
-function boot(prepare, store, account) {
+/* prepare : ce que l'essai change dans l'app chargée, avant que src/app.js la démarre.
+   store : le stockage d'un appareil, pour le recharger.
+   account : un serveur neuf, et l'appareil déjà connecté.
+   timers : 'held' pour des minuteurs qui attendent B.tick() ; absent, ils partent aussitôt. */
+function boot({ prepare, store, account, timers } = {}) {
   const dev = { store: store || {} };
   if (account) dev.store['sb-session'] = JSON.stringify({ user: { id: 'uid-lang', email: 'lang@example.com' } });
-  const B = browser.open({ root: ROOT, seed: browser.SEED, now: T0, store: dev.store, byId: 'stub', media: true, skip: ['src/app.js'],
+  return browser.open({ root: ROOT, seed: browser.SEED, now: T0, store: dev.store, byId: 'stub', media: true, prepare, timers,
     config: account ? { supabaseUrl: 'https://example.supabase.co', supabaseAnonKey: 'anon' } : undefined,
     supabase: account ? fakeSupabase().fakeLib(dev) : undefined,
     voices: [{ name: 'Microsoft Bart - Dutch (Belgium)', lang: 'nl-BE', localService: true }] });
-  if (prepare) prepare(B.NL);
-  vm.runInContext(fs.readFileSync(path.join(ROOT, 'src/app.js'), 'utf8'), B.ctx);
-  return B;
 }
-/* Le texte lu : balises retirées, mais aria-label, placeholder, title et alt gardés. */
-const text = html => String(html)
-  .replace(/\s(aria-label|placeholder|title|alt)="([^"]*)"/g, ' > $2 <')
-  .replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ');
+/* Le texte lu, étiquettes comprises : text() de test/lib/langs.js, avec aria-label, placeholder, title et alt gardés. */
+const textAndLabels = html => text(String(html).replace(/\s(aria-label|placeholder|title|alt)="([^"]*)"/g, ' > $2 <'));
 
 /* Chaque état d'écran que la personne peut voir, dans un ordre fixe. `visit(nom, html)`
    reçoit le HTML de l'écran. Deux navigateurs partis de la même graine visitent les
@@ -178,32 +168,16 @@ function marked(NL) {
   pairUp(NL.content);
   let n = 0;
   const mk = () => '⟪' + (n++) + '⟫';
-  const walk = (v, key) => {
-    if (Array.isArray(v)) return v.map(x => walk(x, key));
-    if (v && typeof v === 'object') { Object.keys(v).forEach(k => { v[k] = walk(v[k], k); }); return v; }
-    if (typeof v === 'string' && (key === 'fr' || key === 'en' || PROSE.indexOf(key) >= 0)) return mk();
-    return v;
-  };
-  COLLECTIONS.forEach(k => { NL.content[k] = walk(NL.content[k], k); });
+  tree.rewriteCourse(NL.content, (s, key) => typeof s === 'string' && (key === 'fr' || key === 'en' || PROSE.indexOf(key) >= 0) ? mk() : s);
   /* Les trois pages françaises : tout ce qui n'est pas du néerlandais. */
   ['sounds', 'loans', 'faux'].forEach(k => {
     NL.content[k].forEach(r => Object.keys(r).forEach(f => { if (f !== 'nl' && typeof r[f] === 'string') r[f] = mk(); }));
   });
-  const leaf = (v, p, keep) => {
-    if (typeof v === 'string') return '⟦' + p + '⟧';
-    if (typeof v === 'function') return () => '⟦' + p + '⟧';
-    if (Array.isArray(v)) return v.map((x, i) => leaf(x, p + '.' + i, keep));
-    if (v && typeof v === 'object') {
-      Object.keys(v).forEach(k => { if (!(keep && (k === 'id' || k === 'nl'))) v[k] = leaf(v[k], p + '.' + k, keep); });
-      return v;
-    }
-    return v;
-  };
   const T = NL.t;
-  Object.keys(T).forEach(k => { T[k] = leaf(T[k], k, k === 'nav'); });
+  Object.keys(T).forEach(k => { T[k] = markLeaves(T[k], k, k === 'nav'); });
   if (NL.tables) Object.keys(NL.tables).forEach(l => {
     const tb = NL.tables[l];
-    if (tb !== T) Object.keys(tb).forEach(k => { tb[k] = leaf(tb[k], l + '.' + k, k === 'nav'); });
+    if (tb !== T) Object.keys(tb).forEach(k => { tb[k] = markLeaves(tb[k], l + '.' + k, k === 'nav'); });
   });
 }
 
@@ -214,13 +188,7 @@ const DUTCH_KEYS = ['nl', 'be', 'std', 'ex', 'model', 'id', 'nlName'];
 function dutchWords(NL) {
   const set = new Set();
   const add = s => String(s).toLowerCase().split(/[^\p{L}\p{N}]+/u).forEach(w => { if (w) set.add(w); });
-  const walk = v => {
-    if (Array.isArray(v)) v.forEach(walk);
-    else if (v && typeof v === 'object') Object.keys(v).forEach(k => {
-      if (DUTCH_KEYS.indexOf(k) >= 0 && typeof v[k] === 'string') add(v[k]); else walk(v[k]);
-    });
-  };
-  Object.keys(NL.content).forEach(k => { if (typeof NL.content[k] === 'object') walk(NL.content[k]); });
+  tree.visit(NL.content, (v, key) => { if (DUTCH_KEYS.indexOf(key) >= 0 && typeof v === 'string') add(v); });
   NL.t.nav.forEach(n => add(n.nl));
   Object.keys(NL.content.DEFAULTS).forEach(k => add(NL.content.DEFAULTS[k]));
   return set;
@@ -235,7 +203,7 @@ function srcFiles(dir) {
 }
 
 function interfaceCheck() {
-  const m = boot(marked);
+  const m = boot({ prepare: marked });
   return m.NL.state.open().then(() => {
     const dutch = dutchWords(m.NL), seen = new Map();
     views(m, (n, h) => {
@@ -244,7 +212,7 @@ function interfaceCheck() {
          Deux autres données ne sont pas l'interface non plus : les faux amis des anglophones, écrits en anglais
          dans les deux affichages (les cellules reg-cell std de register), et les mots qu'une personne a tapés
          elle-même (leur ligne du dictionnaire, repérée par data-del). */
-      text(String(h).replace(/<textarea[\s\S]*?<\/textarea>/g, ' ').replace(/<span class="reg-cell std" lang="en">[\s\S]*?<\/span>/g, ' ').replace(/<div class="vrow">[\s\S]*?<\/div>/g, row => (row.indexOf('data-del=') >= 0 ? ' ' : row)).replace(/&[a-z]+;/g, ' ')).replace(/⟦[^⟧]*⟧|⟪[^⟫]*⟫/g, ' ').split(/[^\p{L}\p{N}]+/u).forEach(w => {
+      textAndLabels(String(h).replace(/<textarea[\s\S]*?<\/textarea>/g, ' ').replace(/<span class="reg-cell std" lang="en">[\s\S]*?<\/span>/g, ' ').replace(/<div class="vrow">[\s\S]*?<\/div>/g, row => (row.indexOf('data-del=') >= 0 ? ' ' : row)).replace(/&[a-z]+;/g, ' ')).replace(/⟦[^⟧]*⟧|⟪[^⟫]*⟫/g, ' ').split(/[^\p{L}\p{N}]+/u).forEach(w => {
         w = w.toLowerCase();
         if (w.length > 1 && !/\p{N}/u.test(w) && !dutch.has(w) && !Object.prototype.hasOwnProperty.call(ALLOW, w) && !seen.has(w)) seen.set(w, n);
       });
@@ -324,8 +292,8 @@ function tableCheck(NL) {
 
 /* 5. La langue d'affichage : le réglage, le changement qui attend la fin de la
    séance, l'avis, les mots à soi, ce que la restauration et la remise à zéro gardent. */
-const French = B => { B.NL.state.setMeta({ displayLang: 'fr' }); B.NL.lang.apply(true); };
-const English = B => { B.NL.state.setMeta({ displayLang: 'en' }); B.NL.lang.apply(true); };
+const French = B => { B.NL.state.setMeta({ displayLang: 'fr' }); B.NL.lang.apply(); };
+const English = B => { B.NL.state.setMeta({ displayLang: 'en' }); B.NL.lang.apply(); };
 const pageLang = B => B.ctx.document.documentElement.attrs.lang;
 /* La session arrive juste après open() : on l'attend, 5 ms de temps réel. */
 const signedIn = B => new Promise(res => setTimeout(res, 5)).then(() => {
@@ -334,25 +302,17 @@ const signedIn = B => new Promise(res => setTimeout(res, 5)).then(() => {
 
 /* Les feuilles d'une table deviennent ⟦préfixe:clé⟧ ; `keep` garde id et nl (la navigation). */
 function markLeaves(v, p, keep) {
-  if (typeof v === 'string') return '⟦' + p + '⟧';
-  if (typeof v === 'function') return () => '⟦' + p + '⟧';
-  if (Array.isArray(v)) return v.map((x, i) => markLeaves(x, p + '.' + i, keep));
-  if (v && typeof v === 'object') {
-    Object.keys(v).forEach(k => { if (!(keep && (k === 'id' || k === 'nl'))) v[k] = markLeaves(v[k], p + '.' + k, keep); });
-    return v;
-  }
-  return v;
+  return tree.rewrite(v, (x, key, where) => {
+    if (keep && (key === 'id' || key === 'nl')) return x;
+    if (typeof x === 'string') return '⟦' + where + '⟧';
+    return typeof x === 'function' ? () => '⟦' + where + '⟧' : x;
+  }, '', p);
 }
 /* 5f : le cours apparié, puis le français du cours en ⟪n⟫ et les deux tables en ⟦fr:clé⟧ et ⟦en:clé⟧. */
 function markedBoth(NL) {
   pairUp(NL.content);
   let n = 0;
-  const walk = (v, key) => {
-    if (Array.isArray(v)) return v.map(x => walk(x, key));
-    if (v && typeof v === 'object') { Object.keys(v).forEach(k => { v[k] = walk(v[k], k); }); return v; }
-    return typeof v === 'string' && key === 'fr' ? '⟪' + (n++) + '⟫' : v;
-  };
-  COLLECTIONS.forEach(k => { NL.content[k] = walk(NL.content[k], k); });
+  tree.rewriteCourse(NL.content, (s, key) => typeof s === 'string' && key === 'fr' ? '⟪' + (n++) + '⟫' : s);
   ['fr', 'en'].forEach(l => {
     const tb = NL.tables[l];
     Object.keys(tb).forEach(k => { tb[k] = markLeaves(tb[k], l + ':' + k, k === 'nav'); });
@@ -365,7 +325,7 @@ function markedBoth(NL) {
 
 function langChecks() {
   /* 5a. Un appareil qui n'a jamais choisi ne défait pas un choix. */
-  const A = boot(null);
+  const A = boot();
   return A.NL.state.open().then(() => {
     const NL = A.NL;
     ok(NL.sync.mergeMeta({ displayLang: 'fr', updatedAt: 1 }, { updatedAt: 2 }).displayLang === 'fr', '5a : la fusion perd displayLang: fr');
@@ -374,40 +334,57 @@ function langChecks() {
     ok(pageLang(A) === 'en-GB', '5a : <html lang> vaut « ' + pageLang(A) + ' » au lieu de en-GB');
     ok(NL.t.nav[1].label === NL.tables.en.nav[1].label, '5a : NL.t n\'est pas la table anglaise');
 
-    /* 5b. Un changement qui arrive en pleine séance ou conversation attend le premier écran d'après. */
-    const B = boot(null);
+    /* 5b. Un changement qui arrive en pleine séance ou conversation attend le premier écran d'après.
+       Les minuteurs de B attendent B.tick(). Partis aussitôt, ils finiraient le tour où
+       l'avis se lève avant l'écran suivant : seen() l'effacerait sans que rien ne le voie. */
+    const B = boot({ timers: 'held' });
     return B.NL.state.open().then(() => {
       const N = B.NL, S = N.screens.sessie, html = () => B.app.innerHTML;
       const fr = N.tables.fr, en = N.tables.en;
       dueReviews(N, 12, T0);
+      /* Le tour du démarrage est fini avant le premier geste de la personne. Chaque essai part
+         d'un tour fini et finit le sien. */
+      B.tick();
       const waits = (what, enter) => {
+        ok(B.waiting() === 0, '5b ' + what + ' : ' + B.waiting() + ' minuteur(s) d\'avant attendent encore B.tick()');
         enter();
-        const before = text(html());
+        const before = textAndLabels(html());
         N.state.setMeta({ displayLang: 'fr' }, true);   // ce que fait une synchro
         N.ui.render();                                  // sans le garde de app.js : render() se garde seul
-        ok(text(html()) === before, '5b ' + what + ' : l\'écran a changé en pleine séance');
+        ok(textAndLabels(html()) === before, '5b ' + what + ' : l\'écran a changé en pleine séance');
         ok(pageLang(B) === 'en-GB', '5b ' + what + ' : <html lang> a changé en pleine séance (' + pageLang(B) + ')');
         if (what === 'séance') B.tap({ quitYes: '1' }); else N.ui.go('vandaag');
-        const t = text(html());
+        const t = textAndLabels(html());
         ok(t.indexOf(fr.nav[1].label) >= 0 && t.indexOf(en.nav[1].label) < 0, '5b ' + what + ' : l\'écran d\'après n\'est pas en français');
         ok(pageLang(B) === 'fr', '5b ' + what + ' : <html lang> vaut « ' + pageLang(B) + ' » après la sortie');
         ok(count(t, fr.langNotice) === 1, '5b ' + what + ' : l\'avis s\'affiche ' + count(t, fr.langNotice) + ' fois au lieu d\'une');
         N.ui.go('leerpad');
-        ok(count(text(html()), fr.langNotice) === 0, '5b ' + what + ' : l\'avis revient au go() suivant');
+        ok(count(textAndLabels(html()), fr.langNotice) === 1, '5b ' + what + ' : l\'avis remplacé dans le tour où il s\'est levé est perdu');
+        B.tick();
+        N.ui.go('vandaag');
+        ok(count(textAndLabels(html()), fr.langNotice) === 0, '5b ' + what + ' : l\'avis revient à l\'écran d\'après, un tour plus tard');
         English(B); N.ui.go('vandaag');
+        B.tick();
       };
       waits('séance', () => { ok(S.begin('vandaag'), '5b : aucune séance à démarrer'); N.ui.go('sessie'); });
       waits('conversation', () => N.ui.go('scenario', N.content.scenarios[0].id));
+      /* Deux avis levés dans un même tour attendent un seul minuteur, et le tour d'après les efface. */
+      N.state.setMeta({ displayLang: 'fr' }, true); N.lang.applyAndTell();
+      N.state.setMeta({ displayLang: 'en' }, true);
+      const waited = B.waiting();
+      N.lang.applyAndTell();
+      ok(B.waiting() === waited, '5b : un second avis dans le même tour pose un second minuteur (' + waited + ' puis ' + B.waiting() + ' en attente)');
+      B.tick(); N.lang.seen();
+      ok(N.lang.notice() === '', '5b : l\'avis levé deux fois dans un tour est encore là au tour d\'après');
 
       /* 5c. Un mot à soi garde la langue où il a été tapé, et se lit dans cette langue. */
-      const C = boot(null);
+      const C = boot();
       return C.NL.state.open().then(() => {
-        const NL = C.NL, vals = {};
+        const NL = C.NL;
         French(C);
-        C.ctx.document.getElementById = id => ({ value: vals[id] || '' });
         const add = (nl, gl) => {
           C.clock.advance(1); /* un identifiant par milliseconde */
-          vals['add-nl'] = nl; vals['add-en'] = gl;
+          C.fields['add-nl'] = nl; C.fields['add-gloss'] = gl;
           NL.ui.go('woorden');
           NL.screens.woorden.click({ dataset: {} }, { act: 'addform' });
           NL.screens.woorden.click({ dataset: {} }, { act: 'addsave' });
@@ -443,7 +420,7 @@ function langChecks() {
         });
       }).then(() => {
         /* 5d. Une restauration d'avant la phase 2, une remise à zéro et une déconnexion gardent le choix. */
-        const D = boot(null, null, true);
+        const D = boot({ account: true });
         return D.NL.state.open().then(() => signedIn(D)).then(() => {
           const NL = D.NL;
           French(D);
@@ -461,22 +438,22 @@ function langChecks() {
         });
       }).then(() => {
         /* 5d bis. Après une déconnexion et un rechargement sur le même stockage, l'affichage reste en français. */
-        const D = boot(null, null, true);
+        const D = boot({ account: true });
         return D.NL.state.open().then(() => signedIn(D)).then(() => {
           French(D);
           return D.NL.sync.signOut();
         }).then(() => {
-          const R = boot(null, D.store);
+          const R = boot({ store: D.store });
           return R.NL.state.open().then(() => {
             ok(R.NL.state.meta().displayLang === 'fr', '5d : après déconnexion et rechargement, meta().displayLang vaut « ' + R.NL.state.meta().displayLang + ' »');
             ok(R.NL.lang.current() === 'fr', '5d : après rechargement, NL.lang.current() vaut « ' + R.NL.lang.current() + ' »');
             R.NL.ui.go('vandaag'); R.NL.ui.openSheet('instellingen');
-            ok(text(R.app.innerHTML).indexOf(R.NL.tables.fr.setLang) >= 0 && pageLang(R) === 'fr', '5d : après rechargement, la page n\'est pas dessinée en français');
+            ok(textAndLabels(R.app.innerHTML).indexOf(R.NL.tables.fr.setLang) >= 0 && pageLang(R) === 'fr', '5d : après rechargement, la page n\'est pas dessinée en français');
           });
         });
       }).then(() => {
         /* 5e. ADR 0004 : un mot est transparent dans la langue lue ; le changement le recalcule. */
-        const E = boot(NL => NL.content.units.forEach(u => u.words.forEach(w => { if (w.nl === 'hallo') w.en = 'hello'; })));
+        const E = boot({ prepare: NL => NL.content.units.forEach(u => u.words.forEach(w => { if (w.nl === 'hallo') w.en = 'hello'; })) });
         return E.NL.state.open().then(() => {
           const NL = E.NL, hallo = () => NL.content.allItems().find(it => it.nl === 'hallo');
           ok(hallo() && hallo().en === 'hello', '5e : le mot de l\'essai n\'a pas d\'anglais');
@@ -495,7 +472,7 @@ function langChecks() {
         const planted = foreign('<p lang="fr">EN12</p><p lang="en">⟪3⟫</p>', 'en-GB');
         ok(planted.join(' ') === 'EN12 ⟪', '5f : sur la vue plantée, le juge ne trouve que « ' + planted.join(' ') + ' »');
         const pass = l => {
-          const F = boot(markedBoth);
+          const F = boot({ prepare: markedBoth });
           return F.NL.state.open().then(() => {
             if (l === 'fr') French(F);
             const hits = new Map();
@@ -505,7 +482,7 @@ function langChecks() {
                 foreign(h, pageLang(F)).forEach(w => { if (!hits.has(w)) hits.set(w, n); });
                 return;
               }
-              const m = text(h).match(OTHER[l]);
+              const m = textAndLabels(h).match(OTHER[l]);
               if (m && !hits.has(m[0])) hits.set(m[0], n);
             });
             hits.forEach((n, w) => ok(false, '5f (' + l + ') : « ' + w + ' » à l\'écran (vue ' + n + ')'));
@@ -515,7 +492,7 @@ function langChecks() {
         return pass('en').then(() => pass('fr'));
       }).then(() => {
         /* 5g. Le réglage nomme l'autre langue, et un clic change sans recharger. */
-        const G = boot(null);
+        const G = boot();
         return G.NL.state.open().then(() => {
           const NL = G.NL, label = () => (G.app.innerHTML.match(/data-display-lang="[a-z]+"[^>]*>([^<]*)</) || [])[1];
           NL.ui.go('vandaag'); NL.ui.openSheet('instellingen');
@@ -525,7 +502,7 @@ function langChecks() {
           ok(NL.lang.current() === 'fr' && pageLang(G) === 'fr', '5g : le clic ne change pas la langue');
           ok(label() === NL.tables.fr.langOther, '5g : en français, le réglage dit « ' + label() + ' »');
           ok(G.app.innerHTML.indexOf('data-display-lang="en"') >= 0, '5g : le bouton ne vise pas l\'anglais');
-          ok(text(G.app.innerHTML).indexOf(NL.tables.fr.setLang) >= 0, '5g : le titre du bloc n\'est pas en français');
+          ok(textAndLabels(G.app.innerHTML).indexOf(NL.tables.fr.setLang) >= 0, '5g : le titre du bloc n\'est pas en français');
         });
       });
     });
@@ -536,30 +513,15 @@ function langChecks() {
    lecteur d'écran ne lit pas « vandaag » à l'anglaise. Vues du cours simple, dans les deux langues. */
 function langAttrFind(B, each) {
   const NL = B.NL, U = NL.util, dutch = new Set();
-  const walk = v => {
-    if (Array.isArray(v)) v.forEach(walk);
-    else if (v && typeof v === 'object') Object.keys(v).forEach(k => {
-      if ((k === 'nl' || k === 'be') && typeof v[k] === 'string') dutch.add(U.norm(v[k])); else walk(v[k]);
-    });
-  };
-  Object.keys(NL.content).forEach(k => { if (typeof NL.content[k] === 'object') walk(NL.content[k]); });
+  tree.visit(NL.content, (v, key) => { if ((key === 'nl' || key === 'be') && typeof v === 'string') dutch.add(U.norm(v)); });
   NL.t.nav.forEach(n => dutch.add(U.norm(n.nl)));
   dutch.delete('');
   /* Un mot néerlandais qui s'écrit aussi en français ou en anglais (merci, hier, open, direct) reste cherché :
      on ne l'écarte que dans un passage qui se déclare français (ou anglais) ET dont le texte est un texte français
      (ou anglais) du cours. Un élément néerlandais qui montre « merci » sans lang="nl-BE" est une faute. */
   const gloss = { fr: new Set(), en: new Set() };
-  const gl = (set, v) => {
-    if (typeof v === 'string') set.add(U.norm(v));
-    else if (Array.isArray(v)) v.forEach(x => gl(set, x));
-    else if (v && typeof v === 'object') Object.keys(v).forEach(k => gl(set, v[k]));
-  };
-  const glWalk = v => {
-    if (Array.isArray(v)) v.forEach(glWalk);
-    else if (v && typeof v === 'object') Object.keys(v).forEach(k => { if (k === 'fr' || k === 'en') gl(gloss[k], v[k]); else glWalk(v[k]); });
-  };
-  Object.keys(NL.content).forEach(k => { if (typeof NL.content[k] === 'object') glWalk(NL.content[k]); });
-  ['fr', 'en'].forEach(l => Object.keys(NL.tables[l]).forEach(k => { if (typeof NL.tables[l][k] !== 'function') gl(gloss[l], NL.tables[l][k]); }));
+  tree.visit(NL.content, (v, key) => { if ((key === 'fr' || key === 'en') && typeof v === 'string') gloss[key].add(U.norm(v)); });
+  ['fr', 'en'].forEach(l => tree.visit(NL.tables[l], v => { if (typeof v === 'string') gloss[l].add(U.norm(v)); }));
   ok(dutch.size > 100, '6 : trop peu de mots néerlandais à chercher (' + dutch.size + ')');
   const bad = new Map();
   ['fr', 'en'].forEach(l => {
@@ -588,7 +550,7 @@ function addFormCheck(B) {
     set(B);
     NL.ui.go('woorden');
     B.tap({ act: 'addform' });
-    const m = /<label>([^<]*)<input class="textin" id="add-en"/.exec(B.app.innerHTML);
+    const m = /<label>([^<]*)<input class="textin" id="add-gloss"/.exec(B.app.innerHTML);
     ok(m && name.test(m[1]), '6c : en ' + l + ', le champ enregistré sous « ' + NL.lang.current() + ' » est étiqueté « ' + (m && m[1]) + ' »');
     B.tap({ act: 'addcancel' });
   });
@@ -626,17 +588,14 @@ function anchorCheck(B) {
 
 /* #69. Un appareil neuf par contrôle ; l'étiquette 69.n est le point du ticket. */
 function displayChecks() {
-  const open = prepare => { const B = boot(prepare); return B.NL.state.open().then(() => B); };
+  const open = prepare => { const B = boot({ prepare }); return B.NL.state.open().then(() => B); };
 
   /* 69.1. Un sens montré dans l'autre langue porte cette langue. */
   const c1 = () => open(NL => {
     NL.content.units.forEach(u => u.words.forEach(w => { if (w.nl === 'het brood') delete w.en; }));
     delete NL.content.scenarios.find(s => s.id === 's-bakker').steps.filter(st => st.them)[3].them.en;
     /* Une phrase et une règle sans anglais non plus : certains exercices ne montrent qu'elles. */
-    const frOnly = v => {
-      if (Array.isArray(v)) v.forEach(frOnly);
-      else if (v && typeof v === 'object') { if (typeof v.fr === 'string') delete v.en; Object.keys(v).forEach(k => frOnly(v[k])); }
-    };
+    const frOnly = v => tree.visit(v, x => { if (x && typeof x === 'object' && typeof x.fr === 'string') delete x.en; });
     frOnly(NL.content.units.find(u => u.id === 'overleven').phrases[0]);
     frOnly(NL.content.patterns.find(g => g.id === 'g-v2'));
     frOnly(NL.content.openTasks['g-v2']);
@@ -671,11 +630,7 @@ function displayChecks() {
     const items = NL.content.allItems(), phrase = items.find(it => it.id === 'overleven:p0'), rule = items.find(it => it.id === 'g-v2');
     const flat = s => NL.util.esc(s).replace(/&nbsp;/g, ' ').replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ').trim();
     const french = new Set([flat(NL.gloss.bare(brood))]);
-    const walk = v => {
-      if (Array.isArray(v)) v.forEach(walk);
-      else if (v && typeof v === 'object') { if (typeof v.fr === 'string') french.add(flat(v.fr)); Object.keys(v).forEach(k => walk(v[k])); }
-    };
-    [brood, phrase, rule].forEach(walk);
+    [brood, phrase, rule].forEach(x => tree.visit(x, v => { if (v && typeof v === 'object' && typeof v.fr === 'string') french.add(flat(v.fr)); }));
     const words = items.filter(it => it.kind === 'word' && it.id !== brood.id && NL.gloss.has(it, 'en')).slice(0, 4);
     const fresh = () => ({ sel: null, picked: [], input: '', close: false, other: false, matchSel: null, matchGone: [], matchBad: null,
       speech: { phase: 'idle', tries: 0, selfRated: null } });
@@ -731,7 +686,7 @@ function displayChecks() {
       English(B); NL.ui.go(r);
       NL.state.setMeta({ displayLang: 'fr' }, true);   // ce que fait une synchro
       NL.ui.render();
-      const n = count(text(B.app.innerHTML), fr.langNotice);
+      const n = count(textAndLabels(B.app.innerHTML), fr.langNotice);
       ok(n === 1, '69.2 ' + r + ' : l’avis s’affiche ' + n + ' fois au lieu d’une');
     });
   });
@@ -791,7 +746,7 @@ function displayChecks() {
       to(B); NL.ui.go('woorden');
       ['pain', 'bread'].forEach(q => {
         NL.screens.woorden.input({ id: 'wsearch', value: q });
-        ok(/\bhet brood\b/.test(text(B.app.innerHTML)), '69.9 (' + l + ') : chercher « ' + q + ' » ne trouve pas het brood');
+        ok(/\bhet brood\b/.test(textAndLabels(B.app.innerHTML)), '69.9 (' + l + ') : chercher « ' + q + ' » ne trouve pas het brood');
       });
       NL.screens.woorden.input({ id: 'wsearch', value: '' });
     });
@@ -811,10 +766,10 @@ function displayChecks() {
     English(B); NL.ui.go('doctor');
     B.tap({ act: 'rec' });
     return new Promise(r => setImmediate(r)).then(() => {
-      ok(text(B.app.innerHTML).indexOf(en.docRecDenied) >= 0, '69.11 : le refus du micro n’est pas affiché, le contrôle est creux');
+      ok(textAndLabels(B.app.innerHTML).indexOf(en.docRecDenied) >= 0, '69.11 : le refus du micro n’est pas affiché, le contrôle est creux');
       NL.ui.go('vandaag'); NL.ui.openSheet('instellingen'); B.tap({ displayLang: 'fr' });
       NL.ui.go('doctor');
-      const t = text(B.app.innerHTML);
+      const t = textAndLabels(B.app.innerHTML);
       ok(t.indexOf(fr.docRecDenied) >= 0 && t.indexOf(en.docRecDenied) < 0, '69.11 : après le passage au français, le verdict du micro reste en anglais');
     });
   });
@@ -822,14 +777,14 @@ function displayChecks() {
   return [c1, c1b, c2, c4, c5, c6, c9, c10, c11].reduce((p, c) => p.then(c), Promise.resolve());
 }
 
-const plain = boot(null), paired = boot(NL => pairUp(NL.content));
+const plain = boot(), paired = boot({ prepare: NL => pairUp(NL.content) });
 Promise.all([plain.NL.state.open(), paired.NL.state.open()]).then(() => {
   French(plain); French(paired);
   /* 2a. Apparié, en français, l'écran est celui d'aujourd'hui. Les deux démarrent
      avec la même graine : une différence est une vraie différence. */
   const a = [], b = [];
-  views(plain, (n, h) => a.push(n + ' | ' + text(h)));
-  views(paired, (n, h) => b.push(n + ' | ' + text(h)));
+  views(plain, (n, h) => a.push(n + ' | ' + textAndLabels(h)));
+  views(paired, (n, h) => b.push(n + ' | ' + textAndLabels(h)));
   ok(a.length === b.length, 'pas le même nombre de vues : ' + a.length + ' / ' + b.length);
   a.forEach((s, i) => ok(s === b[i], 'vue appariée différente : ' + s.slice(0, 120)));
   b.forEach(s => ok(!/\[object|undefined|\bEN\d/.test(s), 'trou ou anglais en vue française : ' + s.slice(0, 120)));
@@ -839,19 +794,19 @@ Promise.all([plain.NL.state.open(), paired.NL.state.open()]).then(() => {
 
   /* 2c. Des mots à soi dans l'autre langue : lus dans la leur, jamais proposés en
      faux aux autres, jamais une option vide. */
-  const own = boot(NL => pairUp(NL.content));
-  const lib = boot(NL => {
+  const own = boot({ prepare: NL => pairUp(NL.content) });
+  const lib = boot({ prepare: NL => {
     const u = NL.content.units[0];
     u.words[1].fr = u.words[0].fr + 'x';
     pairUp(NL.content);
     u.words[0].en = 'shared'; u.words[1].en = 'shared';
-  });
-  const twins = boot(NL => {
+  } });
+  const twins = boot({ prepare: NL => {
     const u = NL.content.units[0];
     u.words[1].fr = u.words[0].fr + 'x';
     pairUp(NL.content);
     u.words[0].en = 'shared / one'; u.words[1].en = 'shared / two';
-  });
+  } });
   return Promise.all([own.NL.state.open(), lib.NL.state.open(), twins.NL.state.open()]).then(() => {
     French(own);
     const NL = own.NL, G = NL.gloss;
@@ -910,8 +865,7 @@ Promise.all([plain.NL.state.open(), paired.NL.state.open()]).then(() => {
       }
     }
     ok(clash === 0, 'match : ' + clash + ' paires de cartes identiques que fits ne joint pas');
-    const read = () => (lib.app.innerHTML.match(/<span class="opt-key">\d<\/span><span>[^<]*<\/span>/g) || [])
-      .map(s => s.replace(/<[^>]*>/g, '').replace(/^\d/, ''));
+    const read = () => Array.from(lib.app.innerHTML.matchAll(/<span class="opt-key">\d<\/span><span>([^<]*)<\/span>/g), m => m[1]);
     let dup = 0, screens = 0;
     for (let k = 0; k < 7; k++) {
       L.ui.go('luisteren');
@@ -927,11 +881,11 @@ Promise.all([plain.NL.state.open(), paired.NL.state.open()]).then(() => {
     ok(G.current() === 'fr', 'la langue lue par défaut n\'est pas le français');
 
     /* 2e. Une note sans anglais (en: null) ne laisse pas de <em></em> vide. */
-    const nn = boot(NL => {
+    const nn = boot({ prepare: NL => {
       pairUp(NL.content);
       NL.content.sheets.forEach(s => s.groups.forEach(g => g.rows.forEach(r => { if (r.note) r.note.en = null; })));
       NL.content.register.forEach(r => { if (r.note) r.note.en = null; });
-    });
+    } });
     return nn.NL.state.open().then(() => {
       const N = nn.NL;
       N.gloss.use('en');
@@ -954,7 +908,7 @@ Promise.all([plain.NL.state.open(), paired.NL.state.open()]).then(() => {
         ok(plain.NL.gloss.prose('a <span class="ex">hier</span>') === 'a <span class="ex" lang="nl-BE">hier</span>', 'gloss.prose : span.ex doit porter lang="nl-BE"');
         [['tussen', 'entre'], ['tegen', 'contre'], ['eigen', 'propre']].forEach(([nl, fr]) =>
           ok(WC({ kind: 'word', nl: nl, fr: fr }, 'fr') === 'other', 'wordClass : « ' + fr + ' » (' + nl + ') n’est pas un verbe')); }
-      const L6 = boot(null);
+      const L6 = boot();
       return L6.NL.state.open().then(() => langAttrCheck(L6)).then(() => anchorCheck(L6)).then(() => addFormCheck(L6)).then(interfaceCheck).then(displayChecks);
     }).then(() => {
       console.log('\n' + checks + ' contrôles, ' + (fails === 0 ? 'LANGUE CONFORME' : fails + ' ÉCHEC(S)'));

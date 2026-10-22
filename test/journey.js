@@ -2,6 +2,7 @@
    Walks every screen and every flow the way a person would, and reports
    anything that throws, renders empty, or contradicts itself. */
 const browser = require('./lib/browser');
+const { text } = require('./lib/langs');
 const ROOT = process.argv[2];
 const VOICE = process.argv[3] || 'nl-BE';
 const BROWSER = process.argv[4] || 'OPR';
@@ -23,7 +24,7 @@ const B = browser.open({
   location: { origin: 'https://claude.ai', href: 'https://claude.ai/x' },
   onTimerError: e => { console.log('   ✗ timer threw: ' + e.message); fails++; }
 });
-const NL = B.NL, U = NL.util, ctx = B.ctx, app = B.app, listeners = B.listeners, spoken = B.spoken, mkEl = B.mkEl;
+const NL = B.NL, U = NL.util, ctx = B.ctx, app = B.app, listeners = B.listeners, spoken = B.spoken;
 
 /* Drives a screen's click handler the way the shell would. */
 function tap(screen, data) {
@@ -39,7 +40,7 @@ function view(screen, arg) {
     ok(html.indexOf('undefined') < 0, screen + ' printed the word "undefined"');
     ok(html.indexOf('[object Object]') < 0, screen + ' printed [object Object]');
     ok(html.indexOf('NaN') < 0, screen + ' printed NaN');
-    ok(!/\d\s?%/.test(html.replace(/<[^>]*>/g, ' ')), screen + ' shows a percentage');
+    ok(!/\d\s?%/.test(text(html)), screen + ' shows a percentage');
     return html;
   } catch (e) { console.log('   ✗ ' + screen + ' render threw: ' + e.message); fails++; return ''; }
 }
@@ -148,7 +149,7 @@ function view(screen, arg) {
       const after = S.render();
       if (c.ex !== 'match') ok(after.indexOf('foot ok') >= 0 || after.indexOf('foot no') >= 0, c.ex + ' gave no verdict');
       if (c.ex !== 'match') ok(after.indexOf('foot no') < 0, c.ex + ' rejected a correct answer');
-      ok(!/\d\s?%/.test(after.replace(/<[^>]*>/g, ' ')), c.ex + ' shows a percentage after the answer');
+      ok(!/\d\s?%/.test(text(after)), c.ex + ' shows a percentage after the answer');
       tap('sessie', { next: '1' });
     }
     S.abandon();
@@ -196,14 +197,7 @@ function view(screen, arg) {
   head('7. Word list: search, add, delete');
   tap('woorden', { act: 'addform' });
   const before = NL.state.customs().length;
-  ctx.document.getElementById = id => {
-    const e = mkEl('input');
-    if (id === 'add-nl') e.value = 'de vergaderzaal';
-    if (id === 'add-en') e.value = 'la salle de réunion';
-    if (id === 'add-be') e.value = '';
-    if (id === 'app') return app;
-    return e;
-  };
+  Object.assign(B.fields, { 'add-nl': 'de vergaderzaal', 'add-gloss': 'la salle de réunion', 'add-be': '' });
   tap('woorden', { act: 'addsave' });
   ok(NL.state.customs().length === before + 1, 'adding a word did nothing');
   const mine = NL.state.customs()[0];

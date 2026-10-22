@@ -7,18 +7,18 @@
    que le mot drillé. Voir TESTING.md. */
 const fs = require('fs'), path = require('path'), zlib = require('zlib');
 const browser = require('./lib/browser');
-const { COLLECTIONS, owed, at } = require('./lib/prose');
+const { raw, owed, at } = require('./lib/prose');
+const tree = require('./lib/tree');
 const ROOT = process.argv[2] || path.join(__dirname, '..');
 
 let fails = 0, checks = 0;
 const ok = (c, m) => { checks++; if (!c) { console.log('  FAIL: ' + m); fails++; } };
 
-const B = browser.open({ root: ROOT, seed: browser.SEED, skip: ['src/app.js'] });
+const B = browser.open({ root: ROOT, seed: browser.SEED, skip: [browser.APP] });
 const NL = B.NL, U = NL.util;
 /* Le cours tel qu'il est écrit, avant la première construction : {naam}, {stad} et
    {bedrijf} y sont encore, et le contrôle 6 compare les jetons. */
-const RAW = {};
-COLLECTIONS.forEach(k => { RAW[k] = JSON.parse(JSON.stringify(NL.content[k] || [])); });
+const RAW = raw(NL.content);
 const tokens = s => String(s || '').toLowerCase().replace(/\{[a-z]+\}/g, ' ').split(/[^a-zà-ÿ'’-]+/)
   .map(t => t.replace(/^[-'’]+|[-'’]+$/g, '')).filter(t => t.length > 1);
 
@@ -190,20 +190,13 @@ NL.state.open().then(() => {
   try { at(RAW, 'units[0].nowhere[3]'); } catch (e) { refused = e.message; }
   ok(refused.indexOf('units[0].nowhere[3]') >= 0, 'where : at() rend une valeur pour un chemin qui ne désigne rien');
 
-  /* Parcours de RAW : tout objet qui porte `fr` ou `en`. */
-  const pairs6 = [];
-  const walk6 = (v, where) => {
-    if (Array.isArray(v)) { v.forEach((x, i) => walk6(x, where + '[' + i + ']')); return; }
-    if (!v || typeof v !== 'object') return;
-    if ('fr' in v || 'en' in v) pairs6.push([v, where]);
-    Object.keys(v).forEach(k => walk6(v[k], where + '.' + k));
-  };
-  COLLECTIONS.forEach(k => walk6(RAW[k], k));
+  /* Parcours de RAW : tout objet qui porte un `en` porte un `fr`, et les mêmes chiffres et {jetons}. */
   let lonely = 0, drift = 0;
   const sig = s => (String(s).match(/\d+|\{[a-z]+\}/g) || []).sort().join('|');
   ok(sig('{naam} arrive à 3 h') === sig('Arrives at 3, {naam}'), 'sig : un jeton et un chiffre dans un autre ordre ne sont pas une dérive');
   ok(sig('3 h') !== sig('4 h'), 'sig : un chiffre qui change reste une dérive');
-  pairs6.forEach(([v, where]) => {
+  tree.visitCourse(RAW, (v, key, where) => {
+    if (!v || typeof v !== 'object') return;
     if (typeof v.en === 'string' && typeof v.fr !== 'string') { lonely++; ok(false, 'un `en` sans `fr` : ' + where); }
     if (typeof v.en === 'string' && typeof v.fr === 'string' && sig(v.fr) !== sig(v.en)) {
       drift++; ok(false, 'les chiffres ou les {jetons} diffèrent entre fr et en : ' + where + '  « ' + v.fr + ' » / « ' + v.en + ' »');
@@ -245,8 +238,8 @@ NL.state.open().then(() => {
   });
   /* Toute autre ligne du cours (référence, scénarios, phrases d'exemple…) dont l'anglais porte déjà une étiquette
      de registre : si son néerlandais a u/uw, l'étiquette doit être la bonne. Une ligne sans étiquette n'est pas tenue d'en prendre une. */
-  pairs6.forEach(([v, where]) => {
-    if (typeof v.nl !== 'string' || typeof v.fr !== 'string' || typeof v.en !== 'string' || !hasU(v.nl)) return;
+  tree.visitCourse(RAW, (v, key, where) => {
+    if (!v || typeof v.nl !== 'string' || typeof v.fr !== 'string' || typeof v.en !== 'string' || !hasU(v.nl)) return;
     if (!/\((formal|informal)/.test(v.en)) return;
     const t = uTag(v.fr);
     ok(v.en.indexOf(t) >= 0, where + ' « ' + v.nl + ' » : « ' + v.en + ' » doit porter « ' + t + ' »');
@@ -254,15 +247,15 @@ NL.state.open().then(() => {
   /* Dans l'explication d'un point de grammaire, un <i> dont le texte est le même en français et en anglais est du
      néerlandais (<i>Morgen ik ga</i>) ; <i>element</i> / <i>élément</i> diffèrent, c'est de la prose. Il porte lang="nl-BE". */
   { let seenI = 0;
-    const iTags = s => (String(s).match(/<i(?:\s[^>]*)?>[^<]*<\/i>/g) || []);
-    const iText = t => t.replace(/<[^>]*>/g, '');
+    /* Chaque <i> sans balise dedans : la balise entière, et son texte, lu dans la balise même. */
+    const iTags = s => Array.from(String(s).matchAll(/<i(?:\s[^>]*)?>([^<]*)<\/i>/g), m => ({ tag: m[0], text: m[1] }));
     (RAW.patterns || []).forEach(g => {
       const ex = g.explain;
       if (!ex || typeof ex.fr !== 'string' || typeof ex.en !== 'string') return;
-      const en = iTags(ex.en).map(iText);
-      iTags(ex.fr).forEach(t => {
+      const en = iTags(ex.en).map(i => i.text);
+      iTags(ex.fr).forEach(i => {
         seenI++;
-        if (en.indexOf(iText(t)) >= 0) ok(/^<i\s[^>]*lang="nl-BE"/.test(t), g.id + ' : « ' + iText(t) + ' » est du néerlandais dans <i> : lui donner lang="nl-BE"');
+        if (en.indexOf(i.text) >= 0) ok(/^<i\s[^>]*lang="nl-BE"/.test(i.tag), g.id + ' : « ' + i.text + ' » est du néerlandais dans <i> : lui donner lang="nl-BE"');
       });
     });
     ok(seenI > 0, 'aucun <i> dans les explications de grammaire : le contrôle est creux'); }

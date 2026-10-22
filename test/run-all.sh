@@ -13,6 +13,7 @@ ROOT=.
 sh build.sh
 
 node test/smoke.js    "$ROOT"
+node test/helpers.js  "$ROOT"
 node test/dehet.js    "$ROOT"
 node test/content.js  "$ROOT"
 node test/engine.js   "$ROOT"

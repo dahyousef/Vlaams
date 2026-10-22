@@ -7,7 +7,9 @@
 
    Chaque appel à fakeSupabase() est un serveur neuf. dev.store est le localStorage de
    l'appareil : sa session y vit sous 'sb-session', et la poser avant open() ouvre l'appareil
-   déjà connecté. */
+   déjà connecté. dev.client est le client que l'app a créé : un autre onglet du même
+   navigateur qui se connecte, c'est dev.client.auth.verifyOtp(…), qui écrit la session et
+   lance SIGNED_IN, comme supabase-js le relaie d'un onglet à l'autre. */
 const KEYS = {
   srs_records: ['user_id', 'item_id'], user_meta: ['user_id'],
   custom_words: ['user_id', 'id'], review_log: ['user_id', 't', 'item_id']
@@ -84,7 +86,7 @@ function fakeSupabase() {
           return b;
         }
 
-        return {
+        const client = {
           from: query,
           auth: {
             onAuthStateChange(fn) { handlers.push(fn); return { data: { subscription: { unsubscribe() {} } } }; },
@@ -104,6 +106,8 @@ function fakeSupabase() {
             signOut() { delete device.store['sb-session']; fire('SIGNED_OUT', null); return Promise.resolve({ error: null }); }
           }
         };
+        device.client = client;
+        return client;
       }
     };
   }

@@ -55,14 +55,6 @@ NL.ex = (function () {
   /* Une note de prononciation se dit en mots reconnus, pas en pourcentage. */
   const wordScore = parts => NL.t.wordsHeard((parts || []).filter(p => p.ok).length, (parts || []).length);
 
-  /* Un leurre ne doit jamais être une autre bonne réponse. « bonjour » se dit
-     « hallo » ET « goeiedag » : proposer les deux, c'est en compter un faux.
-     On compare chaque sens (« s'il vous plaît / voilà » en a deux), dans les
-     deux langues. Le lexique sépare les sens par « / » ; une virgule, elle,
-     appartient à la phrase et ne sépare rien. La comparaison vit dans NL.gloss ;
-     NL.ex.sameSense la re-exporte. */
-  const sameSense = NL.gloss.sameSense;
-
   /* Ce que la réponse tapée accepte pour un élément : la cible, ses variantes
      flamandes (une par virgule pour un mot, la phrase entière pour une phrase) et
      sa liste « also ». Un mot se tape avec ou sans article, comme la cible. */
@@ -74,7 +66,7 @@ NL.ex = (function () {
       .map(x => U.norm(word ? U.bare(x) : x)).filter(Boolean));
   }
   /* Les éléments qui disent la même chose : taper l'un est juste pour l'autre. */
-  const siblings = item => NL.content.allItems().filter(x => x.id !== item.id && x.nl && sameSense(x, item));
+  const siblings = item => NL.content.allItems().filter(x => x.id !== item.id && x.nl && NL.gloss.sameSense(x, item));
   /* Les réponses acceptées (`list`) comprennent-elles le néerlandais de `b` ? */
   const accepts = (list, b) => list.indexOf(U.norm(U.bare(b.nl))) >= 0;
 
@@ -99,7 +91,12 @@ NL.ex = (function () {
       pool = pool.concat(NL.content.allItems().filter(x =>
         x.kind === item.kind && x.unit !== item.unit && x.id !== item.id && NL.gloss.has(x, lang) && NL.srs.isSeen(x)));
     }
-    /* Ni un synonyme, ni une réponse que l'un des deux accepte : « dag » face à
+    /* Un leurre ne doit jamais être une autre bonne réponse. « bonjour » se dit
+       « hallo » ET « goeiedag » : proposer les deux, c'est en compter un faux.
+       On compare chaque sens (« s'il vous plaît / voilà » en a deux), dans les
+       deux langues : c'est NL.gloss.sameMeaning. Le lexique sépare les sens par
+       « / » ; une virgule, elle, appartient à la phrase et ne sépare rien. Ni un
+       synonyme, ni une réponse que l'un des deux accepte : « dag » face à
        « bonjour » ne doit pas offrir « hallo » comme faux. */
     const mine = accepted(item);
     pool = pool.filter(x => U.norm(label(x)) !== tn && !NL.gloss.sameMeaning(x, item) && !accepts(mine, x) && !accepts(accepted(x), item));
@@ -326,7 +323,7 @@ NL.ex = (function () {
       } else if (sp.phase === 'listening') {
         panel = '<div class="mic-panel live"><button class="mic big listening" data-mic="stop" aria-label="' + NL.t.stop + '">' + ICON.mic(34) + '</button>' +
           '<p class="mic-why">' + NL.t.micListening + '</p>' +
-          (sp.partial ? '<p class="heard">' + esc(sp.partial) + '</p>' : '') + '</div>';
+          NL.ui.ifText(sp.partial, 'p', 'heard') + '</div>';
       } else if (sp.phase === 'done') {
         panel = '<div class="mic-panel ' + (sp.ok ? 'good' : 'bad') + '">' +
           '<div class="score-row"><span class="score">' + wordScore(sp.parts) + '</span>' +
@@ -605,5 +602,5 @@ NL.ex = (function () {
     return '<p class="v-be">' + NL.t.hereThey + ' ' + forms.map(f => '<span lang="nl-BE">' + boldForm(item, f) + '</span>').join(', ') + '</p>';
   }
 
-  return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, recordPanel, selfRate, sameSense, wordScore, hereLine };
+  return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, recordPanel, selfRate, wordScore, hereLine };
 })();

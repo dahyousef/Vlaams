@@ -22,7 +22,7 @@ const B = browser.open(Object.assign({ seed: browser.SEED }, OPTS));
 const NL = B.NL, S = NL.screens.sessie, U = NL.util, t = NL.t;
 const answer = require('./lib/answer')(B);
 
-const text = html => String(html).replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+const { text, joined } = require('./lib/langs');
 const fresh = () => { S.abandon(); NL.state.clearAll(); NL.content.refresh(); B.clock.set(T0); };
 const find = nl => NL.content.allItems().find(x => x.nl === nl);
 const say = s => '« ' + s + ' »';
@@ -76,12 +76,13 @@ const targetOf = it => it.kind === 'word' ? U.bare(it.nl) : it.nl;
 
 /* Les formes que le panneau présente comme justes : toutes celles qu'imprime
    « Ici on dit », et la liste also. Lues dans le HTML du panneau : c'est ce
-   que la personne voit. */
+   que la personne voit. Chaque forme flamande y est son propre passage en
+   nl-BE, lu tel quel ; le cours se lit, lui, en coupant sa liste aux
+   virgules. Les deux côtés ne se lisent pas de la même façon : un panneau
+   qui fondrait la liste en un seul passage ne passerait pas pour juste. */
 const decode = s => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&amp;/g, '&');
 const formsOf = it => {
-  const line = decode(NL.ex.hereLine(it, '', true).replace(/<[^>]*>/g, '')).trim();
-  const body = line.indexOf(t.hereThey) === 0 ? line.slice(t.hereThey.length).trim() : '';
-  const be = !body ? [] : it.kind === 'word' ? body.split(',').map(s => s.trim()).filter(Boolean) : [body];
+  const be = (NL.ex.hereLine(it, '', true).match(/<span lang="nl-BE">[\s\S]*?<\/span>/g) || []).map(s => decode(joined(s)).trim());
   return be.map(f => ['be', f]).concat((it.also || []).map(f => ['also', f]));
 };
 
@@ -176,8 +177,16 @@ NL.state.open().then(() => {
      tape en quelques secondes. */
   {
     const all = NL.content.allItems();
-    const unread = all.filter(it => it.be && !formsOf(it).some(([src]) => src === 'be'));
-    ok(unread.length === 0, 'setup: no form read from « ' + t.hereThey + ' » for ' + unread.length + ' item(s) with a be variant, e.g. ' + unread.slice(0, 3).map(it => it.id).join(', '));
+    /* « Ici on dit » montre la variante flamande telle que le cours l'écrit : pour un mot,
+       chaque forme de sa liste ; pour une phrase, toute la phrase, sa ponctuation collée au
+       mot qu'elle suit. */
+    const misread = all.filter(it => it.be).map(it => ({
+      id: it.id,
+      shown: formsOf(it).filter(([src]) => src === 'be').map(([, f]) => f),
+      written: it.kind === 'word' ? it.be.split(',').map(s => s.trim()).filter(Boolean) : [it.be]
+    })).filter(m => JSON.stringify(m.shown) !== JSON.stringify(m.written));
+    ok(misread.length === 0, 'setup: « ' + t.hereThey + ' » shows the be variant otherwise than the course writes it for ' + misread.length + ' item(s), e.g. ' +
+      misread.slice(0, 3).map(m => m.id + ' ' + JSON.stringify(m.shown) + ' for ' + JSON.stringify(m.written)).join(', '));
     let forms = 0;
     all.forEach(it => {
       const target = targetOf(it), start = it.kind === 'word' ? 2 : 3;

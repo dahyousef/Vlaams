@@ -11,16 +11,17 @@ n'y a qu'une seule liste. Il faut Node et un `sh` (sous Windows, celui de Git).
 
 | Test | Ce qu'il vérifie |
 | --- | --- |
-| `smoke.js` | Le contenu, l'échelle, chaque type d'exercice, la notation, la qualité des leurres, l'orthographe, que le build ne garde aucune des chaînes d'interface néerlandaises connues non traduites, qu'il déclare `<html lang="en-GB">` et porte la description anglaise (l'anglais est l'affichage par défaut ; `lang.js` contrôle les deux tables d'interface), et qu'aucune source listée dans `build.sh` n'emploie `var` ni le chaînage optionnel `?.` (les chaînes, les commentaires et les regex ne comptent pas), et que `index.html` et `artifact.html` sortent du build en LF, sans retour chariot ; qu'aucune source hors `gloss.js` ne construise un attribut `lang` à la main ni n'écrive `en-GB` ; et qu'aucune suite ne refasse ce que `test/lib` partage : un clic construit à la main (`B.tap`), un second faux Supabase (`test/lib/supabase.js`), une échéance tirée d'une date écrite en dur (`test/lib/seed.js`) |
-| `lang.js` | La langue d'affichage (contrôles 2 à 6) : le cours chargé tel quel puis « apparié » (un anglais factice par sens et par texte), aucune chaîne d'interface hors des deux tables, mêmes clés, même forme, mêmes chiffres et mêmes `{…}` dans `fr.js` et `en.js`, aucun écran qui mêle les langues, le réglage, le changement qui attend la fin de la séance, ce que la restauration et la remise à zéro gardent, et le néerlandais du cours déclaré comme tel (`lang`), le sens montré dans l'autre langue marqué comme tel, à l'écran et dans chaque exercice du registre, l'avis sur doctor et compte, et la recherche par l'un ou l'autre sens ; elle ne voit pas le néerlandais cité dans la prose française ou anglaise (« … »), qui reste sans balise |
-| `dehet.js` | Chaque nom du cours confronté au Wiktionnaire : `de` ou `het`, sur la fiche **et** dans ses phrases d'exemple |
-| `content.js` | L'orthographe contre 410 000 formes néerlandaises, que chaque exercice promis se construise vraiment, qu'une phrase d'exemple n'emprunte pas de vocabulaire à une unité ultérieure, et les éléments enseignés deux fois ; le contrôle 5 : chaque id garde son néerlandais, le 6 : l'anglais qui reste dû ; un « u » ou « uw » néerlandais glosé « you » porte « (informal, Flemish u) » quand le français tutoie, « (formal) » sinon |
+| `smoke.js` | Le contenu, l'échelle, chaque type d'exercice, la notation, la qualité des leurres, l'orthographe ; que le build ne garde aucune des chaînes d'interface néerlandaises connues non traduites, qu'il déclare `<html lang="en-GB">` et porte la description anglaise (l'anglais est l'affichage par défaut ; `lang.js` contrôle les deux tables d'interface), et que `index.html` et `artifact.html` en sortent en LF, sans retour chariot ; et les gardes qui relisent les sources et les suites comme du texte, listées sous « Les gardes de `smoke.js` » |
+| `helpers.js` | Les aides de `test/lib` dont chaque suite dépend sans les voir : les minuteurs `'held'` du faux navigateur suivent les règles d'un vrai tour (rien ne part avant `B.tick()`, puis tout part dans l'ordre de pose ; `clearTimeout` retire un minuteur avant le tour ou pendant ; un minuteur posé pendant le tour attend le suivant), `B.waiting()` compte ceux qui attendent, une erreur dans l'un d'eux sort de `B.tick()` une fois les autres partis, et un mode de minuteurs inconnu échoue en se nommant ; `onTimerError` ne sert qu'aux minuteurs `'sync'`, dont il reçoit l'erreur que, sans lui, ils ignorent, et échoue en se nommant à côté d'un autre mode ; `prepare` part juste avant `src/app.js`, les autres sources chargées, et échoue sur une page qui ne charge pas `src/app.js` ; `joined()` ôte chaque balise sans rien à sa place, là où `text()` met une espace (`test/lib/langs.js`) |
+| `lang.js` | La langue d'affichage (contrôles 2 à 6) : le cours chargé tel quel puis « apparié » (un anglais factice par sens et par texte), aucune chaîne d'interface hors des deux tables, mêmes clés, même forme, mêmes chiffres et mêmes `{…}` dans `fr.js` et `en.js`, aucun écran qui mêle les langues, le réglage, le changement qui attend la fin de la séance et l'avis qui l'annonce (un écran ouvert dans le tour où l'avis s'est levé le montre encore, un écran d'un tour suivant ne le montre plus ; deux avis levés dans un même tour n'attendent qu'un minuteur, et chaque essai part d'un tour fini), ce que la restauration et la remise à zéro gardent, et le néerlandais du cours déclaré comme tel (`lang`), le sens montré dans l'autre langue marqué comme tel, à l'écran et dans chaque exercice du registre, l'avis sur doctor et compte, et la recherche par l'un ou l'autre sens ; elle ne voit pas le néerlandais cité dans la prose française ou anglaise (« … »), qui reste sans balise |
+| `dehet.js` | Chaque nom du cours confronté au Wiktionnaire : `de` ou `het`, sur la fiche **et** dans ses phrases d'exemple ; le cours chargé par `browser.open`, sans `src/app.js`, comme dans les autres suites |
+| `content.js` | L'orthographe contre 410 000 formes néerlandaises, que chaque exercice promis se construise vraiment, qu'une phrase d'exemple n'emprunte pas de vocabulaire à une unité ultérieure, et les éléments enseignés deux fois ; le contrôle 5 : chaque id garde son néerlandais, le 6 : l'anglais qui reste dû ; un « u » ou « uw » néerlandais glosé « you » porte « (informal, Flemish u) » quand le français tutoie, « (formal) » sinon ; un `<i>` d'une explication de grammaire qui se lit pareil en français et en anglais est du néerlandais, et porte `lang="nl-BE"` |
 | `engine.js` | Ce qu'une séance contient et quand un élément revient, horloge en marche : la panne d'octobre, deux jours de suite, ce qui revient le lendemain à la même heure, l'heure de la réponse à Bruxelles (minuit, 23 h 50, les deux nuits de changement d'heure), le renforcement dans la séance, la réserve de nouveautés, le seuil des unités, la première demande à voix haute et l'exercice écrit qui la suit, l'écrit de l'échelon 3 toujours tapé, « je ne peux pas parler » |
-| `screens.js` | Chaque écran dans quatre états, relu comme du texte : ni pourcentage, ni maîtrise ; les comptes, le nom de l'unité, ce qui résiste, le bouton « je ne peux pas parler », le journal d'erreurs |
-| `typed.js` | Ce qu'une réponse tapée accepte, tapée à l'écran : la cible, la variante flamande, les autres façons de dire (`also`), et la réponse d'un élément au même sens ; la note qu'elle laisse, « Presque » mesuré contre chaque réponse acceptée, la dictée qui garde sa seule cible, les leurres qui ne sont jamais une réponse juste, et le panneau : « Ici on dit » sans répétition, les mots flamands en gras, « On dit aussi » ; et tout le cours : pour chaque élément, sa cible puis chaque forme que le panneau présente comme juste (« Ici on dit », `also`), tapées à l'écran, justes et notées comme la cible |
+| `screens.js` | Chaque écran dans quatre états, relu comme du texte : ni pourcentage, ni maîtrise ; les comptes, le nom de l'unité, ce qui résiste, le bouton « je ne peux pas parler », le journal d'erreurs ; `NL.ui.ifText`, sur une page à lui : rien sans texte, ni pour un sens qui vaut `null` dans la langue lue, même quand l'autre langue en a un, en anglais comme en français, et sinon le texte échappé dans sa balise, avec sa classe ; la copie de la sauvegarde et celle du journal d'erreurs, toutes deux par `NL.ui.copy`, sur une page aux minuteurs retenus : le champ sélectionné avant toute copie, ce que chacune copie, par le presse-papiers s'il existe, sinon par l'ancienne commande du navigateur, et le toast qui dit « Copié » si l'un d'eux a copié, « copie-le à la main » s'il a refusé ou s'il n'y a ni l'un ni l'autre |
+| `typed.js` | Ce qu'une réponse tapée accepte, tapée à l'écran : la cible, la variante flamande, les autres façons de dire (`also`), et la réponse d'un élément au même sens ; la note qu'elle laisse, « Presque » mesuré contre chaque réponse acceptée, la dictée qui garde sa seule cible, les leurres qui ne sont jamais une réponse juste, et le panneau : « Ici on dit » sans répétition, la variante flamande telle que le cours l'écrit, chaque forme dans son propre passage en `nl-BE`, sa ponctuation collée au mot qu'elle suit, les mots flamands en gras, « On dit aussi » ; et tout le cours : pour chaque élément, sa cible puis chaque forme que le panneau présente comme juste (« Ici on dit », `also`), tapées à l'écran, justes et notées comme la cible |
 | `sim.js` | Chaque écran, une séance, un scénario, une série d'écoute |
 | `firstrun.js` | Une base vide : premier écran, première séance, le défi, la sauvegarde |
-| `sync.js` | Deux appareils et le faux Supabase de `test/lib/supabase.js` : adoption, conflits, panne, comptes, la remise à zéro sur deux appareils (dont un hors ligne qui revient), la migration unique, un appareil resté sur l'ancienne version et un serveur qui garde la remise à zéro la plus récente, et une langue d'affichage changée sur un autre appareil, que l'avis nomme |
+| `sync.js` | Deux appareils et le faux Supabase de `test/lib/supabase.js` : adoption, conflits, panne, comptes, la remise à zéro sur deux appareils (dont un hors ligne qui revient), la migration unique, un appareil resté sur l'ancienne version et un serveur qui garde la remise à zéro la plus récente, et une langue d'affichage changée sur un autre appareil, que l'avis nomme ; et une connexion qui finit sur l'écran compte, par le code à six chiffres ou par un autre onglet, dont l'accueil dit d'où vient la langue (ces deux pages chargent `app.js`, les seules de la suite) |
 | `hooks.js` | Le rappel de reprise : `.claude/settings.json` le branche sur SessionStart (`compact\|resume`), il imprime où une exécution de plan garde son état, même sans `CLAUDE_PROJECT_DIR`, le crochet de démarrage imprime le chemin du transcript que Claude Code lui donne, et `run-controller.md` le nomme, `verifier.md` remet les sorties du build avant de vérifier l'arbre, et le garde-fou git reste branché |
 | `journey.js` | Le parcours complet d'un utilisateur, pour une voix et un navigateur donnés |
 | `pace.js` | 200 jours simulés, pour quatre apprenants (budget épuisé chaque jour ; une seule séance par jour ; une seule séance, dont une sur cinq là où l’on ne peut pas parler ; une seule séance, commencée à 21 h puis vingt minutes plus tôt chaque jour jusqu’à 7 h, et qui remonte, à l’heure de Bruxelles) : charge quotidienne, variété, exigence — aucune journée sans élément nouveau tant qu’il en reste, des éléments laissés à un jour qui reviennent le lendemain, y compris les jours où la séance commence plus tôt que la veille, un élément du premier jour demandé à voix haute en dix jours et jamais après trois semaines, l’échelon de l’écrit passé en écrivant, et « je ne peux pas parler » qui ne note rien, ne coûte rien et ne fait rien sauter. L’horloge avance pendant la journée. Sous trente jours, ce qui ne se juge que sur la durée (le lendemain, la première demande à voix haute, une séance sans parler qui croise un exercice à voix haute, la fréquence d’un élément, l’étalement) dit « non jugé » et n’est pas un problème : la suite lance aussi un seul jour, comme les tâches d’un plan |
@@ -64,6 +65,57 @@ Ce que plusieurs suites font vit une fois dans `test/lib/`, et chaque fichier y
 dit en tête ce qu'il offre : une suite le prend là au lieu de le refaire. Ses
 dates partent de l'horloge de la suite (`T0`), chacune différente : deux
 écritures dans la même milliseconde ne testent rien.
+
+## Les gardes de `smoke.js`
+
+`smoke.js` relit aussi les sources et les suites comme du texte, sans les lancer. Il
+refuse :
+
+- dans les sources listées par `build.sh`, `var` et le chaînage optionnel `?.` (les
+  chaînes, les commentaires et les regex ne comptent pas) ;
+- hors de `gloss.js`, un attribut `lang` construit à la main, ou `en-GB` écrit en
+  toutes lettres ;
+- dans une suite, ce que `test/lib` partage, refait à la main :
+  - un clic construit à la main (`B.tap`) ;
+  - un second faux Supabase (`test/lib/supabase.js`) ;
+  - une échéance tirée d'une date écrite en dur (`test/lib/seed.js`) ;
+  - un minuteur remplacé à la main (`timers: 'held'` et `B.tick()`,
+    `test/lib/browser.js`) ;
+  - un champ de page simulé à la main (`byId: 'stub'` et `B.fields`) ;
+  - un HTML dépouillé de ses balises à la main (`text()`, ou `joined()` quand ce
+    qu'une balise sépare se lit d'un tenant, `test/lib/langs.js`) ;
+  - une source lancée à la main par le `vm` de node, dans le contexte d'une page ou
+    dans un contexte à elle (`browser.open`, et `prepare` pour ce qui précède
+    `src/app.js`, `test/lib/browser.js`) ;
+  - une copie du cours tel qu'il est écrit (`raw()`, `test/lib/prose.js`) ;
+  - un arbre parcouru à la main, par une fonction, une méthode d'objet ou un
+    `x.y = function`, la tête d'un `if`, d'un `for`, d'un `while`, d'un `switch` ou
+    d'un `catch` n'étant pas une méthode (`test/lib/tree.js`) ;
+  - le cours parcouru collection par collection (`visitCourse()` et
+    `rewriteCourse()`), une boucle écrite dans une chaîne ou un commentaire mise à
+    part ; une suite où cette relecture perd le fil (une chaîne, une regex, un
+    gabarit ou un commentaire qui ne se ferme pas) est nommée à sa ligne ;
+- dans une source ou une suite, ce qui a déjà un nom, écrit de nouveau :
+  - l'autre langue (`NL.gloss.other`) ;
+  - « le texte, s'il y en a un » (`NL.ui.ifText`), qu'il soit un sens lu par
+    `NL.gloss`, un message, un score ou ce que le micro a entendu, le test écrit
+    dans un sens ou dans l'autre, la balise écrite en toutes lettres ou tenue dans
+    une variable, `esc()` posé sur le texte ou sur une expression qui le lit, entre
+    guillemets simples ou doubles, sur une ligne ou plusieurs ;
+  - la comparaison des sens (lue dans `NL.gloss` seul) ;
+  - la langue de l'appareil dans des réglages reconstruits (`withDeviceLang`) ;
+  - la langue appliquée sans rien dire ou annoncée (`apply()`, `applyAndTell()`) ;
+  - une copie par le presse-papiers ou par l'ancienne commande `execCommand` du
+    navigateur (`NL.ui.copy`), hors de son bloc dans `shell.js` ;
+- un ancien nom revenu : `wordsFr`, `wordsPhFr`, `add-en`, `en` dans `library.js`,
+  `voiceInfo().note`, `notice` dans `lang.js`, les textes du journal d'erreurs
+  ailleurs que dans sa propre copie (`errcopy`), chaque acte d'une condition lu,
+  même sur plusieurs lignes ;
+- dans `TIERS` (`doctor.js`), un `id` que rend `NL.speech.tier()` sans les deux
+  textes de ce que l'appareil sait faire de la parole en deux clés de `NL.t`,
+  `labelKey` et `noteKey`, lues au dessin, ou un accesseur à leur place ;
+- dans `smoke.js` même, un fichier du dépôt lu autrement que par son `read()`, ou
+  une relecture éprouvée autrement que par son `selfTest()`.
 
 ## Ce que les tests ne voient pas
 

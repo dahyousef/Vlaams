@@ -41,7 +41,7 @@ NL.screens.compte = (function () {
         '<p>' + t.accSentTo(esc(email)) + '</p>' +
         '<label class="acc-field"><span>' + t.accCode + '</span>' +
         '<input class="textin acc-code" id="acc-code" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="123456"></label>' +
-        (msg ? '<p class="acc-err">' + esc(msg) + '</p>' : '') +
+        NL.ui.ifText(msg, 'p', 'acc-err') +
         '<div class="acc-actions">' +
         '<button class="btn btn-primary wide" data-act="verify"' + (busy ? ' disabled' : '') + '>' + t.accVerify + '</button>' +
         '<button class="btn btn-ghost wide" data-act="resend"' + (busy ? ' disabled' : '') + '>' + t.accResend + '</button>' +
@@ -53,7 +53,7 @@ NL.screens.compte = (function () {
         '<p>' + t.accBody + '</p>' +
         '<label class="acc-field"><span>' + t.accEmail + '</span>' +
         '<input class="textin" id="acc-email" type="email" autocomplete="email" value="' + esc(email) + '" placeholder="' + NL.t.accEmailPh + '"></label>' +
-        (msg ? '<p class="acc-err">' + esc(msg) + '</p>' : '') +
+        NL.ui.ifText(msg, 'p', 'acc-err') +
         '<div class="acc-actions">' +
         '<button class="btn btn-primary wide" data-act="send"' + (busy ? ' disabled' : '') + '>' + (busy ? t.accSending : t.accSend) + '</button>' +
         '<button class="btn btn-ghost wide" data-act="skip">' + t.accSkip + '</button>' +

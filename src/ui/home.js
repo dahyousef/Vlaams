@@ -33,7 +33,7 @@
       if (v.quality !== 'be') {
         html += '<button class="notice" data-go="doctor">' +
           '<b>' + (v.quality === 'nl' ? t.voiceNorthTitle : t.voiceNoneTitle) + '</b>' +
-          '<p>' + esc(t[v.note]) + ' ' + t.voiceFix + '</p></button>';
+          '<p>' + esc(t[v.noteKey]) + ' ' + t.voiceFix + '</p></button>';
       }
 
       /* La série enregistrée ne change qu'à la séance suivante : un jour sauté, elle est déjà coupée.

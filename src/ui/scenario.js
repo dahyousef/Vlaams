@@ -90,7 +90,7 @@
         }
         return '<div class="bub you"><div><p class="bub-nl" lang="nl-BE">' + esc(b.nl) + '</p>' +
           '<p class="bub-en"' + NL.gloss.langAttr(b) + '>' + esc(NL.gloss.of(b)) + '</p>' +
-          (b.score ? '<p class="bub-score">' + esc(b.score) + '</p>' : '') + '</div></div>';
+          NL.ui.ifText(b.score, 'p', 'bub-score') + '</div></div>';
       }).join('');
 
       let panel = '';
@@ -98,7 +98,7 @@
         panel = '<button class="btn btn-blue wide" data-step="next">' + NL.t.next + '</button>';
       } else if (P.phase === 'choose') {
         panel = '<p class="ask">' + esc(NL.gloss.of(step.you.ask)) + '</p>' +
-          (NL.gloss.of(step.you.hint) ? '<p class="ask-hint">' + esc(NL.gloss.of(step.you.hint)) + '</p>' : '') +
+          NL.ui.ifText(step.you.hint, 'p', 'ask-hint') +
           '<div class="choices">' + step.you.choices.map((c, i) =>
             '<button class="choice" data-choice="' + i + '"><b lang="nl-BE">' + esc(c.nl) + '</b><i>' + esc(NL.gloss.of(c)) + '</i></button>').join('') +
           '</div>';
@@ -108,7 +108,7 @@
           '<p class="say-en">' + esc(NL.gloss.of(c)) + '</p>' +
           '<button class="speaker slow inline" data-say="' + esc(c.nl) + '" data-slow="1" aria-label="' + NL.t.slow + '">' + ICON.turtle() + '</button></div>' +
           micPanel(P.speech, c.nl) +
-          (NL.gloss.of(c.note) ? '<p class="say-note">' + esc(NL.gloss.of(c.note)) + '</p>' : '');
+          NL.ui.ifText(c.note, 'p', 'say-note');
       } else if (P.phase === 'done') {
         panel = '<div class="scn-done"><h2>' + NL.t.scnOver + '</h2>' +
           '<p>' + esc(NL.gloss.of(s.outro)) + '</p>' +
@@ -219,7 +219,7 @@
     if (blocked) return NL.ex.recordPanel(sp, target, blocked);
     if (sp.phase === 'listening') {
       return '<div class="mic-panel live"><button class="mic big listening" data-mic="stop" aria-label="' + NL.t.stop + '">' + ICON.mic(32) + '</button>' +
-        '<p class="mic-why">' + NL.t.micListening + '</p>' + (sp.partial ? '<p class="heard">' + esc(sp.partial) + '</p>' : '') + '</div>';
+        '<p class="mic-why">' + NL.t.micListening + '</p>' + NL.ui.ifText(sp.partial, 'p', 'heard') + '</div>';
     }
     if (sp.phase === 'done') {
       return '<div class="mic-panel ' + (sp.ok ? 'good' : 'bad') + '">' +

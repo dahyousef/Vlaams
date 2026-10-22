@@ -7,13 +7,15 @@ NL.screens.doctor = (function () {
   const TEST = 'Goeiemorgen, alles goed met u?';
   let S = { heard: null, mic: null, micKey: '', rec: 'idle' };
 
+  /* Le titre et la note de ce que l'appareil sait faire de la parole : deux clés de NL.t,
+     lues au dessin comme home.js et shell.js lisent t[v.noteKey], car la langue a pu changer. */
   const TIERS = {
-    full: { get label() { return t.tierFull; }, get note() { return t.tierFullNote; } },
-    scored: { get label() { return t.tierScored; }, get note() { return t.tierScoredNote; } },
-    novoice: { get label() { return t.tierNoVoice; }, get note() { return t.tierNoVoiceNote; } },
-    refused: { get label() { return t.tierRefused; }, get note() { return t.tierRefusedNote; } },
-    compare: { get label() { return t.tierCompare; }, get note() { return t.tierCompareNote; } },
-    self: { get label() { return t.tierSelf; }, get note() { return t.tierSelfNote; } }
+    full: { labelKey: 'tierFull', noteKey: 'tierFullNote' },
+    scored: { labelKey: 'tierScored', noteKey: 'tierScoredNote' },
+    novoice: { labelKey: 'tierNoVoice', noteKey: 'tierNoVoiceNote' },
+    refused: { labelKey: 'tierRefused', noteKey: 'tierRefusedNote' },
+    compare: { labelKey: 'tierCompare', noteKey: 'tierCompareNote' },
+    self: { labelKey: 'tierSelf', noteKey: 'tierSelfNote' }
   };
 
   function voiceRows() {
@@ -50,7 +52,7 @@ NL.screens.doctor = (function () {
 
       '<section class="doc-tier ' + tier.id + '">' +
       '<span class="eyebrow">' + t.docTierTitle + '</span>' +
-      '<h2>' + info.label + '</h2><p>' + info.note + '</p>' +
+      '<h2>' + t[info.labelKey] + '</h2><p>' + t[info.noteKey] + '</p>' +
       (tier.framed ? '<p class="doc-framed">' + t.docFramed + '</p>' : '') +
       '</section>' +
 
@@ -108,12 +110,8 @@ NL.screens.doctor = (function () {
       if (d.act === 'playrec') { NL.speech.playRecording(); return; }
       if (d.act === 'errclear') { NL.errlog.clear(); NL.ui.render(); return; }
       if (d.act === 'errcopy') {
-        const box = document.getElementById('err-out');
-        if (box) box.select();
-        const done = navigator.clipboard
-          ? navigator.clipboard.writeText(NL.errlog.text()).then(() => true).catch(() => false)
-          : Promise.resolve(!!(document.execCommand && document.execCommand('copy')));
-        Promise.resolve(done).then(good => NL.ui.toast(good ? t.errCopied : t.errCopyByHand));
+        NL.ui.copy(NL.errlog.text(), document.getElementById('err-out'))
+          .then(good => NL.ui.toast(good ? t.errCopied : t.errCopyByHand));
         return;
       }
       if (d.act === 'recstop') { NL.speech.stopRecord(); return; }

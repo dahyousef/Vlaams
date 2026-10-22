@@ -17,7 +17,7 @@ const B = browser.open({
 const NL = B.NL, S = NL.screens.sessie, t = NL.t;
 const answer = require('./lib/answer')(B);
 
-const text = html => String(html).replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ');
+const { text } = require('./lib/langs');
 const put = (it, rung, due) => { NL.srs.seed(it, rung); const r = NL.state.rec(it.id); r.due = due; NL.state.setRec(r); };
 const fresh = () => { NL.state.clearAll(); NL.content.refresh(); B.clock.set(T0); };
 const { SCREENS } = require('./lib/screens');
@@ -40,7 +40,7 @@ const sweep = state => SCREENS.forEach(name => {
   catch (e) { ok(false, name + ' (' + state + ') threw: ' + e.message); }
 });
 
-NL.state.open().then(() => {
+NL.state.open().then(async () => {
   NL.content.refresh();
   const units = NL.content.units, all = NL.content.allItems();
 
@@ -335,6 +335,83 @@ NL.state.open().then(() => {
     const idle = text(NL.screens.vandaag.render());
     ok(idle.indexOf(t.todayAllDone) >= 0 && idle.indexOf(text(t.budgetDone)) < 0, 'with nothing due the home screen no longer says « ' + t.todayAllDone + ' »');
     console.log('  200 dus, quota atteint : « ' + t.budgetDone + ' » ; rien de dû : « ' + t.todayAllDone + ' »');
+  }
+
+  /* ------------------------------------------------------------------ */
+  console.log('\nLE TEXTE, S’IL Y EN A UN — NL.ui.ifText');
+  {
+    /* Sans texte, rien ; un texte sort échappé dans sa balise, avec sa classe s'il en a une. Un
+       sens qui n'a rien à dire dans aucune langue ne donne rien non plus. #77 : un sens qui vaut
+       null dans la langue lue n'a rien à dire à ce lecteur, même quand l'autre langue a un
+       texte, en anglais comme en français ; un sens qui a un texte dans les deux sort dans
+       celle qui est lue. La page est celle de ce bloc : aucun autre contrôle ne lit la langue
+       où il la laisse. */
+    const P = browser.open({ root: ROOT, seed: browser.SEED, byId: 'stub' });
+    [
+      [['', 'p'], 'en', ''],
+      [[null, 'p', 'heard'], 'en', ''],
+      [[undefined, 'div', 'toast'], 'en', ''],
+      [['a', 'p'], 'en', '<p>a</p>'],
+      [['3/4', 'p', 'bub-score'], 'en', '<p class="bub-score">3/4</p>'],
+      [['<b> & "x"', 'em'], 'en', '<em>&lt;b&gt; &amp; &quot;x&quot;</em>'],
+      [[{ fr: null, en: null }, 'p', 'v-note'], 'en', ''],
+      [[{ fr: 'texte', en: null }, 'p'], 'en', ''],
+      [[{ fr: null, en: 'text' }, 'p'], 'fr', ''],
+      [[{ fr: 'texte', en: 'text' }, 'p'], 'en', '<p>text</p>'],
+      [[{ fr: 'texte', en: 'text' }, 'p'], 'fr', '<p>texte</p>']
+    ].forEach(([args, l, want]) => {
+      P.NL.gloss.use(l);
+      const got = P.NL.ui.ifText(...args);
+      ok(got === want, 'NL.ui.ifText(' + JSON.stringify(args).slice(1, -1) + '), read in ' + l + ', gave « ' + got + ' »; wanted « ' + want + ' »');
+    });
+    console.log('  rien sans texte, ni pour un sens qui vaut null dans la langue lue ; sinon le texte échappé, dans sa balise, avec sa classe');
+  }
+
+  /* ------------------------------------------------------------------ */
+  console.log('\nCOPIER — la sauvegarde et le journal d’erreurs');
+  {
+    /* Les deux copies vont de la même façon : par le presse-papiers s'il existe, sinon par
+       l'ancienne commande du navigateur, et le toast dit « Copié » si l'un ou l'autre a copié,
+       « copie-le à la main » sinon. Une page à elle, aux minuteurs retenus : le toast reste à
+       lire jusqu'à P.tick(), qui l'efface avant le cas suivant. La sauvegarde se copie depuis
+       n'importe quel écran ; le journal, depuis le sien. */
+    const P = browser.open({ root: ROOT, seed: browser.SEED, byId: 'stub', media: true, timers: 'held' });
+    const settle = () => new Promise(r => setImmediate(r));
+    await settle();
+    P.NL.errlog.note('boum', 'essai');
+    P.fields['backup-out'] = '{"sauvegarde":1}';
+    P.NL.ui.go('doctor');
+    const t = P.NL.t;
+    const acts = [
+      ['copy-backup', 'backup-out', () => P.fields['backup-out'], t.backupCopied, t.backupCopyByHand],
+      ['errcopy', 'err-out', () => P.NL.errlog.text(), t.errCopied, t.errCopyByHand]
+    ];
+    /* Le presse-papiers : true l'accepte, false le refuse, null l'ôte ; de même l'ancienne commande. */
+    const ways = [
+      ['the clipboard', true, null],
+      ['the clipboard refusing', false, null],
+      ['the old command', null, true],
+      ['the old command refusing', null, false],
+      ['neither', null, null]
+    ];
+    /* Le champ copié est sélectionné avant toute copie : l'ancienne commande copie la sélection. */
+    for (const [act, box, text, copied, byHand] of acts) {
+      for (const [way, clip, cmd] of ways) {
+        const did = P.events;
+        did.length = 0;
+        P.ctx.navigator.clipboard = clip === null ? undefined : { writeText: s => { did.push('writeText ' + s); return clip ? Promise.resolve() : Promise.reject(new Error('refused')); } };
+        P.ctx.document.execCommand = cmd === null ? undefined : c => { did.push('execCommand ' + c); return cmd; };
+        P.tap({ act });
+        await settle();
+        const wrote = 'select ' + box + (clip !== null ? ' | writeText ' + text() : cmd !== null ? ' | execCommand copy' : '');
+        const toast = (P.app.innerHTML.match(/<div class="toast">([^<]*)<\/div>/) || [])[1];
+        const said = clip === true || cmd === true ? copied : byHand;
+        ok(did.join(' | ') === wrote, act + ' with ' + way + ' did « ' + did.join(' | ') + ' »; wanted « ' + wrote + ' »');
+        ok(toast === said, act + ' with ' + way + ' showed « ' + toast + ' »; wanted « ' + said + ' »');
+        P.tick();
+      }
+    }
+    console.log('  sauvegarde et journal : le presse-papiers, sinon l’ancienne commande ; « ' + t.backupCopied + ' » si l’un a copié, sinon « ' + t.backupCopyByHand + ' »');
   }
 
   console.log('\n' + checks + ' checks, ' + (fails ? fails + ' FAILED' : 'SCREENS OK'));

@@ -197,13 +197,13 @@ NL.tables.en = {
   missTile: n => n === 0 ? 'Nothing for now' : n === 1 ? 'One item often missed' : n + ' items often missed',
   missRow: (wrong, total) => 'missed ' + wrong + ' times out of ' + total,
   missStart: n => n === 1 ? 'Practise this item' : 'Practise the ' + n + ' most missed',
-  wordsNl: 'Dutch', wordsFr: 'English', wordsBe: 'As they say here',
+  wordsNl: 'Dutch', wordsGloss: 'English', wordsBe: 'As they say here',
   wordsOptional: '(optional)',
   wordsNeedBoth: 'Dutch and the translation are both needed.',
   wordsAdded: 'Added — it will come back by itself.',
   wordsHere: 'here:',
   wordsPhNl: 'de vergaderzaal',
-  wordsPhFr: 'the meeting room',
+  wordsPhGloss: 'the meeting room',
   wordsMineGroup: 'My words',
 
   /* --- fiches --- */
@@ -337,7 +337,7 @@ NL.tables.en = {
   tierCompareNote: 'No speech recognition here. You can still record yourself and compare with the model, which is a real way to work.',
   tierSelf: 'Self-assessment',
   tierSelfNote: 'Neither recognition nor recording is available. Spoken exercises ask you to say the sentence, then judge yourself honestly. It works, but a page hosted outside a frame would give you more.',
-  /* le rapport de voix : speech.voiceInfo() rend la clé, l'écran la lit au dessin */
+  /* le rapport de voix : speech.voiceInfo().noteKey rend la clé, l'écran la lit au dessin */
   voiceNoteBe: 'Flemish voice found.',
   voiceNoteNl: 'Only a voice from the Netherlands is installed: the audio therefore has the northern accent, with a scraped g where Flanders uses a soft g.',
   voiceNoteNone: 'No Dutch voice found. The audio falls back on the browser’s default voice and will not sound Dutch.',
@@ -349,6 +349,7 @@ NL.tables.en = {
   errCount: n => n === 1 ? 'One error recorded. Nothing leaves this device: copy the text to send it.' : n + ' errors recorded. Nothing leaves this device: copy the text to send it.',
   errCopy: 'Copy', errClear: 'Clear the list',
   errCopied: 'Copied.', errCopyByHand: 'Select the text and copy it by hand.',
+  backupCopied: 'Copied.', backupCopyByHand: 'Select the text and copy it by hand.',
   docFixTitle: 'Install the Flemish voice on Windows',
   docFixSteps: [
     'Settings → Time & language → Language & region',
