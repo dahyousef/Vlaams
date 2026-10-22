@@ -516,13 +516,13 @@ h1,h2,h3,h4,h5{font-family:var(--display);font-weight:700;letter-spacing:-.02em;
 
 /* --- docteur audio --- */
 .stage.doc{display:flex;flex-direction:column;gap:14px;padding-bottom:20px}
-.doc-tier{background:var(--card);border:1.5px solid var(--line);border-radius:var(--r-lg);padding:18px}
-.doc-tier.full{border-color:var(--goed);background:var(--goed-soft)}
-.doc-tier.scored{border-color:var(--goud);background:var(--goud-soft)}
-.doc-tier.compare{border-color:var(--groen);background:var(--groen-soft)}
-.doc-tier.self,.doc-tier.novoice,.doc-tier.refused{border-color:var(--amber);background:var(--amber-soft)}
-.doc-tier h2{font-size:20px;margin:4px 0 6px}
-.doc-tier p{margin:0;font-size:14px;color:var(--ink-2);max-width:52ch}
+.doc-capability{background:var(--card);border:1.5px solid var(--line);border-radius:var(--r-lg);padding:18px}
+.doc-capability.full{border-color:var(--goed);background:var(--goed-soft)}
+.doc-capability.scored{border-color:var(--goud);background:var(--goud-soft)}
+.doc-capability.compare{border-color:var(--groen);background:var(--groen-soft)}
+.doc-capability.self,.doc-capability.novoice,.doc-capability.refused{border-color:var(--amber);background:var(--amber-soft)}
+.doc-capability h2{font-size:20px;margin:4px 0 6px}
+.doc-capability p{margin:0;font-size:14px;color:var(--ink-2);max-width:52ch}
 .doc-framed{margin-top:10px !important;font-size:13px !important;padding-top:10px;border-top:1px dashed var(--line-2)}
 .doc-block{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px}
 .doc-block h4{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-bottom:10px}

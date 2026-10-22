@@ -111,9 +111,12 @@ refuse :
   `voiceInfo().note`, `notice` dans `lang.js`, les textes du journal d'erreurs
   ailleurs que dans sa propre copie (`errcopy`), chaque acte d'une condition lu,
   même sur plusieurs lignes ;
-- dans `TIERS` (`doctor.js`), un `id` que rend `NL.speech.tier()` sans les deux
+- dans `CAPABILITIES` (`doctor.js`), un `id` que rend `NL.speech.capability()` sans les deux
   textes de ce que l'appareil sait faire de la parole en deux clés de `NL.t`,
   `labelKey` et `noteKey`, lues au dessin, ou un accesseur à leur place ;
+- ce que l'appareil sait faire de la parole appelé « tier » : le mot dans `speech.js` ou
+  `doctor.js`, une clé de `fr.js` ou `en.js` qui commence par `tier` ou `docTier`, `doc-tier`
+  dans `styles.css` (« tier » est le plafond d'un item, voir `GLOSSARY.md`) ;
 - dans `smoke.js` même, un fichier du dépôt lu autrement que par son `read()`, ou
   une relecture éprouvée autrement que par son `selfTest()`.
 

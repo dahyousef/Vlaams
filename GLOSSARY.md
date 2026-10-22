@@ -119,6 +119,12 @@ Said of a spoken exercise taken out of a session because the learner cannot talk
 item stays due and is not graded, which is what separates putting off from skipping.
 _Avoid_: skipped, muted, postponed, snoozed
 
+**Speech capability**:
+What the device the learner is using can do with speech: speak Dutch with a Flemish or a
+northern voice, score what the learner says, record it, or none of these. It belongs to the
+device and its browser, not to the learner, and it is neither a rung nor a tier.
+_Avoid_: tier, level, niveau, audio mode
+
 **Day**:
 The period the budget is counted over. Distinct from a session, because several sessions
 can happen in one day and the two bound different things.

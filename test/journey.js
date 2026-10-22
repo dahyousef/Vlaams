@@ -55,7 +55,7 @@ function view(screen, arg) {
   /* ---------------------------------------------------------- 1. voice */
   head('1. Voice and microphone');
   const v = NL.speech.voiceInfo();
-  console.log('   quality=' + v.quality + '  name=' + (v.name || '—') + '  tier=' + NL.speech.tier().id);
+  console.log('   quality=' + v.quality + '  name=' + (v.name || '—') + '  capability=' + NL.speech.capability().id);
   if (VOICE === 'nl-BE') {
     ok(v.quality === 'be', 'a Flemish voice is installed but the app did not select it');
     ok(v.name && /Belgium/.test(v.name), 'wrong voice chosen: ' + v.name);
@@ -73,8 +73,8 @@ function view(screen, arg) {
   ok(NL.speech.listenBlocked() === (noRecogniser ? 'browser' : null), 'wrong recogniser verdict');
   ok(NL.speech.noService() === (BROWSER === 'OPR' ? 'opera' : BROWSER === 'IOS' ? 'ios' : null), 'wrong reason for the missing recogniser');
   /* « Noté, accent du nord » ne se dit que s'il y a une voix du nord. */
-  const wantTier = noRecogniser ? 'compare' : VOICE === 'nl-BE' ? 'full' : VOICE === 'nl-NL' ? 'scored' : 'novoice';
-  ok(NL.speech.tier().id === wantTier, 'wrong audio tier: ' + NL.speech.tier().id + ', expected ' + wantTier);
+  const wantCapability = noRecogniser ? 'compare' : VOICE === 'nl-BE' ? 'full' : VOICE === 'nl-NL' ? 'scored' : 'novoice';
+  ok(NL.speech.capability().id === wantCapability, 'wrong speech capability: ' + NL.speech.capability().id + ', expected ' + wantCapability);
 
   /* home must not nag about the voice once a Flemish one exists */
   const home0 = view('vandaag');
@@ -267,11 +267,11 @@ function view(screen, arg) {
   tap('doctor', { act: 'rec' });
   await new Promise(r => setImmediate(r));
   const d1 = view('doctor');
-  ok(d1.indexOf(NL.t.tierRefusedNote) >= 0, 'doctor did not explain the blocked microphone');
+  ok(d1.indexOf(NL.t.capabilityRefusedNote) >= 0, 'doctor did not explain the blocked microphone');
   /* Après un refus, le niveau affiché ne peut plus prétendre que tout marche. */
-  ok(NL.speech.tier().id === 'refused', 'tier still claims a working microphone after a refusal: ' + NL.speech.tier().id);
-  ok(d1.indexOf(NL.t.tierRefused) >= 0, 'doctor headline ignores the refused microphone');
-  console.log('   browser=' + NL.speech.browserName() + ', tier=' + NL.speech.tier().id + ', mic refusal explained');
+  ok(NL.speech.capability().id === 'refused', 'speech capability still claims a working microphone after a refusal: ' + NL.speech.capability().id);
+  ok(d1.indexOf(NL.t.capabilityRefused) >= 0, 'doctor headline ignores the refused microphone');
+  console.log('   browser=' + NL.speech.browserName() + ', capability=' + NL.speech.capability().id + ', mic refusal explained');
 
   /* ---------------------------------------------------------- 11. keyboard */
   head('11. Keyboard');

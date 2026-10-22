@@ -332,20 +332,30 @@ NL.state.open().then(() => {
   });
 
   /* #74. What the device can do with speech is told in two keys of NL.t, read at draw time
-     as home.js and shell.js read t[v.noteKey]: in doctor.js's TIERS, each tier that
-     NL.speech.tier() can name holds { labelKey, noteKey }, two keys of NL.t, and no getter
+     as home.js and shell.js read t[v.noteKey]: in doctor.js's CAPABILITIES, each speech capability that
+     NL.speech.capability() can name holds { labelKey, noteKey }, two keys of NL.t, and no getter
      stands in for them. */
   const doctor = read('src/ui/doctor.js');
-  const tierKeys = {};
-  ((doctor.match(/const TIERS = \{([\s\S]*?)\r?\n  \};/) || [])[1] || '').split(/\r?\n/).forEach(l => {
+  const capabilityKeys = {};
+  ((doctor.match(/const CAPABILITIES = \{([\s\S]*?)\r?\n  \};/) || [])[1] || '').split(/\r?\n/).forEach(l => {
     const m = /^\s*(\w+): \{ labelKey: '(\w+)', noteKey: '(\w+)' \},?$/.exec(l);
-    if (m) tierKeys[m[1]] = [m[2], m[3]];
+    if (m) capabilityKeys[m[1]] = [m[2], m[3]];
   });
-  const tierIds = (read('src/core/speech.js').match(/\{ id: '\w+'/g) || []).map(s => s.slice(7, -1));
-  ok(tierIds.length > 0, 'src/core/speech.js: tier() names no tier this check can read; the check on TIERS reads nothing');
-  tierIds.forEach(id => ok(!!tierKeys[id] && tierKeys[id].every(k => typeof NL.t[k] === 'string'),
-    'src/ui/doctor.js: TIERS.' + id + ' does not hold { labelKey, noteKey }, two keys of NL.t read at draw time'));
-  ok(!/\bget (label|note)\(\)/.test(doctor), 'src/ui/doctor.js reads a speech text through a getter; TIERS hold keys, read as t[info.labelKey] and t[info.noteKey]');
+  const capabilityIds = (read('src/core/speech.js').match(/\{ id: '\w+'/g) || []).map(s => s.slice(7, -1));
+  ok(capabilityIds.length > 0, 'src/core/speech.js: capability() names no speech capability this check can read; the check on CAPABILITIES reads nothing');
+  capabilityIds.forEach(id => ok(!!capabilityKeys[id] && capabilityKeys[id].every(k => typeof NL.t[k] === 'string'),
+    'src/ui/doctor.js: CAPABILITIES.' + id + ' does not hold { labelKey, noteKey }, two keys of NL.t read at draw time'));
+  ok(!/\bget (label|note)\(\)/.test(doctor), 'src/ui/doctor.js reads a speech text through a getter; CAPABILITIES hold keys, read as t[info.labelKey] and t[info.noteKey]');
+
+  /* #78. What the device can do with speech is a speech capability, not a tier: « tier » is
+     the ceiling of an item's rung (GLOSSARY.md). In speech.js and doctor.js the word is gone,
+     comments included; no key of fr.js or en.js starts with tier or docTier; styles.css holds
+     no doc-tier. item.tier, TIER_MAX and the glossary's Tier are in other files, and stay. */
+  ['src/core/speech.js', 'src/ui/doctor.js'].forEach(f =>
+    ok(!/\btiers?\b/i.test(read(f)), f + ' says tier for what the device can do with speech; say capability'));
+  ['src/core/fr.js', 'src/core/en.js'].forEach(f =>
+    ok(!/^\s*(tier|docTier)\w*:/m.test(read(f)), f + ' holds a key starting tier or docTier; say capability'));
+  ok(!/doc-tier/.test(read('styles.css')), 'styles.css holds doc-tier; say doc-capability');
 
   /* Rebuilt settings keep the device's language in one place: outside withDeviceLang,
      nothing sets their displayLang. */
