@@ -24,7 +24,8 @@ task controllers' notices.
    task, in plan order, whose state is not `done`, `fallback` or `replaced by <id>`.
 1b. A task whose class is `sitting` is not dispatched to a task controller. Set its Status row to
    `in progress`, launch a session with the brief prompt (see « Launching a sitting », model `opus`), and stop
-   the run.
+   the run. A task whose class is `gate` is never dispatched: the loop passes over it, and `one-session.md`
+   runs it (« Starting a fan-out task »).
 2. Set its Status row to `in progress`. A row already `in progress` is a stopped task: dispatch it as usual; the
    task controller recovers.
 3. Dispatch one task controller (a background subagent) with the prompt below. Model by the task's class:
@@ -142,6 +143,8 @@ Once per plan, in the run's worktree, create `<WS>` = `.superpowers/sdd/<plan na
     Mode: one session        (only for a one-session run, one-session.md; leave the line out for sittings)
     Fan-out: task <id> — kind <kind> — after <ids> — Split: <command> — Check: <command> — merged by task <id>
                              (one line per fan-out task)
+    Gate: task <id> — after <ids> — show: <command> — ask: <question> — answer to: <path | Rulings>
+                             (one line per gate task)
     Sittings: (the run controller appends one `Sitting:` line per sitting below)
 
 The first sitting is launched with the command, from the run's worktree, by whichever Claude session the

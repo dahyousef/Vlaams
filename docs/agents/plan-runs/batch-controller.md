@@ -9,7 +9,7 @@ the Check command, and perhaps the maintainer's rulings or confirmations for thi
 - `<WS>/run.md`, and the sections "Where you work" and "The shell" of `docs/agents/plan-runs/run-notes.md`:
   they bind you too.
 - The names of the files in the batch folder, Check's output, and your agents' returns. The rows are your
-  agents' to read, except the disputed ones you copy into `disputes.md`.
+  agents' to read, except the ones you copy into `disputes.md`.
 
 ## The roles you dispatch
 
@@ -33,20 +33,20 @@ In the batch folder, each written once, by one role:
 | `review.json` | reader | one verdict per draft row |
 | `retry.json` | drafter | one new row per row `review.json` disputes |
 | `retry-review.json` | a second reader | one verdict per retry row |
-| `disputes.md` | you | the rows disputed twice, for the maintainer |
-| `rulings.json` | you | the maintainer's ruling per disputed row |
+| `disputes.md` | you | the rows for the maintainer: disputed twice, or sent by the format's rule |
+| `rulings.json` | you | the maintainer's ruling per row of `disputes.md` |
 | `change.json` | drafter | the rows the maintainer asked to change |
 
 Walk the steps below in order. A step whose file is done (Check passes it; `disputes.md`: one section per row
-`retry-review.json` disputes) is not run again, but its « no dispute » test still applies. So after a cut-off you
-carry on where the last agent stopped, and a half-written file is written again.
+step 6 names) is not run again, but its « no dispute » test still applies. So after a cut-off you carry on
+where the last agent stopped, and a half-written file is written again.
 
 ## Check
 
 Run the Check command on the batch folder after every agent returns. It checks every file present and prints
-one line per file, `ok <file> <n> rows` (for a review, `ok <file> <n> keep, <k> dispute`), or
-`fail <file> <id>: <why>`. A step whose file still fails gets one more dispatch of its role with the `fail`
-lines; a second failure returns `failed — <file>: <the first fail line>`.
+one line per file, `ok <file> <n> rows` (for a review, `ok <file> <n> keep, <k> dispute`, then
+`, <m> for maintainer` if any), or `fail <file> <id>: <why>`. A step whose file still fails gets one more
+dispatch of its role with the `fail` lines; a second failure returns `failed — <file>: <the first fail line>`.
 
 ## The steps
 
@@ -54,17 +54,20 @@ lines; a second failure returns `failed — <file>: <the first fail line>`.
 2. Drafter: "Read docs/agents/plan-runs/drafter.md. Input: <batch>/input.json. Output: <batch>/draft.json.
    Format: <format page>. Check: <command>."
 3. Reader: "Read docs/agents/plan-runs/reader.md. Batch: <batch>. Read: draft.json. Output: review.json.
-   Format: <format page>. Check: <command>." No dispute: return `accepted`.
+   Format: <format page>. Check: <command>." No dispute: step 6.
 4. Drafter, the retry: as step 2, with "Disputed: <batch>/review.json. Output: <batch>/retry.json."
 5. A second reader: as step 3, with "Read: retry.json, and the first reader's reasons in review.json.
-   Output: retry-review.json." No dispute: return `accepted`.
-6. Write `disputes.md`, one section per row `retry-review.json` disputes, then return `for maintainer`:
+   Output: retry-review.json."
+6. The rows for the maintainer are each row `retry-review.json` disputes, and each row a review gives
+   `for maintainer` (the format sends it by rule: one in `review.json` gets no retry and no second reader).
+   With none, return `accepted`. Otherwise write `disputes.md`, one section per row, then return
+   `for maintainer`:
 
        ## <id>
        Source: <the row's input, as input.json gives it>
-       Row: <its row in retry.json>
+       Row: <its row in retry.json, or in draft.json if it had no retry>
        First reader: <the reason in review.json>
-       Second reader: <the reason in retry-review.json>
+       Second reader: <the reason in retry-review.json, if it had a retry>
        Your ruling: keep | drop | change: <your words>
 
 ## With rulings
@@ -75,7 +78,7 @@ Your dispatch carries `Rulings:`, one answer per row of `disputes.md`.
    "confirmed", "date"}`. `words` holds the maintainer's words for a change; `confirmed` is true for keep and
    drop, false for change. A new ruling for an id replaces its entry: the latest holds.
 2. For the `change` rows, a drafter: "Read docs/agents/plan-runs/drafter.md. Input: <batch>/input.json.
-   Rows: <ids>, each with its row in retry.json and the maintainer's words: <words>. Output:
+   Rows: <ids>, each with its Row in disputes.md and the maintainer's words: <words>. Output:
    <batch>/change.json. Format: <format page>. Check: <command>."
 3. Return `to confirm`, then one line per changed row, `<id>: <the row in change.json, on one line>`. With no
    change row, return `ruled`.
