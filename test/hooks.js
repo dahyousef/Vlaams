@@ -26,6 +26,8 @@ console.log('  output          ' + out.slice(0, 90));
 ok(r.status === 0, 'le rappel sort avec 0');
 ok(/re-read docs\/agents\/plan-runs\/run-controller\.md/.test(out), 'le rappel nomme run-controller.md');
 ok(/status table/.test(out), 'le rappel nomme le tableau d\'état du registre');
+ok(/batches table/.test(out), 'le rappel nomme le tableau des lots du registre');
+ok(/rulings/.test(out), 'le rappel nomme les décisions du registre');
 
 // Le crochet du transcript : il copie le chemin que Claude Code lui passe, au lieu de le deviner.
 const tEntry = (hooks.SessionStart || []).find(e => e.matcher === 'startup|clear');

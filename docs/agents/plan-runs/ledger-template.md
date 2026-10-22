@@ -1,8 +1,8 @@
 # Ledger template
 
 Copy everything below the line into `<WS>/progress.md` when setting up a run, with one Status row per plan
-task. The run controller edits only the Status table and the Rulings. Task controllers only append to the
-Log.
+task. The run controller edits only the Status table, the Batches table and the Rulings. Task controllers only
+append to the Log. A plan with no `fan-out` task leaves out the Batches section.
 
 ---
 
@@ -14,14 +14,23 @@ Log.
 |---|---|---|---|---|---|---|
 | 1 | mechanical | #<n> | pending | | | |
 
-Class: `engine`, `mechanical` or `sitting` (a `sitting` task is launched as a session of its own, and stops
-the run).
+Class: `engine`, `mechanical`, `fan-out` (drafted in batches, `one-session.md`) or `sitting` (a `sitting` task
+is launched as a session of its own, and stops the run).
 
 States: `pending`, `in progress`, `done`, `fallback`, `needs ruling`, `needs design`, `failed`, `replaced by <id>`.
 
+## Batches
+
+| Kind | Batch | Rows | State | Kept | For maintainer | Path |
+|---|---|---|---|---|---|---|
+
+One row per line a `fan-out` task's Split printed. States: `pending`, `drafting`, `accepted`,
+`for maintainer`, `to confirm`, `ruled`, `failed`.
+
 ## Rulings
 
-<!-- one line each: date — task — question — answer -->
+<!-- one line each: date — commit (git log -1 at the ruling) — task or batch — question — answer.
+     A ruling that changes an earlier one is a new line; the earlier line ends with « (replaced by <date>) ». -->
 
 ## Log
 
