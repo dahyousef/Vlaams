@@ -33,6 +33,6 @@ States: `pending`, `in progress`, `done`, `fallback`, `needs ruling`, `needs des
 - Files and tree: <files changed>; git status --short: <clean, or the list>
 - Tests: <command> → <result line>; verifier: <line>
 - Review: <verdict> (<c>/<i>/<m>), <report path>; fix rounds: <0-2>
-- Open: <the review's `open` Minors; each title of the brief's `Promises:` line, as `ticket: <title>`;
-  questions, risks, approvals still needed; or none>
+- Open: <each title of the brief's `Promises:` line, as `ticket: <title>`; questions, risks, approvals
+  still needed; or none>
 -->

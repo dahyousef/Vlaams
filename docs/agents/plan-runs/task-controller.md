@@ -76,8 +76,8 @@ Dispatch nothing else, and nothing below these four.
    - `Needs fixes` with `DESIGN: no`: a fix round.
    - `DESIGN: yes`: return `needs design` with the reviewer's one-line reason.
 6. A fix round — at most two for the task in all; a third need returns `needs ruling` with "two fix rounds
-   were not enough" and the report path. Dispatch the implementer again: "Fix the Critical, Important and
-   `fix` issues in <report>. One new commit; never amend." Then the verifier, if code changed. Then:
+   were not enough" and the report path. Dispatch the implementer again: "Fix every issue in <report>,
+   Minors included. One new commit; never amend." Then the verifier, if code changed. Then:
    - if the round began at step 3 (the verifier failed), the task has had no review: continue at step 4, for
      the full review;
    - if it began at step 5, the re-reviewer, with the fix diff (written as in step 4 to
@@ -88,9 +88,9 @@ Dispatch nothing else, and nothing below these four.
    run `gh issue comment <n> --body-file "<file>"`: the commit, the verifier line, the review verdict. In a
    fallback sitting: no push; your state is `fallback`.
 8. Append your entry to the log of `<WS>/progress.md`, in the form `ledger-template.md` gives. Its Open line
-   carries the last review's `OPEN` line and each title of your brief's `Promises:` line, as
-   `ticket: <title>`: the closing review files them. Do not edit the Status table. This step runs before
-   every return, `needs ruling`, `needs design` and `failed` included.
+   carries each title of your brief's `Promises:` line, as `ticket: <title>`: the closing review files them.
+   Do not edit the Status table. This step runs before every return, `needs ruling`, `needs design` and
+   `failed` included.
 9. Return, at most 10 lines:
 
        STATE: done | fallback | needs ruling | needs design | failed
