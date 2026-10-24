@@ -14,6 +14,7 @@ const kaikki = require(path.join(ROOT, 'tools', 'content', 'kaikki'));
 const tatoeba = require(path.join(ROOT, 'tools', 'content', 'tatoeba'));
 const browser = require(path.join(ROOT, 'test', 'lib', 'browser'));
 const sequence = require(path.join(ROOT, 'test', 'lib', 'sequence'));
+const spelling = require(path.join(ROOT, 'test', 'lib', 'spelling'));
 
 let checks = 0, fails = 0;
 const ok = (c, m) => { checks++; if (!c) { console.log('  FAIL: ' + m); fails++; } };
@@ -146,6 +147,7 @@ async function main() {
   same([T.nld.size, T.nld.get(12).eng, T.fra.get(126).text, T.nld.get(10).native, T.nld.get(18).owner],
     [22, [121, 122], 'Les boulangers ne sont pas encore là.', true, ''], 'load rend les phrases de l\'extrait, par id');
   const NL = browser.open({ root: ROOT, seed: browser.SEED, skip: [browser.APP] }).NL;
+  ok(spelling.named('Dag {naam}.', NL) && !spelling.named('De bakker is er.', NL), 'named écarte une phrase qui garde un jeton {naam}, et garde celle qui n’en a pas');
   /* Gent est vu à la première unité, comme le cours écrit la commune par défaut : seul named l'écarte. */
   const units = [{ words: [{ nl: 'de bakker' }, { nl: 'het brood' }, { nl: 'oud' }, { nl: 'tot straks' }, { nl: 'bakken' }, { nl: 'de dag' }],
     phrases: [{ nl: 'in Gent' }] }, { words: [{ nl: 'de trein' }] }];

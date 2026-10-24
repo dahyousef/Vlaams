@@ -30,7 +30,7 @@ const stem = t => t.replace(/[’']s$/, '');                                // c
    anglais ou en français. */
 function named(s, NL) {
   const D = NL.content.DEFAULTS, names = new Set([].concat(...Object.keys(D).map(k => tokens(D[k]))));
-  return /{/.test(s) || String(s).toLowerCase().split(/[^a-zà-ÿ]+/).some(t => names.has(t));
+  return /\{/.test(s) || String(s).toLowerCase().split(/[^a-zà-ÿ]+/).some(t => names.has(t));
 }
 
 function readFlemish(file) {
