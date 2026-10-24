@@ -152,6 +152,37 @@ NL.state.open().then(() => {
   ok(dupes >= DUPE_BUDGET, 'seulement ' + dupes + ' doublons : baisser DUPE_BUDGET à ' + dupes + ' pour verrouiller le gain');
   console.log('  doublons        ' + dupes + ' (budget ' + DUPE_BUDGET + ')');
 
+  /* Les listages d'un même mot ou d'une même phrase disent la même chose : les mêmes sens
+     dans chaque langue, le même article, la même variante flamande ; et une remarque, s'il y
+     en a une, n'est que sur le premier. Une fois les suivants devenus des alias, seul le
+     premier se montre : ce qu'un alias dirait seul serait perdu sans bruit. Un groupe, c'est
+     le genre d'élément et le néerlandais tel qu'il est écrit, jetons compris, sans casse ni
+     ponctuation. */
+  const listings = new Map();
+  RAW.units.forEach(u => ['word', 'phrase'].forEach(kind => (u[kind + 's'] || []).forEach((x, i) => {
+    const key = kind + '|' + U.norm(x.nl);
+    if (!listings.has(key)) listings.set(key, []);
+    listings.get(key).push(Object.assign({}, x, { id: u.id + ':' + kind[0] + i }));
+  })));
+  const senseSet = (x, l) => [...new Set(NL.gloss.senses(x, l))].sort().join(' / ');
+  const orNull = v => (v === undefined ? null : v);
+  let twice = 0, disagree = 0;
+  listings.forEach(group => {
+    if (group.length < 2) return;
+    twice++;
+    const first = group[0];
+    group.slice(1).forEach(x => {
+      const differ = NL.gloss.LANGS.filter(l => senseSet(x, l) !== senseSet(first, l))
+        .map(l => l + ' « ' + NL.gloss.of(x, l) + ' » / « ' + NL.gloss.of(first, l) + ' »')
+        .concat(['art', 'be'].filter(k => orNull(x[k]) !== orNull(first[k])))
+        .concat(x.note ? ['une remarque, que seul le premier listage porte'] : []);
+      if (differ.length) disagree++;
+      ok(!differ.length, x.id + ' « ' + x.nl + ' » est un alias de ' + first.id + ' et ne dit pas la même chose : ' + differ.join(', '));
+    });
+  });
+  ok(twice > 0, 'aucun élément listé deux fois : le contrôle des alias ne compare rien');
+  console.log('  alias           ' + twice + ' élément(s) listé(s) deux fois, ' + disagree + ' en désaccord');
+
   /* ====================================== 5. chaque id garde son néerlandais */
   /* Les ids sont des positions (« overleven:w3 ») : insérer, retirer ou déplacer un
      mot donne son historique à un autre. Ajouter en fin d'unité passe ; une

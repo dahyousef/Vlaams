@@ -172,7 +172,7 @@ NL.content.units = NL.content.units || [];
       W('de dorst', { fr: 'la soif', en: 'thirst' }, 'de'),
       W('kosten', { fr: 'coûter', en: 'to cost' }),
       W('alles', { fr: 'tout', en: 'everything' }),
-      W('meenemen', { fr: 'emporter', en: 'to take away' })
+      W('meenemen', { fr: 'emporter', en: 'to take away / to take along' }, null, null, { fr: 'Se sépare : ik neem mijn laptop mee.', en: 'Separable: ik neem mijn laptop mee.' })
     ],
     phrases: [
       P('Een half wit, gesneden alstublieft.', { fr: 'Un demi pain blanc, tranché s’il vous plaît.', en: 'Half a white loaf, sliced, please.' }, null, { fr: 'Apprends-la mot pour mot et la boulangerie cesse d’être effrayante.', en: 'Learn it word for word and the bakery stops being frightening.' }),

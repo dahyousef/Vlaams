@@ -111,7 +111,7 @@ NL.content.units = NL.content.units || [];
       W('ontbijten', { fr: 'déjeuner (le matin)', en: 'to have breakfast' }, null, null, { fr: 'En Belgique on déjeune le matin, on dîne à midi, on soupe le soir.', en: null }),
       W('vertrekken', { fr: 'partir', en: 'to leave' }),
       W('thuiskomen', { fr: 'rentrer', en: 'to come home' }, null, null, { fr: 'Se sépare : ik kom om zes uur thuis.', en: 'Separable: ik kom om zes uur thuis.' }),
-      W('meenemen', { fr: 'emporter', en: 'to take along' }, null, null, { fr: 'Se sépare : ik neem mijn laptop mee.', en: 'Separable: ik neem mijn laptop mee.' }),
+      W('meenemen', { fr: 'emporter', en: 'to take away / to take along' }),
       W('afspreken', { fr: 'convenir d’un rendez-vous', en: 'to arrange to meet' }, null, null, { fr: 'Se sépare : we spreken morgen af.', en: 'Separable: we spreken morgen af.' }),
       W('opbellen', { fr: 'téléphoner', en: 'to phone' }, null, 'bellen, opbellen'),
       W('uitleggen', { fr: 'expliquer', en: 'to explain' }),
@@ -253,7 +253,7 @@ NL.content.units = NL.content.units || [];
       W('ambetant', { fr: 'embêtant', en: 'annoying' }, null, null, { fr: 'Vient tout droit du français « embêtant ». Le nord dirait « vervelend ».', en: 'Comes straight from French “embêtant”. The north would say “vervelend”.' }),
       W('amai', { fr: 'oh là là', en: 'wow' }, null, null, { fr: 'Le mot le plus flamand qui soit. Surprise, compassion, admiration.', en: 'The most Flemish word there is. Surprise, sympathy, admiration.' }),
       W('goesting', { fr: 'l’envie', en: 'desire / urge' }, null, null, { fr: 'L’équivalent flamand de « zin ». « Ik heb er geen goesting in » = je n’ai pas envie.', en: 'The Flemish equivalent of “zin”. “Ik heb er geen goesting in” = I do not feel like it.' }),
-      W('rustig', { fr: 'calme', en: 'calm' }),
+      W('rustig', { fr: 'calme', en: 'calm / quiet' }),
       W('wandelen', { fr: 'se promener', en: 'to go for a walk' }),
       W('kijken', { fr: 'regarder', en: 'to watch / to look' }),
       W('gedaan', { fr: 'fini', en: 'over / done' }),
@@ -272,7 +272,7 @@ NL.content.units = NL.content.units || [];
       P('Dat was plezant.', { fr: 'C’était chouette.', en: 'That was great.' }),
       P('Ik heb er geen goesting in.', { fr: 'Je n’ai pas envie.', en: 'I do not feel like it.' }, null, { fr: 'Typiquement flamand. Utilise-le et les gens sourient.', en: 'Typically Flemish. Use it and people smile.' }),
       P('Een goed weekend nog!', { fr: 'Bon week-end !', en: 'Have a good weekend!' }, null, { fr: 'Le vendredi après-midi. Le « nog » n’est pas optionnel.', en: 'Friday afternoon. The “nog” is not optional.' }),
-      P('Tot maandag!', { fr: 'À lundi !', en: 'See you Monday!' })
+      P('Tot maandag.', { fr: 'À lundi.', en: 'See you on Monday.' })
     ]
   });
 })();
