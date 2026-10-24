@@ -59,11 +59,9 @@ NL.ex = (function () {
   /* Ce que la réponse tapée accepte pour un élément : la cible, ses variantes
      flamandes (une par virgule pour un mot, la phrase entière pour une phrase) et
      sa liste « also ». Un mot se tape avec ou sans article, comme la cible. */
-  const variants = item => !item.be ? []
-    : item.kind === 'word' ? String(item.be).split(',').map(f => f.trim()).filter(Boolean) : [item.be];
   function accepted(item) {
     const word = item.kind === 'word';
-    return U.uniq([item.nl].concat(variants(item), item.also || [])
+    return U.uniq([item.nl].concat(NL.content.beVariants(item), item.also || [])
       .map(x => U.norm(word ? U.bare(x) : x)).filter(Boolean));
   }
   /* Les éléments qui disent la même chose : taper l'un est juste pour l'autre. */
@@ -510,26 +508,32 @@ NL.ex = (function () {
      (src/content/decoys.js) : deux fautes qu'un apprenant ferait, aussi flamandes à l'œil que la
      bonne. Tirées parmi les formes flamandes des autres éléments, elles parlaient d'autre chose, et
      la bonne se devinait sans rien savoir. Un élément sans leurres écrits (un mot à soi, ou une
-     table pas encore remplie) les tire encore là. */
+     table pas encore remplie) les tire encore là : la forme que l'exercice propose pour un autre
+     élément, jamais une qui serait juste ici, ni une forme que l'élément accepte (« salut », qui
+     ouvre la liste de tot ziens, est aussi à hallo), ni celle d'un élément au même sens
+     (goeiendag face à hallo). */
   function vlaamsDecoys(item) {
     if (item.decoys) return item.decoys;
-    const any = NL.content.allItems().filter(x =>
-      x.be && x.id !== item.id && U.norm(x.be) !== U.norm(x.nl) && U.norm(x.be) !== U.norm(item.be));
+    const mine = accepted(item), first = x => NL.content.beVariants(x)[0];
+    const key = item.kind === 'word' ? f => U.norm(U.bare(f)) : U.norm;
+    const any = NL.content.allItems().filter(x => x.be && x.id !== item.id && NL.srs.supports(x, 'vlaams') &&
+      !NL.gloss.sameMeaning(x, item) && mine.indexOf(key(first(x))) < 0);
     /* Une phrase contre deux mots isolés se devine sans rien savoir : les
        leurres viennent d'abord du même genre d'élément. */
-    const same = any.filter(x => x.kind === item.kind);
-    const pool = same.length >= 2 ? same : any;
-    return U.sample(pool, 2).map(x => x.be);
+    const labels = xs => U.uniq(xs.map(first));
+    const same = labels(any.filter(x => x.kind === item.kind));
+    return U.sample(same.length >= 2 ? same : labels(any), 2);
   }
 
   /* La phrase standard est donnée : comment la dit-on ici ? Unique à cette app,
-     et la donnée existe déjà sur chaque élément. */
+     et la donnée existe déjà sur chaque élément. Un mot y propose la première forme
+     de sa liste (« hey » pour hallo, dont la liste est « hey, salut »). */
   R.vlaams = {
     id: 'vlaams', get kicker() { return NL.t.exVlaams; },
     asks: 'nl', answers: 'nl',
     given: chosenLabel,
     build(item) {
-      const opts = U.shuffle([{ label: item.be, ok: true }]
+      const opts = U.shuffle([{ label: NL.content.beVariants(item)[0], ok: true }]
         .concat(vlaamsDecoys(item).map(label => ({ label, ok: false }))));
       return { type: 'vlaams', item, opts };
     },
@@ -539,7 +543,7 @@ NL.ex = (function () {
     },
     ready: (t, L) => !!L.sel,
     judge: (t, L) => ({ ok: !!(L.sel && (t.opts[L.sel.i] || {}).ok) }),
-    answer: t => t.item.be
+    answer: t => NL.content.beVariants(t.item)[0]
   };
 
   /* Les lettres d'un mot, accents compris. Dans une regex, `\w` et `\b` ne voient que
@@ -676,7 +680,7 @@ NL.ex = (function () {
   function hereLine(item, shown, keepSame) {
     if (!item || !item.be) return '';
     const own = U.norm(U.bare(item.nl)), seen = [].concat(shown).filter(s => s != null).map(s => U.norm(U.bare(s)));
-    const forms = variants(item).filter(f => keepSame || (U.norm(U.bare(f)) !== own && seen.indexOf(U.norm(U.bare(f))) < 0));
+    const forms = NL.content.beVariants(item).filter(f => keepSame || (U.norm(U.bare(f)) !== own && seen.indexOf(U.norm(U.bare(f))) < 0));
     if (!forms.length) return '';
     return '<p class="v-be">' + NL.t.hereThey + ' ' + forms.map(f => '<span' + NL.gloss.attr('nl') + '>' + boldForm(item, f) + '</span>').join(', ') + '</p>';
   }

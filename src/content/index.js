@@ -177,6 +177,12 @@ NL.content = NL.content || {};
     };
   }
 
+  /* An item's be variants as the course writes them: a word lists its forms with
+     commas, the first being the one « Comment le dit-on ici ? » offers; a phrase
+     is one form, commas and all. */
+  const beVariants = item => !item || !item.be ? []
+    : item.kind === 'word' ? String(item.be).split(',').map(f => f.trim()).filter(Boolean) : [item.be];
+
   const scenario = id => (NL.content.scenarios || []).find(s => s.id === id) || null;
 
   /* Listening material is generated from what the scenarios already say, so
@@ -193,5 +199,5 @@ NL.content = NL.content || {};
     return out;
   }
 
-  Object.assign(NL.content, { allItems, refresh, byId, unit, itemsOf, unitOpen, unitComplete, frontier, unitProgress, courseProgress, met: MET, produced: PRODUCED, scenario, listenClips, fill, DEFAULTS, TABLES });
+  Object.assign(NL.content, { allItems, refresh, byId, unit, itemsOf, unitOpen, unitComplete, frontier, unitProgress, courseProgress, met: MET, produced: PRODUCED, scenario, listenClips, fill, DEFAULTS, TABLES, beVariants });
 })();

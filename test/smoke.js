@@ -730,16 +730,28 @@ NL.state.open().then(() => {
     });
     NL.gloss.use(was);
 
-    /* « Comment le dit-on ici ? » : une phrase face à deux mots isolés se devine. Seuls les
-       leurres tirés au hasard le peuvent : ceux qu'on écrit (src/content/decoys.js), test/content.js
-       les lit. */
-    let mixed = 0, vl = 0;
-    all.filter(i => i.kind === 'phrase' && !i.decoys && i.be && UU.norm(i.be) !== UU.norm(i.nl)).forEach(it => {
-      const t = NL.ex.get('vlaams').build(it); vl++;
-      const kinds = t.opts.filter(o => !o.ok).map(o => (all.find(x => x.be === o.label) || {}).kind);
-      if (kinds.some(k => k !== 'phrase')) mixed++;
+    /* « Comment le dit-on ici ? » : une phrase face à deux mots isolés se devine, un mot face à deux
+       phrases aussi, et un leurre peut être juste : une forme que l'élément accepte (« salut », qui
+       ouvre la liste de tot ziens, est aussi à hallo), ou celle d'un élément au même sens (goeiendag
+       face à hallo). Seuls les leurres tirés au hasard le peuvent : ceux qu'on écrit
+       (src/content/decoys.js), test/content.js les lit. Un leurre tiré est la forme que l'exercice
+       propose pour un autre élément, la première de sa liste. Soixante tirages par élément : hallo
+       a une chance sur sept de tirer « salut » à chacun. */
+    let mixed = 0, right = 0, vl = 0;
+    const firstBe = x => NL.content.beVariants(x)[0];
+    all.filter(i => !i.decoys && NL.srs.supports(i, 'vlaams')).forEach(it => {
+      const mine = NL.ex.accepted(it), key = it.kind === 'word' ? f => UU.norm(UU.bare(f)) : UU.norm;
+      for (let k = 0; k < 60; k++) {
+        const t = NL.ex.get('vlaams').build(it); vl++;
+        t.opts.filter(o => !o.ok).forEach(o => {
+          const from = all.filter(x => x.id !== it.id && firstBe(x) === o.label);
+          if (!from.length || from.some(x => x.kind !== it.kind)) mixed++;
+          if (mine.indexOf(key(o.label)) >= 0 || from.some(x => NL.gloss.sameMeaning(x, it))) right++;
+        });
+      }
     });
-    ok(mixed === 0, 'standaard/Vlaams paired a sentence with single-word distractors ' + mixed + ' of ' + vl + ' times');
+    ok(mixed === 0, 'standaard/Vlaams paired an item with a distractor of another kind ' + mixed + ' times in ' + vl);
+    ok(right === 0, 'standaard/Vlaams offered a right answer as a wrong one ' + right + ' times in ' + vl + ': a form the item accepts, or the form of an item with the same meaning');
     console.log('  ' + built + ' QCM construits, deuxième bonne réponse parmi les leurres : ' + second);
     ok(second === 0, 'a distractor was another correct answer, ' + second + ' times (e.g. ' + example + ')');
   }

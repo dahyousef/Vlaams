@@ -341,6 +341,31 @@ NL.state.open().then(() => {
   }
 
   /* ------------------------------------------------------------------ */
+  console.log('\n« COMMENT LE DIT-ON ICI ? » POUR UN MOT — à l’échelon 1, s’il a sa forme d’ici');
+  /* Un mot qui a sa forme flamande la rencontre à l'échelon 1, comme une phrase : l'exercice
+     montre le néerlandais standard et propose la première forme de sa liste (« hey » pour hallo,
+     dont la liste est « hey, salut »). Quand cette première forme est le néerlandais même
+     (« ja, jaja » pour ja), il n'y a rien à demander, et l'exercice ne se propose pas. */
+  {
+    fresh();
+    const word = nl => NL.content.allItems().find(i => i.kind === 'word' && i.nl === nl);
+    [['hallo', true], ['natuurlijk', true], ['de vergadering', true], ['ja', false], ['de dokter', false]].forEach(([nl, want]) => {
+      const it = word(nl);
+      if (!it) { ok(false, 'the fixture is gone: no word « ' + nl + ' »'); return; }
+      ok(NL.srs.supports(it, 'vlaams') === want, '« ' + nl + ' » (be « ' + it.be + ' ») ' + (want ? 'cannot carry' : 'carries') + ' « Comment le dit-on ici ? »');
+    });
+    const phrase = NL.content.allItems().find(i => i.nl === 'Is dat alles?');
+    ok(!!phrase && NL.srs.supports(phrase, 'vlaams'), 'the phrase « Is dat alles? » no longer carries « Comment le dit-on ici ? »');
+    ok(NL.srs.RUNGS.word[1].indexOf('vlaams') >= 0, 'word rung 1 offers ' + NL.srs.RUNGS.word[1].join(', ') + ', not « Comment le dit-on ici ? »');
+    const hallo = word('hallo'), seen = {};
+    put(hallo, 1, T0);
+    for (let k = 0; k < 40; k++) seen[NL.srs.exerciseFor(hallo)] = 1;
+    ok(seen.vlaams, 'hallo on rung 1 is asked ' + Object.keys(seen).join(', ') + ', never « Comment le dit-on ici ? »');
+    const words = NL.content.allItems().filter(i => i.kind === 'word' && NL.srs.supports(i, 'vlaams'));
+    console.log('  ' + words.length + ' mots le portent, dont hallo à l’échelon 1 (' + Object.keys(seen).sort().join(', ') + ') ; ni ja ni de dokter');
+  }
+
+  /* ------------------------------------------------------------------ */
   console.log('\nCE QUE LA SPÉCIFICATION NE DIT PAS, ET QUI ARRIVE');
   {
     /* Séance quittée en route, avant le renforcement des rencontres : rien n'est perdu,

@@ -253,6 +253,33 @@ NL.state.open().then(() => {
     console.log('  vlaams         « Is da alles? » et ses deux leurres écrits, rien d’autre');
   }
 
+  /* Un mot à l'échelon 1 qui a sa forme flamande se voit demander « Comment le dit-on ici ? ».
+     La bonne option est la première forme de sa liste : « hey » pour hallo, dont la liste est
+     « hey, salut ». Sans leurres écrits, les deux autres sont la première forme d'autres mots,
+     et aucune n'est juste pour hallo : ni une forme qu'il accepte (« salut » ouvre la liste de
+     tot ziens), ni celle d'un mot au même sens (goeiedag). Choisie, la bonne compte juste. */
+  {
+    fresh();
+    const it = find('hallo');
+    const first = x => x.be.split(',')[0].trim();
+    if (!ask(it, 'vlaams', 1, 'dictation')) ok(false, 'a learner at word rung 1 is never asked ' + say('hallo') + ' in « Comment le dit-on ici ? »');
+    else {
+      const shown = Array.from(B.app.innerHTML.matchAll(/data-opt="\d+"[^>]*><span class="opt-key">\d+<\/span><span[^>]*>([\s\S]*?)<\/span><\/button>/g), m => decode(m[1]));
+      const others = shown.filter(l => l !== 'hey');
+      const words = NL.content.allItems().filter(x => x.kind === 'word' && x.be && x.id !== it.id);
+      const twins = words.filter(x => NL.gloss.sameMeaning(x, it)).map(first);
+      ok(shown.length === 3 && others.length === 2, say('hallo') + ' offers ' + JSON.stringify(shown) + ', not « hey » and two others');
+      ok(others.every(l => words.map(first).indexOf(l) >= 0), say('hallo') + ' offers ' + JSON.stringify(others) + ' beside « hey », not the first Flemish form of two other words');
+      ok(others.every(l => NL.ex.accepted(it).indexOf(U.norm(U.bare(l))) < 0 && twins.indexOf(l) < 0),
+        say('hallo') + ' offers a right answer as a wrong one: ' + JSON.stringify(others));
+      answer.right();
+      const v = verdict(it);
+      ok(v.right && v.be === null && v.answer === null, say('hallo') + ', answered « hey », gives ' + v.text);
+    }
+    S.abandon();
+    console.log('  vlaams         « hallo » à l’échelon 1 : « hey » parmi deux formes d’autres mots, et juste');
+  }
+
   console.log('\nLE PANNEAU');
   /* « Comment le dit-on ici ? » : passé, la variante est la réponse, une seule
      fois, et ce qui change par rapport à la phrase standard du sujet est en gras.

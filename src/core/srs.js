@@ -64,10 +64,13 @@ NL.srs = (function () {
      hasard (test/pace.js). Celle d'une phrase ou d'une expression se range en
      tuiles : les phrases empruntent donc « écrire » à l'échelon 4, et une
      règle de grammaire n'y garde qu'« écrire ». « Dis-le » reste où il était. */
+  /* « Comment le dit-on ici ? » vient à l'échelon 1 d'un mot comme d'une phrase : un mot qui a
+     sa forme flamande la rencontre là, quand la première forme de sa liste n'est pas son
+     néerlandais (supports). */
   const RUNGS = {
     word: [
       ['pick', 'recall'],
-      ['article', 'intrus', 'dictation'],
+      ['article', 'intrus', 'dictation', 'vlaams'],
       ['dictation', 'type'],
       ['type', 'dictation', 'speak'],
       ['type', 'cloze', 'dictation'],
@@ -163,7 +166,12 @@ NL.srs = (function () {
     const words = NL.util.tiles(carrier).length;
     switch (name) {
       case 'article': return !!item.art;
-      case 'vlaams': return !!item.be && NL.util.norm(item.be) !== NL.util.norm(item.nl);
+      /* L'exercice propose la première forme flamande de l'élément : elle doit dire autre chose
+         que le néerlandais standard. « ja, jaja » pour ja n'a rien à demander. */
+      case 'vlaams': {
+        const first = NL.content.beVariants(item)[0], bare = item.kind === 'word' ? NL.util.bare : String;
+        return !!first && NL.util.norm(bare(first)) !== NL.util.norm(bare(item.nl));
+      }
       case 'bank': case 'cloze': case 'order': case 'corrige': return words >= 3;
       case 'open': return !!item.open;
       case 'intrus': return item.kind === 'word' && !!item.art;
