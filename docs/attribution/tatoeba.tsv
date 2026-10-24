@@ -1,0 +1,7 @@
+# Les phrases de src/content/sourced.js tirées de Tatoeba (https://tatoeba.org), CC BY 2.0 FR
+# (https://creativecommons.org/licenses/by/2.0/fr/) : une ligne par phrase, son mot, puis le numéro
+# et l'auteur de la phrase néerlandaise, de sa traduction anglaise et de sa traduction française.
+# Un auteur que Tatoeba ne nomme pas s'écrit « - ». adapted dit quelle traduction le cours a
+# changée : « - », « en », « fr » ou « en fr ». Merge du genre examples
+# (tools/content/kinds/examples.js) récrit ce fichier entier ; ATTRIBUTION.md dit pourquoi.
+word	nld	nld_owner	eng	eng_owner	fra	fra_owner	adapted

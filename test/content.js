@@ -139,6 +139,79 @@ NL.state.open().then(() => {
   ok(ahead >= AHEAD_BUDGET, 'seulement ' + ahead + ' phrases empruntent en avant : baisser AHEAD_BUDGET à ' + ahead + ' pour verrouiller le gain');
   console.log('  séquence        ' + ahead + ' / ' + sentences + ' phrases empruntent en avant (budget ' + AHEAD_BUDGET + ')');
 
+  /* Les phrases sourcées, src/content/sourced.js : tirées de Tatoeba (src, le numéro de la
+     phrase) ou écrites pour le cours (src 'gen'), rangées sous le néerlandais du mot tel que son
+     premier listage l'écrit. src/content/examples.js, chargé juste après, les pose sur le mot
+     comme les siennes : les contrôles 1, 3 et 6 et test/dehet.js les lisent donc comme les
+     autres. Ici : chaque clé est un mot du cours qui n'a pas aussi des phrases écrites à la
+     main ; chaque phrase a ses cinq champs, un trou que le texte à trous sait cacher, et aucun
+     des noms par défaut ; chaque phrase de Tatoeba est créditée dans
+     docs/attribution/tatoeba.tsv, et le fichier ne crédite qu'elles ; aucune n'emploie une forme
+     que le cours n'a pas encore enseignée. */
+  const sourced = (NL.content.byDutch || {}).sourced, sr = NL.content.sourcedReport;
+  ok(!!sourced && !!sr, 'src/content/sourced.js n’est pas chargé : l’inscrire dans SRC (build.sh), juste avant src/content/examples.js');
+  ok(!sr || sr.missing.length === 0, 'src/content/sourced.js : ' + (sr ? sr.missing.join(', ') : '') + ' ne correspond à aucun mot du cours');
+  const FIELDS = ['en', 'fr', 'gap', 'nl', 'src'];
+  const line = s => typeof s === 'string' && s.trim() !== '' && !/[\r\n]/.test(s);
+  const credited = [], keys = new Set(), neverTaught = [];
+  let fromSource = 0;
+  RAW.units.forEach((u, ui) => (u.words || []).forEach((w, i) => {
+    if (!sourced || !Object.prototype.hasOwnProperty.call(sourced, w.nl) || keys.has(w.nl)) return;
+    keys.add(w.nl);
+    const where = u.id + ':w' + i + ' « ' + w.nl + ' »';
+    ok(Array.isArray(sourced[w.nl]) && sourced[w.nl].length >= 1 && sourced[w.nl].length <= 2, where + ' : une ou deux phrases dans src/content/sourced.js, pas ' + JSON.stringify(sourced[w.nl]));
+    if (!Array.isArray(sourced[w.nl])) return;
+    ok(JSON.stringify(w.drills || []) === JSON.stringify(sourced[w.nl]), where + ' a des phrases dans src/content/examples.js et dans src/content/sourced.js : les garder à un seul endroit');
+    const own = sequence.forms(w, NL);
+    sourced[w.nl].forEach((d, j) => {
+      fromSource++;
+      const at = where + ' phrase ' + (j + 1);
+      ok(Object.keys(d).sort().join() === FIELDS.join(), at + ' : ses champs sont ' + Object.keys(d).sort().join(', ') + ', pas ' + FIELDS.join(', '));
+      ok((Number.isInteger(d.src) && d.src > 0) || d.src === 'gen', at + ' : src vaut le numéro d’une phrase de Tatoeba ou « gen », pas ' + JSON.stringify(d.src));
+      ok(['nl', 'fr', 'en', 'gap'].every(k => line(d[k])), at + ' : nl, fr, en et gap tiennent chacun sur une ligne, non vide');
+      if (!line(d.nl) || !line(d.gap)) return;
+      const cloze = NL.ex.get('cloze').build(Object.assign({}, NL.content.byId(u.id + ':w' + i), { drills: [d] }));
+      ok(cloze.gap === d.gap && cloze.shown !== d.nl, at + ' : le texte à trous ne sait pas cacher « ' + d.gap + ' » dans « ' + d.nl + ' »');
+      ok(![d.nl, d.fr, d.en].some(s => spelling.named(s, NL)), at + ' : une phrase sourcée n’a ni jeton ni nom par défaut (NL.content.DEFAULTS)');
+      const never = sequence.unmet(d.nl, ui, first, new Set([...own, ...tokens(d.gap)]));
+      if (never.length) neverTaught.push(at + ' : ' + never.join(', '));
+      if (Number.isInteger(d.src)) credited.push(w.nl + '\t' + d.src);
+    });
+  }));
+  const CREDITS = 'word\tnld\tnld_owner\teng\teng_owner\tfra\tfra_owner\tadapted';
+  const creditFile = path.join(ROOT, 'docs', 'attribution', 'tatoeba.tsv');
+  const rows = fs.existsSync(creditFile) ? fs.readFileSync(creditFile, 'utf8').split(/\r?\n/).filter(l => l && l[0] !== '#') : [];
+  ok(rows[0] === CREDITS, 'docs/attribution/tatoeba.tsv manque, ou sa première ligne n’est pas « ' + CREDITS.replace(/\t/g, ' ') + ' »');
+  const cells = rows.slice(1).map(l => l.split('\t'));
+  cells.forEach(c => ok(c.length === 8 && c.every(x => x !== ''), 'docs/attribution/tatoeba.tsv : « ' + c.join(' ') + ' » n’a pas ses huit colonnes remplies'));
+  const inFile = cells.map(c => c[0] + '\t' + c[1]);
+  credited.filter(p => inFile.indexOf(p) < 0).forEach(p => ok(false, 'la phrase Tatoeba ' + p.split('\t')[1] + ' de « ' + p.split('\t')[0] +
+    ' » n’est pas créditée dans docs/attribution/tatoeba.tsv : relancer Merge'));
+  inFile.filter(p => credited.indexOf(p) < 0).forEach(p => ok(false, 'docs/attribution/tatoeba.tsv crédite la phrase ' + p.split('\t')[1] + ' de « ' +
+    p.split('\t')[0] + ' », qui n’est pas dans src/content/sourced.js : relancer Merge'));
+  /* Une phrase sourcée n'emploie, hors des formes de son mot et de son trou, que ce que le cours
+     a enseigné jusqu'à l'unité du mot (#12, récit 39) : pas une forme jamais enseignée, pas même
+     fléchie d'un mot vu (test/lib/sequence.js dit pourquoi). Check le tient phrase par phrase ;
+     ce contrôle le tient ensuite, quand le cours change autour d'elles. Zéro, pas un budget. */
+  ok(neverTaught.length === 0, neverTaught.length + ' phrase(s) sourcée(s) emploient ce que le cours n’a pas encore enseigné à l’unité de leur mot : ' +
+    neverTaught.join(' ; ') + ' — enseigner la forme plus tôt, ou retirer la phrase');
+  /* Une phrase posée dans sourced.js donne au mot les exercices de phrase : une page chargée avec,
+     à la place de sourced.js dans SRC, une table d'une seule phrase pour un mot qui n'en a pas
+     d'écrite à la main, le montre. */
+  const lone = items.find(it => it.kind === 'word' && it.art && it.nl.indexOf('{') < 0 && U.tiles(it.nl).length < 3 && (it.drills || []).every(d => 'src' in d));
+  const seeded = { [lone.nl]: [{ nl: 'Waar is ' + lone.nl + ' nu?', fr: '-', en: '-', gap: U.bare(lone.nl), src: 1 }] };
+  fs.mkdirSync(path.join(ROOT, '.cache'), { recursive: true });
+  const TMP = fs.mkdtempSync(path.join(ROOT, '.cache', 'sourced-'));
+  fs.writeFileSync(path.join(TMP, 'sourced.js'), 'NL.content.byDutch = NL.content.byDutch || {};\nNL.content.byDutch[\'sourced\'] = ' + JSON.stringify(seeded) + ';\n');
+  const seededAt = path.relative(ROOT, path.join(TMP, 'sourced.js')).split(path.sep).join('/');
+  const P = browser.open({ root: ROOT, seed: browser.SEED, skip: [browser.APP],
+    files: browser.sources(ROOT).map(f => (f === 'src/content/sourced.js' ? seededAt : f)) }).NL;
+  const pit = P.content.byId(lone.id);
+  ok(JSON.stringify(pit.drills) === JSON.stringify(seeded[lone.nl]) && P.srs.supports(pit, 'cloze') && P.ex.get('cloze').build(pit).gap === U.bare(lone.nl),
+    'une phrase de src/content/sourced.js ne donne pas à ' + lone.id + ' « ' + lone.nl + ' » son texte à trous');
+  fs.rmSync(TMP, { recursive: true, force: true });
+  console.log('  sourcées        ' + fromSource + ' phrase(s) sur ' + keys.size + ' mot(s), ' + credited.length + ' de Tatoeba créditée(s)');
+
   /* ========================================================== 4. alias */
   /* Un mot ou une phrase listé dans deux unités est un seul élément : build() garde le
      premier listage, dans l'ordre du cours, et fait des suivants ses alias. Sinon il serait
