@@ -102,9 +102,10 @@ NL.gloss = (function () {
     return U.ratio(U.bare(item.nl), g) > 0.62;
   }
 
-  /* Une prose du cours qui porte des exemples en néerlandais : <span class="ex"> est du néerlandais,
-     et le dit à un lecteur d'écran. C'est ici, et nulle part ailleurs, que cette règle s'applique. */
-  const prose = html => String(html == null ? '' : html).replace(/<span class="ex">/g, '<span class="ex"' + attr('nl') + '>');
+  /* Une prose du cours qui porte des exemples en néerlandais : <span class="ex">, et toute balise
+     class="nl" (<i class="nl">Morgen ik ga</i>), est du néerlandais, et le dit à un lecteur d'écran.
+     C'est ici, et nulle part ailleurs, que cette règle s'applique : le cours n'écrit aucun lang="…". */
+  const prose = html => String(html == null ? '' : html).replace(/<(\w+) class="(ex|nl)">/g, '<$1 class="$2"' + attr('nl') + '>');
 
   /* La balise de chaque langue, pour un lecteur d'écran : les langues lues et le néerlandais
      du cours. C'est la seule table : aucun autre fichier n'écrit lang="…". */
@@ -115,6 +116,12 @@ NL.gloss = (function () {
   const attr = l => ' lang="' + tag(l) + '"';
   /* L'attribut lang d'un sens ou d'un texte montré : la langue où il se lit. */
   const langAttr = x => attr(langOf(x));
+  /* Une prose du cours en texte simple (une note, une règle, une consigne), lue par of() et
+     échappée : ce qu'elle cite entre « » ou “ ” est du néerlandais, déclaré nl-BE. Les guillemets
+     et les espaces qui les bordent restent dehors ; une citation vide ne déclare rien. */
+  const QUOTES = /(«\s*)([^«»]*?[^\s«»])(\s*»)|(“\s*)([^“”]*?[^\s“”])(\s*”)/g;
+  const mark = (open, inner, close) => open + '<span' + attr('nl') + '>' + inner + '</span>' + close;
+  const quoted = x => U.esc(of(x)).replace(QUOTES, (m, a, q, b, c, r, d) => a !== undefined ? mark(a, q, b) : mark(c, r, d));
 
-  return { LANGS, TAGS, prose, use, current, other, has, langOf, tag, attr, langAttr, of, meaning, pair, bare, senses, sameSense, sameMeaning, wordClass, cognate };
+  return { LANGS, TAGS, prose, quoted, use, current, other, has, langOf, tag, attr, langAttr, of, meaning, pair, bare, senses, sameSense, sameMeaning, wordClass, cognate };
 })();

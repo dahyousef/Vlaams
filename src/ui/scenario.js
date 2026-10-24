@@ -27,7 +27,7 @@
             '<span class="scn-body">' +
             '<span class="eyebrow">' + esc(NL.gloss.of(s.place)) + '</span>' +
             '<b>' + esc(NL.gloss.of(s.title)) + '</b>' +
-            '<i>' + esc(NL.gloss.of(s.blurb)) + '</i></span>' +
+            '<i>' + NL.gloss.quoted(s.blurb) + '</i></span>' +
             '<span class="scn-go">' + (isDone ? NL.t.talkDone : NL.t.start) + '</span></button>';
         });
       });
@@ -97,8 +97,8 @@
       if (P.phase === 'them') {
         panel = '<button class="btn btn-blue wide" data-step="next">' + NL.t.next + '</button>';
       } else if (P.phase === 'choose') {
-        panel = '<p class="ask">' + esc(NL.gloss.of(step.you.ask)) + '</p>' +
-          NL.ui.ifText(step.you.hint, 'p', 'ask-hint') +
+        panel = '<p class="ask">' + NL.gloss.quoted(step.you.ask) + '</p>' +
+          NL.ui.ifProse(step.you.hint, 'p', 'ask-hint') +
           '<div class="choices">' + step.you.choices.map((c, i) =>
             '<button class="choice" data-choice="' + i + '"><b' + NL.gloss.attr('nl') + '>' + esc(c.nl) + '</b><i' + NL.gloss.langAttr(c) + '>' + esc(NL.gloss.of(c)) + '</i></button>').join('') +
           '</div>';
@@ -108,10 +108,10 @@
           '<p class="say-en"' + NL.gloss.langAttr(c) + '>' + esc(NL.gloss.of(c)) + '</p>' +
           '<button class="speaker slow inline" data-say="' + esc(c.nl) + '" data-slow="1" aria-label="' + NL.t.slow + '">' + ICON.turtle() + '</button></div>' +
           micPanel(P.speech, c.nl) +
-          NL.ui.ifText(c.note, 'p', 'say-note');
+          NL.ui.ifProse(c.note, 'p', 'say-note');
       } else if (P.phase === 'done') {
         panel = '<div class="scn-done"><h2>' + NL.t.scnOver + '</h2>' +
-          '<p>' + esc(NL.gloss.of(s.outro)) + '</p>' +
+          '<p>' + NL.gloss.quoted(s.outro) + '</p>' +
           '<div class="tally"><div class="tally-box gold"><div class="t-n">+12</div><div class="t-l">' + NL.t.tallyXp + '</div></div>' +
           '<div class="tally-box blue"><div class="t-n">' + P.spoken + '/' + P.tried + '</div><div class="t-l">' + NL.t.micSaidIt + '</div></div></div>' +
           '<button class="btn btn-primary wide" data-step="again">' + NL.t.replay + '</button>' +

@@ -272,13 +272,12 @@ NL.state.open().then(() => {
      NL.gloss.attr writes the attribute of a language and NL.gloss.langAttr that of a meaning.
      #75.2: a lang="…" written in the code, or an en-GB written outside gloss.js, is a second
      source, and the two drift apart. data-display-lang="…" is not a lang attribute. src/content
-     writes lang="nl-BE" in its prose until E1 gives it class="nl". */
+     marks its Dutch with class="nl", which NL.gloss.prose turns into the attribute. */
   ok(sources.indexOf('src/core/gloss.js') >= 0, 'the lang check looks for src/core/gloss.js, which build.sh no longer lists');
-  const contentFile = f => f.indexOf('src/content/') === 0;
   sources.filter(f => f !== 'src/core/gloss.js').forEach(f => {
     const src = read(f);
     const written = src.split('\n').map((l, i) => /(?<![\w-])lang="/.test(l) ? i + 1 : 0).filter(Boolean);
-    ok(contentFile(f) || written.length === 0, f + ':' + written.join(',') + ': writes a lang attribute by hand; use NL.gloss.attr or NL.gloss.langAttr');
+    ok(written.length === 0, f + ':' + written.join(',') + ': writes a lang attribute by hand; use NL.gloss.attr or NL.gloss.langAttr');
     ok(src.indexOf('en-GB') < 0, f + ': en-GB is written outside gloss.js; use NL.gloss.tag');
   });
 

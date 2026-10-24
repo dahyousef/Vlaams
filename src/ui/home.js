@@ -51,7 +51,7 @@
       html += tile(scn.icon, NL.gloss.of(scn.title), NL.gloss.of(scn.place), 'scn', scn.id);
       html += tile('\u{1F3A7}', t.listenTitle, t.listenUnderstandSub, 'go', 'luisteren');
       const sheet = NL.content.sheets[(m.doneToday || 0) > 0 ? 1 : 0];
-      html += tile(sheet.icon, NL.gloss.of(sheet.title), NL.gloss.of(sheet.blurb), 'sheetid', sheet.id);
+      html += tile(sheet.icon, NL.gloss.of(sheet.title), NL.gloss.of(sheet.blurb), 'sheetid', sheet.id, NL.gloss.quoted);
       html += '</div></div>';
       return html;
     },
@@ -78,10 +78,11 @@
   }
 
   const stat = (n, l) => '<div class="stat-box"><div class="s-n">' + n + '</div><div class="s-l">' + esc(l) + '</div></div>';
-  const tile = (icon, title, sub, key, val) =>
+  /* Une tuile. Sa seconde ligne est montrée par `show` : échappée, ou NL.gloss.quoted pour une prose du cours. */
+  const tile = (icon, title, sub, key, val, show) =>
     '<button class="tile-card" data-' + key + '="' + esc(val) + '">' +
     '<span class="tc-icon">' + icon + '</span>' +
-    '<span class="tc-body"><b>' + esc(title) + '</b><i>' + esc(sub) + '</i></span>' +
+    '<span class="tc-body"><b>' + esc(title) + '</b><i>' + (show || esc)(sub) + '</i></span>' +
     '<span class="tc-cta">›</span></button>';
 
   /* ---------------------------------------------------- Parcours */
@@ -109,7 +110,7 @@
           '<h2>' + esc(NL.gloss.of(u.name)) + '<i class="uc-nl"' + NL.gloss.attr('nl') + '>' + esc(u.nlName || '') + '</i></h2></div>' +
           '<span class="uc-pct">' + p.met + '/' + p.total + '</span>' +
           '</div>' +
-          '<p class="uc-blurb">' + esc(NL.gloss.of(u.blurb)) + '</p>' +
+          '<p class="uc-blurb">' + NL.gloss.quoted(u.blurb) + '</p>' +
           '<p class="muted small">' + t.unitCounts(p.met, p.produce, p.total) + '</p>' +
           /* Le seuil est un compte à rebours, pas un mystère. */
           (open && p.toOpen > 0 && u !== NL.content.units[NL.content.units.length - 1]
@@ -128,7 +129,7 @@
       if (d.act === 'gram') {
         const g = (NL.content.patterns || []).find(x => x.id === el.dataset.id);
         if (g) NL.ui.openSheet({ custom: NL.ui.card(esc(NL.gloss.of(g.title)),
-          '<p class="rule">' + esc(NL.gloss.of(g.rule)) + '</p><div class="explain">' + NL.gloss.prose(NL.gloss.of(g.explain)) + '</div>' +
+          '<p class="rule">' + NL.gloss.quoted(g.rule) + '</p><div class="explain">' + NL.gloss.prose(NL.gloss.of(g.explain)) + '</div>' +
           '<div class="ex-list">' + g.drills.slice(0, 3).map(d2 =>
             '<button class="ex-row" data-say="' + esc(d2.nl) + '"><b' + NL.gloss.attr('nl') + '>' + esc(d2.nl) + '</b><i>' + esc(NL.gloss.of(d2)) + '</i></button>').join('') + '</div>',
           '<button class="btn btn-ghost wide" data-close="1">' + t.close + '</button>') });

@@ -360,7 +360,8 @@ NL.state.open().then(() => {
     ok(v.en.indexOf(t) >= 0, where + ' « ' + v.nl + ' » : « ' + v.en + ' » doit porter « ' + t + ' »');
   });
   /* Dans l'explication d'un point de grammaire, un <i> dont le texte est le même en français et en anglais est du
-     néerlandais (<i>Morgen ik ga</i>) ; <i>element</i> / <i>élément</i> diffèrent, c'est de la prose. Il porte lang="nl-BE". */
+     néerlandais (<i>Morgen ik ga</i>) ; <i>element</i> / <i>élément</i> diffèrent, c'est de la prose. Il porte class="nl",
+     que NL.gloss.prose déclare nl-BE : le cours n'écrit aucun lang="…". */
   { let seenI = 0;
     /* Chaque <i> sans balise dedans : la balise entière, et son texte, lu dans la balise même. */
     const iTags = s => Array.from(String(s).matchAll(/<i(?:\s[^>]*)?>([^<]*)<\/i>/g), m => ({ tag: m[0], text: m[1] }));
@@ -370,7 +371,7 @@ NL.state.open().then(() => {
       const en = iTags(ex.en).map(i => i.text);
       iTags(ex.fr).forEach(i => {
         seenI++;
-        if (en.indexOf(i.text) >= 0) ok(/^<i\s[^>]*lang="nl-BE"/.test(i.tag), g.id + ' : « ' + i.text + ' » est du néerlandais dans <i> : lui donner lang="nl-BE"');
+        if (en.indexOf(i.text) >= 0) ok(/^<i\s[^>]*class="nl"/.test(i.tag), g.id + ' : « ' + i.text + ' » est du néerlandais dans <i> : lui donner class="nl"');
       });
     });
     ok(seenI > 0, 'aucun <i> dans les explications de grammaire : le contrôle est creux'); }

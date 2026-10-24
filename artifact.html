@@ -822,9 +822,10 @@ NL.gloss = (function () {
     return U.ratio(U.bare(item.nl), g) > 0.62;
   }
 
-  /* Une prose du cours qui porte des exemples en néerlandais : <span class="ex"> est du néerlandais,
-     et le dit à un lecteur d'écran. C'est ici, et nulle part ailleurs, que cette règle s'applique. */
-  const prose = html => String(html == null ? '' : html).replace(/<span class="ex">/g, '<span class="ex"' + attr('nl') + '>');
+  /* Une prose du cours qui porte des exemples en néerlandais : <span class="ex">, et toute balise
+     class="nl" (<i class="nl">Morgen ik ga</i>), est du néerlandais, et le dit à un lecteur d'écran.
+     C'est ici, et nulle part ailleurs, que cette règle s'applique : le cours n'écrit aucun lang="…". */
+  const prose = html => String(html == null ? '' : html).replace(/<(\w+) class="(ex|nl)">/g, '<$1 class="$2"' + attr('nl') + '>');
 
   /* La balise de chaque langue, pour un lecteur d'écran : les langues lues et le néerlandais
      du cours. C'est la seule table : aucun autre fichier n'écrit lang="…". */
@@ -835,8 +836,14 @@ NL.gloss = (function () {
   const attr = l => ' lang="' + tag(l) + '"';
   /* L'attribut lang d'un sens ou d'un texte montré : la langue où il se lit. */
   const langAttr = x => attr(langOf(x));
+  /* Une prose du cours en texte simple (une note, une règle, une consigne), lue par of() et
+     échappée : ce qu'elle cite entre « » ou “ ” est du néerlandais, déclaré nl-BE. Les guillemets
+     et les espaces qui les bordent restent dehors ; une citation vide ne déclare rien. */
+  const QUOTES = /(«\s*)([^«»]*?[^\s«»])(\s*»)|(“\s*)([^“”]*?[^\s“”])(\s*”)/g;
+  const mark = (open, inner, close) => open + '<span' + attr('nl') + '>' + inner + '</span>' + close;
+  const quoted = x => U.esc(of(x)).replace(QUOTES, (m, a, q, b, c, r, d) => a !== undefined ? mark(a, q, b) : mark(c, r, d));
 
-  return { LANGS, TAGS, prose, use, current, other, has, langOf, tag, attr, langAttr, of, meaning, pair, bare, senses, sameSense, sameMeaning, wordClass, cognate };
+  return { LANGS, TAGS, prose, quoted, use, current, other, has, langOf, tag, attr, langAttr, of, meaning, pair, bare, senses, sameSense, sameMeaning, wordClass, cognate };
 })();
 </script>
 <script>
@@ -3954,8 +3961,8 @@ NL.content.patterns = (function () {
       rule: { fr: 'Peu importe ce qui vient en premier, le verbe est le deuxième élément.', en: 'Whatever comes first, the verb is the second element.' },
       nl: 'Morgen ga ik naar Brussel.', fr: 'Demain je vais à Bruxelles.', en: 'Tomorrow I’m going to Brussels.',
       explain: {
-        fr: 'C’est la colonne vertébrale de toute phrase néerlandaise. Le verbe conjugué occupe la <b>deuxième</b> position — pas le deuxième mot, le deuxième <i>élément</i>. Commence par un complément de temps et le sujet passe derrière le verbe : <span class="ex">Morgen <b>ga</b> ik naar Brussel</span>, jamais <i lang="nl-BE">Morgen ik ga</i>. Le français ne fait pas ça, donc l’erreur revient pendant des années. La corriger tôt change immédiatement ta façon de sonner.',
-        en: 'This is the backbone of every Dutch sentence. The conjugated verb takes the <b>second</b> position — not the second word, the second <i>element</i>. Start with a time phrase and the subject drops behind the verb: <span class="ex">Morgen <b>ga</b> ik naar Brussel</span>, never <i lang="nl-BE">Morgen ik ga</i>. English does not do this, so the mistake keeps coming back for years. Fixing it early changes how you sound straight away.'
+        fr: 'C’est la colonne vertébrale de toute phrase néerlandaise. Le verbe conjugué occupe la <b>deuxième</b> position — pas le deuxième mot, le deuxième <i>élément</i>. Commence par un complément de temps et le sujet passe derrière le verbe : <span class="ex">Morgen <b>ga</b> ik naar Brussel</span>, jamais <i class="nl">Morgen ik ga</i>. Le français ne fait pas ça, donc l’erreur revient pendant des années. La corriger tôt change immédiatement ta façon de sonner.',
+        en: 'This is the backbone of every Dutch sentence. The conjugated verb takes the <b>second</b> position — not the second word, the second <i>element</i>. Start with a time phrase and the subject drops behind the verb: <span class="ex">Morgen <b>ga</b> ik naar Brussel</span>, never <i class="nl">Morgen ik ga</i>. English does not do this, so the mistake keeps coming back for years. Fixing it early changes how you sound straight away.'
       },
       drills: [
         D('Morgen ga ik naar Brussel.', { fr: 'Demain je vais à Bruxelles.', en: 'Tomorrow I’m going to Brussels.' }, 'ga'),
@@ -3971,8 +3978,8 @@ NL.content.patterns = (function () {
       rule: { fr: 'ik werk / jij werkt / hij werkt / wij werken.', en: 'ik werk / jij werkt / hij werkt / wij werken.' },
       nl: 'Ik werk bij {bedrijf}.', fr: 'Je travaille chez {bedrijf}.', en: 'I work at {bedrijf}.',
       explain: {
-        fr: 'Trois formes et tu as tout le présent : <span class="ex">ik werk</span>, <span class="ex">jij/hij werkt</span>, <span class="ex">wij/jullie/zij werken</span>. Bien plus simple que le français, qui en a cinq. Un seul piège : quand <b lang="nl-BE">jij</b> passe derrière le verbe — dans une question, ou après un complément de temps — le <span class="ex">-t</span> disparaît. <span class="ex">Werk jij morgen?</span>, pas <i lang="nl-BE">werkt jij</i>. Uniquement avec jij, jamais avec hij.',
-        en: 'Three forms and you have the whole present tense: <span class="ex">ik werk</span>, <span class="ex">jij/hij werkt</span>, <span class="ex">wij/jullie/zij werken</span>. One trap: when <b lang="nl-BE">jij</b> comes after the verb — in a question, or after a time phrase — the <span class="ex">-t</span> disappears. <span class="ex">Werk jij morgen?</span>, not <i lang="nl-BE">werkt jij</i>. Only with jij, never with hij.'
+        fr: 'Trois formes et tu as tout le présent : <span class="ex">ik werk</span>, <span class="ex">jij/hij werkt</span>, <span class="ex">wij/jullie/zij werken</span>. Bien plus simple que le français, qui en a cinq. Un seul piège : quand <b class="nl">jij</b> passe derrière le verbe — dans une question, ou après un complément de temps — le <span class="ex">-t</span> disparaît. <span class="ex">Werk jij morgen?</span>, pas <i class="nl">werkt jij</i>. Uniquement avec jij, jamais avec hij.',
+        en: 'Three forms and you have the whole present tense: <span class="ex">ik werk</span>, <span class="ex">jij/hij werkt</span>, <span class="ex">wij/jullie/zij werken</span>. One trap: when <b class="nl">jij</b> comes after the verb — in a question, or after a time phrase — the <span class="ex">-t</span> disappears. <span class="ex">Werk jij morgen?</span>, not <i class="nl">werkt jij</i>. Only with jij, never with hij.'
       },
       drills: [
         D('Ik werk bij {bedrijf}.', { fr: 'Je travaille chez {bedrijf}.', en: 'I work at {bedrijf}.' }, 'werk'),
@@ -4035,8 +4042,8 @@ NL.content.patterns = (function () {
       rule: { fr: 'een groot huis, mais het grote huis.', en: 'een groot huis, but het grote huis.' },
       nl: 'Het grote huis staat in de straat.', fr: 'La grande maison est dans la rue.', en: 'The big house is in the street.',
       explain: {
-        fr: 'Environ trois noms sur quatre prennent <span class="ex">de</span>, le reste prend <span class="ex">het</span>. <b>Ne traduis jamais depuis le français</b> : <span class="ex">het huis</span> est neutre alors que « la maison » est féminine, <span class="ex">het bureau</span> est neutre alors que « le bureau » est masculin. Les genres ne se correspondent pas du tout. Bonne nouvelle : ce n’est pas totalement arbitraire — voir la fiche <i>Les familles de het</i>. Le gain vient avec l’adjectif : il prend <span class="ex">-e</span> partout — <span class="ex">de grote fiets</span>, <span class="ex">het grote huis</span>, <span class="ex">een grote fiets</span> — sauf après <b lang="nl-BE">een</b> devant un mot <b>het</b> : <span class="ex">een groot huis</span>. Après le verbe, toujours nu : <span class="ex">het huis is groot</span>.',
-        en: 'About three nouns in four take <span class="ex">de</span>, the rest take <span class="ex">het</span>. <b>Never guess from the meaning</b>: English has no grammatical gender to lean on, so learn the article together with the noun — <span class="ex">het huis</span>, <span class="ex">de tafel</span>. Good news: it is not entirely arbitrary — see the sheet <i>The het families</i>. The payoff comes with the adjective: it takes <span class="ex">-e</span> everywhere — <span class="ex">de grote fiets</span>, <span class="ex">het grote huis</span>, <span class="ex">een grote fiets</span> — except after <b lang="nl-BE">een</b> before a <b>het</b> word: <span class="ex">een groot huis</span>. After the verb, always bare: <span class="ex">het huis is groot</span>.'
+        fr: 'Environ trois noms sur quatre prennent <span class="ex">de</span>, le reste prend <span class="ex">het</span>. <b>Ne traduis jamais depuis le français</b> : <span class="ex">het huis</span> est neutre alors que « la maison » est féminine, <span class="ex">het bureau</span> est neutre alors que « le bureau » est masculin. Les genres ne se correspondent pas du tout. Bonne nouvelle : ce n’est pas totalement arbitraire — voir la fiche <i>Les familles de het</i>. Le gain vient avec l’adjectif : il prend <span class="ex">-e</span> partout — <span class="ex">de grote fiets</span>, <span class="ex">het grote huis</span>, <span class="ex">een grote fiets</span> — sauf après <b class="nl">een</b> devant un mot <b>het</b> : <span class="ex">een groot huis</span>. Après le verbe, toujours nu : <span class="ex">het huis is groot</span>.',
+        en: 'About three nouns in four take <span class="ex">de</span>, the rest take <span class="ex">het</span>. <b>Never guess from the meaning</b>: English has no grammatical gender to lean on, so learn the article together with the noun — <span class="ex">het huis</span>, <span class="ex">de tafel</span>. Good news: it is not entirely arbitrary — see the sheet <i>The het families</i>. The payoff comes with the adjective: it takes <span class="ex">-e</span> everywhere — <span class="ex">de grote fiets</span>, <span class="ex">het grote huis</span>, <span class="ex">een grote fiets</span> — except after <b class="nl">een</b> before a <b>het</b> word: <span class="ex">een groot huis</span>. After the verb, always bare: <span class="ex">het huis is groot</span>.'
       },
       drills: [
         D('Het grote huis staat in de straat.', { fr: 'La grande maison est dans la rue.', en: 'The big house is in the street.' }, 'grote'),
@@ -4083,8 +4090,8 @@ NL.content.patterns = (function () {
       rule: { fr: 'hebben + ge...t/d, participe à la fin.', en: 'hebben + ge...t/d, participle at the end.' },
       nl: 'Ik heb dit weekend gewandeld.', fr: 'Je me suis promené ce week-end.', en: 'I went for a walk this weekend.',
       explain: {
-        fr: 'Sans ça, impossible de répondre à <i lang="nl-BE">hoe was uw weekend?</i>. Le néerlandais raconte le passé avec <span class="ex">hebben</span> (ou <span class="ex">zijn</span>) plus un participe garé <b>tout à la fin</b> de la phrase — c’est la différence avec le français, où le participe suit immédiatement l’auxiliaire : <span class="ex">Ik <b>heb</b> dit weekend <b>gewandeld</b></span>. Construis le participe avec <b>ge-</b> + radical + <b>-t</b> ou <b>-d</b> : werken → gewerkt, wandelen → gewandeld. Les verbes de mouvement et de changement prennent <span class="ex">zijn</span>, exactement comme le français prend « être » : <span class="ex">ik <b>ben</b> naar Brussel <b>geweest</b></span>.',
-        en: 'Without this, you cannot answer <i lang="nl-BE">hoe was uw weekend?</i>. Dutch tells the past with <span class="ex">hebben</span> (or <span class="ex">zijn</span>) plus a participle parked <b>at the very end</b> of the sentence — that is the difference from English, where the participle follows the auxiliary immediately: <span class="ex">Ik <b>heb</b> dit weekend <b>gewandeld</b></span>. Build the participle with <b>ge-</b> + stem + <b>-t</b> or <b>-d</b>: werken → gewerkt, wandelen → gewandeld. Verbs of movement and change take <span class="ex">zijn</span>: <span class="ex">ik <b>ben</b> naar Brussel <b>geweest</b></span>.'
+        fr: 'Sans ça, impossible de répondre à <i class="nl">hoe was uw weekend?</i>. Le néerlandais raconte le passé avec <span class="ex">hebben</span> (ou <span class="ex">zijn</span>) plus un participe garé <b>tout à la fin</b> de la phrase — c’est la différence avec le français, où le participe suit immédiatement l’auxiliaire : <span class="ex">Ik <b>heb</b> dit weekend <b>gewandeld</b></span>. Construis le participe avec <b>ge-</b> + radical + <b>-t</b> ou <b>-d</b> : werken → gewerkt, wandelen → gewandeld. Les verbes de mouvement et de changement prennent <span class="ex">zijn</span>, exactement comme le français prend « être » : <span class="ex">ik <b>ben</b> naar Brussel <b>geweest</b></span>.',
+        en: 'Without this, you cannot answer <i class="nl">hoe was uw weekend?</i>. Dutch tells the past with <span class="ex">hebben</span> (or <span class="ex">zijn</span>) plus a participle parked <b>at the very end</b> of the sentence — that is the difference from English, where the participle follows the auxiliary immediately: <span class="ex">Ik <b>heb</b> dit weekend <b>gewandeld</b></span>. Build the participle with <b>ge-</b> + stem + <b>-t</b> or <b>-d</b>: werken → gewerkt, wandelen → gewandeld. Verbs of movement and change take <span class="ex">zijn</span>: <span class="ex">ik <b>ben</b> naar Brussel <b>geweest</b></span>.'
       },
       drills: [
         D('Ik heb dit weekend gewandeld.', { fr: 'Je me suis promené ce week-end.', en: 'I went for a walk this weekend.' }, 'gewandeld'),
@@ -4719,11 +4726,11 @@ NL.content = NL.content || {};
 NL.content.sounds = [
   { g: 'eu', ipa: '/ø/', good: true, say: 'Tu l’as déjà : c’est le <b>eu</b> de <i>peu</i>, identique. <span class="ex">deur</span>, <span class="ex">leuk</span>, <span class="ex">beenhouwer</span>. Un anglophone galère des mois là-dessus ; toi, non.' },
   { g: 'oe', ipa: '/u/', good: true, say: 'C’est le <b>ou</b> français, rien d’autre. <span class="ex">boek</span>, <span class="ex">goed</span>, <span class="ex">zoeken</span>. Ne le lis jamais comme un « oe » français.' },
-  { g: 'u', ipa: '/y/', good: true, say: 'Le <b lang="nl-BE">u</b> de <i>tu</i>, exactement. <span class="ex">nu</span>, <span class="ex">minuut</span>, <span class="ex">uur</span>. Encore un cadeau du français.' },
+  { g: 'u', ipa: '/y/', good: true, say: 'Le <b class="nl">u</b> de <i>tu</i>, exactement. <span class="ex">nu</span>, <span class="ex">minuut</span>, <span class="ex">uur</span>. Encore un cadeau du français.' },
   { g: 'g / ch', ipa: '/ɣ/ doux', say: 'En Flandre c’est le <b>g doux</b> : un souffle au milieu de la bouche, proche de la <i>jota</i> espagnole adoucie — et bien plus près de ton <b>r</b> français que du raclement d’Amsterdam. <span class="ex">goeiedag</span>, <span class="ex">gracht</span>. Si tu as copié des enregistrements du nord, c’est la première chose à désapprendre.' },
   { g: 'ui', ipa: '/œy/', say: 'Pars du <b>eu</b> de <i>peur</i>, lèvres arrondies, puis glisse vers « i ». <span class="ex">huis</span>, <span class="ex">buiten</span>, <span class="ex">uit</span>. Le français te donne le point de départ ; il ne reste que le glissement.' },
   { g: 'ij / ei', ipa: '/ɛi/', say: 'Même son, deux orthographes. Proche du <b>è</b> de <i>père</i> qui glisse vers « i ». En Flandre il est plus plat qu’au nord. <span class="ex">wij</span>, <span class="ex">klein</span>, <span class="ex">vrijdag</span>.' },
-  { g: 'h', ipa: '/h/', warn: true, say: 'Le piège francophone numéro un : en néerlandais le <b>h</b> se prononce vraiment, avec un souffle. <span class="ex">huis</span>, <span class="ex">hebben</span>, <span class="ex">honger</span>. Le laisser tomber comme en français rend <i lang="nl-BE">hout</i> (bois) identique à <i lang="nl-BE">oud</i> (vieux).' },
+  { g: 'h', ipa: '/h/', warn: true, say: 'Le piège francophone numéro un : en néerlandais le <b>h</b> se prononce vraiment, avec un souffle. <span class="ex">huis</span>, <span class="ex">hebben</span>, <span class="ex">honger</span>. Le laisser tomber comme en français rend <i class="nl">hout</i> (bois) identique à <i class="nl">oud</i> (vieux).' },
   { g: 'sch', ipa: '/sx/', say: 's suivi du g doux. <span class="ex">school</span>, <span class="ex">schrijven</span>. À la <i>fin</i> d’un mot, c’est juste /s/ : <span class="ex">Belgisch</span>.' },
   { g: 'w', ipa: '/ʋ/', say: 'Entre le <b>v</b> et le <b>ou</b> français : les lèvres frôlent à peine les dents. <span class="ex">water</span>, <span class="ex">werk</span>. Jamais le « w » anglais.' },
   { g: 'accent tonique', ipa: '—', warn: true, say: 'Le français accentue la <b>dernière</b> syllabe ; le néerlandais accentue presque toujours la <b>première</b>. <span class="ex"><b>va</b>der</span>, <span class="ex"><b>wer</b>ken</span>, <span class="ex"><b>bak</b>ker</span>. Accentuer à la française est ce qui trahit le plus vite un francophone.' },
@@ -5776,7 +5783,7 @@ NL.ex = (function () {
     },
     view(t, L, phase) {
       return '<div class="sentence prompt"' + NL.gloss.langAttr(t.drill) + '>' + esc(NL.gloss.of(t.drill)) + '</div>' +
-        '<div class="rule-chip"' + NL.gloss.langAttr(t.item.rule) + '>' + esc(NL.gloss.of(t.item.rule)) + '</div>' + tileArea(t, L, phase);
+        '<div class="rule-chip"' + NL.gloss.langAttr(t.item.rule) + '>' + NL.gloss.quoted(t.item.rule) + '</div>' + tileArea(t, L, phase);
     },
     ready: (t, L) => L.picked.length > 0,
     judge: (t, L) => ({ ok: U.norm(said(t, L)) === U.norm(t.target) }),
@@ -6094,13 +6101,13 @@ NL.ex = (function () {
     build: item => ({ type: 'open', item, task: item.open }),
     view(t, L, phase) {
       const met = phase === 'ask' ? null : rubric(t.task, L.input);
-      return '<p class="sentence prompt"' + NL.gloss.langAttr(t.task.ask) + '>' + esc(NL.gloss.of(t.task.ask)) + '</p>' +
+      return '<p class="sentence prompt"' + NL.gloss.langAttr(t.task.ask) + '>' + NL.gloss.quoted(t.task.ask) + '</p>' +
         '<textarea class="textin open-box" rows="3" spellcheck="false" ' +
         'placeholder="' + esc(NL.t.openPlaceholder) + '"' + (phase === 'ask' ? '' : ' disabled') + '>' +
         esc(L.input) + '</textarea>' +
         '<div class="need-list">' + (t.task.need || []).map(n => {
           const on = met ? met.indexOf(n.what) >= 0 : null;
-          return '<span class="need' + (on === null ? '' : on ? ' ok' : ' no') + '"' + NL.gloss.langAttr(n.what) + '>' + esc(NL.gloss.of(n.what)) + '</span>';
+          return '<span class="need' + (on === null ? '' : on ? ' ok' : ' no') + '"' + NL.gloss.langAttr(n.what) + '>' + NL.gloss.quoted(n.what) + '</span>';
         }).join('') + '</div>' +
         (phase !== 'ask' ? '<p class="model-answer"><i>' + NL.t.openModel + '</i> <span' + NL.gloss.attr('nl') + '>' + esc(t.task.model) + '</span></p>' : '');
     },
@@ -6292,11 +6299,15 @@ NL.ui = (function () {
     return t.unitOne(span.from) + (u ? ' · ' + NL.gloss.of(u.name) : '');
   }
 
-  /* Le texte `x` (lu par NL.gloss) dans une balise, s'il y en a un ; sinon rien. */
-  const ifText = (x, tag, cls) => {
+  /* Le texte `x` (lu par NL.gloss) dans une balise, s'il y en a un, montré par `show` ; sinon rien. */
+  const inTag = (show, x, tag, cls) => {
     const s = NL.gloss.of(x);
-    return s ? '<' + tag + (cls ? ' class="' + cls + '"' : '') + '>' + esc(s) + '</' + tag + '>' : '';
+    return s ? '<' + tag + (cls ? ' class="' + cls + '"' : '') + '>' + show(s) + '</' + tag + '>' : '';
   };
+  /* Un texte de l'app ou de la personne : échappé. */
+  const ifText = (x, tag, cls) => inTag(esc, x, tag, cls);
+  /* Une prose du cours : échappée, et ce qu'elle cite déclaré nl-BE (NL.gloss.quoted). */
+  const ifProse = (x, tag, cls) => inTag(NL.gloss.quoted, x, tag, cls);
 
   function sheetHtml() {
     const m = NL.state.meta();
@@ -6591,7 +6602,7 @@ NL.ui = (function () {
   function onAuth() { if (route === 'compte') go('vandaag'); else render(); }
 
   return {
-    bind, render, go, toast, openSheet, closeSheet, I, card, unitLabel, ifText, copy, onAuth,
+    bind, render, go, toast, openSheet, closeSheet, I, card, unitLabel, ifText, ifProse, copy, onAuth,
     get route() { return route; },
     boot() { const h = fromHash(); if (h) { route = h.r; arg = h.a; } render(); }
   };
@@ -7046,7 +7057,7 @@ NL.screens.sessie = (function () {
       '<div><h5>' + note + '</h5>' +
       (vl || repeat ? '' : asked || (ans ? '<p><b' + ansLang + '>' + esc(ans) + '</b></p>' : '')) +
       be + also +
-      NL.ui.ifText(it && it.note, 'p', 'v-note') +
+      NL.ui.ifProse(it && it.note, 'p', 'v-note') +
       '</div></div>' +
       '<button class="btn ' + (ok ? 'btn-good' : 'btn-bad') + ' push" data-next="1">' + NL.t.next + '</button>' +
       '</div></div>';
@@ -7316,7 +7327,7 @@ NL.screens.sessie = (function () {
       html += tile(scn.icon, NL.gloss.of(scn.title), NL.gloss.of(scn.place), 'scn', scn.id);
       html += tile('\u{1F3A7}', t.listenTitle, t.listenUnderstandSub, 'go', 'luisteren');
       const sheet = NL.content.sheets[(m.doneToday || 0) > 0 ? 1 : 0];
-      html += tile(sheet.icon, NL.gloss.of(sheet.title), NL.gloss.of(sheet.blurb), 'sheetid', sheet.id);
+      html += tile(sheet.icon, NL.gloss.of(sheet.title), NL.gloss.of(sheet.blurb), 'sheetid', sheet.id, NL.gloss.quoted);
       html += '</div></div>';
       return html;
     },
@@ -7343,10 +7354,11 @@ NL.screens.sessie = (function () {
   }
 
   const stat = (n, l) => '<div class="stat-box"><div class="s-n">' + n + '</div><div class="s-l">' + esc(l) + '</div></div>';
-  const tile = (icon, title, sub, key, val) =>
+  /* Une tuile. Sa seconde ligne est montrée par `show` : échappée, ou NL.gloss.quoted pour une prose du cours. */
+  const tile = (icon, title, sub, key, val, show) =>
     '<button class="tile-card" data-' + key + '="' + esc(val) + '">' +
     '<span class="tc-icon">' + icon + '</span>' +
-    '<span class="tc-body"><b>' + esc(title) + '</b><i>' + esc(sub) + '</i></span>' +
+    '<span class="tc-body"><b>' + esc(title) + '</b><i>' + (show || esc)(sub) + '</i></span>' +
     '<span class="tc-cta">›</span></button>';
 
   /* ---------------------------------------------------- Parcours */
@@ -7374,7 +7386,7 @@ NL.screens.sessie = (function () {
           '<h2>' + esc(NL.gloss.of(u.name)) + '<i class="uc-nl"' + NL.gloss.attr('nl') + '>' + esc(u.nlName || '') + '</i></h2></div>' +
           '<span class="uc-pct">' + p.met + '/' + p.total + '</span>' +
           '</div>' +
-          '<p class="uc-blurb">' + esc(NL.gloss.of(u.blurb)) + '</p>' +
+          '<p class="uc-blurb">' + NL.gloss.quoted(u.blurb) + '</p>' +
           '<p class="muted small">' + t.unitCounts(p.met, p.produce, p.total) + '</p>' +
           /* Le seuil est un compte à rebours, pas un mystère. */
           (open && p.toOpen > 0 && u !== NL.content.units[NL.content.units.length - 1]
@@ -7393,7 +7405,7 @@ NL.screens.sessie = (function () {
       if (d.act === 'gram') {
         const g = (NL.content.patterns || []).find(x => x.id === el.dataset.id);
         if (g) NL.ui.openSheet({ custom: NL.ui.card(esc(NL.gloss.of(g.title)),
-          '<p class="rule">' + esc(NL.gloss.of(g.rule)) + '</p><div class="explain">' + NL.gloss.prose(NL.gloss.of(g.explain)) + '</div>' +
+          '<p class="rule">' + NL.gloss.quoted(g.rule) + '</p><div class="explain">' + NL.gloss.prose(NL.gloss.of(g.explain)) + '</div>' +
           '<div class="ex-list">' + g.drills.slice(0, 3).map(d2 =>
             '<button class="ex-row" data-say="' + esc(d2.nl) + '"><b' + NL.gloss.attr('nl') + '>' + esc(d2.nl) + '</b><i>' + esc(NL.gloss.of(d2)) + '</i></button>').join('') + '</div>',
           '<button class="btn btn-ghost wide" data-close="1">' + t.close + '</button>') });
@@ -7484,7 +7496,7 @@ NL.screens.sessie = (function () {
             '<span class="scn-body">' +
             '<span class="eyebrow">' + esc(NL.gloss.of(s.place)) + '</span>' +
             '<b>' + esc(NL.gloss.of(s.title)) + '</b>' +
-            '<i>' + esc(NL.gloss.of(s.blurb)) + '</i></span>' +
+            '<i>' + NL.gloss.quoted(s.blurb) + '</i></span>' +
             '<span class="scn-go">' + (isDone ? NL.t.talkDone : NL.t.start) + '</span></button>';
         });
       });
@@ -7554,8 +7566,8 @@ NL.screens.sessie = (function () {
       if (P.phase === 'them') {
         panel = '<button class="btn btn-blue wide" data-step="next">' + NL.t.next + '</button>';
       } else if (P.phase === 'choose') {
-        panel = '<p class="ask">' + esc(NL.gloss.of(step.you.ask)) + '</p>' +
-          NL.ui.ifText(step.you.hint, 'p', 'ask-hint') +
+        panel = '<p class="ask">' + NL.gloss.quoted(step.you.ask) + '</p>' +
+          NL.ui.ifProse(step.you.hint, 'p', 'ask-hint') +
           '<div class="choices">' + step.you.choices.map((c, i) =>
             '<button class="choice" data-choice="' + i + '"><b' + NL.gloss.attr('nl') + '>' + esc(c.nl) + '</b><i' + NL.gloss.langAttr(c) + '>' + esc(NL.gloss.of(c)) + '</i></button>').join('') +
           '</div>';
@@ -7565,10 +7577,10 @@ NL.screens.sessie = (function () {
           '<p class="say-en"' + NL.gloss.langAttr(c) + '>' + esc(NL.gloss.of(c)) + '</p>' +
           '<button class="speaker slow inline" data-say="' + esc(c.nl) + '" data-slow="1" aria-label="' + NL.t.slow + '">' + ICON.turtle() + '</button></div>' +
           micPanel(P.speech, c.nl) +
-          NL.ui.ifText(c.note, 'p', 'say-note');
+          NL.ui.ifProse(c.note, 'p', 'say-note');
       } else if (P.phase === 'done') {
         panel = '<div class="scn-done"><h2>' + NL.t.scnOver + '</h2>' +
-          '<p>' + esc(NL.gloss.of(s.outro)) + '</p>' +
+          '<p>' + NL.gloss.quoted(s.outro) + '</p>' +
           '<div class="tally"><div class="tally-box gold"><div class="t-n">+12</div><div class="t-l">' + NL.t.tallyXp + '</div></div>' +
           '<div class="tally-box blue"><div class="t-n">' + P.spoken + '/' + P.tried + '</div><div class="t-l">' + NL.t.micSaidIt + '</div></div></div>' +
           '<button class="btn btn-primary wide" data-step="again">' + NL.t.replay + '</button>' +
@@ -8018,12 +8030,12 @@ NL.screens.luisteren = (function () {
           return '<div class="wrap">' +
             '<button class="backlink" data-go="spiek">' + NL.ui.I.back + ' ' + NL.t.sheetsAll + '</button>' +
             '<section class="card lead slim"><span class="eyebrow">' + NL.t.sheetsEyebrow + '</span> ' + anchor('sheets') +
-            '<h1>' + s.icon + ' ' + esc(NL.gloss.of(s.title)) + '</h1><p>' + esc(NL.gloss.of(s.blurb)) + '</p></section>' +
+            '<h1>' + s.icon + ' ' + esc(NL.gloss.of(s.title)) + '</h1><p>' + NL.gloss.quoted(s.blurb) + '</p></section>' +
             s.groups.map(g => '<div class="sheet-group"><h4>' + esc(NL.gloss.of(g.h)) + '</h4>' +
               g.rows.map(r => '<button class="sheet-row" data-say="' + esc(r.nl) + '">' +
                 '<span class="sr-say">' + ICON.speaker(16) + '</span>' +
                 '<span class="sr-body"><b' + NL.gloss.attr('nl') + '>' + esc(r.nl) + '</b><i>' + esc(NL.gloss.of(r)) + '</i>' +
-                NL.ui.ifText(r.note, 'em') + '</span></button>').join('') +
+                NL.ui.ifProse(r.note, 'em') + '</span></button>').join('') +
               '</div>').join('') +
             '</div>';
         }
@@ -8035,7 +8047,7 @@ NL.screens.luisteren = (function () {
         '<div class="cards">' + sheets.map(s =>
           '<button class="tile-card" data-sheetid="' + s.id + '">' +
           '<span class="tc-icon">' + s.icon + '</span>' +
-          '<span class="tc-body"><b>' + esc(NL.gloss.of(s.title)) + '</b><i>' + esc(NL.gloss.of(s.blurb)) + '</i></span>' +
+          '<span class="tc-body"><b>' + esc(NL.gloss.of(s.title)) + '</b><i>' + NL.gloss.quoted(s.blurb) + '</i></span>' +
           '<span class="tc-cta">' + NL.t.open + '</span></button>').join('') + '</div></div>';
     },
     click(el, d) { if (d.sheetid) NL.ui.go('spiek', d.sheetid); }
@@ -8053,7 +8065,7 @@ NL.screens.luisteren = (function () {
           '<div class="reg-row">' +
           '<button class="reg-cell std"' + NL.gloss.attr('nl') + ' data-say="' + esc(r.std) + '">' + esc(r.std) + '</button>' +
           '<button class="reg-cell be" data-say="' + esc(r.be) + '">' + '<span' + NL.gloss.attr('nl') + '>' + esc(r.be) + '</span>' +
-          NL.ui.ifText(r.note, 'em') + '</button>' +
+          NL.ui.ifProse(r.note, 'em') + '</button>' +
           '</div>').join('') +
         '</div>' +
 
@@ -8064,7 +8076,7 @@ NL.screens.luisteren = (function () {
           '<div class="reg-row">' +
           '<button class="reg-cell be"' + NL.gloss.attr('nl') + ' data-say="' + esc(r.nl) + '">' + esc(r.nl) + '</button>' +
           '<span class="reg-cell std"' + NL.gloss.attr('fr') + '>' + esc(NL.gloss.of(r)) +
-          NL.ui.ifText(r.note, 'em') + '</span>' +
+          NL.ui.ifProse(r.note, 'em') + '</span>' +
           '</div>').join('') +
         '</div>' +
 
@@ -8098,7 +8110,7 @@ NL.screens.luisteren = (function () {
       const col = (title, rules, cls, a) =>
         '<h3 class="sec">' + title + ' ' + anchor(a) + '</h3>' +
         rules.map(r => '<div class="rule-row ' + cls + '">' +
-          '<b>' + esc(NL.gloss.of(r.rule)) + (r.sure ? '<span class="sure-tag">' + NL.t.dehetSure + '</span>' : '') + '</b>' +
+          '<b>' + NL.gloss.quoted(r.rule) + (r.sure ? '<span class="sure-tag">' + NL.t.dehetSure + '</span>' : '') + '</b>' +
           '<button class="rule-ex"' + NL.gloss.attr('nl') + ' data-say="' + esc(r.ex) + '">' + esc(r.ex) + '</button></div>').join('');
       return '<div class="wrap">' +
         '<section class="card lead slim"><span class="eyebrow">' + 'de / het' + '</span>' +

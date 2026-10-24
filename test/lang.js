@@ -5,7 +5,7 @@ const fs = require('fs'), path = require('path');
 const browser = require('./lib/browser');
 const { PROSE } = require('./lib/prose');
 const tree = require('./lib/tree');
-const { text, runs, count, argsOf } = require('./lib/langs');
+const { text, joined, runs, count, argsOf } = require('./lib/langs');
 const { fakeSupabase } = require('./lib/supabase');
 const { dueReviews } = require('./lib/seed');
 const ROOT = process.argv[2] || path.join(__dirname, '..');
@@ -823,6 +823,130 @@ function displayChecks() {
   return [c1, c1b, c2, c4, c5, c6, c9, c10, c11].reduce((p, c) => p.then(c), Promise.resolve());
 }
 
+/* 6d. Les guillemets sont la marque (E1) : dans la prose du cours, ce que « … » ou “…” cite est du
+   néerlandais, et NL.gloss.quoted le déclare nl-BE à l'écran. Les champs qui peuvent citer passent
+   par NL.gloss.quoted ; les autres (name, title, h, place) ne citent rien. explain est du HTML, où
+   le néerlandais porte class="ex" ou class="nl" (NL.gloss.prose) : ses citations suivent la même
+   règle et se comptent ici, mais l'écran ne les déclare pas. */
+const QUOTED_FIELDS = ['note', 'blurb', 'rule', 'ask', 'what', 'outro', 'hint'];
+/* Les mots cités hors du néerlandais du cours qui sont pourtant du néerlandais, avec la raison. */
+const QUOTE_OK = {
+  goedendag: 'le bonjour du nord, dans la note de goeiedag',
+  zoet: '« zoet broodje », la viennoiserie du nord, dans la note de de koffiekoek',
+  bier: '« een bier », ce qu’on ne commande pas, dans la note de de pint',
+  patat: 'le nord pour de frieten, dans sa note',
+  ermee: '« Ik ben ermee bezig », dans la note de bezig',
+  developer: 'l’anglais qu’on dit aussi en néerlandais, dans la note de « Ik ben Java-ontwikkelaar. »',
+  zal: 'le futur dont on se passe, dans la note de « Ik stuur u een mail. »',
+  pardon: 'le nord pour excuseer, dans la note d’un choix de la conversation du train'
+};
+/* Les passages cités qui ne sont pas du néerlandais (« la maison », “not now”) enfreignent la règle :
+   une traduction va entre parenthèses, sans guillemets. Hors d'explain, NL.gloss.quoted les déclare
+   nl-BE à tort. Ce compte ne fait que baisser, jusqu'à 0. */
+const QUOTE_BUDGET = 36;
+/* Le champ de prose d'un texte du cours : sa clé, ou celle de son parent pour un côté fr ou en. */
+const fieldOf = (key, where) => key === 'fr' || key === 'en' ? (/\.(\w+)\.(?:fr|en)$/.exec(where) || [])[1] : key;
+/* Chaque texte du cours, et des emprunts, dont la note passe aussi par NL.gloss.quoted : fn(texte, champ, chemin). */
+function eachText(C, fn) {
+  const read = (v, key, where) => { if (typeof v === 'string') fn(v, fieldOf(key, where), where); };
+  tree.visitCourse(C, read);
+  tree.visit(C.loans, read, 'loans', 'loans');
+}
+function quoteChecks() {
+  /* 6d.1. La note de trager cite « trager » et « langzamer » : dans le pied d'une réponse fausse,
+     chacun est déclaré nl-BE, guillemets dehors, en français comme en anglais. */
+  const footNote = (l, to, want) => {
+    const B = boot();
+    return B.NL.state.open().then(() => {
+      const NL = B.NL, S = NL.screens.sessie, answer = require('./lib/answer')(B);
+      to(B);
+      const it = NL.content.allItems().find(x => x.nl === 'trager');
+      NL.srs.seed(it, 2);
+      NL.state.logReview({ id: it.id, t: B.clock.now() - 1000, ok: false, stage: 1, kind: it.kind, ex: 'type' });
+      let asked = false;
+      for (let k = 0; k < 40 && !asked; k++) {
+        S.abandon(); NL.screens.fouten.click({ dataset: {} }, { act: 'start' });
+        const c = S.peek();
+        asked = !!c && c.ex !== 'match' && (c.items || [c.task.item])[0].id === it.id;
+      }
+      ok(asked, '6d (' + l + ') : trager n’est jamais posé seul, le contrôle du pied est creux');
+      if (!asked) return;
+      answer.wrong();
+      const html = B.app.innerHTML, foot = html.slice(html.indexOf('<div class="foot'));
+      ok(foot.indexOf(want) >= 0, '6d (' + l + ') : le pied ne déclare pas nl-BE le « trager » que cite la note : ' +
+        (/<p class="v-note">[\s\S]*?<\/p>/.exec(foot) || ['(aucune note)'])[0]);
+    });
+  };
+  const q1 = () => footNote('fr', French, '« <span lang="nl-BE">trager</span> »')
+    .then(() => footNote('en', English, '“<span lang="nl-BE">trager</span>”'));
+
+  /* 6d.2. Chaque champ cité, planté d'une citation inventée (« zqN »), puis relu sur chaque écran :
+     chaque zqN montré est déclaré nl-BE, et chaque sorte de champ (collection.champ) se montre. Un
+     écran qui échappe un de ces champs sans NL.gloss.quoted échoue ici. */
+  const q2 = () => {
+    const groups = [];
+    const plant = (s, key, where) => {
+      const f = fieldOf(key, where);
+      if (typeof s !== 'string' || key === 'en' || QUOTED_FIELDS.indexOf(f) < 0) return s;
+      groups.push(where.split(/[.[]/)[0] + '.' + f);
+      return s + ' « zq' + (groups.length - 1) + ' »';
+    };
+    const B = boot({ prepare: NL => {
+      tree.rewriteCourse(NL.content, plant);
+      NL.content.loans = tree.rewrite(NL.content.loans, plant, 'loans', 'loans');
+    } });
+    return B.NL.state.open().then(() => {
+      French(B);
+      const marked = new Set(), bare = new Map();
+      views(B, (n, h) => {
+        const left = String(h).replace(/<span lang="nl-BE">zq(\d+)<\/span>/g, (m, i) => { marked.add(groups[+i]); return ''; });
+        (left.match(/zq\d+/g) || []).forEach(z => { const g = groups[+z.slice(2)]; if (!bare.has(g)) bare.set(g, n); });
+      });
+      bare.forEach((n, g) => ok(false, '6d : ' + g + ' montré sans déclarer nl-BE ce qu’il cite (vue ' + n + ')'));
+      const unseen = Array.from(new Set(groups)).filter(g => !marked.has(g) && !bare.has(g));
+      ok(groups.length > 0 && unseen.length === 0, '6d : ' + unseen.join(', ') + ' jamais montré(s), le contrôle est creux');
+    });
+  };
+
+  /* 6d.3. Ce que NL.gloss.quoted marque, relu sur le cours : chaque mot est du néerlandais du cours, un
+     chiffre ou une exception de QUOTE_OK, et le reste se compte contre QUOTE_BUDGET ; explain aussi,
+     balises ôtées. Chaque guillemet ouvert est fermé (sinon rien n'est marqué), et name, title, h et
+     place ne citent rien. */
+  const q3 = () => {
+    const B = boot();
+    return B.NL.state.open().then(() => {
+      const NL = B.NL, Q = NL.gloss.quoted, dutch = dutchWords(NL);
+      if (typeof Q !== 'function') { ok(false, '6d : NL.gloss.quoted manque'); return; }
+      const words = s => s.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+      const unescape = s => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+      const foreign = [], excused = new Set();
+      eachText(NL.content, (s, f, where) => {
+        if (PROSE.indexOf(f) < 0) return;
+        const t = f === 'explain' ? joined(s) : s;
+        const opened = t.split(/[«“]/).length - 1, closed = t.split(/[»”]/).length - 1;
+        if (QUOTED_FIELDS.indexOf(f) < 0 && f !== 'explain') { ok(opened + closed === 0, '6d : ' + where + ' cite, mais ' + f + ' ne passe pas par NL.gloss.quoted : « ' + s + ' »'); return; }
+        const segs = Array.from(Q(t).matchAll(/<span lang="nl-BE">([^<]*)<\/span>/g), m => unescape(m[1]));
+        ok(segs.length === opened && opened === closed, '6d : ' + where + ' a un guillemet sans son pendant, ou une citation vide : « ' + s + ' »');
+        segs.forEach(q => {
+          const miss = words(q).filter(w => !dutch.has(w) && !/^\d+$/.test(w));
+          miss.forEach(w => { if (QUOTE_OK[w]) excused.add(w); });
+          if (miss.some(w => !QUOTE_OK[w])) foreign.push(where + ' « ' + q + ' »');
+        });
+      });
+      Object.keys(QUOTE_OK).forEach(w => {
+        ok(!dutch.has(w), '6d : « ' + w + ' » est du néerlandais du cours, son exception est de trop');
+        ok(excused.has(w), '6d : « ' + w + ' » n’est plus cité nulle part, son exception est de trop');
+      });
+      ok(foreign.length <= QUOTE_BUDGET, '6d : ' + foreign.length + ' citations hors du néerlandais du cours, budget ' + QUOTE_BUDGET +
+        ' — une traduction va entre parenthèses, sans guillemets ; baisser le budget, jamais le lever : ' + foreign.slice(0, 6).join(' ; '));
+      ok(foreign.length >= QUOTE_BUDGET, '6d : seulement ' + foreign.length + ' citations hors du néerlandais du cours : baisser QUOTE_BUDGET à ' + foreign.length + ' pour verrouiller le gain');
+      console.log('  guillemets      ' + foreign.length + ' citations hors du néerlandais du cours (budget ' + QUOTE_BUDGET + '), ' + Object.keys(QUOTE_OK).length + ' exceptions');
+    });
+  };
+
+  return [q1, q2, q3].reduce((p, c) => p.then(c), Promise.resolve());
+}
+
 const plain = boot(), paired = boot({ prepare: NL => pairUp(NL.content) });
 Promise.all([plain.NL.state.open(), paired.NL.state.open()]).then(() => {
   French(plain); French(paired);
@@ -952,10 +1076,25 @@ Promise.all([plain.NL.state.open(), paired.NL.state.open()]).then(() => {
         ok(WC({ kind: 'word', nl: 'gisteren', fr: 'hier' }, 'fr') === 'other', 'wordClass : « hier » (gisteren) n’est pas un verbe');
         ok(WC({ kind: 'word', nl: 'werken', fr: 'travailler' }, 'fr') === 'verb', 'wordClass : « travailler » (werken) reste un verbe');
         ok(plain.NL.gloss.prose('a <span class="ex">hier</span>') === 'a <span class="ex" lang="nl-BE">hier</span>', 'gloss.prose : span.ex doit porter lang="nl-BE"');
+        /* E1. Le néerlandais d'une prose du cours porte aussi class="nl", sur n'importe quelle balise. */
+        ok(plain.NL.gloss.prose('<i class="nl">Morgen ik ga</i>, <b class="nl">jij</b>') === '<i class="nl" lang="nl-BE">Morgen ik ga</i>, <b class="nl" lang="nl-BE">jij</b>',
+          'gloss.prose : class="nl" doit porter lang="nl-BE", sur <i> comme sur <b>');
+        /* NL.gloss.quoted échappe un texte et déclare nl-BE chaque passage entre « » ou “ ”, guillemets et espaces dehors. */
+        [['dit « trager » ; le nord « langzamer ».', 'dit « <span lang="nl-BE">trager</span> » ; le nord « <span lang="nl-BE">langzamer</span> ».'],
+          ['says “trager”; the north', 'says “<span lang="nl-BE">trager</span>”; the north'],
+          ['«zo»', '«<span lang="nl-BE">zo</span>»'],
+          ['« a < b & "c" »', '« <span lang="nl-BE">a &lt; b &amp; &quot;c&quot;</span> »'],
+          ['« » et “ ” : rien à déclarer', '« » et “ ” : rien à déclarer'],
+          ['sans citation', 'sans citation'],
+          [null, '']
+        ].forEach(([x, want]) => {
+          const got = typeof plain.NL.gloss.quoted === 'function' ? plain.NL.gloss.quoted(x) : '(NL.gloss.quoted manque)';
+          ok(got === want, 'gloss.quoted(' + JSON.stringify(x) + ') donne « ' + got + ' », attendu « ' + want + ' »');
+        });
         [['tussen', 'entre'], ['tegen', 'contre'], ['eigen', 'propre']].forEach(([nl, fr]) =>
           ok(WC({ kind: 'word', nl: nl, fr: fr }, 'fr') === 'other', 'wordClass : « ' + fr + ' » (' + nl + ') n’est pas un verbe')); }
       const L6 = boot();
-      return L6.NL.state.open().then(() => langAttrCheck(L6)).then(() => anchorCheck(L6)).then(() => addFormCheck(L6)).then(interfaceCheck).then(displayChecks);
+      return L6.NL.state.open().then(() => langAttrCheck(L6)).then(() => anchorCheck(L6)).then(() => addFormCheck(L6)).then(interfaceCheck).then(displayChecks).then(quoteChecks);
     }).then(() => {
       console.log('\n' + checks + ' contrôles, ' + (fails === 0 ? 'LANGUE CONFORME' : fails + ' ÉCHEC(S)'));
       process.exit(fails ? 1 : 0);

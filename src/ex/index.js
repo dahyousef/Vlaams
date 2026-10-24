@@ -231,7 +231,7 @@ NL.ex = (function () {
     },
     view(t, L, phase) {
       return '<div class="sentence prompt"' + NL.gloss.langAttr(t.drill) + '>' + esc(NL.gloss.of(t.drill)) + '</div>' +
-        '<div class="rule-chip"' + NL.gloss.langAttr(t.item.rule) + '>' + esc(NL.gloss.of(t.item.rule)) + '</div>' + tileArea(t, L, phase);
+        '<div class="rule-chip"' + NL.gloss.langAttr(t.item.rule) + '>' + NL.gloss.quoted(t.item.rule) + '</div>' + tileArea(t, L, phase);
     },
     ready: (t, L) => L.picked.length > 0,
     judge: (t, L) => ({ ok: U.norm(said(t, L)) === U.norm(t.target) }),
@@ -549,13 +549,13 @@ NL.ex = (function () {
     build: item => ({ type: 'open', item, task: item.open }),
     view(t, L, phase) {
       const met = phase === 'ask' ? null : rubric(t.task, L.input);
-      return '<p class="sentence prompt"' + NL.gloss.langAttr(t.task.ask) + '>' + esc(NL.gloss.of(t.task.ask)) + '</p>' +
+      return '<p class="sentence prompt"' + NL.gloss.langAttr(t.task.ask) + '>' + NL.gloss.quoted(t.task.ask) + '</p>' +
         '<textarea class="textin open-box" rows="3" spellcheck="false" ' +
         'placeholder="' + esc(NL.t.openPlaceholder) + '"' + (phase === 'ask' ? '' : ' disabled') + '>' +
         esc(L.input) + '</textarea>' +
         '<div class="need-list">' + (t.task.need || []).map(n => {
           const on = met ? met.indexOf(n.what) >= 0 : null;
-          return '<span class="need' + (on === null ? '' : on ? ' ok' : ' no') + '"' + NL.gloss.langAttr(n.what) + '>' + esc(NL.gloss.of(n.what)) + '</span>';
+          return '<span class="need' + (on === null ? '' : on ? ' ok' : ' no') + '"' + NL.gloss.langAttr(n.what) + '>' + NL.gloss.quoted(n.what) + '</span>';
         }).join('') + '</div>' +
         (phase !== 'ask' ? '<p class="model-answer"><i>' + NL.t.openModel + '</i> <span' + NL.gloss.attr('nl') + '>' + esc(t.task.model) + '</span></p>' : '');
     },

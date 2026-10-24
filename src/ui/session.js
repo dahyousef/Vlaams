@@ -445,7 +445,7 @@ NL.screens.sessie = (function () {
       '<div><h5>' + note + '</h5>' +
       (vl || repeat ? '' : asked || (ans ? '<p><b' + ansLang + '>' + esc(ans) + '</b></p>' : '')) +
       be + also +
-      NL.ui.ifText(it && it.note, 'p', 'v-note') +
+      NL.ui.ifProse(it && it.note, 'p', 'v-note') +
       '</div></div>' +
       '<button class="btn ' + (ok ? 'btn-good' : 'btn-bad') + ' push" data-next="1">' + NL.t.next + '</button>' +
       '</div></div>';

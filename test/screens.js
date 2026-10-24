@@ -338,7 +338,7 @@ NL.state.open().then(async () => {
   }
 
   /* ------------------------------------------------------------------ */
-  console.log('\nLE TEXTE, S’IL Y EN A UN — NL.ui.ifText');
+  console.log('\nLE TEXTE, S’IL Y EN A UN — NL.ui.ifText, NL.ui.ifProse');
   {
     /* Sans texte, rien ; un texte sort échappé dans sa balise, avec sa classe s'il en a une. Un
        sens qui n'a rien à dire dans aucune langue ne donne rien non plus. #77 : un sens qui vaut
@@ -347,7 +347,12 @@ NL.state.open().then(async () => {
        celle qui est lue. La page est celle de ce bloc : aucun autre contrôle ne lit la langue
        où il la laisse. */
     const P = browser.open({ root: ROOT, seed: browser.SEED, byId: 'stub' });
-    [
+    const table = (name, rows) => rows.forEach(([args, l, want]) => {
+      P.NL.gloss.use(l);
+      const got = typeof P.NL.ui[name] === 'function' ? P.NL.ui[name](...args) : '(NL.ui.' + name + ' is missing)';
+      ok(got === want, 'NL.ui.' + name + '(' + JSON.stringify(args).slice(1, -1) + '), read in ' + l + ', gave « ' + got + ' »; wanted « ' + want + ' »');
+    });
+    table('ifText', [
       [['', 'p'], 'en', ''],
       [[null, 'p', 'heard'], 'en', ''],
       [[undefined, 'div', 'toast'], 'en', ''],
@@ -359,12 +364,19 @@ NL.state.open().then(async () => {
       [[{ fr: null, en: 'text' }, 'p'], 'fr', ''],
       [[{ fr: 'texte', en: 'text' }, 'p'], 'en', '<p>text</p>'],
       [[{ fr: 'texte', en: 'text' }, 'p'], 'fr', '<p>texte</p>']
-    ].forEach(([args, l, want]) => {
-      P.NL.gloss.use(l);
-      const got = P.NL.ui.ifText(...args);
-      ok(got === want, 'NL.ui.ifText(' + JSON.stringify(args).slice(1, -1) + '), read in ' + l + ', gave « ' + got + ' »; wanted « ' + want + ' »');
-    });
+    ]);
     console.log('  rien sans texte, ni pour un sens qui vaut null dans la langue lue ; sinon le texte échappé, dans sa balise, avec sa classe');
+    /* E1. NL.ui.ifProse fait de même pour une prose du cours, et y déclare nl-BE chaque passage
+       cité, « … » ou “…” (NL.gloss.quoted). ifText, lui, ne déclare rien. */
+    table('ifProse', [
+      [[null, 'p', 'v-note'], 'en', ''],
+      [[{ fr: 'dit « ja »', en: null }, 'p'], 'en', ''],
+      [['« a » & <b>', 'em'], 'fr', '<em>« <span lang="nl-BE">a</span> » &amp; &lt;b&gt;</em>'],
+      [[{ fr: 'dit « trager »', en: 'says “trager”' }, 'p', 'v-note'], 'en', '<p class="v-note">says “<span lang="nl-BE">trager</span>”</p>'],
+      [[{ fr: 'dit « trager »', en: 'says “trager”' }, 'p', 'v-note'], 'fr', '<p class="v-note">dit « <span lang="nl-BE">trager</span> »</p>']
+    ]);
+    table('ifText', [[['dit « trager »', 'p'], 'fr', '<p>dit « trager »</p>']]);
+    console.log('  ifProse : de même, chaque passage cité déclaré nl-BE');
   }
 
   /* ------------------------------------------------------------------ */

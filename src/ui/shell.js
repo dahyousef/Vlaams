@@ -104,11 +104,15 @@ NL.ui = (function () {
     return t.unitOne(span.from) + (u ? ' · ' + NL.gloss.of(u.name) : '');
   }
 
-  /* Le texte `x` (lu par NL.gloss) dans une balise, s'il y en a un ; sinon rien. */
-  const ifText = (x, tag, cls) => {
+  /* Le texte `x` (lu par NL.gloss) dans une balise, s'il y en a un, montré par `show` ; sinon rien. */
+  const inTag = (show, x, tag, cls) => {
     const s = NL.gloss.of(x);
-    return s ? '<' + tag + (cls ? ' class="' + cls + '"' : '') + '>' + esc(s) + '</' + tag + '>' : '';
+    return s ? '<' + tag + (cls ? ' class="' + cls + '"' : '') + '>' + show(s) + '</' + tag + '>' : '';
   };
+  /* Un texte de l'app ou de la personne : échappé. */
+  const ifText = (x, tag, cls) => inTag(esc, x, tag, cls);
+  /* Une prose du cours : échappée, et ce qu'elle cite déclaré nl-BE (NL.gloss.quoted). */
+  const ifProse = (x, tag, cls) => inTag(NL.gloss.quoted, x, tag, cls);
 
   function sheetHtml() {
     const m = NL.state.meta();
@@ -403,7 +407,7 @@ NL.ui = (function () {
   function onAuth() { if (route === 'compte') go('vandaag'); else render(); }
 
   return {
-    bind, render, go, toast, openSheet, closeSheet, I, card, unitLabel, ifText, copy, onAuth,
+    bind, render, go, toast, openSheet, closeSheet, I, card, unitLabel, ifText, ifProse, copy, onAuth,
     get route() { return route; },
     boot() { const h = fromHash(); if (h) { route = h.r; arg = h.a; } render(); }
   };
