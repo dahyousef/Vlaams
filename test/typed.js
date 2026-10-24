@@ -295,6 +295,57 @@ NL.state.open().then(() => {
     console.log('  pas redit      « nog eens » tapé juste, en flamand, faux');
   }
 
+  console.log('\nRÉPONSE LIBRE');
+  /* Une réponse libre est notée sur ce qu'elle contient : sous la réponse, chaque besoin
+     est coché ou non. Un besoin `any` se lit en mots entiers, ou en suite de mots
+     entiers : « in » n'est pas dans « kind ». Un besoin `rx` lit les lettres au-delà de
+     l'ASCII : « geïnstalleerd » est un seul mot, et un participe. */
+  {
+    /* La tâche libre d'un motif, servie seule à son échelon, la réponse tapée à l'écran.
+       Les besoins cochés sont lus dans le panneau, dans la langue lue. */
+    const wrote = (id, input) => {
+      fresh();
+      const it = NL.content.byId(id);
+      if (!it || !it.open) { ok(false, 'setup: ' + id + ' has no open task'); return null; }
+      if (!ask(it, 'open', 6, 'speak')) { ok(false, 'setup: ' + id + ' is never asked as a free answer'); return null; }
+      answer.type(input);
+      answer.click({ check: '1' });
+      const list = (B.app.innerHTML.match(/<div class="need-list">([\s\S]*?)<\/div>/) || [null, ''])[1];
+      const ticked = list.split('<span class="need').slice(1).filter(s => s.indexOf(' ok"') === 0).map(s => text('<span class="need' + s));
+      const v = Object.assign(verdict(it), { ticked });
+      S.abandon();
+      return v;
+    };
+    const need = (id, i) => NL.gloss.of(NL.content.openTasks[id].need[i].what);
+    const meets = (id, input, i, yes, why) => {
+      const v = wrote(id, input);
+      if (!v) return;
+      ok((v.ticked.indexOf(need(id, i)) >= 0) === yes, say(input) + (yes ? ' does not tick ' : ' ticks ') + say(need(id, i)) + ' for ' + id + ': ' + why);
+      ok(v.right === yes, say(input) + ' is marked ' + (v.right ? 'right' : 'wrong') + ' for ' + id + ', with ' + JSON.stringify(v.ticked) + ' ticked');
+    };
+    meets('g-present', 'Ik ben een kind van zes jaar.', 1, false, '« in » inside « kind » is not a place');
+    meets('g-present', 'Ik werk in een ziekenhuis in Brussel.', 1, true, '« in » is a whole word there');
+    meets('g-perfect-intro', 'Gisteravond heb ik een nieuwe app op mijn gsm geïnstalleerd.', 1, true, '« geïnstalleerd » is one word, « ï » a letter');
+
+    /* Un besoin posé le temps de quelques réponses, puis remis : aucune tâche du cours
+       ne montre ces deux cas-ci. */
+    const posed = (id, i, field, value, fn) => {
+      const n = NL.content.openTasks[id].need[i], was = n[field];
+      n[field] = value;
+      fn();
+      n[field] = was;
+    };
+    /* Un `any` de plusieurs mots est une suite de mots entiers, dans l'ordre. */
+    posed('g-halfuur', 1, 'any', ['om half'], () => {
+      meets('g-halfuur', 'Ik begin om half negen en stop om tien uur.', 1, true, '« om half » is there, word for word');
+      meets('g-halfuur', 'Ik kom half negen en ik stop om tien uur.', 1, false, '« kom half » is not « om half »');
+    });
+    /* Un `rx` borde « één » de `\b` comme tout mot : ses accents sont des lettres. */
+    posed('g-getallen', 0, 'rx', /\b(één|twee|drie)\b/i, () =>
+      meets('g-getallen', 'Mijn zoon is één jaar oud.', 0, true, '« één » is a word, its accents letters'));
+    console.log('  mots entiers   « in » hors de « kind », « geïnstalleerd » et « één » entiers, « om half » mot à mot');
+  }
+
   console.log('\n' + checks + ' contrôles, ' + fails + ' en échec');
   process.exit(fails ? 1 : 0);
 }).catch(e => { console.log('FAIL: ' + (e && e.stack || e)); process.exit(1); });

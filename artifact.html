@@ -6083,13 +6083,46 @@ NL.ex = (function () {
     answer: t => t.item.be
   };
 
+  /* Les lettres d'un mot, accents compris. Dans une regex, `\w` et `\b` ne voient que
+     l'ASCII : « geïnstalleerd » s'y coupe à « ï », et « één » n'y est pas un mot. Le
+     barème récrit `\w`, `\W`, `\b` et `\B` sur ces lettres-ci (latin accentué, marques
+     combinantes), hors des crochets ; entre crochets, `\w` seul. Un navigateur qui ne
+     connaît pas le regard arrière garde la regex telle qu'écrite. */
+  const LETTER = 'A-Za-z0-9_\\u00C0-\\u00D6\\u00D8-\\u00F6\\u00F8-\\u024F\\u0300-\\u036F';
+  const IN = '[' + LETTER + ']';
+  const WIDE = {
+    w: IN, W: '[^' + LETTER + ']',
+    b: '(?:(?<!' + IN + ')(?=' + IN + ')|(?<=' + IN + ')(?!' + IN + '))',
+    B: '(?:(?<=' + IN + ')(?=' + IN + ')|(?<!' + IN + ')(?!' + IN + '))'
+  };
+  function wide(rx) {
+    const src = rx.source;
+    let out = '', inClass = false;
+    for (let i = 0; i < src.length; i++) {
+      const c = src[i];
+      if (c === '\\') {
+        const e = src[++i];
+        out += inClass ? (e === 'w' ? LETTER : '\\' + e) : (WIDE[e] || '\\' + e);
+        continue;
+      }
+      if (c === '[') inClass = true;
+      else if (c === ']') inClass = false;
+      out += c;
+    }
+    try { return new RegExp(out, rx.flags); } catch (e) { return rx; }
+  }
+
+  /* Une suite de mots entiers, dans l'ordre, parmi les mots de la réponse : « in »
+     n'est pas dans « kind », et « om half » n'est pas dans « kom half ». */
+  const hasRun = (words, run) => run.length > 0 && words.some((_, i) => run.every((y, j) => words[i + j] === y));
+
   /* Réponse libre, notée sur ce qu'elle CONTIENT et non sur sa formulation.
      Hors ligne, sans IA. C'est le passage de la reproduction à la composition. */
   function rubric(task, text) {
     const s = String(text || ''), w = U.words(s), met = [];
     (task.need || []).forEach(n => {
-      if (n.rx && n.rx.test(s)) { met.push(n.what); return; }
-      if (n.any && n.any.some(a => U.norm(s).indexOf(U.norm(a)) >= 0)) { met.push(n.what); return; }
+      if (n.rx && wide(n.rx).test(s)) { met.push(n.what); return; }
+      if (n.any && n.any.some(a => hasRun(w, U.words(a)))) { met.push(n.what); return; }
       if (n.min && w.length >= n.min) { met.push(n.what); return; }
     });
     return met;
