@@ -34,7 +34,19 @@ NL.gloss = (function () {
     return typeof v === 'string' ? v : '';
   }
 
-  const pair = g => typeof g === 'string' ? { fr: g } : { fr: g.fr, en: g.en };
+  /* Les langues lues, dans un ordre fixe. Un sens se copie langue par langue d'ici,
+     et une troisième langue est une ligne de plus. */
+  const LANGS = ['fr', 'en'];
+
+  /* Le sens de `x`, dans chaque langue lue qu'il porte : un objet neuf. Un `null`
+     reste (« rien à dire », voir `of`) ; une langue absente ne devient pas une clé. */
+  function meaning(x) {
+    const m = {};
+    LANGS.forEach(l => { if (x && x[l] !== undefined) m[l] = x[l]; });
+    return m;
+  }
+
+  const pair = g => typeof g === 'string' ? { fr: g } : meaning(g);
 
   /* Le sens sans son article : « le pain » → « pain », « the bread » → « bread ».
      Une phrase garde son premier mot, comme U.bareFr. */
@@ -99,5 +111,5 @@ NL.gloss = (function () {
   /* L'attribut lang d'un sens ou d'un texte montré, espace compris : la langue où il se lit. */
   const langAttr = x => ' lang="' + tag(langOf(x)) + '"';
 
-  return { prose, use, current, other, has, langOf, tag, langAttr, of, pair, bare, senses, sameSense, sameMeaning, wordClass, cognate };
+  return { LANGS, prose, use, current, other, has, langOf, tag, langAttr, of, meaning, pair, bare, senses, sameSense, sameMeaning, wordClass, cognate };
 })();

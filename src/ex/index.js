@@ -196,7 +196,7 @@ NL.ex = (function () {
   R.bank = {
     id: 'bank', get kicker() { return NL.t.exBank; },
     build(item) {
-      const d = (item.drills && item.drills.length) ? U.one(item.drills) : { nl: item.nl, fr: item.fr, en: item.en };
+      const d = (item.drills && item.drills.length) ? U.one(item.drills) : Object.assign({ nl: item.nl }, NL.gloss.meaning(item));
       return { type: 'bank', item, drill: d, target: d.nl, bank: bankFor(d.nl, item) };
     },
     view(t, L, phase) {
@@ -210,7 +210,7 @@ NL.ex = (function () {
   R.order = {
     id: 'order', get kicker() { return NL.t.exOrder; },
     build(item) {
-      const d = U.one(item.drills || [{ nl: item.nl, fr: item.fr, en: item.en }]);
+      const d = U.one(item.drills || [Object.assign({ nl: item.nl }, NL.gloss.meaning(item))]);
       return { type: 'order', item, drill: d, target: d.nl, bank: U.shuffle(U.tiles(d.nl)) };
     },
     view(t, L, phase) {
@@ -225,7 +225,7 @@ NL.ex = (function () {
   R.cloze = {
     id: 'cloze', get kicker() { return NL.t.exCloze; },
     build(item) {
-      const d = item.drills ? U.one(item.drills) : { nl: item.nl, fr: item.fr, en: item.en };
+      const d = item.drills ? U.one(item.drills) : Object.assign({ nl: item.nl }, NL.gloss.meaning(item));
       /* Pour un mot, le trou tombe sur le mot enseigné, pas sur le plus long de
          la phrase : sinon on drille « gemeentehuis » en cachant « morgen ». */
       const forced = d.gap ||

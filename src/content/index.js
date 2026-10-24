@@ -142,10 +142,8 @@ NL.content = NL.content || {};
     (NL.content.scenarios || []).forEach(s => {
       s.steps.forEach((st, i) => {
         if (!st.them) return;
-        out.push({
-          id: s.id + ':l' + i, nl: st.them.nl, be: st.them.be || st.them.nl, fr: st.them.fr, en: st.them.en,
-          from: NL.gloss.of(s.title), icon: s.icon, track: s.track
-        });
+        out.push(Object.assign({ id: s.id + ':l' + i, nl: st.them.nl, be: st.them.be || st.them.nl }, NL.gloss.meaning(st.them),
+          { from: NL.gloss.of(s.title), icon: s.icon, track: s.track }));
       });
     });
     return out;

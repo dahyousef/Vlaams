@@ -97,6 +97,7 @@ refuse :
     gabarit ou un commentaire qui ne se ferme pas) est nommée à sa ligne ;
 - dans une source ou une suite, ce qui a déjà un nom, écrit de nouveau :
   - l'autre langue (`NL.gloss.other`) ;
+  - un sens recopié langue par langue, `fr: x.fr, en: x.en` (`NL.gloss.meaning`) ;
   - « le texte, s'il y en a un » (`NL.ui.ifText`), qu'il soit un sens lu par
     `NL.gloss`, un message, un score ou ce que le micro a entendu, le test écrit
     dans un sens ou dans l'autre, la balise écrite en toutes lettres ou tenue dans

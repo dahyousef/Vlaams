@@ -51,7 +51,7 @@
   function advanceThem() {
     if (P.at < P.scn.steps.length && P.scn.steps[P.at].them) {
       const t = P.scn.steps[P.at].them;
-      P.log.push({ who: 'them', nl: t.nl, be: t.be, fr: t.fr, en: t.en });
+      P.log.push(Object.assign({ who: 'them', nl: t.nl, be: t.be }, NL.gloss.meaning(t)));
       P.at++;
       say(t.be || t.nl);
     }
@@ -165,10 +165,10 @@
     if (!step || !step.you || P.choice == null) return;
     const c = step.you.choices[P.choice];
     if (ok) P.spoken++;
-    P.log.push({ who: 'you', nl: c.nl, fr: c.fr, en: c.en, score: score });
+    P.log.push(Object.assign({ who: 'you', nl: c.nl }, NL.gloss.meaning(c), { score: score }));
     P.at++;
     if (c.reply) {
-      P.log.push({ who: 'them', nl: c.reply.nl, be: c.reply.be, fr: c.reply.fr, en: c.reply.en });
+      P.log.push(Object.assign({ who: 'them', nl: c.reply.nl, be: c.reply.be }, NL.gloss.meaning(c.reply)));
       say(c.reply.be || c.reply.nl);
       P.phase = P.at < P.scn.steps.length ? (P.scn.steps[P.at].them ? 'them' : 'choose') : 'done';
       if (P.phase === 'done') finish();

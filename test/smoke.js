@@ -319,6 +319,25 @@ NL.state.open().then(() => {
     ifTextByHand(src).forEach(m => ok(false, f + ': ' + m + '… writes « the text, if there is any » by hand; use NL.ui.ifText'));
   });
   ok(!('sameSense' in NL.ex), 'NL.ex re-exports sameSense; read it from NL.gloss');
+  /* #75.1. A meaning in the reading languages is copied in one place, NL.gloss.meaning, which
+     reads NL.gloss.LANGS: a third language is then one edit there. `fr: x.fr, en: x.en`
+     written out is a second copy, and it forgets the next language. */
+  const meaningByHand = src => src.match(/(?<![\w$.])(fr|en)\s*:\s*([\w$.]+)\.\1\s*,\s*(?!\1)(fr|en)\s*:\s*\2\.\3(?![\w$])/g) || [];
+  selfTest('meaning by hand', meaningByHand, [
+    ['d = { nl: item.nl, fr: item.fr, en: item.en };', ['fr: item.fr, en: item.en']],
+    ["P.log.push({ who: 'them', nl: c.reply.nl, en: c.reply.en, fr: c.reply.fr });", ['en: c.reply.en, fr: c.reply.fr']],
+    ['x = { fr: t.fr,\n  en: t.en };', ['fr: t.fr,\n  en: t.en']],
+    ['x = { fr: a.fr, en: b.en };', []],
+    ['x = { fr: s, en: e };', []],
+    ['x = { fr: t.fr, nl: t.nl };', []]
+  ]);
+  ok(Array.isArray(NL.gloss.LANGS) && NL.gloss.LANGS.join() === 'fr,en', 'NL.gloss.LANGS is ' + JSON.stringify(NL.gloss.LANGS) + ', not the reading languages fr, en');
+  const meaningOf = x => typeof NL.gloss.meaning === 'function' ? JSON.stringify(NL.gloss.meaning(x)) : 'no NL.gloss.meaning';
+  ok(meaningOf({ nl: 'x', be: 'y', fr: 'a', en: null, note: 'n' }) === '{"fr":"a","en":null}', 'NL.gloss.meaning of an item gives ' + meaningOf({ nl: 'x', be: 'y', fr: 'a', en: null, note: 'n' }) + ', not its fr and en alone, a null kept');
+  ok(meaningOf({ fr: 'a' }) === '{"fr":"a"}', 'NL.gloss.meaning of a text with no en gives ' + meaningOf({ fr: 'a' }) + ', not fr alone');
+  ok(Object.keys(NL.gloss.pair({ fr: 'a' })).join() === 'fr', 'NL.gloss.pair of a text with no en gives the keys ' + Object.keys(NL.gloss.pair({ fr: 'a' })) + ': it is not built on NL.gloss.meaning');
+  sources.filter(f => f !== 'src/core/gloss.js').forEach(f =>
+    meaningByHand(read(f)).forEach(m => ok(false, f + ': ' + m + ' copies a meaning by hand; use NL.gloss.meaning')));
   /* A text is copied in one place, NL.ui.copy (shell.js): outside its block, no source names
      the clipboard or the browser's old copy command. The backup and the error log each wrote
      their own, and the two drifted apart. The block is blanked, not cut, so that every other

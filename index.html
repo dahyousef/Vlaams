@@ -767,7 +767,19 @@ NL.gloss = (function () {
     return typeof v === 'string' ? v : '';
   }
 
-  const pair = g => typeof g === 'string' ? { fr: g } : { fr: g.fr, en: g.en };
+  /* Les langues lues, dans un ordre fixe. Un sens se copie langue par langue d'ici,
+     et une troisième langue est une ligne de plus. */
+  const LANGS = ['fr', 'en'];
+
+  /* Le sens de `x`, dans chaque langue lue qu'il porte : un objet neuf. Un `null`
+     reste (« rien à dire », voir `of`) ; une langue absente ne devient pas une clé. */
+  function meaning(x) {
+    const m = {};
+    LANGS.forEach(l => { if (x && x[l] !== undefined) m[l] = x[l]; });
+    return m;
+  }
+
+  const pair = g => typeof g === 'string' ? { fr: g } : meaning(g);
 
   /* Le sens sans son article : « le pain » → « pain », « the bread » → « bread ».
      Une phrase garde son premier mot, comme U.bareFr. */
@@ -832,7 +844,7 @@ NL.gloss = (function () {
   /* L'attribut lang d'un sens ou d'un texte montré, espace compris : la langue où il se lit. */
   const langAttr = x => ' lang="' + tag(langOf(x)) + '"';
 
-  return { prose, use, current, other, has, langOf, tag, langAttr, of, pair, bare, senses, sameSense, sameMeaning, wordClass, cognate };
+  return { LANGS, prose, use, current, other, has, langOf, tag, langAttr, of, meaning, pair, bare, senses, sameSense, sameMeaning, wordClass, cognate };
 })();
 </script>
 <script>
@@ -5285,10 +5297,8 @@ NL.content = NL.content || {};
     (NL.content.scenarios || []).forEach(s => {
       s.steps.forEach((st, i) => {
         if (!st.them) return;
-        out.push({
-          id: s.id + ':l' + i, nl: st.them.nl, be: st.them.be || st.them.nl, fr: st.them.fr, en: st.them.en,
-          from: NL.gloss.of(s.title), icon: s.icon, track: s.track
-        });
+        out.push(Object.assign({ id: s.id + ':l' + i, nl: st.them.nl, be: st.them.be || st.them.nl }, NL.gloss.meaning(st.them),
+          { from: NL.gloss.of(s.title), icon: s.icon, track: s.track }));
       });
     });
     return out;
@@ -5559,7 +5569,7 @@ NL.ex = (function () {
   R.bank = {
     id: 'bank', get kicker() { return NL.t.exBank; },
     build(item) {
-      const d = (item.drills && item.drills.length) ? U.one(item.drills) : { nl: item.nl, fr: item.fr, en: item.en };
+      const d = (item.drills && item.drills.length) ? U.one(item.drills) : Object.assign({ nl: item.nl }, NL.gloss.meaning(item));
       return { type: 'bank', item, drill: d, target: d.nl, bank: bankFor(d.nl, item) };
     },
     view(t, L, phase) {
@@ -5573,7 +5583,7 @@ NL.ex = (function () {
   R.order = {
     id: 'order', get kicker() { return NL.t.exOrder; },
     build(item) {
-      const d = U.one(item.drills || [{ nl: item.nl, fr: item.fr, en: item.en }]);
+      const d = U.one(item.drills || [Object.assign({ nl: item.nl }, NL.gloss.meaning(item))]);
       return { type: 'order', item, drill: d, target: d.nl, bank: U.shuffle(U.tiles(d.nl)) };
     },
     view(t, L, phase) {
@@ -5588,7 +5598,7 @@ NL.ex = (function () {
   R.cloze = {
     id: 'cloze', get kicker() { return NL.t.exCloze; },
     build(item) {
-      const d = item.drills ? U.one(item.drills) : { nl: item.nl, fr: item.fr, en: item.en };
+      const d = item.drills ? U.one(item.drills) : Object.assign({ nl: item.nl }, NL.gloss.meaning(item));
       /* Pour un mot, le trou tombe sur le mot enseigné, pas sur le plus long de
          la phrase : sinon on drille « gemeentehuis » en cachant « morgen ». */
       const forced = d.gap ||
@@ -7285,7 +7295,7 @@ NL.screens.sessie = (function () {
   function advanceThem() {
     if (P.at < P.scn.steps.length && P.scn.steps[P.at].them) {
       const t = P.scn.steps[P.at].them;
-      P.log.push({ who: 'them', nl: t.nl, be: t.be, fr: t.fr, en: t.en });
+      P.log.push(Object.assign({ who: 'them', nl: t.nl, be: t.be }, NL.gloss.meaning(t)));
       P.at++;
       say(t.be || t.nl);
     }
@@ -7399,10 +7409,10 @@ NL.screens.sessie = (function () {
     if (!step || !step.you || P.choice == null) return;
     const c = step.you.choices[P.choice];
     if (ok) P.spoken++;
-    P.log.push({ who: 'you', nl: c.nl, fr: c.fr, en: c.en, score: score });
+    P.log.push(Object.assign({ who: 'you', nl: c.nl }, NL.gloss.meaning(c), { score: score }));
     P.at++;
     if (c.reply) {
-      P.log.push({ who: 'them', nl: c.reply.nl, be: c.reply.be, fr: c.reply.fr, en: c.reply.en });
+      P.log.push(Object.assign({ who: 'them', nl: c.reply.nl, be: c.reply.be }, NL.gloss.meaning(c.reply)));
       say(c.reply.be || c.reply.nl);
       P.phase = P.at < P.scn.steps.length ? (P.scn.steps[P.at].them ? 'them' : 'choose') : 'done';
       if (P.phase === 'done') finish();
