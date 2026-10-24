@@ -31,6 +31,7 @@ src/content/sourced.js
 src/content/examples.js
 src/content/also.js
 src/content/open.js
+src/content/open.phrases.js
 src/content/reference.js
 src/content/scenarios.js
 src/content/index.js

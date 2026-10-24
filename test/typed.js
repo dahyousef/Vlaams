@@ -352,6 +352,43 @@ NL.state.open().then(() => {
     posed('g-perfect-intro', 1, 'rx', /\bge[\w]{2,}\b/i, () =>
       meets('g-perfect-intro', 'Gisteravond heb ik een nieuwe app op mijn gsm geïnstalleerd.', 1, true, '« ï » is a letter inside brackets too'));
     console.log('  mots entiers   « in » hors de « kind », « geïnstalleerd » et « één » entiers, « om half » mot à mot, \\B, \\W et [\\w] sur les mêmes lettres');
+    /* Une phrase reçoit sa tâche libre de src/content/open.phrases.js, rangée sous son néerlandais
+       tel qu'il est écrit, et la sert à son échelon 6. La tâche est posée ici le temps de deux
+       réponses, puis retirée : la table du cours peut n'en tenir aucune. Son `rx` reste une
+       expression régulière une fois posé sur l'élément. */
+    {
+      const table = (NL.content.byDutch || {})['open.phrases'];
+      ok(!!table, 'NL.content.byDutch[\'open.phrases\'] is not set: src/content/open.phrases.js is not loaded');
+      const nl = 'Hoeveel kost dat?', id = find(nl).id;
+      if (table) {
+        const was = table[nl];
+        table[nl] = {
+          ask: { fr: 'Demande le prix de deux choses.', en: 'Ask the price of two things.' },
+          need: [
+            { what: { fr: 'une question', en: 'a question' }, rx: /\?\s*$/, miss: 'Hoeveel kosten het brood en de koffie.' },
+            { what: { fr: 'au moins 5 mots', en: 'at least 5 words' }, min: 5, miss: 'Hoeveel kost het?' }
+          ],
+          model: 'Hoeveel kosten het brood en de koffie?'
+        };
+        fresh();
+        const task = NL.content.byId(id).open;
+        ok(!!task, 'the task of ' + say(nl) + ' is not put on ' + id + ': open.phrases is missing from TABLES in src/content/index.js');
+        const kept = !!task && Object.prototype.toString.call(task.need[0].rx) === '[object RegExp]';
+        if (task) ok(kept, 'the rx of ' + say(nl) + ' is ' + JSON.stringify(task.need[0].rx) + ' once put on ' + id + ', not a regular expression');
+        if (kept) {
+          const named = task.need.map(n => NL.gloss.of(n.what));
+          const right = wrote(id, task.model);
+          if (right) ok(right.right && right.ticked.join('|') === named.join('|'),
+            say(task.model) + ' is marked ' + (right.right ? 'right' : 'wrong') + ' for ' + id + ', with ' + JSON.stringify(right.ticked) + ' ticked, not ' + JSON.stringify(named));
+          const flat = wrote(id, task.need[0].miss);
+          if (flat) ok(!flat.right && flat.ticked.join('|') === named[1],
+            say(task.need[0].miss) + ' is marked ' + (flat.right ? 'right' : 'wrong') + ' for ' + id + ', with ' + JSON.stringify(flat.ticked) + ' ticked, not only ' + say(named[1]));
+        }
+        if (was === undefined) delete table[nl]; else table[nl] = was;
+        fresh();
+      }
+      console.log('  phrase         ' + say(nl) + ' en réponse libre à l’échelon 6 : l’exemple juste, sans « ? » faux');
+    }
   }
 
   console.log('\n' + checks + ' contrôles, ' + fails + ' en échec');

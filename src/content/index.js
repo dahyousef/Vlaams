@@ -19,8 +19,12 @@ NL.content = NL.content || {};
       .replace(/\{stad\}/g, m.town || DEFAULTS.stad)
       .replace(/\{bedrijf\}/g, m.company || DEFAULTS.bedrijf);
   }
+  /* A regular expression (an open task's rx) is kept as it is: it holds no token, and copied
+     key by key it would come out an empty object. It is told by its kind, as the table writer
+     tells it (tools/content/lib/table.js), so one built outside the page, by a test, is kept too. */
   function deepFill(v) {
     if (typeof v === 'string') return fill(v);
+    if (Object.prototype.toString.call(v) === '[object RegExp]') return v;
     if (Array.isArray(v)) return v.map(deepFill);
     if (v && typeof v === 'object') {
       const o = {};
@@ -40,6 +44,7 @@ NL.content = NL.content || {};
      SRC in build.sh, after the lexicons. */
   const TABLES = [
     { table: 'be', field: 'be' },
+    { table: 'open.phrases', field: 'open' },
   ]; // A new table: its line goes just above this one.
 
   function build() {
