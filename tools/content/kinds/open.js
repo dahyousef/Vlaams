@@ -37,8 +37,9 @@ const KEYS = ['what', 'rx', 'any', 'min', 'miss'];
 const MIN = [3, 12];
 
 /* Les mots d'un texte comme test/lang.js les lit (6d) : lettres et chiffres, en minuscules,
-   jetons ôtés. */
-const words = s => String(s).replace(/\{[a-z]+\}/g, ' ').toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+   jetons ôtés, accents gardés. Ce n'est pas NL.util.words (fondé sur norm, qui ôte les accents) :
+   celui-ci sert à compter les mots d'une réponse, celui-là à lire le néerlandais cité. */
+const dutchWords = s => String(s).replace(/\{[a-z]+\}/g, ' ').toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
 const pair = v => !!v && typeof v === 'object' && !Array.isArray(v) && Object.keys(v).sort().join() === 'en,fr' &&
   ['fr', 'en'].every(l => typeof v[l] === 'string' && v[l].trim() !== '' && !/\n/.test(v[l]));
 const text = v => typeof v === 'string' && v.trim() !== '' && !/\n/.test(v);
@@ -51,14 +52,14 @@ function facts(C, repo) {
   if (memo.has(C)) return memo.get(C);
   const units = C.RAW.units, taught = [], seen = new Set(), dutch = new Set();
   units.forEach(u => {
-    (u.words || []).concat(u.phrases || []).forEach(x => words(x.nl).forEach(w => { seen.add(w); dutch.add(w); }));
+    (u.words || []).concat(u.phrases || []).forEach(x => dutchWords(x.nl).forEach(w => { seen.add(w); dutch.add(w); }));
     taught.push([...seen].sort());
   });
   const D = C.NL.content.DEFAULTS;
   const f = {
     index: new Map(units.map((u, ui) => [u.id, ui])), taught, dutch,
     first: sequence.firstUnits(units), S: spelling.open(repo, C.NL),
-    names: new Set([].concat(...Object.keys(D).map(k => words(D[k]))))
+    names: new Set([].concat(...Object.keys(D).map(k => dutchWords(D[k]))))
   };
   memo.set(C, f);
   return f;
@@ -85,7 +86,7 @@ function quotes(s, l) {
   for (;;) {
     const a = s.indexOf(open, at), b = s.indexOf(close, at);
     if (a < 0 && b < 0) return out;
-    if (a < 0 || b < a) return 'a ' + close + ' with no ' + open + ' before it';
+    if (a < 0 || (b >= 0 && b < a)) return 'a ' + close + ' with no ' + open + ' before it';
     const c = s.indexOf(close, a + 1), d = s.indexOf(open, a + 1);
     if (c < 0) return 'a ' + open + ' never closed';
     if (d >= 0 && d < c) return 'a quote inside a quote';
@@ -107,11 +108,11 @@ function quoteRule(v, where, taught, dutch, names) {
   if (bad.length) return bad;
   const out = [];
   if (q.fr.join('|') !== q.en.join('|')) out.push(where + ': fr quotes ' + JSON.stringify(q.fr) + ', en quotes ' + JSON.stringify(q.en) + ': both sides quote the same Dutch, in the same order');
-  q.fr.forEach(s => words(s).filter(w => !taught.has(w) && !/^\d+$/.test(w)).forEach(w =>
+  q.fr.forEach(s => dutchWords(s).filter(w => !taught.has(w) && !/^\d+$/.test(w)).forEach(w =>
     out.push(where + ': « ' + w + ' » is quoted, and the course has not taught it by this unit: a quote holds taught Dutch, and a translation goes in parentheses')));
   const digits = s => (s.match(/\d+/g) || []).sort().join(' ');
   if (digits(v.fr) !== digits(v.en)) out.push(where + ': fr has the numbers [' + digits(v.fr) + '], en [' + digits(v.en) + ']');
-  const bare = s => new Set(words(s.replace(/[«“][^»”]*[»”]/g, ' ')));
+  const bare = s => new Set(dutchWords(s.replace(/[«“][^»”]*[»”]/g, ' ')));
   const en = bare(v.en);
   [...bare(v.fr)].filter(w => en.has(w) && dutch.has(w) && !names.has(w) && w !== 'a').forEach(w =>
     out.push(where + ': « ' + w + ' » is Dutch the course has, written bare in fr and in en: quote it, or reword'));
@@ -172,10 +173,10 @@ function check(row, input, ctx) {
      est public. */
   const strings = [row.ask.fr, row.ask.en, row.model].concat(...row.need.map(n => [n.what.fr, n.what.en, n.miss].concat(n.any || [])));
   if (strings.some(s => /[{}]/.test(s))) out.push('a task holds no { } token');
-  strings.forEach(s => words(s).filter(w => F.names.has(w)).forEach(w => out.push('« ' + w + ' » is a default name: a task holds no name of a learner, a town or a company')));
+  strings.forEach(s => dutchWords(s).filter(w => F.names.has(w)).forEach(w => out.push('« ' + w + ' » is a default name: a task holds no name of a learner, a town or a company')));
 
   /* Les guillemets. */
-  const taught = new Set(F.taught[ui]), dutch = new Set([...F.dutch].concat(words(row.model)));
+  const taught = new Set(F.taught[ui]), dutch = new Set([...F.dutch].concat(dutchWords(row.model)));
   quoteRule(row.ask, 'ask', taught, dutch, F.names).forEach(r => out.push(r));
   row.need.forEach((n, i) => quoteRule(n.what, 'need ' + (i + 1) + ' what', taught, dutch, F.names).forEach(r => out.push(r)));
   return out;

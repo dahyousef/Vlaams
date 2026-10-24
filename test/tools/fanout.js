@@ -950,6 +950,22 @@ async function main() {
       [r => { r.ask.fr = 'Commence par « Mag ik », et demande des pistolets.'; r.ask.en = 'Start with “Mag ik”, and ask for pistolets.'; },
         ['ask: « pistolets » is Dutch the course has, written bare in fr and in en: quote it, or reword'], 'un mot du cours écrit des deux côtés se cite']
     ].forEach(([patch, want, m]) => same(why(patch), want, 'Check : ' + m));
+    /* Les règles que d'autres raisons recouvrent : la phrase est cherchée parmi les raisons. */
+    const has = (patch, line, m) => ok(why(patch).indexOf(line) >= 0, 'Check : ' + m + ' : ' + JSON.stringify(why(patch)));
+    const SAME = r => { r.need[1].what = JSON.parse(JSON.stringify(r.need[0].what)); };
+    has(r => { r.model = 'Mag ik.'; }, 'the model has fewer than 3 words: the session judges no shorter answer', 'l\'exemple a au moins 3 mots');
+    has(SAME, 'need 2: its fr what is another need\'s', 'deux besoins n\'ont pas le même what (fr)');
+    has(SAME, 'need 2: its en what is another need\'s', 'deux besoins n\'ont pas le même what (en)');
+    [
+      [r => { r.ask = 'Mag ik'; }, 'ask is { "fr": …, "en": … }, each one line', 'ask est une paire'],
+      [r => { r.model = ['Mag ik']; }, 'model is one line of Dutch', 'l\'exemple est une ligne'],
+      [r => { r.need[0] = 4; }, 'need 1 is an object', 'un besoin est un objet'],
+      [r => { r.need[0].rx = 4; }, 'need 1: rx is the source of a regular expression, a string', 'un rx est une chaîne'],
+      [r => { r.need[1].any = []; }, 'need 2: any is a list of words or runs of words', 'any est une liste de mots'],
+      [r => { r.ask.fr = 'Commence par » Mag ik.'; }, 'ask: a » with no « before it', 'un » sans «'],
+      [r => { r.ask.fr = 'Commence par « Mag ik.'; }, 'ask: a « never closed', 'un « se ferme'],
+      [r => { r.ask.fr = 'Commence par « » Mag ik.'; }, 'ask: an empty quote', 'une citation n\'est pas vide']
+    ].forEach(([patch, line, m]) => has(patch, line, m));
     ok(/^need 1: rx « \(mag » does not compile: /.test(why(r => { r.need[0].rx = '(mag'; }).join('|')), 'Check : un rx se compile');
     same(why(null, 'overleven:p1'), ['the model uses « drie », which unit 3 (tijd) teaches, after this phrase\'s unit 1',
       'the model uses « pistolets », which unit 4 (bakker) teaches, after this phrase\'s unit 1'], 'Check : l\'unité est celle de la ligne d\'entrée');
@@ -963,8 +979,16 @@ async function main() {
       'un keep sans ses deux réponses est refusé, une contestation qui en porte aussi');
     same(verdict('keep', [BAKKER.model, RIGHT[1]]), ['right answer 1 « Mag ik drie pistolets, alstublieft? » is the model: write one of your own'], 'une bonne réponse n\'est pas l\'exemple');
     same(verdict('keep', [RIGHT[1], 'mag ik vier pistolets hebben']), ['the two right answers are the same answer'], 'les deux réponses diffèrent');
+    ok(verdict('keep', [RIGHT[1], 'Ja ja']).indexOf('right answer 2 « Ja ja » has fewer than 3 words: the session judges no shorter answer') >= 0, 'une bonne réponse a au moins 3 mots');
     same(verdict('keep', [RIGHT[1], 'Ik wil vier pistolets, alstublieft.']),
       ['right answer 2 « Ik wil vier pistolets, alstublieft. » does not meet ' + N1 + ': the task would reject a right answer'], 'une bonne réponse que la tâche refuse est nommée');
+
+    /* Split refuse une phrase à jeton et un id qui n'est plus une phrase du cours. */
+    const withSources = f => Object.assign({}, CO, { sources: f(CO.sources.map(x => Object.assign({}, x))) });
+    throws(() => K.split(withSources(a => { a.find(x => x.id === 'bakker:p1').nl = 'Mag ik {naam}?'; return a; }), ctx),
+      /^bakker:p1 « Mag ik \{naam\}\? » holds a token: a task is the same for every learner$/, 'Split refuse une phrase à jeton');
+    throws(() => K.split(withSources(a => a.filter(x => x.id !== 'bakker:p1')), ctx),
+      /^bakker:p1 is no phrase of the course$/, 'Split refuse un id qui n\'est plus une phrase');
 
     /* Par les outils : une ligne fautive, puis deux lots écrits et relus, puis Merge. Chaque
        ligne faite à la main dit « ja » puis la phrase ; la boulangerie est la vraie. */
