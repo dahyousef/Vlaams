@@ -37,6 +37,30 @@ node tools/content/fetch.js . kaikki/nl.jsonl
 node tools/content/kaikki.js .
 ```
 
+## Tatoeba — phrases d'exemple
+
+Les phrases de `src/content/sourced.js` dont le `src` est un numéro viennent de
+[Tatoeba](https://tatoeba.org), avec leurs traductions anglaise et française.
+Ce sont des textes, pas des faits : Tatoeba les publie sous
+[CC BY 2.0 FR](https://creativecommons.org/licenses/by/2.0/fr/), et le crédit
+est ici une condition de la licence. `docs/attribution/tatoeba.tsv` le donne
+phrase par phrase : le numéro et l'auteur de la phrase néerlandaise, de sa
+traduction anglaise et de sa traduction française, et la mention d'une
+traduction adaptée. `tools/content/merge.js` le réécrit en entier à chaque
+fusion. Une phrase dont le `src` vaut `gen` est écrite pour le
+cours, et n'y figure pas.
+
+Les fichiers de Tatoeba sont épinglés dans `tools/content/lib/cache.js` et
+restent dans `.cache/`, ignoré par git ; `tools/content/tatoeba.js` en tire les
+phrases traduites dans les deux langues, que les outils de contenu classent.
+
+Régénérer :
+
+```sh
+node tools/content/fetch.js . tatoeba
+node tools/content/tatoeba.js .
+```
+
 ## OpenTaal — formes de mots
 
 `test/data/nl-words.txt.gz` est la liste de mots d'[OpenTaal](https://github.com/OpenTaal/opentaal-wordlist),

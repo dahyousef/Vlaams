@@ -8,6 +8,7 @@
 const fs = require('fs'), path = require('path');
 const browser = require('./lib/browser');
 const spelling = require('./lib/spelling');
+const sequence = require('./lib/sequence');
 const { raw, owed, at } = require('./lib/prose');
 const tree = require('./lib/tree');
 const ROOT = process.argv[2] || path.join(__dirname, '..');
@@ -123,18 +124,14 @@ NL.state.open().then(() => {
   /* ================= 3. une phrase d'exemple n'emprunte pas en avant */
   /* src/content/examples.js s'impose « du vocabulaire déjà rencontré ». Non
      vérifiée, la règle était tenue six fois sur sept. Les mots-outils ne
-     comptent pas : on ne peut pas écrire une phrase sans eux. */
-  const GRAMMAR = new Set(('ik ge gij je jij u hij ze zij we wij het de een is ben bent zijn was heb hebt ' +
-    'heeft had kan kunt kun wil wilt moet mag ga gaat gaan doe doet niet nie geen en of maar want dat dit ' +
-    'die deze er hier daar ook nog al wel te in op van met voor aan bij naar uit om over door tot me mijn ' +
-    'uw zo heel veel wat wie waar hoe nu dan als zich eens even graag ja nee').split(' '));
-  const firstUnit = new Map();
-  units.forEach((u, ui) => (u.words || []).concat(u.phrases || []).forEach(it =>
-    tokens(it.nl).forEach(t => { if (!firstUnit.has(t)) firstUnit.set(t, ui); })));
+     comptent pas : on ne peut pas écrire une phrase sans eux. L'ordre du cours
+     et les mots-outils sont dans test/lib/sequence.js, que les outils de contenu
+     lisent aussi. */
+  const first = sequence.firstUnits(units);
   let ahead = 0, sentences = 0;
   units.forEach((u, ui) => (u.words || []).forEach(w => (w.drills || []).forEach(d => {
     sentences++;
-    if (tokens(d.nl).some(t => !GRAMMAR.has(t) && firstUnit.has(t) && firstUnit.get(t) > ui)) ahead++;
+    if (sequence.ahead(d.nl, ui, first).length) ahead++;
   })));
   const AHEAD_BUDGET = 62;
   ok(ahead <= AHEAD_BUDGET, ahead + ' phrases d’exemple empruntent du vocabulaire à une unité ultérieure, budget ' + AHEAD_BUDGET +

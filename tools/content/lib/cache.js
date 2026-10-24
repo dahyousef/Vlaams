@@ -20,11 +20,10 @@ const { spawnSync } = require('child_process');
 const TATOEBA = 'https://downloads.tatoeba.org/exports/';
 const PINS = {
   'kaikki/nl.jsonl': { url: 'https://kaikki.org/dictionary/Dutch/kaikki.org-dictionary-Dutch.jsonl', date: '2026-10-22', bytes: 256173778, sha256: '00c8ee4a95169bb1ec0ac9b495d43dc7746a1e59e9a44914bae8909f9f167121' },
-  'tatoeba/eng_sentences.tsv': { url: TATOEBA + 'per_language/eng/eng_sentences.tsv.bz2', date: '2026-10-22', bytes: 108815802, sha256: 'ac9f0d48a44c7ac4f3eab724567774487b9841dcfcb3b2bcac48e1cc5636cd96' },
-  'tatoeba/fra_sentences.tsv': { url: TATOEBA + 'per_language/fra/fra_sentences.tsv.bz2', date: '2026-10-22', bytes: 40588086, sha256: 'ef8fdee868f2cace15f3bd20ef149a37de991ae33ad5fc023eaa5175f2003eab' },
+  'tatoeba/eng_sentences_detailed.tsv': { url: TATOEBA + 'per_language/eng/eng_sentences_detailed.tsv.bz2', date: '2026-10-22', bytes: 198805928, sha256: '411dc55ab184c29a052602290faccd19a4090a3d35009b8edc0513caf4f214f5' },
+  'tatoeba/fra_sentences_detailed.tsv': { url: TATOEBA + 'per_language/fra/fra_sentences_detailed.tsv.bz2', date: '2026-10-22', bytes: 76072652, sha256: '81932e9066423e226442b23a06b893af71eb8dc0514b140ef74dd54cb0f6bb18' },
   'tatoeba/nld-eng_links.tsv': { url: TATOEBA + 'per_language/nld/nld-eng_links.tsv.bz2', date: '2026-10-22', bytes: 2744785, sha256: '6fc7aa1b58b40d9a661113fc05f26a9ca21989330bf0e737eaa32e4be264c6ac' },
   'tatoeba/nld-fra_links.tsv': { url: TATOEBA + 'per_language/nld/nld-fra_links.tsv.bz2', date: '2026-10-22', bytes: 991928, sha256: '413c5b42bca6a3c4ee9744fbbfc5a80eb4a1b3cf42c7161a0f06ecb9d0e12d2a' },
-  'tatoeba/nld_sentences.tsv': { url: TATOEBA + 'per_language/nld/nld_sentences.tsv.bz2', date: '2026-10-22', bytes: 9779813, sha256: 'bd6a9f474d4c8caf677b1dcdb5744865ec6473c5d857b11aa203d9408b7e691a' },
   'tatoeba/nld_sentences_detailed.tsv': { url: TATOEBA + 'per_language/nld/nld_sentences_detailed.tsv.bz2', date: '2026-10-22', bytes: 19557176, sha256: '378ba55c8d6512edd09155bca53314b270555367e52b704a2c21aecb869e0f39' },
   'tatoeba/user_languages.csv': { url: TATOEBA + 'user_languages.tar.bz2', member: 'user_languages.csv', date: '2026-10-22', bytes: 2425571, sha256: '8770cd3ae712fd791fc9370f98f6b17abb6d05d151cc5e5b67fe0494163b9376' }
 };

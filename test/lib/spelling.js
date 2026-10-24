@@ -8,6 +8,8 @@
      const spelling = require('./lib/spelling');
      spelling.tokens(s)          les formes d'un texte, en minuscules, jetons {…} ôtés
      spelling.stem(t)            la forme sans son « ’s »
+     spelling.named(s, NL)       vrai si le texte garde un jeton {…} ou écrit un nom par défaut
+                                 (NL.content.DEFAULTS), même suivi de « ’s » ou d'un trait d'union
      spelling.readFlemish(file)  les formes de flemish.tsv : une Map forme → raison
      const S = spelling.open(root, NL)   NL : l'application chargée (NL.content.DEFAULTS)
      S.forms                     les formes d'OpenTaal (un Set)
@@ -22,6 +24,14 @@ const fs = require('fs'), path = require('path'), zlib = require('zlib');
 const tokens = s => String(s || '').toLowerCase().replace(/\{[a-z]+\}/g, ' ').split(/[^a-zà-ÿ'’-]+/)
   .map(t => t.replace(/^[-'’]+|[-'’]+$/g, '')).filter(t => t.length > 1);
 const stem = t => t.replace(/[’']s$/, '');                                // collega’s, auto’s, da’s
+
+/* Une phrase d'une source, ou écrite pour un mot, vaut pour tout apprenant : elle ne garde aucun
+   jeton et ne nomme ni le prénom, ni la commune, ni l'employeur par défaut, en néerlandais, en
+   anglais ou en français. */
+function named(s, NL) {
+  const D = NL.content.DEFAULTS, names = new Set([].concat(...Object.keys(D).map(k => tokens(D[k]))));
+  return /{/.test(s) || String(s).toLowerCase().split(/[^a-zà-ÿ]+/).some(t => names.has(t));
+}
 
 function readFlemish(file) {
   const out = new Map();
@@ -50,4 +60,4 @@ function open(root, NL) {
   return { forms, flemish, known, flemishOf };
 }
 
-module.exports = { tokens, stem, readFlemish, open };
+module.exports = { tokens, stem, named, readFlemish, open };

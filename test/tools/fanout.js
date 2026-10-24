@@ -416,14 +416,14 @@ async function main() {
 
   /* ==================================================== 8. le cache épinglé */
   const keys = Object.keys(cache.PINS);
-  same(keys.length, 8, 'huit fichiers épinglés');
+  same(keys.length, 7, 'sept fichiers épinglés');
   keys.forEach(k => {
     const p = cache.PINS[k];
     ok(/^https:\/\//.test(p.url) && /^\d{4}-\d{2}-\d{2}$/.test(p.date) && Number.isInteger(p.bytes) && /^[0-9a-f]{64}$/.test(p.sha256),
       k + ' : une épingle a son adresse https, sa date, sa taille et son sha256');
   });
   same(cache.select(['kaikki', 'x'], cache.PINS), { keys: ['kaikki/nl.jsonl'], unknown: ['x'] }, 'un nom est une clé ou son préfixe');
-  same(cache.select(['tatoeba'], cache.PINS).keys.length, 7, 'tatoeba désigne ses sept fichiers');
+  same(cache.select(['tatoeba'], cache.PINS).keys.length, 6, 'tatoeba désigne ses six fichiers');
 
   const sha = s => crypto.createHash('sha256').update(s).digest('hex');
   const PIN = (url, body, more) => Object.assign({ url, date: '2026-10-22', bytes: Buffer.byteLength(body), sha256: sha(body) }, more);

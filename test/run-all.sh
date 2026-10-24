@@ -30,7 +30,8 @@ node test/tools/check-files.js "$ROOT"
 # Le kit de répartition (tools/content/) : Split, Check et Merge, les tables et le cache
 # épinglé, dans une copie du dépôt et sans réseau.
 node test/tools/fanout.js "$ROOT"
-# Les sources externes du kit (tools/content/kaikki.js), sur des fichiers faits par la suite.
+# Les sources externes du kit (tools/content/kaikki.js, tools/content/tatoeba.js), sur des
+# fichiers faits par la suite.
 node test/tools/sources.js "$ROOT"
 
 # Une voix et un navigateur par ligne : c'est là que vivent les vrais problèmes.
