@@ -666,6 +666,27 @@ function displayChecks() {
     const silent = Object.keys(NL.ex.registry).filter(id => NO_MEANING.indexOf(id) < 0 && !showed.has(id));
     ok(silent.length === 0, '69.1 : ' + silent.join(', ') + ' ne montre(nt) aucun sens sans anglais, le contrôle est creux');
     ok(unmarked.length === 0, '69.1 : ' + unmarked.length + ' sens français sans lang="fr" dans les exercices, dont ' + unmarked.slice(0, 8).join(' ; '));
+    /* #75.3. Chaque exercice dit en quoi il pose (`asks`) et en quoi il répond (`answers`) : 'nl', 'gloss'
+       (un sens, dans sa langue) ou null (les deux mêlés). Le pied lit `answers` ; un exercice ajouté sans
+       ces champs échoue ici. Sur het brood, la réponse est un sens exactement quand `answers` vaut 'gloss'. */
+    const SIDES = ['nl', 'gloss', null], sided = [];
+    Object.keys(NL.ex.registry).forEach(id => {
+      const E = NL.ex.registry[id];
+      ['asks', 'answers'].forEach(f => ok(Object.prototype.hasOwnProperty.call(E, f) && SIDES.indexOf(E[f]) >= 0,
+        '#75.3 : ' + id + '.' + f + ' manque, ou ne vaut ni nl, ni gloss, ni null'));
+      if (E.answers !== 'nl' && E.answers !== 'gloss') return;
+      [brood, phrase, rule].some(x => {
+        let a; try { a = E.answer(E.build(x)); } catch (e) { return false; }
+        if (typeof a !== 'string' || !a) return false;
+        const meaning = x === brood && french.has(flat(a));
+        ok((E.answers === 'gloss') === meaning, '#75.3 : ' + id + '.answers vaut ' + E.answers + ', mais sa réponse « ' + a + ' » ' + (meaning ? 'est' : 'n’est pas') + ' un sens');
+        sided.push(id);
+        return true;
+      });
+    });
+    const unsided = Object.keys(NL.ex.registry).filter(id => (NL.ex.registry[id].answers === 'nl' || NL.ex.registry[id].answers === 'gloss') && sided.indexOf(id) < 0);
+    ok(unsided.length === 0, '#75.3 : ' + unsided.join(', ') + ' ne donne(nt) aucune réponse sur het brood, la phrase ou la règle, le contrôle est creux');
+    ok(sided.length > 0, '#75.3 : aucun exercice ne répond en nl ou en gloss, le contrôle est creux');
     /* Le pied d'un « recall » passé redit ce sens : même langue. */
     const S = NL.screens.sessie, answer = require('./lib/answer')(B);
     NL.srs.seed(brood, 0);
@@ -679,6 +700,13 @@ function displayChecks() {
     if (asked) {
       answer.wrong();
       ok(html().indexOf('<b lang="fr">' + NL.util.esc(NL.gloss.bare(brood)) + '</b>') >= 0, '69.1 : le pied d’un recall passé montre le sens français sans lang="fr"');
+      /* #75.3. Le pied suit le champ, pas le nom de l'exercice : la même réponse, relue sous chaque valeur. */
+      const E = NL.ex.registry.recall, was = E.answers, b = '>' + NL.util.esc(NL.gloss.bare(brood)) + '</b>';
+      [['gloss', '<b lang="fr"'], ['nl', '<b lang="nl-BE"'], [null, '<b']].forEach(v => {
+        E.answers = v[0]; NL.ui.render();
+        ok(html().indexOf(v[1] + b) >= 0, '#75.3 : answers à ' + v[0] + ', le pied d’un recall passé ne montre pas ' + v[1] + b);
+      });
+      E.answers = was; NL.ui.render();
     }
   });
 

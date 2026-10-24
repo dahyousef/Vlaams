@@ -141,11 +141,15 @@ NL.ex = (function () {
     return (cands.length ? cands : ts).sort((a, b) => b.length - a.length)[0];
   }
 
-  /* ---------------- the types ---------------- */
+  /* ---------------- the types ----------------
+     Chaque type dit en quoi il pose (`asks`) et en quoi il répond (`answers`) :
+     'nl' du néerlandais, 'gloss' un sens dans sa langue, null les deux mêlés. Le
+     pied de la séance lit `answers` ; test/lang.js refuse un type qui n'a pas les deux. */
   const R = {};
 
   R.pick = {
     id: 'pick', get kicker() { return NL.t.exPick; },
+    asks: 'gloss', answers: 'nl',
     build(item) {
       const right = U.bare(item.nl);
       /* Quatre options, pas trois : au hasard on tombe juste une fois sur quatre. */
@@ -163,6 +167,7 @@ NL.ex = (function () {
 
   R.recall = {
     id: 'recall', get kicker() { return NL.t.exRecall; },
+    asks: 'nl', answers: 'gloss',
     build(item) {
       const opts = U.shuffle([{ label: NL.gloss.bare(item), ok: true }].concat(
         others(item, 3, 'gloss').map(l => ({ label: l, ok: false }))));
@@ -179,6 +184,7 @@ NL.ex = (function () {
 
   R.article = {
     id: 'article', get kicker() { return NL.t.exArticle; },
+    asks: 'nl', answers: 'nl',
     build: item => ({ type: 'article', item, opts: [{ label: 'de', ok: item.art === 'de' }, { label: 'het', ok: item.art === 'het' }] }),
     view(t, L, phase) {
       const n = U.bare(t.item.nl);
@@ -194,6 +200,7 @@ NL.ex = (function () {
 
   R.bank = {
     id: 'bank', get kicker() { return NL.t.exBank; },
+    asks: 'gloss', answers: 'nl',
     build(item) {
       const d = (item.drills && item.drills.length) ? U.one(item.drills) : Object.assign({ nl: item.nl }, NL.gloss.meaning(item));
       return { type: 'bank', item, drill: d, target: d.nl, bank: bankFor(d.nl, item) };
@@ -208,6 +215,7 @@ NL.ex = (function () {
 
   R.order = {
     id: 'order', get kicker() { return NL.t.exOrder; },
+    asks: 'gloss', answers: 'nl',
     build(item) {
       const d = U.one(item.drills || [Object.assign({ nl: item.nl }, NL.gloss.meaning(item))]);
       return { type: 'order', item, drill: d, target: d.nl, bank: U.shuffle(U.tiles(d.nl)) };
@@ -223,6 +231,7 @@ NL.ex = (function () {
 
   R.cloze = {
     id: 'cloze', get kicker() { return NL.t.exCloze; },
+    asks: 'nl', answers: 'nl',
     build(item) {
       const d = item.drills ? U.one(item.drills) : Object.assign({ nl: item.nl }, NL.gloss.meaning(item));
       /* Pour un mot, le trou tombe sur le mot enseigné, pas sur le plus long de
@@ -258,6 +267,7 @@ NL.ex = (function () {
 
   R.dictation = {
     id: 'dictation', get kicker() { return NL.t.exDictation; },
+    asks: 'nl', answers: 'nl',
     build(item) {
       const target = item.kind === 'word' ? U.bare(item.nl) : item.nl;
       return { type: 'dictation', item, target, bank: item.kind === 'word' ? null : bankFor(target, item, 3) };
@@ -281,6 +291,7 @@ NL.ex = (function () {
 
   R.type = {
     id: 'type', get kicker() { return NL.t.exType; },
+    asks: 'gloss', answers: 'nl',
     build(item) {
       return { type: 'type', item, target: item.kind === 'word' ? U.bare(item.nl) : (item.drills ? item.nl : item.nl), prompt: item.kind === 'word' ? NL.gloss.bare(item) : NL.gloss.of(item) };
     },
@@ -309,6 +320,7 @@ NL.ex = (function () {
 
   R.speak = {
     id: 'speak', get kicker() { return NL.t.exSpeak; },
+    asks: 'nl', answers: 'nl',
     build(item) {
       return { type: 'speak', item, target: item.kind === 'word' ? U.bare(item.nl) : item.nl, prompt: item.kind === 'word' ? NL.gloss.bare(item) : NL.gloss.of(item) };
     },
@@ -431,6 +443,7 @@ NL.ex = (function () {
      au lieu d'un pile ou face. */
   R.intrus = {
     id: 'intrus', get kicker() { return NL.t.exIntrus; },
+    asks: 'nl', answers: 'nl',
     build(item) {
       const pool = NL.content.allItems().filter(x => x.kind === 'word' && x.art && x.id !== item.id);
       const same = U.sample(pool.filter(x => x.art === item.art), 2);
@@ -453,6 +466,7 @@ NL.ex = (function () {
      relecture de tes propres mails est direct. */
   R.corrige = {
     id: 'corrige', get kicker() { return NL.t.exCorrige; },
+    asks: 'nl', answers: 'nl',
     build(item) {
       const toks = U.tiles(item.nl);
       const i = 1 + ((Math.random() * Math.max(1, toks.length - 2)) | 0);
@@ -480,6 +494,7 @@ NL.ex = (function () {
      et la donnée existe déjà sur chaque élément. */
   R.vlaams = {
     id: 'vlaams', get kicker() { return NL.t.exVlaams; },
+    asks: 'nl', answers: 'nl',
     build(item) {
       const any = NL.content.allItems().filter(x =>
         x.be && x.id !== item.id && U.norm(x.be) !== U.norm(x.nl) && U.norm(x.be) !== U.norm(item.be));
@@ -513,6 +528,7 @@ NL.ex = (function () {
   }
   R.open = {
     id: 'open', get kicker() { return NL.t.exOpen; },
+    asks: 'gloss', answers: 'nl',
     build: item => ({ type: 'open', item, task: item.open }),
     view(t, L, phase) {
       const met = phase === 'ask' ? null : rubric(t.task, L.input);
@@ -533,6 +549,7 @@ NL.ex = (function () {
 
   R.match = {
     id: 'match', get kicker() { return NL.t.exMatch; },
+    asks: null, answers: null,
     build(items) {
       const pairs = items.slice(0, 5).map(it => ({ id: it.id, nl: U.bare(it.nl), gloss: NL.gloss.bare(it), lang: NL.gloss.langOf(it), item: it }));
       return {
