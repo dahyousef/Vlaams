@@ -529,6 +529,14 @@ async function main() {
     same([Object.keys(all).length, all['rule:kunde+da+nie+is'], 'rule:kunde+ge' in all], [23, 'Kunde da nie is?', false],
       'outputs donne chaque combinaison où chaque règle change quelque chose');
     same(K.outputs('Goedemorgen.'), {}, 'sans règle qui s\'applique, rien');
+    /* Chaque forme qu'une règle écrit a sa raison dans `why`, et `why` ne garde rien qu'elle n'écrive pas :
+       sinon Merge lèverait, et Check refuserait une forme juste, le jour où flemish.tsv ne la tient plus. */
+    const SAMPLE = { kunde: 'Kunt u, kun je, hebt u, heeft u, heb je, bent u, ben je', ge: 'u je', da: 'Dat is wat dat', nie: 'niet', t: 'het', is: 'eens' };
+    K.RULES.forEach(r => {
+      const before = new Set(spelling.tokens(SAMPLE[r.name]).map(spelling.stem));
+      const written = spelling.tokens(r.apply(SAMPLE[r.name])).map(spelling.stem).filter(f => !before.has(f));
+      same([...new Set(written)].filter(f => f !== 't').sort(), Object.keys(r.why).sort(), 'la règle ' + r.name + ' donne une raison à chaque forme qu\'elle écrit');
+    });
 
     /* Split : un lot par unité, ses mots et ses phrases sans forme flamande. */
     const KD = path.join(FR, 'drafts', 'flemish');
