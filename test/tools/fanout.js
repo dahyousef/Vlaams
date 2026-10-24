@@ -872,6 +872,151 @@ async function main() {
     console.log('  examples       ' + cut.length + ' lots sur le cours mesuré ; Split, Check, ses règles, Merge et le crédit sur un extrait de 5 phrases ; examples-gen sur 2 mots nommés');
   }
 
+  /* ==================================================== le genre open */
+  {
+    /* tools/content/kinds/open.js dans un dépôt à lui, sous la copie, avec test/data (Check
+       épelle l'exemple par test/lib/spelling.js) : check.js lit le dépôt qui le contient, les
+       outils se lancent donc depuis celui-ci. Les lignes écrites ici sont faites à la main. */
+    const OP = path.join(TMP, 'open');
+    ['build.sh', 'src', 'test/lib', 'test/data', 'tools'].forEach(p => fs.cpSync(path.join(ROOT, p), path.join(OP, p), { recursive: true }));
+    const runOp = (script, args) => {
+      const r = spawnSync(process.execPath, [path.join(OP, 'tools', 'content', script)].concat(args), { encoding: 'utf8' });
+      return { code: r.status, lines: (r.stdout || '').split(/\r?\n/).filter(Boolean) };
+    };
+    const K = kit.loadKind(OP, 'open'), CO = course(OP), U = CO.NL.util;
+    const ctx = { repo: OP, course: () => CO };
+    const KD = path.join(OP, 'drafts', 'open'), LOTS = ['units-1-6', 'units-7-12'];
+
+    /* Split : 36 phrases, trois par unité, en deux lots de six unités. */
+    same(runOp('split.js', [OP, KD]), { code: 0, lines: ['units-1-6 18', 'units-7-12 18'] }, 'Split coupe les 36 phrases en deux lots de six unités');
+    const inputs = LOTS.map(b => JSON.parse(text(path.join(KD, b, 'input.json'))));
+    const all = [].concat(...inputs);
+    const rowOf = id => all.find(r => r.id === id);
+    same(all.map(r => r.id), K.PHRASES, 'chaque phrase de PHRASES une fois, dans l\'ordre du cours');
+    const units = CO.RAW.units.map(u => u.id);
+    same(inputs.map((rows, i) => rows.every(r => (units.indexOf(r.unit) < 6) === (i === 0))), [true, true], 'les unités 1 à 6 dans le premier lot, 7 à 12 dans le second');
+    const pain = CO.byId('bakker:p1');
+    same(Object.assign({}, rowOf('bakker:p1'), { vocab: null }), {
+      id: 'bakker:p1', stamp: kit.stamp(K, pain, CO.NL), copies: [], nl: 'Mag ik twee pistolets?', unit: 'bakker',
+      meaning: { fr: CO.NL.gloss.of(pain, 'fr'), en: CO.NL.gloss.of(pain, 'en') }, vocab: null
+    }, 'une ligne d\'entrée : la phrase, son unité, son sens, et vocab');
+    const vocab = id => rowOf(id).vocab;
+    ok(all.every(r => U.words(r.nl).every(w => r.vocab.indexOf(w.toLowerCase()) >= 0)), 'vocab tient les mots de la phrase');
+    ok(vocab('bakker:p1').every(w => vocab('weekend:p7').indexOf(w) >= 0) && vocab('weekend:p7').indexOf('goesting') >= 0 &&
+      vocab('bakker:p1').indexOf('goesting') < 0, 'vocab est ce que le cours a enseigné jusqu\'à l\'unité de la phrase, pas après');
+
+    /* Check : la ligne de la boulangerie passe, puis chaque raison du genre, une par une. */
+    const BAKKER = {
+      id: 'bakker:p1', stamp: rowOf('bakker:p1').stamp,
+      ask: { fr: 'À la boulangerie, demande ce que tu veux, et combien. Commence par « Mag ik ».', en: 'At the bakery, ask for what you want, and how many. Start with “Mag ik”.' },
+      need: [
+        { what: { fr: 'commence par « mag ik »', en: 'starts with “mag ik”' }, rx: '^\\s*mag\\s+ik\\b', miss: 'Ik wil twee pistolets, alstublieft.' },
+        { what: { fr: 'dit combien', en: 'says how many' }, any: ['een', 'twee', 'drie', 'vier', 'vijf', 'zes'], miss: 'Mag ik pistolets, alstublieft?' },
+        { what: { fr: 'au moins 4 mots', en: 'at least 4 words' }, min: 4, miss: 'Mag ik twee?' }
+      ],
+      model: 'Mag ik drie pistolets, alstublieft?'
+    };
+    const why = (patch, id) => {
+      const r = JSON.parse(JSON.stringify(BAKKER));
+      if (patch) patch(r);
+      return K.check(r, rowOf(id || 'bakker:p1'), ctx);
+    };
+    same(why(), [], 'la ligne de la boulangerie passe');
+    const N1 = 'need 1 « starts with “mag ik” »', N2 = 'need 2 « says how many »', N3 = 'need 3 « at least 4 words »';
+    const name = U.words(CO.NL.content.DEFAULTS.naam)[0].toLowerCase();
+    [
+      [r => { r.need = [r.need[0]]; }, ['need is a list of 2 to 4 needs'], 'deux à quatre besoins'],
+      [r => { r.need[0].flags = 'i'; }, ['need 1: unknown field flags'], 'un besoin n\'a pas de champ inconnu'],
+      [r => { r.need[0].min = 4; }, ['need 1: exactly one of rx, any and min'], 'un besoin se note d\'une seule façon'],
+      [r => { r.need[0].miss = ''; }, ['need 1: miss is one line of Dutch'], 'chaque besoin a sa réponse manquée'],
+      [r => { r.need[2].min = 2; r.need[2].what = { fr: 'au moins 2 mots', en: 'at least 2 words' }; }, ['need 3: min is a whole number from 3 to 12'], 'min va de 3 à 12'],
+      [r => { r.need[2].what.en = 'at least four words'; }, ['need 3: its what names its number, 4, in fr and in en'], 'le what d\'un min dit son nombre'],
+      [r => { r.need.pop(); }, ['one need is a min, and only one: 0 are'], 'un besoin est un min'],
+      [r => { r.model = 'Ja, twee pistolets, alstublieft.'; }, ['the model « Ja, twee pistolets, alstublieft. » does not meet ' + N1], 'l\'exemple remplit chaque besoin, par le barème de la séance'],
+      [r => { r.model = 'Mag ik twee pistolets?'; }, ['the model is the phrase itself: a task asks for an answer of the learner\'s own'], 'l\'exemple n\'est pas la phrase'],
+      [r => { r.need[1].miss = 'Mag ik twee pistolets?'; }, [N2 + ': its miss « Mag ik twee pistolets? » meets it'], 'une réponse manquée manque son besoin'],
+      [r => { r.need[2].miss = 'Mag ik?'; }, [N3 + ': its miss « Mag ik? » also fails ' + N2 + ': a miss fails its own need alone'], 'et lui seul'],
+      [r => { r.model = 'Mag ik drie pistolets? Ik heb goesting.'; }, ['the model uses « goesting », which unit 12 (weekend) teaches, after this phrase\'s unit 4'], 'l\'exemple n\'emploie rien que le cours enseigne plus tard'],
+      [r => { r.model = 'Mag ik drie pistolets, zqx?'; }, ['the model writes « zqx », which is not a known Dutch form'], 'l\'exemple s\'épelle'],
+      [r => { r.ask.fr = 'À {stad}, demande. Commence par « Mag ik ».'; }, ['a task holds no { } token'], 'aucun jeton'],
+      [r => { r.ask.fr = name + ' demande. Commence par « Mag ik ».'; r.ask.en = name + ' asks. Start with “Mag ik”.'; },
+        ['fr', 'en'].map(() => '« ' + name + ' » is a default name: a task holds no name of a learner, a town or a company'), 'aucun nom par défaut'],
+      [r => { r.ask.en = 'At the bakery, ask for what you want, and how many.'; }, ['ask: fr quotes ["Mag ik"], en quotes []: both sides quote the same Dutch, in the same order'], 'fr et en citent le même néerlandais'],
+      [r => { r.ask.en = 'Start with "Mag ik".'; }, ['ask: en quotes with “ ” only'], 'en cite entre “ ”'],
+      [r => { r.ask.fr = 'Commence par « Mag « ik ».'; }, ['ask: a quote inside a quote'], 'une citation se ferme'],
+      [r => { r.ask.fr = 'Commence par « Mag ik », jamais par « goesting ».'; r.ask.en = 'Start with “Mag ik”, never with “goesting”.'; },
+        ['ask: « goesting » is quoted, and the course has not taught it by this unit: a quote holds taught Dutch, and a translation goes in parentheses'], 'une citation tient du néerlandais déjà enseigné'],
+      [r => { r.ask.fr = 'Demande 2 ou 3 pistolets. Commence par « Mag ik ».'; r.ask.en = 'Ask for some. Start with “Mag ik”.'; }, ['ask: fr has the numbers [2 3], en []'], 'fr et en ont les mêmes nombres'],
+      [r => { r.ask.fr = 'Commence par « Mag ik », et demande des pistolets.'; r.ask.en = 'Start with “Mag ik”, and ask for pistolets.'; },
+        ['ask: « pistolets » is Dutch the course has, written bare in fr and in en: quote it, or reword'], 'un mot du cours écrit des deux côtés se cite']
+    ].forEach(([patch, want, m]) => same(why(patch), want, 'Check : ' + m));
+    ok(/^need 1: rx « \(mag » does not compile: /.test(why(r => { r.need[0].rx = '(mag'; }).join('|')), 'Check : un rx se compile');
+    same(why(null, 'overleven:p1'), ['the model uses « drie », which unit 3 (tijd) teaches, after this phrase\'s unit 1',
+      'the model uses « pistolets », which unit 4 (bakker) teaches, after this phrase\'s unit 1'], 'Check : l\'unité est celle de la ligne d\'entrée');
+
+    /* Le verdict : un keep porte deux bonnes réponses du relecteur, que la tâche accepte. */
+    const RIGHT = ['Mag ik een koffiekoek en twee pistolets?', 'Mag ik vier pistolets hebben?'];
+    const verdict = (v, right) => K.checkVerdict(Object.assign({ id: 'bakker:p1', verdict: v }, right ? { right } : {}), BAKKER, rowOf('bakker:p1'), ctx);
+    const TWO = 'a keep carries right: two right answers of the reader\'s own, each one line of Dutch';
+    same([verdict('keep', RIGHT), verdict('dispute: trop vague')], [[], []], 'un keep porte right, une contestation non');
+    same([verdict('keep'), verdict('keep', RIGHT.slice(1)), verdict('dispute: trop vague', RIGHT)], [[TWO], [TWO], ['only a keep carries right']],
+      'un keep sans ses deux réponses est refusé, une contestation qui en porte aussi');
+    same(verdict('keep', [BAKKER.model, RIGHT[1]]), ['right answer 1 « Mag ik drie pistolets, alstublieft? » is the model: write one of your own'], 'une bonne réponse n\'est pas l\'exemple');
+    same(verdict('keep', [RIGHT[1], 'mag ik vier pistolets hebben']), ['the two right answers are the same answer'], 'les deux réponses diffèrent');
+    same(verdict('keep', [RIGHT[1], 'Ik wil vier pistolets, alstublieft.']),
+      ['right answer 2 « Ik wil vier pistolets, alstublieft. » does not meet ' + N1 + ': the task would reject a right answer'], 'une bonne réponse que la tâche refuse est nommée');
+
+    /* Par les outils : une ligne fautive, puis deux lots écrits et relus, puis Merge. Chaque
+       ligne faite à la main dit « ja » puis la phrase ; la boulangerie est la vraie. */
+    const made = r => {
+      if (r.id === 'bakker:p1') return BAKKER;
+      const w = U.words(r.nl), n = w.length + 1;
+      return {
+        id: r.id, stamp: r.stamp,
+        ask: { fr: 'Réponds « ja », puis redis la phrase.', en: 'Answer “ja”, then say the phrase again.' },
+        need: [
+          { what: { fr: 'commence par « ja »', en: 'starts with “ja”' }, rx: '^\\s*ja\\b', miss: r.nl + ' Ja.' },
+          { what: { fr: 'au moins ' + n + ' mots', en: 'at least ' + n + ' words' }, min: n, miss: 'Ja, ' + w.slice(0, -1).join(' ') }
+        ],
+        model: 'Ja, ' + r.nl
+      };
+    };
+    const right = r => (r.id === 'bakker:p1' ? RIGHT : ['Ja ja, ' + r.nl, 'Ja, ' + r.nl + ' Ja.']);
+    LOTS.forEach((b, i) => put(path.join(KD, b), 'draft.json', inputs[i].map(made)));
+    const EEN = path.join(KD, 'units-1-6');
+    put(EEN, 'draft.json', inputs[0].map(r => (r.id === 'bakker:p1' ? Object.assign({}, BAKKER, { model: 'Ja, twee pistolets, alstublieft.' }) : made(r))));
+    same(runOp('check.js', [EEN]), { code: 1, lines: ['ok input.json 18 rows', 'fail draft.json bakker:p1: the model « Ja, twee pistolets, alstublieft. » does not meet ' + N1] },
+      'check.js nomme la ligne fautive et sa raison');
+    put(EEN, 'draft.json', inputs[0].map(made));
+    LOTS.forEach((b, i) => put(path.join(KD, b), 'review.json', inputs[i].map(r => ({ id: r.id, verdict: 'keep', right: right(r) }))));
+    put(EEN, 'review.json', inputs[0].map(r => ({ id: r.id, verdict: 'keep', right: r.id === 'bakker:p1' ? [RIGHT[0], 'Ik wil vier pistolets, alstublieft.'] : right(r) })));
+    same(runOp('check.js', [EEN]).lines.slice(-1), ['fail review.json bakker:p1: right answer 2 « Ik wil vier pistolets, alstublieft. » does not meet ' + N1 + ': the task would reject a right answer'],
+      'check.js relit les bonnes réponses du relecteur par le barème');
+    put(EEN, 'review.json', inputs[0].map(r => ({ id: r.id, verdict: 'keep', right: right(r) })));
+    LOTS.forEach(b => same(runOp('check.js', [path.join(KD, b)]), { code: 0, lines: ['ok input.json 18 rows', 'ok draft.json 18 rows', 'ok review.json 18 keep, 0 dispute'] },
+      'les lignes faites à la main passent Check : ' + b));
+
+    /* Merge écrit chaque tâche sous le néerlandais de sa phrase, son rx en expression régulière. */
+    const OPEN = path.join(OP, 'src', 'content', 'open.phrases.js');
+    const MERGED = { code: 0, lines: ['ok open 36 taken, 0 dropped', 'ok open.phrases.js 36 set, 0 removed'] };
+    same(runOp('merge.js', [OP, KD]), MERGED, 'Merge prend les 36 lignes');
+    const written = text(OPEN);
+    ok(written.indexOf('\'Mag ik twee pistolets?\': { ask: { fr: \'À la boulangerie, demande ce que tu veux, et combien. Commence par « Mag ik ».\', ' +
+      'en: \'At the bakery, ask for what you want, and how many. Start with “Mag ik”.\' }, need: [{ what: { fr: \'commence par « mag ik »\', en: \'starts with “mag ik”\' }, ' +
+      'rx: /^\\s*mag\\s+ik\\b/i, miss: \'Ik wil twee pistolets, alstublieft.\' }') >= 0, 'un rx s\'écrit en expression régulière, drapeau i');
+    const back = table.load(OPEN).entries;
+    same(Object.keys(back), all.map(r => CO.byId(r.id).nl).sort(), 'une clé par phrase, sous son néerlandais, triées');
+    same(runOp('merge.js', [OP, KD]), MERGED, 'Merge se relance');
+    same(text(OPEN), written, 'relancé, Merge redonne les mêmes octets');
+
+    /* L'app pose la tâche sur la phrase, son rx gardé, et la séance accepte l'exemple. */
+    const CM = course(OP), item = CM.NL.content.allItems().find(it => it.id === 'bakker:p1');
+    ok(Object.prototype.toString.call(item.open.need[0].rx) === '[object RegExp]', 'le rx de la phrase est une expression régulière une fois posé');
+    same(CM.NL.ex.rubric(item.open, item.open.model).length, 3, 'la séance accepte l\'exemple');
+    same(CM.NL.ex.rubric(item.open, RIGHT[1]).length, 3, 'et une bonne réponse du relecteur');
+    console.log('  genre open     36 phrases en 2 lots, ' + Object.keys(back).length + ' tâches écrites, rx en expression régulière');
+  }
+
   console.log('\n' + checks + ' contrôles, ' + (fails === 0 ? 'KIT CONFORME' : fails + ' ÉCHEC(S)'));
 }
 
