@@ -80,7 +80,7 @@ async function main() {
   ok(C.byId('dedag:w4') === undefined, 'une copie n\'est pas une source');
   same(C.byId('ikengij:p4').nl, 'Ik werk bij {bedrijf}.', 'le néerlandais d\'une source garde ses jetons');
   ok(C.sources.every(s => s.kind === 'word' || s.kind === 'phrase'), 'un modèle n\'est pas une source');
-  same(C.byId('overleven:w0').be, 'hey, salut', 'une source garde les champs de sa liste');
+  same([C.byId('overleven:w0').art, C.byId('overleven:w0').be], [null, 'hey, salut'], 'une source garde les champs de sa liste, et prend ceux de ses tables');
   const LEX = path.join(TMP, 'src', 'content', 'lexicon.a1.js'), lexicon = text(LEX);
   const edit = (from, to) => {
     ok(lexicon.indexOf(from) >= 0, 'lexicon.a1.js n\'a plus « ' + from + ' » : l\'essai est à refaire');
@@ -406,7 +406,13 @@ async function main() {
   throws(() => table.load(ROND), /: no « NL\.content\.byDutch = NL\.content\.byDutch \|\| \{\}; » line$/, 'un fichier sans la ligne de table est refusé');
   fs.writeFileSync(ROND, table.MARKER + '\nNL.content.byDutch[\'rond\'] = {};\nNL.content.byDutch[\'autre\'] = {};\n');
   throws(() => table.load(ROND), /: sets byDutch\['rond'\], byDutch\['autre'\], and a table file sets byDutch\['rond'\] alone$/, 'un fichier tient une table');
-  console.log('  tables         littéraux, tri, en-tête, fins de ligne');
+  /* Les tables du cours sont écrites comme le rédacteur les écrit : un Merge qui en récrit une
+     ne change que ses lignes. */
+  C.NL.content.TABLES.forEach(t => {
+    const f = path.join(ROOT, 'src', 'content', t.table + '.js');
+    ok(table.serialize(table.load(f)) === text(f), 'src/content/' + t.table + '.js n\'est pas écrite comme tools/content/lib/table.js l\'écrit');
+  });
+  console.log('  tables         littéraux, tri, en-tête, fins de ligne ; ' + C.NL.content.TABLES.map(t => t.table).join(', ') + ' dans sa forme');
 
   /* ==================================================== 8. le cache épinglé */
   const keys = Object.keys(cache.PINS);

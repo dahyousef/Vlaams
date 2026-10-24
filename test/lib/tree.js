@@ -7,7 +7,8 @@
      tree.visit(v, fn, key, where)    chaque nœud, avant ses enfants : fn(nœud, clé, chemin)
      tree.rewrite(v, fn, key, where)  chaque feuille remplacée par fn(feuille, clé, chemin) ; garder ce qu'il rend
      tree.visitCourse(C, fn)          visit sur chaque collection du cours
-     tree.rewriteCourse(C, fn)        rewrite sur chaque collection, remise à sa place */
+     tree.rewriteCourse(C, fn)        rewrite sur chaque collection, remise à sa place
+     tree.visitTables(C, fn)          visit sur chaque valeur des tables rangées par le néerlandais */
 const { COLLECTIONS } = require('./prose');
 
 /* Chaque nœud, avant ses enfants : fn(nœud, clé, chemin). fn peut changer le nœud. */
@@ -31,4 +32,14 @@ function rewrite(v, fn, key, where) {
 const visitCourse = (C, fn) => COLLECTIONS.forEach(k => visit(C[k], fn, k, k));
 const rewriteCourse = (C, fn) => COLLECTIONS.forEach(k => { C[k] = rewrite(C[k], fn, k, k); });
 
-module.exports = { visit, rewrite, visitCourse, rewriteCourse };
+/* Les tables rangées par le néerlandais (src/content/<table>.js, NL.content.TABLES) : visit sur
+   chaque valeur, le champ que la table pose sur l'élément pour clé (be, note…) et
+   byDutch.be["hallo"] pour chemin. visit sur NL.content passe aussi par ces valeurs, mais sous
+   le néerlandais de l'élément pour clé : une suite qui cherche un champ par son nom appelle
+   visitTables. */
+const visitTables = (C, fn) => (C.TABLES || []).forEach(t => {
+  const tb = (C.byDutch || {})[t.table] || {};
+  Object.keys(tb).forEach(k => visit(tb[k], fn, t.field, 'byDutch.' + t.table + '[' + JSON.stringify(k) + ']'));
+});
+
+module.exports = { visit, rewrite, visitCourse, rewriteCourse, visitTables };

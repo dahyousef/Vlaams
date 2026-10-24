@@ -6,7 +6,9 @@
      C.NL          l'application chargée sans l'app ni l'état (NL.util, NL.gloss, NL.content)
      C.RAW         les collections du cours telles qu'elles sont écrites (test/lib/prose.js, raw())
      C.sources     un élément par mot ou phrase, dans l'ordre du cours : sa première inscription,
-                   avec id, kind, unit et copies (les ids de ses autres inscriptions)
+                   avec id, kind, unit et copies (les ids de ses autres inscriptions), et les
+                   champs que les tables de src/content lui donnent (NL.content.TABLES), tels
+                   qu'ils sont écrits
      C.byId(id)    la source d'un id ; undefined pour une copie ou un id inconnu
 
    Les éléments se forment comme build() les forme (src/content/index.js) : le genre et le
@@ -28,7 +30,12 @@ function course(repo) {
     const first = byKey.get(key);
     if (first) { first.copies.push(id); return; }
     if (byNl.has(x.nl)) throw new Error(id + ' and ' + byNl.get(x.nl) + ' share the Dutch « ' + x.nl + ' »: a table keyed by it could not tell them apart');
-    const src = Object.assign({}, x, { id, kind, unit: u.id, copies: [] });
+    const fromTables = {};
+    (NL.content.TABLES || []).forEach(t => {
+      const tb = (NL.content.byDutch || {})[t.table];
+      if (tb && Object.prototype.hasOwnProperty.call(tb, x.nl)) fromTables[t.field] = tb[x.nl];
+    });
+    const src = Object.assign({}, x, fromTables, { id, kind, unit: u.id, copies: [] });
     byKey.set(key, src);
     byNl.set(x.nl, id);
     sources.push(src);

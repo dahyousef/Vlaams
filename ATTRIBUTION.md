@@ -20,6 +20,23 @@ node test/tools/build-dehet.js nl.jsonl
 Le Wiktionnaire est publié sous CC BY-SA 3.0. Le crédit est donné ici par
 correction, et parce qu'un fichier de données doit toujours dire d'où il vient.
 
+## Wiktionnaire — sens marqués belges
+
+`tools/content/kaikki.js` tire du même fichier de kaikki.org, épinglé dans
+`tools/content/lib/cache.js` (adresse, date, taille, sha256), les sens que le
+Wiktionnaire marque belges ou flamands. L'extrait reste dans `.cache/`, ignoré
+par git, et ne sert qu'à vérifier la preuve `wiktionary:<lemme>` d'une forme
+flamande proposée pour `src/content/be.js`. Rien n'en entre dans un fichier
+versionné, sauf le lemme qu'une preuve cite : un **fait**, ce mot est marqué
+belge. Aucune glose, aucun exemple.
+
+Régénérer :
+
+```sh
+node tools/content/fetch.js . kaikki/nl.jsonl
+node tools/content/kaikki.js .
+```
+
 ## OpenTaal — formes de mots
 
 `test/data/nl-words.txt.gz` est la liste de mots d'[OpenTaal](https://github.com/OpenTaal/opentaal-wordlist),

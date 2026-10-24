@@ -188,7 +188,9 @@ const DUTCH_KEYS = ['nl', 'be', 'std', 'ex', 'model', 'id', 'nlName'];
 function dutchWords(NL) {
   const set = new Set();
   const add = s => String(s).toLowerCase().split(/[^\p{L}\p{N}]+/u).forEach(w => { if (w) set.add(w); });
-  tree.visit(NL.content, (v, key) => { if (DUTCH_KEYS.indexOf(key) >= 0 && typeof v === 'string') add(v); });
+  const dutchKey = (v, key) => { if (DUTCH_KEYS.indexOf(key) >= 0 && typeof v === 'string') add(v); };
+  tree.visit(NL.content, dutchKey);
+  tree.visitTables(NL.content, dutchKey);
   NL.t.nav.forEach(n => add(n.nl));
   Object.keys(NL.content.DEFAULTS).forEach(k => add(NL.content.DEFAULTS[k]));
   return set;
@@ -513,7 +515,9 @@ function langChecks() {
    lecteur d'écran ne lit pas « vandaag » à l'anglaise. Vues du cours simple, dans les deux langues. */
 function langAttrFind(B, each) {
   const NL = B.NL, U = NL.util, dutch = new Set();
-  tree.visit(NL.content, (v, key) => { if ((key === 'nl' || key === 'be') && typeof v === 'string') dutch.add(U.norm(v)); });
+  const dutchKey = (v, key) => { if ((key === 'nl' || key === 'be') && typeof v === 'string') dutch.add(U.norm(v)); };
+  tree.visit(NL.content, dutchKey);
+  tree.visitTables(NL.content, dutchKey);
   NL.t.nav.forEach(n => dutch.add(U.norm(n.nl)));
   dutch.delete('');
   /* Un mot néerlandais qui s'écrit aussi en français ou en anglais (merci, hier, open, direct) reste cherché :

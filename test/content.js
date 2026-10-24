@@ -5,8 +5,9 @@
    Ce que ces contrôles NE voient PAS : l'idiome, le registre, l'ordre des mots,
    si une phrase vaut la peine d'être apprise, et l'article devant un autre nom
    que le mot drillé. Voir TESTING.md. */
-const fs = require('fs'), path = require('path'), zlib = require('zlib');
+const fs = require('fs'), path = require('path');
 const browser = require('./lib/browser');
+const spelling = require('./lib/spelling');
 const { raw, owed, at } = require('./lib/prose');
 const tree = require('./lib/tree');
 const ROOT = process.argv[2] || path.join(__dirname, '..');
@@ -19,8 +20,7 @@ const NL = B.NL, U = NL.util;
 /* Le cours tel qu'il est écrit, avant la première construction : {naam}, {stad} et
    {bedrijf} y sont encore, et le contrôle 6 compare les jetons. */
 const RAW = raw(NL.content);
-const tokens = s => String(s || '').toLowerCase().replace(/\{[a-z]+\}/g, ' ').split(/[^a-zà-ÿ'’-]+/)
-  .map(t => t.replace(/^[-'’]+|[-'’]+$/g, '')).filter(t => t.length > 1);
+const tokens = spelling.tokens;
 
 NL.state.open().then(() => {
   NL.content.refresh();
@@ -28,59 +28,66 @@ NL.state.open().then(() => {
   console.log('CONTENU — ' + items.length + ' éléments');
 
   /* ======================================================== 1. orthographe */
-  /* Les formes flamandes voulues, une par une, chacune avec sa raison. Sans la
-     raison, cette liste devient l'endroit où l'on enterre les fautes. */
-  const FLEMISH = {
-    asteblieft:    'contraction parlée de « alstublieft »',
-    bancontact:    'le système de paiement belge : un nom propre',
-    da:            'flamand parlé pour « dat », dans « da’s »',
-    hey:           'salutation flamande, pour bonjour comme pour au revoir',
-    jaja:          'redoublement parlé de « ja »',
-    neenee:        'redoublement parlé de « nee »',
-    nie:           'flamand parlé pour « niet »',
-    recyclagepark: 'belgicisme ; le nord dit « milieupark »',
-    spreekte:      'forme dialectale de « spreekt ge », assumée dans la variante flamande'
-  };
-  const TSV = path.join(__dirname, 'data', 'nl-words.txt.gz');
-  if (!fs.existsSync(TSV)) { console.log('FAIL: ' + TSV + ' est absent. Régénérer : node test/tools/build-wordlist.js'); process.exit(1); }
-  const forms = new Set(zlib.gunzipSync(fs.readFileSync(TSV)).toString('utf8').split('\n'));
+  /* Les formes flamandes voulues sont dans test/data/flemish.tsv, une par une, chacune avec
+     sa raison. Sans la raison, cette liste devient l'endroit où l'on enterre les fautes.
+     test/lib/spelling.js lit OpenTaal, les noms par défaut et cette liste. */
+  const S = spelling.open(ROOT, NL);
 
+  /* La variante flamande vient de src/content/be.js et se lit sur l'élément, que seul le
+     premier listage forme. */
+  const beOf = id => { const it = NL.content.byId(id); return it && it.id === id ? it.be : null; };
   const texts = [];
   units.forEach(u => {
     (u.words || []).forEach((w, i) => {
       texts.push([w.nl, u.id + ':w' + i]);
-      if (w.be) texts.push([w.be, u.id + ':w' + i + ' (variante)']);
+      if (beOf(u.id + ':w' + i)) texts.push([beOf(u.id + ':w' + i), u.id + ':w' + i + ' (variante)']);
       (w.also || []).forEach(a => texts.push([a, u.id + ':w' + i + ' (on dit aussi)']));
       (w.drills || []).forEach((d, j) => texts.push([d.nl, u.id + ':w' + i + ' phrase ' + (j + 1)]));
     });
     (u.phrases || []).forEach((p, i) => {
       texts.push([p.nl, u.id + ':p' + i]);
-      if (p.be) texts.push([p.be, u.id + ':p' + i + ' (variante)']);
+      if (beOf(u.id + ':p' + i)) texts.push([beOf(u.id + ':p' + i), u.id + ':p' + i + ' (variante)']);
       (p.also || []).forEach(a => texts.push([a, u.id + ':p' + i + ' (on dit aussi)']));
     });
   });
   (NL.content.patterns || []).forEach(g => (g.drills || []).forEach((d, j) => texts.push([d.nl, g.id + ' phrase ' + (j + 1)])));
 
-  /* Le prénom, la commune et l'employeur par défaut ne sont pas du néerlandais. */
-  const NAMES = new Set(Object.keys(NL.content.DEFAULTS).map(k => NL.content.DEFAULTS[k].toLowerCase()));
-  const stem = t => t.replace(/[’']s$/, '');                                // collega’s, auto’s, da’s
-  const known = t => forms.has(t) || NAMES.has(t) || forms.has(stem(t)) || !!FLEMISH[stem(t)] ||
-    (t.indexOf('-') >= 0 && t.split('-').every(p => p.length < 2 || forms.has(p)));   // java-ontwikkelaar
   const unknown = new Map(), used = new Set();
   let count = 0;
   texts.forEach(([text, where]) => tokens(text).forEach(t => {
     count++;
-    if (FLEMISH[stem(t)]) used.add(stem(t));
-    if (!known(t) && !unknown.has(t)) unknown.set(t, where);
+    if (S.flemishOf(t)) used.add(S.flemishOf(t));
+    if (!S.known(t) && !unknown.has(t)) unknown.set(t, where);
   }));
   unknown.forEach((where, t) => ok(false, '« ' + t + ' » n’est pas une forme néerlandaise connue   [' + where +
-    '] — corriger, ou l’inscrire dans FLEMISH avec sa raison'));
+    '] — corriger, ou l’inscrire dans test/data/flemish.tsv avec sa raison'));
   /* Une exception qui ne sert plus ne protège plus rien. */
-  Object.keys(FLEMISH).forEach(t => ok(used.has(t), '« ' + t + ' » est dans FLEMISH mais plus dans le cours : retirer l’exception'));
+  S.flemish.forEach((why, t) => ok(used.has(t), '« ' + t + ' » est dans test/data/flemish.tsv mais plus dans le cours : retirer l’exception'));
   ok(count > 3000, 'only ' + count + ' tokens were checked: the content did not load');
   ok(NL.content.alsoReport && NL.content.alsoReport.missing.length === 0, 'src/content/also.js : ' + ((NL.content.alsoReport || { missing: ['(table non chargée)'] }).missing.join(', ')) + ' ne correspond à aucun élément du lexique');
-  console.log('  orthographe     ' + count + ' formes vérifiées contre ' + forms.size + ', ' + unknown.size + ' inconnue(s), ' +
-    Object.keys(FLEMISH).length + ' flamandes assumées');
+  console.log('  orthographe     ' + count + ' formes vérifiées contre ' + S.forms.size + ', ' + unknown.size + ' inconnue(s), ' +
+    S.flemish.size + ' flamandes assumées');
+
+  /* Les tables indexées par le néerlandais (TABLES, src/content/index.js) : chacune est chargée,
+     et chacune de ses clés est le néerlandais d'un mot ou d'une phrase du cours, tel que son
+     premier listage l'écrit. Sinon la valeur ne se pose sur rien, et rien ne le dit. */
+  const report = NL.content.tableReport || {};
+  (NL.content.TABLES || []).forEach(t => {
+    const r = report[t.table];
+    ok(!!r, 'src/content/' + t.table + '.js n’est pas chargé : l’inscrire dans SRC (build.sh), après les lexiques');
+    ok(!r || r.missing.length === 0, 'src/content/' + t.table + '.js : ' + (r ? r.missing.join(', ') : '') + ' ne correspond à aucun mot ni aucune phrase du cours');
+  });
+  ok((NL.content.TABLES || []).length > 0, 'NL.content.TABLES est vide ou absent : aucune table n’est contrôlée');
+  /* Ce qu'une table pose, le lexique ne l'écrit plus : écrit aux deux endroits, la table
+     masquerait le lexique sans rien dire. */
+  const MOVED = ['be'];
+  const written = [];
+  RAW.units.forEach(u => ['word', 'phrase'].forEach(kind => (u[kind + 's'] || []).forEach((x, i) =>
+    MOVED.forEach(f => { if (x[f] !== undefined && x[f] !== null) written.push(u.id + ':' + kind[0] + i + ' ' + f); }))));
+  ok(written.length === 0, written.length + ' champ(s) écrit(s) au lexique (' + written.slice(0, 4).join(', ') + (written.length > 4 ? ', …' : '') +
+    ') : leur place est la table de src/content qui pose ce champ');
+  console.log('  tables          ' + (NL.content.TABLES || []).map(t => t.table + ' ' + (report[t.table] ? report[t.table].attached : 'absente')).join(', ') +
+    ' ; ' + MOVED.join(', ') + ' hors du lexique');
 
   /* ============================== 2. tout exercice promis se construit */
   /* La séance saute en silence un élément dont l'exercice échoue : un mot peut
@@ -143,11 +150,11 @@ NL.state.open().then(() => {
      un mot. */
 
   /* Les listages d'un même mot ou d'une même phrase disent la même chose : les mêmes sens
-     dans chaque langue, le même article, la même variante flamande ; et une remarque, s'il y
-     en a une, n'est que sur le premier. Une fois les suivants devenus des alias, seul le
-     premier se montre : ce qu'un alias dirait seul serait perdu sans bruit. Un groupe, c'est
-     le genre d'élément et le néerlandais tel qu'il est écrit, jetons compris, sans casse ni
-     ponctuation. */
+     dans chaque langue, le même article ; et une remarque, s'il y en a une, n'est que sur le
+     premier. Une fois les suivants devenus des alias, seul le premier se montre : ce qu'un
+     alias dirait seul serait perdu sans bruit. Un groupe, c'est le genre d'élément et le
+     néerlandais tel qu'il est écrit, jetons compris, sans casse ni ponctuation. La variante
+     flamande n'est plus au lexique : src/content/be.js en tient une par élément. */
   const listings = new Map();
   RAW.units.forEach(u => ['word', 'phrase'].forEach(kind => (u[kind + 's'] || []).forEach((x, i) => {
     const key = kind + '|' + U.norm(x.nl);
@@ -164,7 +171,7 @@ NL.state.open().then(() => {
     group.slice(1).forEach(x => {
       const differ = NL.gloss.LANGS.filter(l => senseSet(x, l) !== senseSet(first, l))
         .map(l => l + ' « ' + NL.gloss.of(x, l) + ' » / « ' + NL.gloss.of(first, l) + ' »')
-        .concat(['art', 'be'].filter(k => orNull(x[k]) !== orNull(first[k])))
+        .concat(['art'].filter(k => orNull(x[k]) !== orNull(first[k])))
         .concat(x.note ? ['une remarque, que seul le premier listage porte'] : []);
       if (differ.length) disagree++;
       ok(!differ.length, x.id + ' « ' + x.nl + ' » est un alias de ' + first.id + ' et ne dit pas la même chose : ' + differ.join(', '));

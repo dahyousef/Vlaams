@@ -30,6 +30,17 @@ NL.content = NL.content || {};
     return v;
   }
   const TOKENED = ['units', 'patterns', 'scenarios', 'sheets', 'hetRules'];
+  /* The tables keyed by the Dutch. src/content/<table>.js sets NL.content.byDutch[<table>]:
+     one entry per word or phrase, keyed by its Dutch as written, tokens unfilled, and
+     build() puts the value, filled, on the item's <field>. Only an item's first listing is
+     looked up, so a table never holds an alias's Dutch; patterns and the learner's own words
+     get nothing. NL.content.tableReport says, per table, how many keys were put on an item
+     and which keys are no item's Dutch, or null when no file set the table: test/content.js
+     fails on either. A new table adds its line just above the closing line, and its file to
+     SRC in build.sh, after the lexicons. */
+  const TABLES = [
+    { table: 'be', field: 'be' },
+  ]; // A new table: its line goes just above this one.
 
   function build() {
     if (!RAW) {
@@ -48,12 +59,20 @@ NL.content = NL.content || {};
        as written, tokens unfilled, so a learner's {bedrijf} can neither make a match nor
        break one. test/content.js holds the listings of an item to the same meaning. */
     const firsts = new Map();
+    const tables = TABLES.map(t => (NL.content.byDutch || {})[t.table] || null);
+    const hits = TABLES.map(() => new Set());
     const listing = (u, ui, kind, x, i) => {
       const id = u.id + ':' + kind[0] + i;
-      const key = kind + '|' + NL.util.norm(RAW.units[ui][kind + 's'][i].nl);
+      const nl = RAW.units[ui][kind + 's'][i].nl;
+      const key = kind + '|' + NL.util.norm(nl);
       const first = firsts.get(key);
       if (first) { first.aliases = (first.aliases || []).concat(id); return; }
       const item = Object.assign({}, x, { id, unit: u.id, level: u.level, track: u.track, kind });
+      TABLES.forEach((t, n) => {
+        if (!tables[n] || !Object.prototype.hasOwnProperty.call(tables[n], nl)) return;
+        item[t.field] = deepFill(tables[n][nl]);
+        hits[n].add(nl);
+      });
       firsts.set(key, item);
       flat.push(item);
     };
@@ -68,6 +87,10 @@ NL.content = NL.content || {};
         flat.push(Object.assign({}, g, { unit: u.id, level: u.level, track: u.track, kind: 'pattern',
           open: (NL.content.openTasks || {})[g.id] || null }));
       });
+    });
+    NL.content.tableReport = {};
+    TABLES.forEach((t, n) => {
+      NL.content.tableReport[t.table] = tables[n] ? { attached: hits[n].size, missing: Object.keys(tables[n]).filter(k => !hits[n].has(k)) } : null;
     });
     NL.state.customs().forEach(c => flat.push(Object.assign({}, c, { kind: c.kind || 'word', unit: 'eigen', level: 'eigen', track: 'eigen' })));
     /* Palier par défaut, et détection des mots transparents : « de tram »,
@@ -163,5 +186,5 @@ NL.content = NL.content || {};
     return out;
   }
 
-  Object.assign(NL.content, { allItems, refresh, byId, unit, itemsOf, unitOpen, unitComplete, frontier, unitProgress, courseProgress, met: MET, produced: PRODUCED, scenario, listenClips, fill, DEFAULTS });
+  Object.assign(NL.content, { allItems, refresh, byId, unit, itemsOf, unitOpen, unitComplete, frontier, unitProgress, courseProgress, met: MET, produced: PRODUCED, scenario, listenClips, fill, DEFAULTS, TABLES });
 })();
