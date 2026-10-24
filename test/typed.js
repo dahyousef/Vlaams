@@ -425,6 +425,8 @@ NL.state.open().then(() => {
       if (E.asks !== 'nl' || E.answers !== 'nl') ok(meanLine(v) === null, ex + ' (asks ' + E.asks + ', answers ' + E.answers + ') shows a meaning line: ' + meanLine(v));
       else if (ex === 'intrus') {
         ok(!!task.odd && task.odd.id !== it.id, 'intrus keeps no odd word in its task');
+        // le mot étranger est celui qui répond, pas un mot qui partage l’article de l’item
+        if (task.odd) ok(U.bare(task.odd.nl) === E.answer(task), 'intrus keeps ' + say(U.bare(task.odd.nl)) + ' as its odd word, not the one that answers, ' + say(E.answer(task)));
         if (task.odd) ok(meanLine(v) === meanOf(task.odd), 'intrus shows ' + meanLine(v) + ', not the odd word’s meaning ' + meanOf(task.odd));
       } else ok(meanLine(v) === meanOf(it), ex + ' on ' + say(nl) + ' shows ' + meanLine(v) + ', not ' + meanOf(it));
       if (ex === 'cloze') ok(meanLine(v) !== meanOf(task.drill), 'cloze shows the meaning of its sentence, not of ' + say(nl));
