@@ -42,13 +42,24 @@ NL.content = NL.content || {};
     /* A pattern can be referenced by several units; it belongs to the first one
        that teaches it, and must appear exactly once or it gets drilled twice. */
     const claimed = new Set();
-    NL.content.units.forEach(u => {
-      (u.words || []).forEach((w, i) => flat.push(Object.assign({}, w, {
-        id: u.id + ':w' + i, unit: u.id, level: u.level, track: u.track, kind: 'word'
-      })));
-      (u.phrases || []).forEach((p, i) => flat.push(Object.assign({}, p, {
-        id: u.id + ':p' + i, unit: u.id, level: u.level, track: u.track, kind: 'phrase'
-      })));
+    /* So can a word or a phrase: listed in two units, it is still one item. The first
+       listing in course order is the item, and carries the ids of the later ones in
+       `aliases`; a later listing is not built. Listings match on their kind and their Dutch
+       as written, tokens unfilled, so a learner's {bedrijf} can neither make a match nor
+       break one. test/content.js holds the listings of an item to the same meaning. */
+    const firsts = new Map();
+    const listing = (u, ui, kind, x, i) => {
+      const id = u.id + ':' + kind[0] + i;
+      const key = kind + '|' + NL.util.norm(RAW.units[ui][kind + 's'][i].nl);
+      const first = firsts.get(key);
+      if (first) { first.aliases = (first.aliases || []).concat(id); return; }
+      const item = Object.assign({}, x, { id, unit: u.id, level: u.level, track: u.track, kind });
+      firsts.set(key, item);
+      flat.push(item);
+    };
+    NL.content.units.forEach((u, ui) => {
+      (u.words || []).forEach((w, i) => listing(u, ui, 'word', w, i));
+      (u.phrases || []).forEach((p, i) => listing(u, ui, 'phrase', p, i));
       (u.grammar || []).forEach(gid => {
         if (claimed.has(gid)) return;
         const g = (NL.content.patterns || []).find(x => x.id === gid);
@@ -66,6 +77,9 @@ NL.content = NL.content || {};
       it.cognate = NL.gloss.cognate(it);
     });
     index = new Map(flat.map(it => [it.id, it]));
+    /* An alias's id finds its item: an answer logged under it, before it was an alias,
+       counts for the item. */
+    flat.forEach(it => (it.aliases || []).forEach(id => index.set(id, it)));
   }
 
   const allItems = () => { if (!flat) build(); return flat; };

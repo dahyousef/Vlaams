@@ -1035,6 +1035,23 @@ NL.state.open().then(() => {
     console.log('  sans échange : ' + shape(swapped) + ' ; je ne peux pas parler : ' + shape(q1.s) + ', puis ' + shape(q2.s));
   }
 
+  /* ------------------------------------------------------------------ */
+  console.log('\nUN MOT LISTÉ DANS DEUX UNITÉS — servi une fois');
+  /* « meenemen » est listé dans l'unité 4 (bakker:w22), puis dans l'unité 9 (dedag:w4). Le
+     second listage est un alias : son id trouve le mot. Un compte qui a appris le mot sous
+     les deux ids, avant les alias, les a dus tous les deux ; la séance sert le mot une fois. */
+  {
+    fresh();
+    ['bakker:w22', 'dedag:w4'].forEach(id => put({ id, kind: 'word' }, 3, T0 - DAY));
+    const word = NL.content.byId('bakker:w22');
+    ok(!!word && word.nl === 'meenemen', 'the fixture is wrong: bakker:w22 is ' + (word && word.nl) + ', not meenemen');
+    ok(NL.content.byId('dedag:w4') === word, 'the id dedag:w4 reads as ' + (NL.content.byId('dedag:w4') || {}).id + ', not as the word it lists again, bakker:w22');
+    const c = NL.srs.compose('vandaag');
+    const served = c.due.concat(c.fresh).filter(it => it.nl === 'meenemen').map(it => it.id);
+    ok(served.join() === 'bakker:w22', 'a word due under its two listings is in the session as ' + (served.join(', ') || 'nothing') + ', not once as bakker:w22');
+    console.log('  « meenemen », dû sous bakker:w22 et dedag:w4 : dans la séance ' + served.length + ' fois');
+  }
+
   console.log('\n' + checks + ' checks, ' + (fails ? fails + ' FAILED' : 'ENGINE OK'));
   process.exit(fails ? 1 : 0);
 }).catch(e => { console.log('CRASH ' + (e && e.stack || e)); process.exit(1); });

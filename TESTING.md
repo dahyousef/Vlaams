@@ -15,9 +15,9 @@ n'y a qu'une seule liste. Il faut Node et un `sh` (sous Windows, celui de Git).
 | `helpers.js` | Les aides de `test/lib` dont chaque suite dépend sans les voir : les minuteurs `'held'` du faux navigateur suivent les règles d'un vrai tour (rien ne part avant `B.tick()`, puis tout part dans l'ordre de pose ; `clearTimeout` retire un minuteur avant le tour ou pendant ; un minuteur posé pendant le tour attend le suivant), `B.waiting()` compte ceux qui attendent, une erreur dans l'un d'eux sort de `B.tick()` une fois les autres partis, et un mode de minuteurs inconnu échoue en se nommant ; `onTimerError` ne sert qu'aux minuteurs `'sync'`, dont il reçoit l'erreur que, sans lui, ils ignorent, et échoue en se nommant à côté d'un autre mode ; `prepare` part juste avant `src/app.js`, les autres sources chargées, et échoue sur une page qui ne charge pas `src/app.js` ; `joined()` ôte chaque balise sans rien à sa place, là où `text()` met une espace (`test/lib/langs.js`) |
 | `lang.js` | La langue d'affichage (contrôles 2 à 6) : le cours chargé tel quel puis « apparié » (un anglais factice par sens et par texte), aucune chaîne d'interface hors des deux tables, mêmes clés, même forme, mêmes chiffres et mêmes `{…}` dans `fr.js` et `en.js`, aucun écran qui mêle les langues, le réglage, le changement qui attend la fin de la séance et l'avis qui l'annonce (un écran ouvert dans le tour où l'avis s'est levé le montre encore, un écran d'un tour suivant ne le montre plus ; deux avis levés dans un même tour n'attendent qu'un minuteur, et chaque essai part d'un tour fini), ce que la restauration et la remise à zéro gardent, et le néerlandais du cours déclaré comme tel (`lang`), chaque balise prise dans la table de `gloss.js` (`fr`, `en-GB`, `nl-BE`), le sens montré dans l'autre langue marqué comme tel, à l'écran et dans chaque exercice du registre, l'avis sur doctor et compte, et la recherche par l'un ou l'autre sens ; elle ne voit pas le néerlandais cité dans la prose française ou anglaise (« … »), qui reste sans balise |
 | `dehet.js` | Chaque nom du cours confronté au Wiktionnaire : `de` ou `het`, sur la fiche **et** dans ses phrases d'exemple ; le cours chargé par `browser.open`, sans `src/app.js`, comme dans les autres suites |
-| `content.js` | L'orthographe contre 410 000 formes néerlandaises, que chaque exercice promis se construise vraiment, qu'une phrase d'exemple n'emprunte pas de vocabulaire à une unité ultérieure, et les éléments enseignés deux fois, dont les deux listages disent la même chose ; le contrôle 5 : chaque id garde son néerlandais, le 6 : l'anglais qui reste dû ; un « u » ou « uw » néerlandais glosé « you » porte « (informal, Flemish u) » quand le français tutoie, « (formal) » sinon ; un `<i>` d'une explication de grammaire qui se lit pareil en français et en anglais est du néerlandais, et porte `lang="nl-BE"` |
-| `engine.js` | Ce qu'une séance contient et quand un élément revient, horloge en marche : la panne d'octobre, deux jours de suite, ce qui revient le lendemain à la même heure, l'heure de la réponse à Bruxelles (minuit, 23 h 50, les deux nuits de changement d'heure), le renforcement dans la séance, la réserve de nouveautés, le seuil des unités, la première demande à voix haute et l'exercice écrit qui la suit, l'écrit de l'échelon 3 toujours tapé, « je ne peux pas parler » |
-| `screens.js` | Chaque écran dans quatre états, relu comme du texte : ni pourcentage, ni maîtrise ; les comptes, le nom de l'unité, ce qui résiste, le bouton « je ne peux pas parler », le journal d'erreurs ; `NL.ui.ifText`, sur une page à lui : rien sans texte, ni pour un sens qui vaut `null` dans la langue lue, même quand l'autre langue en a un, en anglais comme en français, et sinon le texte échappé dans sa balise, avec sa classe ; la copie de la sauvegarde et celle du journal d'erreurs, toutes deux par `NL.ui.copy`, sur une page aux minuteurs retenus : le champ sélectionné avant toute copie, ce que chacune copie, par le presse-papiers s'il existe, sinon par l'ancienne commande du navigateur, et le toast qui dit « Copié » si l'un d'eux a copié, « copie-le à la main » s'il a refusé ou s'il n'y a ni l'un ni l'autre |
+| `content.js` | L'orthographe contre 410 000 formes néerlandaises, que chaque exercice promis se construise vraiment, qu'une phrase d'exemple n'emprunte pas de vocabulaire à une unité ultérieure, et qu'un mot ou une phrase listé dans deux unités dise la même chose et ne soit qu'un élément, dont le second listage est un alias ; le contrôle 5 : chaque id garde son néerlandais, le 6 : l'anglais qui reste dû ; un « u » ou « uw » néerlandais glosé « you » porte « (informal, Flemish u) » quand le français tutoie, « (formal) » sinon ; un `<i>` d'une explication de grammaire qui se lit pareil en français et en anglais est du néerlandais, et porte `lang="nl-BE"` |
+| `engine.js` | Ce qu'une séance contient et quand un élément revient, horloge en marche : la panne d'octobre, deux jours de suite, ce qui revient le lendemain à la même heure, l'heure de la réponse à Bruxelles (minuit, 23 h 50, les deux nuits de changement d'heure), le renforcement dans la séance, la réserve de nouveautés, le seuil des unités, la première demande à voix haute et l'exercice écrit qui la suit, l'écrit de l'échelon 3 toujours tapé, « je ne peux pas parler », un mot listé dans deux unités servi une fois |
+| `screens.js` | Chaque écran dans quatre états, relu comme du texte : ni pourcentage, ni maîtrise ; les comptes, le nom de l'unité, ce qui résiste, le bouton « je ne peux pas parler », le journal d'erreurs ; `NL.ui.ifText`, sur une page à lui : rien sans texte, ni pour un sens qui vaut `null` dans la langue lue, même quand l'autre langue en a un, en anglais comme en français, et sinon le texte échappé dans sa balise, avec sa classe ; la copie de la sauvegarde et celle du journal d'erreurs, toutes deux par `NL.ui.copy`, sur une page aux minuteurs retenus : le champ sélectionné avant toute copie, ce que chacune copie, par le presse-papiers s'il existe, sinon par l'ancienne commande du navigateur, et le toast qui dit « Copié » si l'un d'eux a copié, « copie-le à la main » s'il a refusé ou s'il n'y a ni l'un ni l'autre ; un mot listé dans deux unités, compté une fois : les comptes, les totaux des unités, ce qui résiste, la bibliothèque |
 | `typed.js` | Ce qu'une réponse tapée accepte, tapée à l'écran : la cible, la variante flamande, les autres façons de dire (`also`), et la réponse d'un élément au même sens ; la note qu'elle laisse, « Presque » mesuré contre chaque réponse acceptée, la dictée qui garde sa seule cible, les leurres qui ne sont jamais une réponse juste, et le panneau : « Ici on dit » sans répétition, la variante flamande telle que le cours l'écrit, chaque forme dans son propre passage en `nl-BE`, sa ponctuation collée au mot qu'elle suit, les mots flamands en gras, « On dit aussi » ; et tout le cours : pour chaque élément, sa cible puis chaque forme que le panneau présente comme juste (« Ici on dit », `also`), tapées à l'écran, justes et notées comme la cible |
 | `sim.js` | Chaque écran, une séance, un scénario, une série d'écoute |
 | `firstrun.js` | Une base vide : premier écran, première séance, le défi, la sauvegarde |
@@ -37,9 +37,11 @@ séance de contrôle de l'anglais : `glosses.tsv` (chaque élément, son frança
 son anglais), `blind.tsv` (les mêmes sans l'anglais), `sentences.tsv` (phrases
 d'exemple et répliques de scénario), `prose.tsv` (toute autre paire de texte du
 cours) et `interface.tsv` (chaque clé des deux tables). Il sort avec 1 si
-`glosses.tsv` et `owed()` ne comptent pas les mêmes gloses, ou si une ligne a un
-côté vide que le contenu n'explique pas (seule une note dont l'anglais est
-`null` exprès en laisse un), ou lit « undefined ».
+`glosses.tsv` et `owed()` ne comptent pas les mêmes gloses (celle d'un mot listé
+dans deux unités, au second listage, se compte à part : `test/content.js` vérifie
+qu'elle dit ce que dit le premier), ou si une ligne a un côté vide que le contenu
+n'explique pas (seule une note dont l'anglais est `null` exprès en laisse un), ou
+lit « undefined ».
 
 Le balayage de `typed.js` passe par l'écran, pas par le juge : mesuré le 18
 octobre 2026, une réponse tapée coûte 11 ms, et les 439 cibles et 98 formes du
@@ -153,10 +155,10 @@ infinitif substantivé est neutre quand son pluriel prend « de » (« van het
 werken »). Restent donc invérifiés : l'article devant un **autre** nom à
 l'intérieur d'une phrase d'exemple, l'idiome, et le registre.
 
-Trois de ces contrôles portent un budget plutôt qu'une exigence de zéro, parce
+Deux de ces contrôles portent un budget plutôt qu'une exigence de zéro, parce
 que le contenu actuel enfreint déjà la règle : 62 phrases d'exemple empruntent du
-vocabulaire à une unité ultérieure, 9 éléments sont enseignés deux fois, 4
-échelons n'ont aucun exercice possible. Un budget ne peut que baisser.
+vocabulaire à une unité ultérieure, 3 échelons n'ont aucun exercice possible. Un
+budget ne peut que baisser.
 
 Le balayage de `typed.js` ne tape que les formes que le contenu tient : une
 façon juste de dire que ni `be` ni `also` ne connaît reste refusée, et aucun
@@ -206,6 +208,5 @@ test de placement, la dictée plus tôt, la série et le défi.
 
 ## Encore ouvert
 
-- Le contenu reste le plafond : 439 éléments, tous de niveau A1.
+- Le contenu reste le plafond : 430 éléments, tous de niveau A1.
 - Un tiers du vocabulaire n'a pas encore de phrase d'exemple.
-- Neuf éléments figurent dans deux unités à la fois.

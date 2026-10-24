@@ -107,7 +107,7 @@ NL.state.open().then(() => {
   });
   /* Un échelon où rien n'est possible retombe sur un exercice de secours : toléré,
      mais compté, et le compte ne peut que baisser. */
-  const HOLLOW_BUDGET = 4;
+  const HOLLOW_BUDGET = 3;
   ok(hollow <= HOLLOW_BUDGET, hollow + ' échelons sans aucun exercice possible, budget ' + HOLLOW_BUDGET + ' — baisser le budget, jamais le lever');
   ok(hollow >= HOLLOW_BUDGET, 'seulement ' + hollow + ' échelons de secours : baisser HOLLOW_BUDGET à ' + hollow + ' pour verrouiller le gain');
   ok(pairs > 5000, 'only ' + pairs + ' exercises were built: the content did not load');
@@ -135,22 +135,12 @@ NL.state.open().then(() => {
   ok(ahead >= AHEAD_BUDGET, 'seulement ' + ahead + ' phrases empruntent en avant : baisser AHEAD_BUDGET à ' + ahead + ' pour verrouiller le gain');
   console.log('  séquence        ' + ahead + ' / ' + sentences + ' phrases empruntent en avant (budget ' + AHEAD_BUDGET + ')');
 
-  /* ======================================================= 4. doublons */
-  /* Un élément enseigné dans deux unités est drillé deux fois en parallèle, et
-     compte deux fois pour le seuil qui ouvre l'unité suivante. La phase 3 en
-     fera des alias ; d'ici là, leur nombre ne peut que baisser. On compare le
-     néerlandais sans casse ni ponctuation, dans un même genre d'élément —
-     jamais l'identifiant, qui change dès qu'on insère un mot. */
-  const seen = new Map();
-  let dupes = 0;
-  items.filter(it => it.unit !== 'eigen' && it.kind !== 'pattern').forEach(it => {
-    const key = it.kind + '|' + U.norm(it.nl);
-    if (seen.has(key)) dupes++; else seen.set(key, it.id);
-  });
-  const DUPE_BUDGET = 9;
-  ok(dupes <= DUPE_BUDGET, dupes + ' éléments enseignés deux fois, budget ' + DUPE_BUDGET + ' — baisser le budget quand on en retire, jamais le lever');
-  ok(dupes >= DUPE_BUDGET, 'seulement ' + dupes + ' doublons : baisser DUPE_BUDGET à ' + dupes + ' pour verrouiller le gain');
-  console.log('  doublons        ' + dupes + ' (budget ' + DUPE_BUDGET + ')');
+  /* ========================================================== 4. alias */
+  /* Un mot ou une phrase listé dans deux unités est un seul élément : build() garde le
+     premier listage, dans l'ordre du cours, et fait des suivants ses alias. Sinon il serait
+     drillé deux fois en parallèle, et compterait deux fois pour le seuil qui ouvre l'unité
+     suivante. On compare le néerlandais, jamais l'identifiant, qui change dès qu'on insère
+     un mot. */
 
   /* Les listages d'un même mot ou d'une même phrase disent la même chose : les mêmes sens
      dans chaque langue, le même article, la même variante flamande ; et une remarque, s'il y
@@ -182,6 +172,23 @@ NL.state.open().then(() => {
   });
   ok(twice > 0, 'aucun élément listé deux fois : le contrôle des alias ne compare rien');
   console.log('  alias           ' + twice + ' élément(s) listé(s) deux fois, ' + disagree + ' en désaccord');
+
+  /* Une seule fiche par groupe : le premier listage est l'élément et porte les ids des
+     suivants dans `aliases` ; l'id d'un alias trouve l'élément, pour que ses fiches et ses
+     réponses déjà écrites se lisent comme les siennes. Seul le premier est construit : il
+     n'est servi, compté et ouvert qu'une fois, dans l'unité qui l'enseigne d'abord. */
+  let listed = 0;
+  listings.forEach(group => {
+    listed += group.length;
+    const first = group[0], it = NL.content.byId(first.id), others = group.slice(1).map(x => x.id);
+    ok(!!it && JSON.stringify(it.aliases || []) === JSON.stringify(others),
+      first.id + ' « ' + first.nl + ' » a pour alias ' + JSON.stringify(it && it.aliases) + ', pas ' + JSON.stringify(others));
+    others.forEach(id => ok(NL.content.byId(id) === it,
+      id + ' se lit comme ' + (NL.content.byId(id) || {}).id + ', pas comme son premier listage ' + first.id));
+  });
+  const built = items.filter(it => it.unit !== 'eigen' && it.kind !== 'pattern').length;
+  ok(built === listings.size, built + ' mots et phrases construits pour ' + listings.size + ' distincts : un alias est construit à part');
+  console.log('  une fiche       ' + listed + ' listages, ' + built + ' mots et phrases construits, ' + listings.size + ' distincts');
 
   /* ====================================== 5. chaque id garde son néerlandais */
   /* Les ids sont des positions (« overleven:w3 ») : insérer, retirer ou déplacer un

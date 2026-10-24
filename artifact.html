@@ -2310,15 +2310,20 @@ NL.srs = (function () {
       .map(x => x.it);
   }
 
+  /* Les comptes portent sur les éléments, comme dueItems : la fiche d'un alias reste
+     en mémoire, inerte, et celle d'un élément retiré du cours aussi ; aucune ne compte. */
   function counts() {
     const now = Date.now();
-    let due = 0, said = 0, retired = 0;
-    NL.state.allRecs().forEach(r => {
+    let due = 0, said = 0, retired = 0, seen = 0;
+    NL.content.allItems().forEach(it => {
+      const r = NL.state.rec(it.id);
+      if (!r) return;
+      seen++;
       if (r.retired) { retired++; return; }
       if (r.due <= now) due++;
       if (r.said) said++;
     });
-    return { due, said, retired, seen: NL.state.seenCount() };
+    return { due, said, retired, seen };
   }
 
   /* ---------------- ce qui résiste ---------------- */
@@ -2337,9 +2342,11 @@ NL.srs = (function () {
       if (!item) return;
       /* Un refus de la reconnaissance vocale ne dit rien de la mémoire. */
       if (l.ex === 'speak') return;
-      const x = by.get(l.id) || { item, wrong: 0, right: 0, last: 0 };
+      /* Groupé par élément, pas par id : une réponse écrite sous l'id d'un alias compte
+         pour l'élément qu'il liste. */
+      const x = by.get(item.id) || { item, wrong: 0, right: 0, last: 0 };
       if (l.ok) x.right++; else { x.wrong++; x.last = Math.max(x.last, l.t); }
-      by.set(l.id, x);
+      by.set(item.id, x);
     });
     return [...by.values()].filter(x => x.wrong > 0).sort((a, b) => b.wrong - a.wrong || b.last - a.last);
   }
@@ -5189,13 +5196,24 @@ NL.content = NL.content || {};
     /* A pattern can be referenced by several units; it belongs to the first one
        that teaches it, and must appear exactly once or it gets drilled twice. */
     const claimed = new Set();
-    NL.content.units.forEach(u => {
-      (u.words || []).forEach((w, i) => flat.push(Object.assign({}, w, {
-        id: u.id + ':w' + i, unit: u.id, level: u.level, track: u.track, kind: 'word'
-      })));
-      (u.phrases || []).forEach((p, i) => flat.push(Object.assign({}, p, {
-        id: u.id + ':p' + i, unit: u.id, level: u.level, track: u.track, kind: 'phrase'
-      })));
+    /* So can a word or a phrase: listed in two units, it is still one item. The first
+       listing in course order is the item, and carries the ids of the later ones in
+       `aliases`; a later listing is not built. Listings match on their kind and their Dutch
+       as written, tokens unfilled, so a learner's {bedrijf} can neither make a match nor
+       break one. test/content.js holds the listings of an item to the same meaning. */
+    const firsts = new Map();
+    const listing = (u, ui, kind, x, i) => {
+      const id = u.id + ':' + kind[0] + i;
+      const key = kind + '|' + NL.util.norm(RAW.units[ui][kind + 's'][i].nl);
+      const first = firsts.get(key);
+      if (first) { first.aliases = (first.aliases || []).concat(id); return; }
+      const item = Object.assign({}, x, { id, unit: u.id, level: u.level, track: u.track, kind });
+      firsts.set(key, item);
+      flat.push(item);
+    };
+    NL.content.units.forEach((u, ui) => {
+      (u.words || []).forEach((w, i) => listing(u, ui, 'word', w, i));
+      (u.phrases || []).forEach((p, i) => listing(u, ui, 'phrase', p, i));
       (u.grammar || []).forEach(gid => {
         if (claimed.has(gid)) return;
         const g = (NL.content.patterns || []).find(x => x.id === gid);
@@ -5213,6 +5231,9 @@ NL.content = NL.content || {};
       it.cognate = NL.gloss.cognate(it);
     });
     index = new Map(flat.map(it => [it.id, it]));
+    /* An alias's id finds its item: an answer logged under it, before it was an alias,
+       counts for the item. */
+    flat.forEach(it => (it.aliases || []).forEach(id => index.set(id, it)));
   }
 
   const allItems = () => { if (!flat) build(); return flat; };

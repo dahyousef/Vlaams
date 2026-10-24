@@ -287,15 +287,20 @@ NL.srs = (function () {
       .map(x => x.it);
   }
 
+  /* Les comptes portent sur les éléments, comme dueItems : la fiche d'un alias reste
+     en mémoire, inerte, et celle d'un élément retiré du cours aussi ; aucune ne compte. */
   function counts() {
     const now = Date.now();
-    let due = 0, said = 0, retired = 0;
-    NL.state.allRecs().forEach(r => {
+    let due = 0, said = 0, retired = 0, seen = 0;
+    NL.content.allItems().forEach(it => {
+      const r = NL.state.rec(it.id);
+      if (!r) return;
+      seen++;
       if (r.retired) { retired++; return; }
       if (r.due <= now) due++;
       if (r.said) said++;
     });
-    return { due, said, retired, seen: NL.state.seenCount() };
+    return { due, said, retired, seen };
   }
 
   /* ---------------- ce qui résiste ---------------- */
@@ -314,9 +319,11 @@ NL.srs = (function () {
       if (!item) return;
       /* Un refus de la reconnaissance vocale ne dit rien de la mémoire. */
       if (l.ex === 'speak') return;
-      const x = by.get(l.id) || { item, wrong: 0, right: 0, last: 0 };
+      /* Groupé par élément, pas par id : une réponse écrite sous l'id d'un alias compte
+         pour l'élément qu'il liste. */
+      const x = by.get(item.id) || { item, wrong: 0, right: 0, last: 0 };
       if (l.ok) x.right++; else { x.wrong++; x.last = Math.max(x.last, l.t); }
-      by.set(l.id, x);
+      by.set(item.id, x);
     });
     return [...by.values()].filter(x => x.wrong > 0).sort((a, b) => b.wrong - a.wrong || b.last - a.last);
   }

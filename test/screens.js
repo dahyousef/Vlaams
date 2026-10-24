@@ -425,6 +425,55 @@ NL.state.open().then(async () => {
     console.log('  sauvegarde et journal : le presse-papiers, sinon l’ancienne commande ; « ' + t.backupCopied + ' » si l’un a copié, sinon « ' + t.backupCopyByHand + ' »');
   }
 
+  /* ------------------------------------------------------------------ */
+  console.log('\nUN MOT LISTÉ DANS DEUX UNITÉS — compté une fois');
+  {
+    /* Neuf mots et phrases sont listés dans deux unités : le second listage est un alias du
+       premier. Un compte qui les a appris avant les alias a des fiches et des réponses sous
+       les deux ids ; ce que la personne voit compte le mot une fois, dans l'unité qui
+       l'enseigne d'abord. */
+    const ALIASES = { 'werkbasis:p0': 'ikengij:p4', 'weekend:p9': 'tijd:p6', 'dedag:w4': 'bakker:w22',
+      'weekend:w16': 'thuis:w24', 'werkbasis:w1': 'familie:w13', 'dedag:w2': 'onderweg:w13',
+      'dokter:w15': 'werkbasis:w20', 'dedag:w7': 'werkbasis:w25', 'weekend:w17': 'dedag:w13' };
+    fresh();
+    /* « meenemen » : unité 4 (bakker:w22), puis unité 9 (dedag:w4). Dit à voix haute et raté
+       sous ses deux ids. */
+    ['bakker:w22', 'dedag:w4'].forEach(id => {
+      NL.srs.seed({ id, kind: 'word' }, 3);
+      const r = NL.state.rec(id); r.said = true; r.due = T0 + 5 * DAY; NL.state.setRec(r);
+      NL.state.logReview({ id, t: T0 - DAY, ok: false, stage: 3, kind: 'word', ex: 'type' });
+    });
+    const c = NL.srs.counts();
+    ok(c.seen === 1 && c.said === 1, 'one word recorded under its two listings counts ' + c.seen + ' seen and ' + c.said + ' said, not 1 and 1');
+    const more = NL.screens.meer.render();
+    const strip = (more.match(/<div class="mini-stats">[\s\S]*?<\/div>/) || [''])[0];
+    const spoken = strip.match(new RegExp('<b>([0-9]+)</b> ' + t.statSpoken + '<'));
+    ok(!!spoken && +spoken[1] === 1, 'the Plus strip gives ' + (spoken ? spoken[1] : 'nothing') + ' « ' + t.statSpoken + ' » for one word said under its two listings');
+    const miss = NL.srs.mistakes();
+    ok(miss.length === 1 && miss[0].item.id === 'bakker:w22' && miss[0].wrong === 2,
+      'one word missed under its two listings is listed as ' + miss.map(x => x.item.id + ' ×' + x.wrong).join(', ') + ', not once as bakker:w22 ×2');
+    ok(text(more).indexOf(t.missTile(1)) >= 0, 'the Plus screen does not say « ' + t.missTile(1) + ' »');
+    NL.screens.woorden.click({ dataset: { f: 'zwak' } }, { act: 'filter' });
+    const rows = (NL.screens.woorden.render().match(/class="vrow"/g) || []).length;
+    NL.screens.woorden.click({ dataset: { f: 'alles' } }, { act: 'filter' });
+    ok(rows === 1, 'the fragile filter lists ' + rows + ' rows for one word missed under its two listings');
+    /* Le parcours : chaque carte compte ce que son unité enseigne d'abord, et l'en-tête le
+       cours sans ses alias. */
+    const path = NL.screens.leerpad.render();
+    const cards = path.split('<section class="unit-card').slice(1).map(text);
+    let listed = 0;
+    units.forEach((u, i) => {
+      const own = (u.words || []).length + (u.phrases || []).length + NL.content.itemsOf(u.id).filter(it => it.kind === 'pattern').length;
+      listed += own;
+      const want = t.unitCounts(u.id === 'bakker' ? 1 : 0, 0, own - Object.keys(ALIASES).filter(id => id.split(':')[0] === u.id).length);
+      ok((cards[i] || '').indexOf(want) >= 0, 'the card of unit ' + u.id + ' does not say « ' + want + ' »');
+    });
+    const course = t.courseCounts(1, 0, listed - Object.keys(ALIASES).length);
+    ok(text(path).indexOf(course) >= 0, 'the course header does not say « ' + course + ' »');
+    const head = text((path.match(/<p class="muted small">[^<]*<\/p>/) || [''])[0]);
+    console.log('  « meenemen » sous deux ids : ' + c.said + ' dit, ' + miss.length + ' raté, ' + rows + ' ligne « fragile » ; parcours : « ' + head + ' »');
+  }
+
   console.log('\n' + checks + ' checks, ' + (fails ? fails + ' FAILED' : 'SCREENS OK'));
   process.exit(fails ? 1 : 0);
 }).catch(e => { console.log('CRASH ' + (e && e.stack || e)); process.exit(1); });
