@@ -84,11 +84,11 @@
         if (b.who === 'them') {
           return '<div class="bub them">' +
             '<button class="bub-say" data-say="' + esc(b.be || b.nl) + '" aria-label="' + NL.t.replay + '">' + ICON.speaker(17) + '</button>' +
-            '<div><p class="bub-nl" lang="nl-BE">' + esc(b.be || b.nl) + '</p>' +
-            (b.be && U.norm(b.be) !== U.norm(b.nl) ? '<p class="bub-std">' + NL.t.scnStd + ' <span lang="nl-BE">' + esc(b.nl) + '</span></p>' : '') +
+            '<div><p class="bub-nl"' + NL.gloss.attr('nl') + '>' + esc(b.be || b.nl) + '</p>' +
+            (b.be && U.norm(b.be) !== U.norm(b.nl) ? '<p class="bub-std">' + NL.t.scnStd + ' <span' + NL.gloss.attr('nl') + '>' + esc(b.nl) + '</span></p>' : '') +
             '<p class="bub-en"' + NL.gloss.langAttr(b) + '>' + esc(NL.gloss.of(b)) + '</p></div></div>';
         }
-        return '<div class="bub you"><div><p class="bub-nl" lang="nl-BE">' + esc(b.nl) + '</p>' +
+        return '<div class="bub you"><div><p class="bub-nl"' + NL.gloss.attr('nl') + '>' + esc(b.nl) + '</p>' +
           '<p class="bub-en"' + NL.gloss.langAttr(b) + '>' + esc(NL.gloss.of(b)) + '</p>' +
           NL.ui.ifText(b.score, 'p', 'bub-score') + '</div></div>';
       }).join('');
@@ -100,12 +100,12 @@
         panel = '<p class="ask">' + esc(NL.gloss.of(step.you.ask)) + '</p>' +
           NL.ui.ifText(step.you.hint, 'p', 'ask-hint') +
           '<div class="choices">' + step.you.choices.map((c, i) =>
-            '<button class="choice" data-choice="' + i + '"><b lang="nl-BE">' + esc(c.nl) + '</b><i>' + esc(NL.gloss.of(c)) + '</i></button>').join('') +
+            '<button class="choice" data-choice="' + i + '"><b' + NL.gloss.attr('nl') + '>' + esc(c.nl) + '</b><i' + NL.gloss.langAttr(c) + '>' + esc(NL.gloss.of(c)) + '</i></button>').join('') +
           '</div>';
       } else if (P.phase === 'speak') {
         const c = step.you.choices[P.choice];
-        panel = '<div class="say-now"><p class="say-target" lang="nl-BE">' + esc(c.nl) + '</p>' +
-          '<p class="say-en">' + esc(NL.gloss.of(c)) + '</p>' +
+        panel = '<div class="say-now"><p class="say-target"' + NL.gloss.attr('nl') + '>' + esc(c.nl) + '</p>' +
+          '<p class="say-en"' + NL.gloss.langAttr(c) + '>' + esc(NL.gloss.of(c)) + '</p>' +
           '<button class="speaker slow inline" data-say="' + esc(c.nl) + '" data-slow="1" aria-label="' + NL.t.slow + '">' + ICON.turtle() + '</button></div>' +
           micPanel(P.speech, c.nl) +
           NL.ui.ifText(c.note, 'p', 'say-note');

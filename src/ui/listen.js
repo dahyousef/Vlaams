@@ -73,8 +73,8 @@ NL.screens.luisteren = (function () {
         '<button class="btn btn-ghost" data-act="slow">' + NL.t.slow + '</button>' +
         '</div>' +
         (S.phase === 'shown'
-          ? '<div class="reveal"><p class="rev-nl" lang="nl-BE">' + esc(c.be || c.nl) + '</p>' +
-          (c.be && U.norm(c.be) !== U.norm(c.nl) ? '<p class="rev-std">' + NL.t.scnStd + ' <span lang="nl-BE">' + esc(c.nl) + '</span></p>' : '') +
+          ? '<div class="reveal"><p class="rev-nl"' + NL.gloss.attr('nl') + '>' + esc(c.be || c.nl) + '</p>' +
+          (c.be && U.norm(c.be) !== U.norm(c.nl) ? '<p class="rev-std">' + NL.t.scnStd + ' <span' + NL.gloss.attr('nl') + '>' + esc(c.nl) + '</span></p>' : '') +
           '<p class="rev-src">' + NL.t.listenFrom + ' &ldquo;' + esc(c.from) + '&rdquo;</p></div>'
           : '<p class="listen-hint">' + NL.t.listenNoText + '</p>') +
         '</div>' +
@@ -88,7 +88,7 @@ NL.screens.luisteren = (function () {
       const sp = S.speech;
       body = '<div class="listen-stage">' +
         '<button class="mic big play" data-act="play" aria-label="' + NL.t.listen + '">' + ICON.speaker(36) + '</button>' +
-        '<p class="rev-nl" lang="nl-BE">' + esc(c.be || c.nl) + '</p>' +
+        '<p class="rev-nl"' + NL.gloss.attr('nl') + '>' + esc(c.be || c.nl) + '</p>' +
         '<p class="rev-en"' + NL.gloss.langAttr(c) + '>' + esc(NL.gloss.of(c)) + '</p>' +
         '<div class="listen-actions"><button class="btn btn-ghost" data-act="slow">' + NL.t.slow + '</button></div>' +
         '</div>' + shadowPanel(sp);

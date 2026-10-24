@@ -67,9 +67,9 @@
             const s = NL.srs.stageOf(it);
             html += '<div class="vrow">' +
               '<button class="speaker tiny" data-say="' + esc(U.bare(it.nl)) + '" aria-label="' + NL.t.listen + '">' + ICON.speaker(17) + '</button>' +
-              '<span class="v-nl"><span lang="nl-BE">' + (it.art ? '<span class="art ' + it.art + '">' + it.art + '</span>' : '') +
+              '<span class="v-nl"><span' + NL.gloss.attr('nl') + '>' + (it.art ? '<span class="art ' + it.art + '">' + it.art + '</span>' : '') +
               esc(U.bare(it.nl)) + '</span>' +
-              (it.be && NL.state.meta().showFlemish !== false ? '<span class="v-be">' + NL.t.wordsHere + ' <span lang="nl-BE">' + esc(it.be) + '</span></span>' : '') +
+              (it.be && NL.state.meta().showFlemish !== false ? '<span class="v-be">' + NL.t.wordsHere + ' <span' + NL.gloss.attr('nl') + '>' + esc(it.be) + '</span></span>' : '') +
               '</span>' +
               '<span class="v-en"' + NL.gloss.langAttr(it) + '>' + esc(NL.gloss.bare(it)) + '</span>' +
               pips(s) +
@@ -112,7 +112,7 @@
             s.groups.map(g => '<div class="sheet-group"><h4>' + esc(NL.gloss.of(g.h)) + '</h4>' +
               g.rows.map(r => '<button class="sheet-row" data-say="' + esc(r.nl) + '">' +
                 '<span class="sr-say">' + ICON.speaker(16) + '</span>' +
-                '<span class="sr-body"><b lang="nl-BE">' + esc(r.nl) + '</b><i>' + esc(NL.gloss.of(r)) + '</i>' +
+                '<span class="sr-body"><b' + NL.gloss.attr('nl') + '>' + esc(r.nl) + '</b><i>' + esc(NL.gloss.of(r)) + '</i>' +
                 NL.ui.ifText(r.note, 'em') + '</span></button>').join('') +
               '</div>').join('') +
             '</div>';
@@ -141,8 +141,8 @@
         '<div class="reg-table"><div class="reg-head"><span>' + NL.t.regStd + '</span><span>' + NL.t.regBe + '</span></div>' +
         NL.content.register.map(r =>
           '<div class="reg-row">' +
-          '<button class="reg-cell std" lang="nl-BE" data-say="' + esc(r.std) + '">' + esc(r.std) + '</button>' +
-          '<button class="reg-cell be" data-say="' + esc(r.be) + '">' + '<span lang="nl-BE">' + esc(r.be) + '</span>' +
+          '<button class="reg-cell std"' + NL.gloss.attr('nl') + ' data-say="' + esc(r.std) + '">' + esc(r.std) + '</button>' +
+          '<button class="reg-cell be" data-say="' + esc(r.be) + '">' + '<span' + NL.gloss.attr('nl') + '>' + esc(r.be) + '</span>' +
           NL.ui.ifText(r.note, 'em') + '</button>' +
           '</div>').join('') +
         '</div>' +
@@ -152,8 +152,8 @@
         '<div class="reg-table"><div class="reg-head"><span>' + NL.t.loansColBe + '</span><span>' + NL.t.loansColFr + '</span></div>' +
         NL.content.loans.map(r =>
           '<div class="reg-row">' +
-          '<button class="reg-cell be" lang="nl-BE" data-say="' + esc(r.nl) + '">' + esc(r.nl) + '</button>' +
-          '<span class="reg-cell std" lang="fr">' + esc(NL.gloss.of(r)) +
+          '<button class="reg-cell be"' + NL.gloss.attr('nl') + ' data-say="' + esc(r.nl) + '">' + esc(r.nl) + '</button>' +
+          '<span class="reg-cell std"' + NL.gloss.attr('fr') + '>' + esc(NL.gloss.of(r)) +
           NL.ui.ifText(r.note, 'em') + '</span>' +
           '</div>').join('') +
         '</div>' +
@@ -163,8 +163,8 @@
         '<div class="reg-table"><div class="reg-head"><span>' + NL.t.fauxColNl + '</span><span>' + NL.t.fauxColMeaning + '</span></div>' +
         NL.content.faux.map(r =>
           '<div class="reg-row">' +
-          '<button class="reg-cell be" lang="nl-BE" data-say="' + esc(r.nl) + '">' + esc(r.nl) + '</button>' +
-          '<span class="reg-cell std" lang="fr">' + esc(NL.gloss.of(r)) + '<em>' + esc(r.trap) + '</em></span>' +
+          '<button class="reg-cell be"' + NL.gloss.attr('nl') + ' data-say="' + esc(r.nl) + '">' + esc(r.nl) + '</button>' +
+          '<span class="reg-cell std"' + NL.gloss.attr('fr') + '>' + esc(NL.gloss.of(r)) + '<em>' + esc(r.trap) + '</em></span>' +
           '</div>').join('') +
         '</div>' +
 
@@ -175,8 +175,8 @@
            deux affichages (src/content/reference.js). */
         NL.content.fauxEn.map(r =>
           '<div class="reg-row">' +
-          '<button class="reg-cell be" lang="nl-BE" data-say="' + esc(r.nl) + '">' + esc(r.nl) + '</button>' +
-          '<span class="reg-cell std" lang="en">' + esc(r.en) + '<em>' + esc(r.trap) + '</em></span>' +
+          '<button class="reg-cell be"' + NL.gloss.attr('nl') + ' data-say="' + esc(r.nl) + '">' + esc(r.nl) + '</button>' +
+          '<span class="reg-cell std"' + NL.gloss.attr('en') + '>' + esc(r.en) + '<em>' + esc(r.trap) + '</em></span>' +
           '</div>').join('') +
         '</div></div>';
     }
@@ -189,7 +189,7 @@
         '<h3 class="sec">' + title + ' ' + anchor(a) + '</h3>' +
         rules.map(r => '<div class="rule-row ' + cls + '">' +
           '<b>' + esc(NL.gloss.of(r.rule)) + (r.sure ? '<span class="sure-tag">' + NL.t.dehetSure + '</span>' : '') + '</b>' +
-          '<button class="rule-ex" lang="nl-BE" data-say="' + esc(r.ex) + '">' + esc(r.ex) + '</button></div>').join('');
+          '<button class="rule-ex"' + NL.gloss.attr('nl') + ' data-say="' + esc(r.ex) + '">' + esc(r.ex) + '</button></div>').join('');
       return '<div class="wrap">' +
         '<section class="card lead slim"><span class="eyebrow">' + 'de / het' + '</span>' +
         '<h1>' + NL.t.dehetTitle + '</h1><p>' + NL.t.dehetBody + '</p></section>' +
@@ -207,9 +207,9 @@
         '<h1>' + NL.t.soundsTitle + '</h1>' +
         '<p>' + NL.t.soundsBody + '</p></section>' +
         NL.content.sounds.map(s =>
-          '<div class="snd-row' + (s.good ? ' good' : s.warn ? ' warn' : '') + '"><div class="snd-head"><b lang="nl-BE">' + esc(s.g) + '</b><code>' + esc(s.ipa) + '</code>' +
+          '<div class="snd-row' + (s.good ? ' good' : s.warn ? ' warn' : '') + '"><div class="snd-head"><b' + NL.gloss.attr('nl') + '>' + esc(s.g) + '</b><code>' + esc(s.ipa) + '</code>' +
           (s.good ? '<span class="snd-tag good">' + NL.t.soundsEasy + '</span>' : s.warn ? '<span class="snd-tag warn">' + NL.t.soundsWatch + '</span>' : '') + '</div>' +
-          '<p lang="fr">' + NL.gloss.prose(s.say) + '</p></div>').join('') +
+          '<p' + NL.gloss.attr('fr') + '>' + NL.gloss.prose(s.say) + '</p></div>').join('') +
         '</div>';
     }
   };

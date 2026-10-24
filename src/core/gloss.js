@@ -104,12 +104,17 @@ NL.gloss = (function () {
 
   /* Une prose du cours qui porte des exemples en néerlandais : <span class="ex"> est du néerlandais,
      et le dit à un lecteur d'écran. C'est ici, et nulle part ailleurs, que cette règle s'applique. */
-  const prose = html => String(html == null ? '' : html).replace(/<span class="ex">/g, '<span class="ex" lang="nl-BE">');
+  const prose = html => String(html == null ? '' : html).replace(/<span class="ex">/g, '<span class="ex"' + attr('nl') + '>');
 
-  /* La balise d'une langue lue, pour un lecteur d'écran : la page (NL.lang) comme chaque sens. */
-  const tag = l => l === 'en' ? 'en-GB' : 'fr';
-  /* L'attribut lang d'un sens ou d'un texte montré, espace compris : la langue où il se lit. */
-  const langAttr = x => ' lang="' + tag(langOf(x)) + '"';
+  /* La balise de chaque langue, pour un lecteur d'écran : les langues lues et le néerlandais
+     du cours. C'est la seule table : aucun autre fichier n'écrit lang="…". */
+  const TAGS = { fr: 'fr', en: 'en-GB', nl: 'nl-BE' };
+  /* La balise d'une langue : celle de la page (NL.lang), d'un sens, d'un passage néerlandais. */
+  const tag = l => TAGS[l];
+  /* L'attribut lang d'une langue, espace compris : attr('nl') pour du néerlandais. */
+  const attr = l => ' lang="' + tag(l) + '"';
+  /* L'attribut lang d'un sens ou d'un texte montré : la langue où il se lit. */
+  const langAttr = x => attr(langOf(x));
 
-  return { LANGS, prose, use, current, other, has, langOf, tag, langAttr, of, meaning, pair, bare, senses, sameSense, sameMeaning, wordClass, cognate };
+  return { LANGS, TAGS, prose, use, current, other, has, langOf, tag, attr, langAttr, of, meaning, pair, bare, senses, sameSense, sameMeaning, wordClass, cognate };
 })();

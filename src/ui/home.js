@@ -106,7 +106,7 @@
           '<div class="uc-head">' +
           '<span class="uc-icon">' + u.icon + '</span>' +
           '<div class="uc-title"><span class="eyebrow">' + t.unitOne(u.n) + ' · ' + u.level + ' · ' + trackName(u.track) + '</span>' +
-          '<h2>' + esc(NL.gloss.of(u.name)) + '<i class="uc-nl" lang="nl-BE">' + esc(u.nlName || '') + '</i></h2></div>' +
+          '<h2>' + esc(NL.gloss.of(u.name)) + '<i class="uc-nl"' + NL.gloss.attr('nl') + '>' + esc(u.nlName || '') + '</i></h2></div>' +
           '<span class="uc-pct">' + p.met + '/' + p.total + '</span>' +
           '</div>' +
           '<p class="uc-blurb">' + esc(NL.gloss.of(u.blurb)) + '</p>' +
@@ -130,7 +130,7 @@
         if (g) NL.ui.openSheet({ custom: NL.ui.card(esc(NL.gloss.of(g.title)),
           '<p class="rule">' + esc(NL.gloss.of(g.rule)) + '</p><div class="explain">' + NL.gloss.prose(NL.gloss.of(g.explain)) + '</div>' +
           '<div class="ex-list">' + g.drills.slice(0, 3).map(d2 =>
-            '<button class="ex-row" data-say="' + esc(d2.nl) + '"><b lang="nl-BE">' + esc(d2.nl) + '</b><i>' + esc(NL.gloss.of(d2)) + '</i></button>').join('') + '</div>',
+            '<button class="ex-row" data-say="' + esc(d2.nl) + '"><b' + NL.gloss.attr('nl') + '>' + esc(d2.nl) + '</b><i>' + esc(NL.gloss.of(d2)) + '</i></button>').join('') + '</div>',
           '<button class="btn btn-ghost wide" data-close="1">' + t.close + '</button>') });
       }
     }

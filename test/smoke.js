@@ -268,13 +268,17 @@ NL.state.open().then(() => {
   console.log('  syntax          ' + sources.length + ' sources in SRC and ' + copied.length + ' copied to dist/ (' +
     copied.join(', ') + ') from build.sh: ' + (seen ? seen + ' finding(s)' : 'no var, no ?.'));
 
-  /* The language of a shown meaning has one source: NL.gloss.tag names the tag of a reading
-     language, and NL.gloss.langAttr writes the attribute. A `lang="' + …` built by hand, or an
-     en-GB written outside gloss.js, is a second source, and the two drift apart. */
+  /* The language of a shown text has one source: NL.gloss.TAGS names the tag of each language,
+     NL.gloss.attr writes the attribute of a language and NL.gloss.langAttr that of a meaning.
+     #75.2: a lang="…" written in the code, or an en-GB written outside gloss.js, is a second
+     source, and the two drift apart. data-display-lang="…" is not a lang attribute. src/content
+     writes lang="nl-BE" in its prose until E1 gives it class="nl". */
   ok(sources.indexOf('src/core/gloss.js') >= 0, 'the lang check looks for src/core/gloss.js, which build.sh no longer lists');
+  const contentFile = f => f.indexOf('src/content/') === 0;
   sources.filter(f => f !== 'src/core/gloss.js').forEach(f => {
     const src = read(f);
-    ok(!/[^\w-]lang="'\s*\+/.test(src), f + ': a lang attribute is built by hand; use NL.gloss.langAttr');
+    const written = src.split('\n').map((l, i) => /(?<![\w-])lang="/.test(l) ? i + 1 : 0).filter(Boolean);
+    ok(contentFile(f) || written.length === 0, f + ':' + written.join(',') + ': writes a lang attribute by hand; use NL.gloss.attr or NL.gloss.langAttr');
     ok(src.indexOf('en-GB') < 0, f + ': en-GB is written outside gloss.js; use NL.gloss.tag');
   });
 

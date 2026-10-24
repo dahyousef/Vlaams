@@ -427,10 +427,10 @@ NL.screens.sessie = (function () {
     /* Un autre élément au même sens a été tapé : on dit quel mot était demandé. */
     /* La réponse est du néerlandais partout, sauf en « recall », un sens dans sa langue, et en « match »,
        des paires où les deux se mêlent. */
-    const ansLang = c.ex === 'recall' ? NL.gloss.langAttr(it) : c.ex === 'match' ? '' : ' lang="nl-BE"';
+    const ansLang = c.ex === 'recall' ? NL.gloss.langAttr(it) : c.ex === 'match' ? '' : NL.gloss.attr('nl');
     const asked = ok && L.other ? '<p>' + NL.t.askedFor + ' <b' + ansLang + '>' + esc(ans) + '</b></p>' : '';
     const also = it && it.also && it.also.length
-      ? '<p class="v-also">' + NL.t.alsoSaid + ' <span lang="nl-BE">' + esc(it.also.join(', ')) + '</span></p>' : '';
+      ? '<p class="v-also">' + NL.t.alsoSaid + ' <span' + NL.gloss.attr('nl') + '>' + esc(it.also.join(', ')) + '</span></p>' : '';
     return '<div class="foot ' + (ok ? 'ok' : 'no') + '"><div class="foot-in">' +
       '<div class="verdict ' + (ok ? 'ok' : 'no') + '">' +
       '<span class="v-icon">' + (ok

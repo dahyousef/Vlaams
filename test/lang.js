@@ -212,7 +212,7 @@ function interfaceCheck() {
          Deux autres données ne sont pas l'interface non plus : les faux amis des anglophones, écrits en anglais
          dans les deux affichages (les cellules reg-cell std de register), et les mots qu'une personne a tapés
          elle-même (leur ligne du dictionnaire, repérée par data-del). */
-      textAndLabels(String(h).replace(/<textarea[\s\S]*?<\/textarea>/g, ' ').replace(/<span class="reg-cell std" lang="en">[\s\S]*?<\/span>/g, ' ').replace(/<div class="vrow">[\s\S]*?<\/div>/g, row => (row.indexOf('data-del=') >= 0 ? ' ' : row)).replace(/&[a-z]+;/g, ' ')).replace(/⟦[^⟧]*⟧|⟪[^⟫]*⟫/g, ' ').split(/[^\p{L}\p{N}]+/u).forEach(w => {
+      textAndLabels(String(h).replace(/<textarea[\s\S]*?<\/textarea>/g, ' ').replace(/<span class="reg-cell std" lang="en-GB">[\s\S]*?<\/span>/g, ' ').replace(/<div class="vrow">[\s\S]*?<\/div>/g, row => (row.indexOf('data-del=') >= 0 ? ' ' : row)).replace(/&[a-z]+;/g, ' ')).replace(/⟦[^⟧]*⟧|⟪[^⟫]*⟫/g, ' ').split(/[^\p{L}\p{N}]+/u).forEach(w => {
         w = w.toLowerCase();
         if (w.length > 1 && !/\p{N}/u.test(w) && !dutch.has(w) && !Object.prototype.hasOwnProperty.call(ALLOW, w) && !seen.has(w)) seen.set(w, n);
       });
@@ -535,6 +535,13 @@ function langAttrFind(B, each) {
 }
 function langAttrCheck(B) {
   langAttrFind(B, views).forEach((n, k) => ok(false, '6 : néerlandais sans lang="nl" : ' + k + ' (vue ' + n + ')'));
+  /* #75.2. Une balise vient de la table de gloss.js : fr, en-GB, nl-BE. Un « en » écrit à côté
+     déclare une autre langue que la page (<html lang="en-GB">). */
+  const TAGS = ['fr', 'en-GB', 'nl-BE'], stray = new Map();
+  views(B, (n, h) => (String(h).match(/ lang="[^"]*"/g) || []).forEach(a => {
+    if (TAGS.indexOf(a.slice(7, -1)) < 0 && !stray.has(a)) stray.set(a, n);
+  }));
+  stray.forEach((n, a) => ok(false, '6 : balise hors de la table :' + a + ' (vue ' + n + ')'));
   /* Le contrôle voit un mot néerlandais qui s'écrit aussi en français ou en anglais : sur des vues plantées, il le dit. */
   const planted = (b, visit) => { visit('plant', '<p>hier</p><p>merci</p><p lang="nl-BE">hier</p>'); };
   const found = langAttrFind(B, planted);
@@ -594,6 +601,8 @@ function displayChecks() {
   const c1 = () => open(NL => {
     NL.content.units.forEach(u => u.words.forEach(w => { if (w.nl === 'het brood') delete w.en; }));
     delete NL.content.scenarios.find(s => s.id === 's-bakker').steps.filter(st => st.them)[3].them.en;
+    /* Les choix de la première réplique sans anglais : leur sens se montre sur le bouton, puis sous la phrase à dire. */
+    NL.content.scenarios.find(s => s.id === 's-bakker').steps.find(st => st.you).you.choices.forEach(c => { delete c.en; });
     /* Une phrase et une règle sans anglais non plus : certains exercices ne montrent qu'elles. */
     const frOnly = v => tree.visit(v, x => { if (x && typeof x === 'object' && typeof x.fr === 'string') delete x.en; });
     frOnly(NL.content.units.find(u => u.id === 'overleven').phrases[0]);
@@ -615,13 +624,15 @@ function displayChecks() {
       });
     }
     NL.ui.go('luisteren'); NL.screens.luisteren.click({ dataset: {} }, { act: 'nazeggen' }); pages.nazeggen = html();
-    const tags = Object.keys(pages).map(k => pages[k]).join('').match(/<[a-z]+ class="(v-en|bub-en|rev-en)"[^>]*>/g) || [];
+    const tags = Object.keys(pages).map(k => pages[k]).join('').match(/<[a-z]+ class="(v-en|bub-en|rev-en|say-en)"[^>]*>/g) || [];
     const bare = '<span class="v-en" lang="fr">' + NL.util.esc(NL.gloss.bare(brood)) + '</span>';
-    ok(['v-en', 'bub-en', 'rev-en'].every(c => tags.some(t => t.indexOf('"' + c + '"') >= 0)), '69.1 : les trois sortes de sens ne sont pas toutes à l’écran, le contrôle est creux');
+    ok(['v-en', 'bub-en', 'rev-en', 'say-en'].every(c => tags.some(t => t.indexOf('"' + c + '"') >= 0)), '69.1 : les quatre sortes de sens ne sont pas toutes à l’écran, le contrôle est creux');
     const bad = tags.filter(t => !/ lang="(fr|en-GB)"/.test(t));
     ok(bad.length === 0, '69.1 : ' + bad.length + ' sens sans lang="fr" ni lang="en-GB", dont ' + bad[0]);
     ok(pages.woorden.indexOf(bare) >= 0 && pages.fouten.indexOf(bare) >= 0, '69.1 : en anglais, le sens français de het brood n’est pas marqué lang="fr" (woorden, fouten)');
     ok(/class="bub-en" lang="fr"/.test(pages.scenario), '69.1 : la réplique sans anglais n’est pas marquée lang="fr"');
+    const choice = NL.content.scenarios.find(s => s.id === 's-bakker').steps.find(st => st.you).you.choices[0];
+    ok(pages.scenario.indexOf('<i lang="fr">' + NL.util.esc(NL.gloss.of(choice)) + '</i>') >= 0, '69.1 : le sens d’un choix sans anglais n’est pas marqué lang="fr" sur son bouton');
     ok(tags.some(t => t.indexOf(' lang="en-GB"') >= 0), '69.1 : aucun sens anglais marqué lang="en-GB"');
     /* L'exercice montre le même sens : il porte la même langue. Chaque exercice du registre, sur le mot,
        la phrase et la règle sans anglais, posé puis corrigé : un exercice ajouté est contrôlé d'office.
