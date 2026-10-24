@@ -649,7 +649,7 @@ async function main() {
     /* tools/content/kinds/examples.js dans un dépôt à lui, sous la copie : test/data en plus
        (OpenTaal et flemish.tsv) et docs/attribution (le crédit des phrases), src/content/sourced.js
        vidé, pour que l'essai ne dépende pas des phrases que le cours tient déjà, et un extrait de
-       Tatoeba fait ici, de quatre phrases, sous les vraies épingles. check.js lit le dépôt qui le
+       Tatoeba fait ici, de cinq phrases, sous les vraies épingles. check.js lit le dépôt qui le
        contient : les outils se lancent donc depuis celui-ci. */
     const EX = path.join(TMP, 'exemples');
     ['build.sh', 'src', 'test/lib', 'test/data', 'tools', 'docs/attribution'].forEach(p => fs.cpSync(path.join(ROOT, p), path.join(EX, p), { recursive: true }));
@@ -669,6 +669,7 @@ async function main() {
       'nld\t102\t\t0\tZe spreekt goed Engels.\t202,203\t302',
       'nld\t104\tanna\t1\tMisschien is het waar.\t204\t304',
       'nld\t105\tbob\t0\tHet is drie uur.\t205\t305',
+      'nld\t106\t\t0\tze spreekt goed engels\t202\t302',
       'eng\t201\tbob\tSorry, do you speak English?',
       'eng\t202\tbob\tShe speaks good English.',
       'eng\t203\tcarl\tShe speaks English well.',
@@ -706,7 +707,7 @@ async function main() {
     same(Object.keys(engels), ['id', 'stamp', 'copies', 'nl', 'unit', 'art', 'meaning', 'candidates'], 'une ligne d\'entrée');
     same([engels.nl, engels.unit, engels.art, engels.meaning, input[0].art], ['het Engels', 'ikengij', 'het', { fr: 'l’anglais', en: 'English' }, null],
       'le néerlandais, l\'unité, l\'article (null sans article) et le sens');
-    same(engels.candidates.map(c => c.id), [101, 102], 'l\'auteur de langue maternelle d\'abord');
+    same(engels.candidates.map(c => c.id), [101, 102, 106], 'l\'auteur de langue maternelle d\'abord');
     same(engels.candidates[1], { id: 102, nl: 'Ze spreekt goed Engels.', owner: '',
       en: [{ id: 202, text: 'She speaks good English.', owner: 'bob' }, { id: 203, text: 'She speaks English well.', owner: 'carl' }],
       fr: [{ id: 302, text: 'Elle parle bien anglais.', owner: 'dora' }], tiles: 4 },
@@ -747,6 +748,18 @@ async function main() {
     same(why([as({ en: 'She speaks English very well.', edited: 'the learner hears the adverb' })]), [], 'une traduction changée, et sa raison');
     same(why([as({ edited: 'nothing' })]), ['sentence 1: edited is for a translation that is not Tatoeba\'s, and both are'], 'edited sans traduction changée, non');
 
+    same(why([as({ en: 'two\nlines' })]), ['sentence 1: nl, gap, en and fr are each a string on one line'], 'une traduction sur plusieurs lignes, non');
+    same(why([as({ gap: '' })]), ['sentence 1: nl, gap, en and fr are each a string on one line'], 'un trou vide, non');
+    same(why([as({ frSrc: 301 })]), ['sentence 1: frSrc 301 is not a translation Tatoeba links to 102'], 'une traduction française que Tatoeba ne lie pas à la phrase');
+    same(why([as({ fr: 'Elle parle très bien anglais.' })]),
+      ['sentence 1: fr « Elle parle très bien anglais. » is not Tatoeba\'s 302, « Elle parle bien anglais. »: take it as written, or say why in edited'],
+      'une traduction française changée sans raison, non');
+    same(why([as({ fr: 'Elle parle très bien anglais.', edited: 'the learner hears the adverb' })]), [], 'une traduction française changée, et sa raison');
+    same(why([good, as({ src: 106, nl: 'ze spreekt goed engels', gap: 'engels', enSrc: 202, en: 'She speaks good English.' })]), ['the two sentences are one sentence'],
+      'deux sources différentes au même texte (casse et ponctuation près), non');
+    same(K.readWhole({ sentences: [as({ edited: 'x' })] }), 'edited translation', 'la lecture entière : une traduction changée');
+    same([K.readWhole({ sentences: [good] }), K.readWhole({ sentences: [] })], ['', ''], 'la lecture entière : rien à relire sans traduction changée');
+
     /* Les règles d'une phrase, à l'unité du mot : ce que test/content.js tient, et le classement. */
     const rules = (d, id) => K.RULES(Object.assign({ en: 'English.', fr: 'Anglais.' }, d), 's', CE.byId(id || 'ikengij:w24'), CE, EX);
     same(rules({ nl: 'Ze spreekt goed Engels.', gap: 'Engels' }), [], 'une phrase qui suit les règles');
@@ -783,7 +796,7 @@ async function main() {
     same(K.check(row('ikengij:w24', { sentences: [good] }), engels, { repo: EX, course: () => course(EX) }), [missing], 'Check sans l\'extrait');
     same(runEx('split.js', [EX, path.join(EX, 'sans-extrait', 'examples')]), { code: 1, lines: ['fail examples -: the kind\'s split threw: ' + missing] }, 'Split sans l\'extrait');
     fs.renameSync(EXTRACT + '.ôté', EXTRACT);
-    console.log('  examples       ' + cut.length + ' lots sur le cours mesuré ; Split, Check et ses règles sur un extrait de 4 phrases');
+    console.log('  examples       ' + cut.length + ' lots sur le cours mesuré ; Split, Check et ses règles sur un extrait de 5 phrases');
   }
 
   console.log('\n' + checks + ' contrôles, ' + (fails === 0 ? 'KIT CONFORME' : fails + ' ÉCHEC(S)'));
