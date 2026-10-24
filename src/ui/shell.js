@@ -104,13 +104,14 @@ NL.ui = (function () {
     return t.unitOne(span.from) + (u ? ' · ' + NL.gloss.of(u.name) : '');
   }
 
-  /* Le texte `x` (lu par NL.gloss) dans une balise, s'il y en a un, montré par `show` ; sinon rien. */
-  const inTag = (show, x, tag, cls) => {
+  /* Le texte `x` (lu par NL.gloss) dans une balise, s'il y en a un, montré par `show` ; sinon rien.
+     `lang`, s'il est donné, déclare la langue du texte (NL.gloss.attr). */
+  const inTag = (show, x, tag, cls, lang) => {
     const s = NL.gloss.of(x);
-    return s ? '<' + tag + (cls ? ' class="' + cls + '"' : '') + '>' + show(s) + '</' + tag + '>' : '';
+    return s ? '<' + tag + (cls ? ' class="' + cls + '"' : '') + (lang ? NL.gloss.attr(lang) : '') + '>' + show(s) + '</' + tag + '>' : '';
   };
-  /* Un texte de l'app ou de la personne : échappé. */
-  const ifText = (x, tag, cls) => inTag(esc, x, tag, cls);
+  /* Un texte de l'app ou de la personne : échappé. Ce que le micro entend est du néerlandais : 'nl'. */
+  const ifText = (x, tag, cls, lang) => inTag(esc, x, tag, cls, lang);
   /* Une prose du cours : échappée, et ce qu'elle cite déclaré nl-BE (NL.gloss.quoted). */
   const ifProse = (x, tag, cls) => inTag(NL.gloss.quoted, x, tag, cls);
 

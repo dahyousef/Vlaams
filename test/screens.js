@@ -363,11 +363,15 @@ NL.state.open().then(async () => {
       [[{ fr: 'texte', en: null }, 'p'], 'en', ''],
       [[{ fr: null, en: 'text' }, 'p'], 'fr', ''],
       [[{ fr: 'texte', en: 'text' }, 'p'], 'en', '<p>text</p>'],
-      [[{ fr: 'texte', en: 'text' }, 'p'], 'fr', '<p>texte</p>']
+      [[{ fr: 'texte', en: 'text' }, 'p'], 'fr', '<p>texte</p>'],
+      /* Un texte dans une autre langue que la page, ce que le micro entend, déclare la sienne. */
+      [['nog is', 'p', 'heard', 'nl'], 'en', '<p class="heard" lang="nl-BE">nog is</p>'],
+      [['nog is', 'p', null, 'nl'], 'fr', '<p lang="nl-BE">nog is</p>'],
+      [['', 'p', 'heard', 'nl'], 'en', '']
     ]);
-    console.log('  rien sans texte, ni pour un sens qui vaut null dans la langue lue ; sinon le texte échappé, dans sa balise, avec sa classe');
+    console.log('  rien sans texte, ni pour un sens qui vaut null dans la langue lue ; sinon le texte échappé, dans sa balise, avec sa classe et sa langue');
     /* E1. NL.ui.ifProse fait de même pour une prose du cours, et y déclare nl-BE chaque passage
-       cité, « … » ou “…” (NL.gloss.quoted). ifText, lui, ne déclare rien. */
+       cité, « … » ou “…” (NL.gloss.quoted). ifText, lui, ne déclare que la langue qu'on lui donne. */
     table('ifProse', [
       [[null, 'p', 'v-note'], 'en', ''],
       [[{ fr: 'dit « ja »', en: null }, 'p'], 'en', ''],

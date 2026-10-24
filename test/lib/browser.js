@@ -129,7 +129,7 @@ const APP = 'src/app.js';
                 avec un autre mode, open() échoue ('held' laisse l'erreur sortir de B.tick())
      ua         navigator.userAgent
      voices     tableau de voix → speechSynthesis existe ; absent, il n'existe pas
-     recogniser true → webkitSpeechRecognition existe (ctx.__saidNext, ctx.__denyNext)
+     recogniser true → webkitSpeechRecognition existe (ctx.__saidNext, ctx.__denyNext, ctx.__partialNext)
      media      true → micro (refusé), MediaRecorder, presse-papiers, FileReader
      blobs      true → Blob, URL, Audio
      framed     true → la page tourne dans un cadre (window.top n'est pas window)
@@ -263,6 +263,13 @@ function open(opts) {
           ctx.__denyNext = false;
           if (this.onerror) this.onerror({ error: 'not-allowed' });
           if (this.onend) this.onend();
+          return;
+        }
+        /* On parle encore : un résultat provisoire, et l'écoute continue, sans fin. */
+        if (ctx.__partialNext) {
+          const partial = ctx.__partialNext;
+          ctx.__partialNext = '';
+          if (this.onresult) this.onresult({ resultIndex: 0, results: [Object.assign([{ transcript: partial }], { isFinal: false, length: 1 })] });
           return;
         }
         const said = ctx.__saidNext || '';

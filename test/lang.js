@@ -22,11 +22,12 @@ const T0 = Date.parse('2026-10-05T08:00:00Z');
 /* prepare : ce que l'essai change dans l'app chargée, avant que src/app.js la démarre.
    store : le stockage d'un appareil, pour le recharger.
    account : un serveur neuf, et l'appareil déjà connecté.
-   timers : 'held' pour des minuteurs qui attendent B.tick() ; absent, ils partent aussitôt. */
-function boot({ prepare, store, account, timers } = {}) {
+   timers : 'held' pour des minuteurs qui attendent B.tick() ; absent, ils partent aussitôt.
+   recogniser : true pour un micro qui entend (ctx.__saidNext, ctx.__partialNext). */
+function boot({ prepare, store, account, timers, recogniser } = {}) {
   const dev = { store: store || {} };
   if (account) dev.store['sb-session'] = JSON.stringify({ user: { id: 'uid-lang', email: 'lang@example.com' } });
-  return browser.open({ root: ROOT, seed: browser.SEED, now: T0, store: dev.store, byId: 'stub', media: true, prepare, timers,
+  return browser.open({ root: ROOT, seed: browser.SEED, now: T0, store: dev.store, byId: 'stub', media: true, prepare, timers, recogniser,
     config: account ? { supabaseUrl: 'https://example.supabase.co', supabaseAnonKey: 'anon' } : undefined,
     supabase: account ? fakeSupabase().fakeLib(dev) : undefined,
     voices: [{ name: 'Microsoft Bart - Dutch (Belgium)', lang: 'nl-BE', localService: true }] });
@@ -554,6 +555,48 @@ function langAttrCheck(B) {
   ok(frFound.length === 0, '6 : « hier » dans un passage français est du français, pas signalé : ' + frFound.join(', '));
 }
 
+/* 6e. Ce que le micro entend est du néerlandais : le texte provisoire pendant l'écoute, ce qu'il a
+   entendu et les mots de la phrase comparés déclarent nl-BE, dans l'exercice parlé de la séance, au
+   nazeggen et dans la conversation. Seule l'étiquette « Heard: » reste dans la langue de la page. */
+function heardCheck() {
+  const B = boot({ recogniser: true });
+  return B.NL.state.open().then(() => {
+    const NL = B.NL, S = NL.screens.sessie, html = () => B.app.innerHTML, label = NL.tables.en.micHeard;
+    English(B);
+    /* Pendant l'écoute, « nog is » ; après, « iets heel anders », qui ne passe pas : la séance et la
+       conversation le redisent (`redit`), le nazeggen ne montre que les mots comparés. */
+    const heard = (where, start, stop, redit) => {
+      B.ctx.__partialNext = 'nog is'; start();
+      const listening = html();
+      stop(); B.ctx.__saidNext = 'iets heel anders'; start();
+      [[listening, 'pendant l’écoute', ['nog is']], [html(), 'après l’écoute', redit ? ['word-diff', 'iets heel anders'] : ['word-diff']]].forEach(([h, when, shown]) => {
+        shown.forEach(s => ok(h.indexOf(s) >= 0, '6e : ' + where + ', ' + when + ' : « ' + s + ' » n’est pas à l’écran, le contrôle est creux'));
+        (h.match(/<p class="(?:heard|word-diff)"[\s\S]*?<\/p>/g) || []).forEach(p => runs(p, pageLang(B)).filter(r => r.text !== label).forEach(r =>
+          ok(r.lang === 'nl-BE', '6e : ' + where + ', ' + when + ' : « ' + r.text + ' » sans lang="nl-BE" (' + r.lang + ')')));
+      });
+    };
+    const it = NL.content.allItems().find(x => x.nl === 'nog eens');
+    NL.srs.seed(it, 3);
+    const r = NL.state.rec(it.id); r.due = B.clock.now() - 3600 * 1000; r.lastEx = 'type'; r.said = true; NL.state.setRec(r);
+    NL.state.logReview({ id: it.id, t: B.clock.now() - 86400 * 1000, ok: false, stage: 3, kind: it.kind, ex: 'type' });
+    let asked = false;
+    for (let k = 0; k < 40 && !asked; k++) {
+      S.abandon(); NL.screens.fouten.click({ dataset: {} }, { act: 'start' });
+      const c = S.peek(); asked = !!c && c.ex === 'speak' && c.items[0].id === it.id;
+    }
+    ok(asked, '6e : nog eens n’est jamais posé à voix haute, le contrôle de la séance est creux');
+    if (asked) heard('séance', () => B.tap({ mic: 'start' }), () => B.tap({ mic: 'stop' }), true);
+    S.abandon();
+    NL.ui.go('luisteren'); NL.screens.luisteren.click({ dataset: {} }, { act: 'nazeggen' });
+    heard('nazeggen', () => B.tap({ act: 'mic' }), () => B.tap({ act: 'micstop' }), false);
+    NL.ui.go('scenario', 's-bakker');
+    for (let g = 0; html().indexOf('data-mic="start"') < 0 && g < 20; g++) {
+      NL.screens.scenario.click({ dataset: {} }, { step: 'next' }); NL.screens.scenario.click({ dataset: {} }, { choice: '0' });
+    }
+    heard('conversation', () => B.tap({ mic: 'start' }), () => B.tap({ mic: 'stop' }), true);
+  });
+}
+
 /* 6c. Le formulaire d'ajout : l'étiquette du champ enregistré sous « en » nomme l'anglais, celle du champ « fr » le français. */
 function addFormCheck(B) {
   const NL = B.NL;
@@ -733,6 +776,25 @@ function displayChecks() {
     ok(B.app.innerHTML.indexOf(want) >= 0, '69.1 bis : en français, le sens anglais d’un mot à soi n’est pas marqué lang="en-GB"');
   });
 
+  /* 69.1 ter. Le sens d'un exemple, sur la carte d'une règle, et celui d'une ligne de fiche portent leur
+     langue comme tout sens : en anglais, lang="en-GB" ; sans anglais, le français se lit, lang="fr". */
+  const c1c = () => open(NL => {
+    delete NL.content.patterns.find(g => g.id === 'g-v2').drills[0].en;
+    delete NL.content.sheets[0].groups[0].rows[0].en;
+  }).then(B => {
+    const NL = B.NL, esc = NL.util.esc, g = NL.content.patterns.find(x => x.id === 'g-v2'), rows = NL.content.sheets[0].groups[0].rows;
+    const meant = (x, l) => '<i lang="' + l + '">' + esc(NL.gloss.of(x)) + '</i>';
+    English(B);
+    NL.ui.go('leerpad'); NL.screens.leerpad.click({ dataset: { id: g.id } }, { act: 'gram' });
+    const card = B.app.innerHTML;
+    NL.ui.closeSheet(); NL.ui.go('spiek', NL.content.sheets[0].id);
+    const sheet = B.app.innerHTML;
+    ok(card.indexOf(meant(g.drills[0], 'fr')) >= 0 && card.indexOf(meant(g.drills[1], 'en-GB')) >= 0,
+      '69.1 ter : sur la carte de ' + g.id + ', le sens d’un exemple n’est pas marqué de sa langue (lang="fr" sans anglais, lang="en-GB" avec)');
+    ok(sheet.indexOf(meant(rows[0], 'fr')) >= 0 && sheet.indexOf(meant(rows[1], 'en-GB')) >= 0,
+      '69.1 ter : sur la fiche ' + NL.content.sheets[0].id + ', le sens d’une ligne n’est pas marqué de sa langue (lang="fr" sans anglais, lang="en-GB" avec)');
+  });
+
   /* 69.2. Un changement appliqué sur n'importe quel écran s'y annonce, une fois ;
      la séance et la conversation, où il attend, sont le contrôle 5b. */
   const c2 = () => open(null).then(B => {
@@ -829,7 +891,7 @@ function displayChecks() {
     });
   });
 
-  return [c1, c1b, c2, c4, c5, c6, c9, c10, c11].reduce((p, c) => p.then(c), Promise.resolve());
+  return [c1, c1b, c1c, c2, c4, c5, c6, c9, c10, c11].reduce((p, c) => p.then(c), Promise.resolve());
 }
 
 /* 6d. Les guillemets sont la marque (E1) : dans la prose du cours, ce que « … » ou “…” cite est du
@@ -1103,7 +1165,7 @@ Promise.all([plain.NL.state.open(), paired.NL.state.open()]).then(() => {
         [['tussen', 'entre'], ['tegen', 'contre'], ['eigen', 'propre']].forEach(([nl, fr]) =>
           ok(WC({ kind: 'word', nl: nl, fr: fr }, 'fr') === 'other', 'wordClass : « ' + fr + ' » (' + nl + ') n’est pas un verbe')); }
       const L6 = boot();
-      return L6.NL.state.open().then(() => langAttrCheck(L6)).then(() => anchorCheck(L6)).then(() => addFormCheck(L6)).then(interfaceCheck).then(displayChecks).then(quoteChecks);
+      return L6.NL.state.open().then(() => langAttrCheck(L6)).then(() => anchorCheck(L6)).then(() => addFormCheck(L6)).then(heardCheck).then(interfaceCheck).then(displayChecks).then(quoteChecks);
     }).then(() => {
       console.log('\n' + checks + ' contrôles, ' + (fails === 0 ? 'LANGUE CONFORME' : fails + ' ÉCHEC(S)'));
       process.exit(fails ? 1 : 0);

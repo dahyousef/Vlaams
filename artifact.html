@@ -5946,14 +5946,14 @@ NL.ex = (function () {
       } else if (sp.phase === 'listening') {
         panel = '<div class="mic-panel live"><button class="mic big listening" data-mic="stop" aria-label="' + NL.t.stop + '">' + ICON.mic(34) + '</button>' +
           '<p class="mic-why">' + NL.t.micListening + '</p>' +
-          NL.ui.ifText(sp.partial, 'p', 'heard') + '</div>';
+          NL.ui.ifText(sp.partial, 'p', 'heard', 'nl') + '</div>';
       } else if (sp.phase === 'done') {
         panel = '<div class="mic-panel ' + (sp.ok ? 'good' : 'bad') + '">' +
           '<div class="score-row"><span class="score">' + wordScore(sp.parts) + '</span>' +
           '<span class="score-bar"><span style="width:' + sp.pct + '%"></span></span></div>' +
-          '<p class="word-diff">' + sp.parts.map(p =>
+          '<p class="word-diff"' + NL.gloss.attr('nl') + '>' + sp.parts.map(p =>
             '<span class="' + (p.ok ? (p.close ? 'w-close' : 'w-ok') : 'w-no') + '">' + esc(p.word) + '</span>').join(' ') + '</p>' +
-          (sp.heard ? '<p class="heard">' + NL.t.micHeard + ' &ldquo;' + esc(sp.heard) + '&rdquo;</p>' : '') +
+          (sp.heard ? '<p class="heard">' + NL.t.micHeard + ' &ldquo;<span' + NL.gloss.attr('nl') + '>' + esc(sp.heard) + '</span>&rdquo;</p>' : '') +
           (!sp.ok && sp.tries < 3 ? '<div class="mic-actions"><button class="btn btn-blue" data-mic="start">' + NL.t.micRetry(3 - sp.tries) + '</button></div>' : '') +
           /* Trois refus : le micro n'entend peut-être simplement pas ce mot-là.
              Sans cette issue, l'élément serait redemandé chaque jour sans jamais monter. */
@@ -6384,13 +6384,14 @@ NL.ui = (function () {
     return t.unitOne(span.from) + (u ? ' · ' + NL.gloss.of(u.name) : '');
   }
 
-  /* Le texte `x` (lu par NL.gloss) dans une balise, s'il y en a un, montré par `show` ; sinon rien. */
-  const inTag = (show, x, tag, cls) => {
+  /* Le texte `x` (lu par NL.gloss) dans une balise, s'il y en a un, montré par `show` ; sinon rien.
+     `lang`, s'il est donné, déclare la langue du texte (NL.gloss.attr). */
+  const inTag = (show, x, tag, cls, lang) => {
     const s = NL.gloss.of(x);
-    return s ? '<' + tag + (cls ? ' class="' + cls + '"' : '') + '>' + show(s) + '</' + tag + '>' : '';
+    return s ? '<' + tag + (cls ? ' class="' + cls + '"' : '') + (lang ? NL.gloss.attr(lang) : '') + '>' + show(s) + '</' + tag + '>' : '';
   };
-  /* Un texte de l'app ou de la personne : échappé. */
-  const ifText = (x, tag, cls) => inTag(esc, x, tag, cls);
+  /* Un texte de l'app ou de la personne : échappé. Ce que le micro entend est du néerlandais : 'nl'. */
+  const ifText = (x, tag, cls, lang) => inTag(esc, x, tag, cls, lang);
   /* Une prose du cours : échappée, et ce qu'elle cite déclaré nl-BE (NL.gloss.quoted). */
   const ifProse = (x, tag, cls) => inTag(NL.gloss.quoted, x, tag, cls);
 
@@ -7497,7 +7498,7 @@ NL.screens.sessie = (function () {
         if (g) NL.ui.openSheet({ custom: NL.ui.card(esc(NL.gloss.of(g.title)),
           '<p class="rule">' + NL.gloss.quoted(g.rule) + '</p><div class="explain">' + NL.gloss.prose(NL.gloss.of(g.explain)) + '</div>' +
           '<div class="ex-list">' + g.drills.slice(0, 3).map(d2 =>
-            '<button class="ex-row" data-say="' + esc(d2.nl) + '"><b' + NL.gloss.attr('nl') + '>' + esc(d2.nl) + '</b><i>' + esc(NL.gloss.of(d2)) + '</i></button>').join('') + '</div>',
+            '<button class="ex-row" data-say="' + esc(d2.nl) + '"><b' + NL.gloss.attr('nl') + '>' + esc(d2.nl) + '</b><i' + NL.gloss.langAttr(d2) + '>' + esc(NL.gloss.of(d2)) + '</i></button>').join('') + '</div>',
           '<button class="btn btn-ghost wide" data-close="1">' + t.close + '</button>') });
       }
     }
@@ -7778,15 +7779,15 @@ NL.screens.sessie = (function () {
     if (blocked) return NL.ex.recordPanel(sp, target, blocked);
     if (sp.phase === 'listening') {
       return '<div class="mic-panel live"><button class="mic big listening" data-mic="stop" aria-label="' + NL.t.stop + '">' + ICON.mic(32) + '</button>' +
-        '<p class="mic-why">' + NL.t.micListening + '</p>' + NL.ui.ifText(sp.partial, 'p', 'heard') + '</div>';
+        '<p class="mic-why">' + NL.t.micListening + '</p>' + NL.ui.ifText(sp.partial, 'p', 'heard', 'nl') + '</div>';
     }
     if (sp.phase === 'done') {
       return '<div class="mic-panel ' + (sp.ok ? 'good' : 'bad') + '">' +
         '<div class="score-row"><span class="score">' + NL.ex.wordScore(sp.parts) + '</span>' +
         '<span class="score-bar"><span style="width:' + sp.pct + '%"></span></span></div>' +
-        '<p class="word-diff">' + sp.parts.map(p =>
+        '<p class="word-diff"' + NL.gloss.attr('nl') + '>' + sp.parts.map(p =>
           '<span class="' + (p.ok ? (p.close ? 'w-close' : 'w-ok') : 'w-no') + '">' + esc(p.word) + '</span>').join(' ') + '</p>' +
-        (sp.heard ? '<p class="heard">' + NL.t.micHeard + ' &ldquo;' + esc(sp.heard) + '&rdquo;</p>' : '') +
+        (sp.heard ? '<p class="heard">' + NL.t.micHeard + ' &ldquo;<span' + NL.gloss.attr('nl') + '>' + esc(sp.heard) + '</span>&rdquo;</p>' : '') +
         '<div class="mic-actions">' +
         (!sp.ok && sp.tries < 3 ? '<button class="btn btn-blue" data-mic="start">' + NL.t.replay + '</button>' : '') +
         '<button class="btn ' + (sp.ok ? 'btn-good' : 'btn-ghost') + '" data-act="accept">' + (sp.ok ? NL.t.next : NL.t.micAnyway) + '</button>' +
@@ -7920,13 +7921,13 @@ NL.screens.luisteren = (function () {
     }
     if (sp.phase === 'listening') {
       return '<div class="mic-panel live"><button class="mic big listening" data-act="micstop">' + ICON.mic(32) + '</button>' +
-        '<p class="mic-why">' + NL.t.micListening + '</p>' + NL.ui.ifText(sp.partial, 'p', 'heard') + '</div>';
+        '<p class="mic-why">' + NL.t.micListening + '</p>' + NL.ui.ifText(sp.partial, 'p', 'heard', 'nl') + '</div>';
     }
     if (sp.phase === 'done') {
       return '<div class="mic-panel ' + (sp.ok ? 'good' : 'bad') + '">' +
         '<div class="score-row"><span class="score">' + NL.ex.wordScore(sp.parts) + '</span>' +
         '<span class="score-bar"><span style="width:' + sp.pct + '%"></span></span></div>' +
-        '<p class="word-diff">' + sp.parts.map(p => '<span class="' + (p.ok ? (p.close ? 'w-close' : 'w-ok') : 'w-no') + '">' + esc(p.word) + '</span>').join(' ') + '</p>' +
+        '<p class="word-diff"' + NL.gloss.attr('nl') + '>' + sp.parts.map(p => '<span class="' + (p.ok ? (p.close ? 'w-close' : 'w-ok') : 'w-no') + '">' + esc(p.word) + '</span>').join(' ') + '</p>' +
         '<div class="mic-actions"><button class="btn btn-blue" data-act="mic">' + NL.t.replay + '</button></div></div>';
     }
     /* Un refus s'affiche : sans ça, toucher le micro ne faisait rien, en silence. */
@@ -8124,7 +8125,7 @@ NL.screens.luisteren = (function () {
             s.groups.map(g => '<div class="sheet-group"><h4>' + esc(NL.gloss.of(g.h)) + '</h4>' +
               g.rows.map(r => '<button class="sheet-row" data-say="' + esc(r.nl) + '">' +
                 '<span class="sr-say">' + ICON.speaker(16) + '</span>' +
-                '<span class="sr-body"><b' + NL.gloss.attr('nl') + '>' + esc(r.nl) + '</b><i>' + esc(NL.gloss.of(r)) + '</i>' +
+                '<span class="sr-body"><b' + NL.gloss.attr('nl') + '>' + esc(r.nl) + '</b><i' + NL.gloss.langAttr(r) + '>' + esc(NL.gloss.of(r)) + '</i>' +
                 NL.ui.ifProse(r.note, 'em') + '</span></button>').join('') +
               '</div>').join('') +
             '</div>';

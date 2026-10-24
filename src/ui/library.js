@@ -112,7 +112,7 @@
             s.groups.map(g => '<div class="sheet-group"><h4>' + esc(NL.gloss.of(g.h)) + '</h4>' +
               g.rows.map(r => '<button class="sheet-row" data-say="' + esc(r.nl) + '">' +
                 '<span class="sr-say">' + ICON.speaker(16) + '</span>' +
-                '<span class="sr-body"><b' + NL.gloss.attr('nl') + '>' + esc(r.nl) + '</b><i>' + esc(NL.gloss.of(r)) + '</i>' +
+                '<span class="sr-body"><b' + NL.gloss.attr('nl') + '>' + esc(r.nl) + '</b><i' + NL.gloss.langAttr(r) + '>' + esc(NL.gloss.of(r)) + '</i>' +
                 NL.ui.ifProse(r.note, 'em') + '</span></button>').join('') +
               '</div>').join('') +
             '</div>';
