@@ -11,7 +11,7 @@
    d'interface.tsv a un côté vide que le contenu n'explique pas, ou lit « undefined ». */
 const fs = require('fs'), path = require('path');
 const browser = require('../lib/browser');
-const { COLLECTIONS, raw, owed, at } = require('../lib/prose');
+const { COLLECTIONS, raw, owed, at, owedTables } = require('../lib/prose');
 const { argsOf } = require('../lib/langs');
 const ROOT = process.argv[2] || path.join(__dirname, '..', '..');
 const OUT = process.argv[3];
@@ -45,6 +45,8 @@ NL.state.open().then(() => {
   NL.content.refresh();
   const places = [];
   COLLECTIONS.forEach(k => owed(RAW[k], k, '', places));
+  /* La note d'un mot vit dans src/content/notes.js : son chemin est byDutch.notes["hallo"]. */
+  owedTables(RAW, places);
 
   const files = { 'glosses.tsv': [], 'blind.tsv': [], 'sentences.tsv': [], 'prose.tsv': [], 'interface.tsv': [] };
   /* Les lignes dont un côté est vide sans que le contenu le veuille, ou qui lisent « undefined ». */

@@ -2,14 +2,14 @@
    nl = néerlandais standard, ce que tu écris dans un mail au travail.
    fr = français de Belgique (septante, nonante).
    be = ce qu'on dit vraiment en Brabant flamand. Produis le nl, comprends le be. Il s'écrit
-        dans src/content/be.js, sous le nl : ici, il reste null quand une note le suit.
-   note = ce qu'un manuel ne dit jamais. */
+        dans src/content/be.js, sous le nl.
+   note = ce qu'un manuel ne dit jamais. Elle s'écrit dans src/content/notes.js, sous le nl. */
 NL.content = NL.content || {};
 NL.content.units = NL.content.units || [];
 (function () {
   'use strict';
-  const W = (nl, g, art, be, note) => ({ kind: 'word', nl, ...NL.gloss.pair(g), art, be, note });
-  const P = (nl, g, be, note) => ({ kind: 'phrase', nl, ...NL.gloss.pair(g), be, note });
+  const W = (nl, g, art) => ({ kind: 'word', nl, ...NL.gloss.pair(g), art });
+  const P = (nl, g) => ({ kind: 'phrase', nl, ...NL.gloss.pair(g) });
   const U = o => NL.content.units.push(o);
 
   U({
@@ -17,23 +17,23 @@ NL.content.units = NL.content.units || [];
     blurb: { fr: 'Les phrases qui gardent la conversation en néerlandais au lieu de la laisser basculer en français.', en: 'The phrases that keep the conversation in Dutch instead of letting it switch to French or English.' },
     grammar: ['g-v2'],
     words: [
-      W('hallo', { fr: 'bonjour', en: 'hello' }, null, null, { fr: 'En Flandre, « hey » et « salut » servent pour dire bonjour ET au revoir.', en: 'In Flanders, “hey” and “salut” are used for both hello AND goodbye.' }),
-      W('goeiedag', { fr: 'bonjour', en: 'good day' }, null, null, { fr: 'Le bonjour passe-partout dans un magasin. Le nord dit « goedendag ».', en: 'The all-purpose greeting in a shop. The north says “goedendag”.' }),
-      W('dag', { fr: 'salut', en: 'hi / bye' }, null, null, { fr: 'À l’entrée comme à la sortie. À ne pas confondre avec « de dag », le jour.', en: 'On the way in and on the way out. Not to be confused with “de dag”, the day.' }),
+      W('hallo', { fr: 'bonjour', en: 'hello' }, null),
+      W('goeiedag', { fr: 'bonjour', en: 'good day' }, null),
+      W('dag', { fr: 'salut', en: 'hi / bye' }, null),
       W('tot ziens', { fr: 'au revoir', en: 'goodbye' }, null),
-      W('alstublieft', { fr: 's’il vous plaît / voilà', en: 'please / here you are' }, null, null, { fr: 'Se dit aussi en tendant quelque chose, comme « voilà ».', en: 'Also said when handing something over, like “here you are”.' }),
-      W('dank u wel', { fr: 'merci', en: 'thank you (formal)' }, null, null, { fr: 'En Flandre, « merci » est du néerlandais normal, pas du français. Utilise-le sans hésiter.', en: 'In Flanders, “merci” is normal Dutch, not French. Use it without hesitating.' }),
+      W('alstublieft', { fr: 's’il vous plaît / voilà', en: 'please / here you are' }, null),
+      W('dank u wel', { fr: 'merci', en: 'thank you (formal)' }, null),
       W('sorry', { fr: 'pardon', en: 'sorry' }),
-      W('ja', { fr: 'oui', en: 'yes' }, null, null, { fr: '« Jaja » veut souvent dire « oui oui, je sais » et peut sonner impatient.', en: '“Jaja” often means “yes yes, I know” and can sound impatient.' }),
+      W('ja', { fr: 'oui', en: 'yes' }, null),
       W('nee', { fr: 'non', en: 'no' }, null),
       W('misschien', { fr: 'peut-être', en: 'perhaps' }),
-      W('graag', { fr: 'volontiers', en: 'gladly' }, null, null, { fr: 'Le néerlandais n’a pas de verbe « aimer faire » : on ajoute graag au verbe.', en: 'Dutch has no verb for “to like doing”: you add graag to the verb.' }),
+      W('graag', { fr: 'volontiers', en: 'gladly' }, null),
       W('goed', { fr: 'bien', en: 'good / well' }),
       W('niet', { fr: 'ne... pas', en: 'not' }),
       W('een beetje', { fr: 'un peu', en: 'a little' }, null),
       W('nog eens', { fr: 'encore une fois', en: 'once more / again' }, null),
-      W('trager', { fr: 'plus lentement', en: 'more slowly' }, null, null, { fr: 'La Flandre dit « trager » ; le nord dit « langzamer ».', en: 'Flanders says “trager”; the north says “langzamer”.' }),
-      W('verstaan', { fr: 'comprendre', en: 'to understand' }, null, null, { fr: 'En Flandre, « verstaan » couvre à la fois entendre et comprendre.', en: 'In Flanders, “verstaan” covers both hearing and understanding.' }),
+      W('trager', { fr: 'plus lentement', en: 'more slowly' }, null),
+      W('verstaan', { fr: 'comprendre', en: 'to understand' }, null),
       W('herhalen', { fr: 'répéter', en: 'to repeat' }),
       W('betekenen', { fr: 'signifier', en: 'to mean' }),
       W('proberen', { fr: 'essayer', en: 'to try' }),
@@ -45,18 +45,18 @@ NL.content.units = NL.content.units || [];
       W('geen probleem', { fr: 'pas de problème', en: 'no problem' }, null)
     ],
     phrases: [
-      P('Ik ben Nederlands aan het leren.', { fr: 'J’apprends le néerlandais.', en: 'I am learning Dutch.' }, null, { fr: 'Dis-le tôt : les gens ralentissent au lieu de passer au français.', en: 'Say it early: people slow down instead of switching to French or English.' }),
-      P('Mag ik het in het Nederlands proberen?', { fr: 'Puis-je essayer en néerlandais ?', en: 'May I try in Dutch?' }, null, { fr: 'La phrase la plus utile que tu possèdes. Elle empêche le passage au français.', en: 'The most useful sentence you own. It stops the switch to another language.' }),
+      P('Ik ben Nederlands aan het leren.', { fr: 'J’apprends le néerlandais.', en: 'I am learning Dutch.' }),
+      P('Mag ik het in het Nederlands proberen?', { fr: 'Puis-je essayer en néerlandais ?', en: 'May I try in Dutch?' }),
       P('Kunt u wat trager spreken, alstublieft?', { fr: 'Pouvez-vous parler un peu plus lentement, s’il vous plaît ?', en: 'Could you speak a little more slowly, please? (formal)' }),
       P('Sorry, ik heb dat niet verstaan.', { fr: 'Pardon, je n’ai pas compris.', en: 'Sorry, I did not understand that.' }),
       P('Kunt u dat herhalen?', { fr: 'Pouvez-vous répéter ?', en: 'Could you repeat that? (formal)' }),
       P('Hoe zeg je dat in het Nederlands?', { fr: 'Comment dit-on ça en néerlandais ?', en: 'How do you say that in Dutch?' }),
       P('Wat betekent dat?', { fr: 'Qu’est-ce que ça veut dire ?', en: 'What does that mean?' }),
-      P('Ik spreek nog niet goed Nederlands.', { fr: 'Je ne parle pas encore bien néerlandais.', en: 'I do not speak Dutch well yet.' }, null, { fr: 'Le mot « nog » compte : il promet que tu y travailles.', en: 'The word “nog” matters: it promises that you are working on it.' }),
+      P('Ik spreek nog niet goed Nederlands.', { fr: 'Je ne parle pas encore bien néerlandais.', en: 'I do not speak Dutch well yet.' }),
       P('Ik versta een beetje Nederlands.', { fr: 'Je comprends un peu le néerlandais.', en: 'I understand a little Dutch.' }),
       P('Kunt u mij helpen?', { fr: 'Pouvez-vous m’aider ?', en: 'Could you help me? (formal)' }),
       P('Nog eens, alstublieft.', { fr: 'Encore une fois, s’il vous plaît.', en: 'Once more, please.' }),
-      P('Dat is goed, merci.', { fr: 'C’est bon, merci.', en: 'That is fine, thanks.' }, null, { fr: 'Une phrase flamande parfaitement naturelle, avec un mot français dedans.', en: 'A perfectly natural Flemish sentence, with a French word in it.' })
+      P('Dat is goed, merci.', { fr: 'C’est bon, merci.', en: 'That is fine, thanks.' })
     ]
   });
 
@@ -66,13 +66,13 @@ NL.content.units = NL.content.units || [];
     grammar: ['g-present', 'g-gegij'],
     words: [
       W('ik', { fr: 'je', en: 'I' }),
-      W('jij', { fr: 'tu', en: 'you (informal)' }, null, null, { fr: 'ge/gij est la forme flamande courante. Dis « je » toi-même ; attends-toi à « ge » en retour.', en: 'ge/gij is the common Flemish form. Say “je” yourself; expect “ge” in return.' }),
-      W('u', { fr: 'vous (poli)', en: 'you (formal)' }, null, null, { fr: 'La Flandre emploie « u » bien plus que le nord, y compris chez le commerçant.', en: 'Flanders uses “u” far more than the north, including in the shop.' }),
+      W('jij', { fr: 'tu', en: 'you (informal)' }, null),
+      W('u', { fr: 'vous (poli)', en: 'you (formal)' }, null),
       W('hij', { fr: 'il', en: 'he' }),
       W('zij', { fr: 'elle / ils', en: 'she / they' }, null),
       W('wij', { fr: 'nous', en: 'we' }, null),
-      W('zijn', { fr: 'être', en: 'to be' }, null, null, { fr: 'ik ben, jij bent, hij is, wij zijn. En flamand : gij zijt.', en: 'ik ben, jij bent, hij is, wij zijn. In Flemish: gij zijt.' }),
-      W('hebben', { fr: 'avoir', en: 'to have' }, null, null, { fr: 'ik heb, jij hebt, hij heeft, wij hebben. En flamand : gij hebt.', en: 'ik heb, jij hebt, hij heeft, wij hebben. In Flemish: gij hebt.' }),
+      W('zijn', { fr: 'être', en: 'to be' }, null),
+      W('hebben', { fr: 'avoir', en: 'to have' }, null),
       W('heten', { fr: 's’appeler', en: 'to be called' }),
       W('wonen', { fr: 'habiter', en: 'to live (in a place)' }),
       W('komen', { fr: 'venir', en: 'to come' }),
@@ -87,7 +87,7 @@ NL.content.units = NL.content.units || [];
       W('al', { fr: 'déjà', en: 'already' }),
       W('ook', { fr: 'aussi', en: 'also / too' }),
       W('mijn', { fr: 'mon', en: 'my' }),
-      W('uw', { fr: 'votre', en: 'your (formal)' }, null, null, { fr: 'En Flandre, « uw » s’emploie aussi familièrement, là où le nord dirait « je ».', en: 'In Flanders, “uw” is also used informally, where the north would say “je”.' }),
+      W('uw', { fr: 'votre', en: 'your (formal)' }, null),
       W('het Nederlands', { fr: 'le néerlandais', en: 'Dutch' }, 'het'),
       W('het Engels', { fr: 'l’anglais', en: 'English' }, 'het'),
       W('het Frans', { fr: 'le français', en: 'French' }, 'het')
@@ -96,13 +96,13 @@ NL.content.units = NL.content.units || [];
       P('Ik heet {naam}.', { fr: 'Je m’appelle {naam}.', en: 'My name is {naam}.' }),
       P('Hoe heet je?', { fr: 'Comment tu t’appelles ?', en: 'What is your name? (informal)' }),
       P('Ik woon in {stad}.', { fr: 'J’habite à {stad}.', en: 'I live in {stad}.' }),
-      P('Wij wonen hier al vijf jaar.', { fr: 'Nous habitons ici depuis cinq ans.', en: 'We have lived here for five years.' }, null, { fr: 'Le néerlandais met le présent ici, pas le passé composé.', en: 'Dutch uses the present tense here, where English uses “have lived”.' }),
-      P('Ik werk bij {bedrijf}.', { fr: 'Je travaille chez {bedrijf}.', en: 'I work at {bedrijf}.' }, null, { fr: 'Les entreprises prennent « bij », jamais « in ».', en: 'Companies take “bij”, never “in”.' }),
+      P('Wij wonen hier al vijf jaar.', { fr: 'Nous habitons ici depuis cinq ans.', en: 'We have lived here for five years.' }),
+      P('Ik werk bij {bedrijf}.', { fr: 'Je travaille chez {bedrijf}.', en: 'I work at {bedrijf}.' }),
       P('Hoe oud ben je?', { fr: 'Quel âge as-tu ?', en: 'How old are you? (informal)' }),
-      P('Ik ben veertig jaar.', { fr: 'J’ai quarante ans.', en: 'I am forty (years old).' }, null, { fr: 'Pas besoin d’ajouter « oud » à la fin.', en: 'No need to add “oud” at the end.' }),
+      P('Ik ben veertig jaar.', { fr: 'J’ai quarante ans.', en: 'I am forty (years old).' }),
       P('Ik ben getrouwd en ik heb twee kinderen.', { fr: 'Je suis marié et j’ai deux enfants.', en: 'I am married and I have two children.' }),
-      P('Spreekt u Frans?', { fr: 'Parlez-vous français ?', en: 'Do you speak French? (formal)' }, null, { fr: 'Une porte de secours, mais essaie le néerlandais d’abord.', en: 'An escape hatch, but try Dutch first.' }),
-      P('Aangenaam.', { fr: 'Enchanté.', en: 'Pleased to meet you.' }, null, { fr: 'Se dit une fois, en serrant la main. Court, c’est correct.', en: 'Said once, while shaking hands. Short is correct.' })
+      P('Spreekt u Frans?', { fr: 'Parlez-vous français ?', en: 'Do you speak French? (formal)' }),
+      P('Aangenaam.', { fr: 'Enchanté.', en: 'Pleased to meet you.' })
     ]
   });
 
@@ -116,11 +116,11 @@ NL.content.units = NL.content.units || [];
       W('acht', { fr: 'huit', en: 'eight' }), W('negen', { fr: 'neuf', en: 'nine' }), W('tien', { fr: 'dix', en: 'ten' }), W('elf', { fr: 'onze', en: 'eleven' }),
       W('twaalf', { fr: 'douze', en: 'twelve' }), W('twintig', { fr: 'vingt', en: 'twenty' }), W('dertig', { fr: 'trente', en: 'thirty' }),
       W('veertig', { fr: 'quarante', en: 'forty' }), W('vijftig', { fr: 'cinquante', en: 'fifty' }),
-      W('zeventig', { fr: 'septante', en: 'seventy' }, null, null, { fr: 'zeventig = septante, pas « soixante-dix ». Le belge et le néerlandais se suivent mot pour mot.', en: null }),
-      W('negentig', { fr: 'nonante', en: 'ninety' }, null, null, { fr: 'negentig = nonante. Un mot pour un mot.', en: null }),
+      W('zeventig', { fr: 'septante', en: 'seventy' }, null),
+      W('negentig', { fr: 'nonante', en: 'ninety' }, null),
       W('honderd', { fr: 'cent', en: 'one hundred' }),
       W('het uur', { fr: 'l’heure', en: 'hour' }, 'het'),
-      W('half', { fr: 'et demie', en: 'half (before the hour)' }, null, null, { fr: '« half drie » = 2h30, pas 3h30. C’est une demi-heure AVANT trois heures.', en: '“half drie” = 2.30, not 3.30. It is half an hour BEFORE three o’clock.' }),
+      W('half', { fr: 'et demie', en: 'half (before the hour)' }, null),
       W('het kwart', { fr: 'le quart', en: 'quarter' }, 'het'),
       W('de minuut', { fr: 'la minute', en: 'minute' }, 'de'),
       W('de dag', { fr: 'le jour', en: 'day' }, 'de'),
@@ -134,7 +134,7 @@ NL.content.units = NL.content.units || [];
     ],
     phrases: [
       P('Hoe laat is het?', { fr: 'Quelle heure est-il ?', en: 'What time is it?' }),
-      P('Het is half drie.', { fr: 'Il est deux heures et demie.', en: 'It is half past two.' }, null, { fr: '« Half drie » = 2h30. Trompe-toi une fois et tu rates une réunion.', en: '“Half drie” = 2.30. Get it wrong once and you miss a meeting.' }),
+      P('Het is half drie.', { fr: 'Il est deux heures et demie.', en: 'It is half past two.' }),
       P('Het is kwart voor acht.', { fr: 'Il est huit heures moins le quart.', en: 'It is a quarter to eight.' }),
       P('Om negen uur.', { fr: 'À neuf heures.', en: 'At nine o’clock.' }),
       P('Ik kom om tien uur.', { fr: 'Je viens à dix heures.', en: 'I am coming at ten o’clock.' }),
@@ -152,13 +152,13 @@ NL.content.units = NL.content.units || [];
     grammar: ['g-dehet'],
     words: [
       W('het brood', { fr: 'le pain', en: 'bread' }, 'het'),
-      W('de pistolet', { fr: 'le pistolet', en: 'crusty bread roll' }, 'de', null, { fr: 'Emprunté au français, gardé en Flandre. Le nord dirait « broodje ».', en: 'Borrowed from French, kept in Flanders. The north would say “broodje”.' }),
-      W('de koffiekoek', { fr: 'la couque', en: 'breakfast pastry' }, 'de', null, { fr: 'La viennoiserie du matin. Le nord dit « zoet broodje ».', en: 'The morning pastry. The north says “zoet broodje”.' }),
-      W('een half wit', { fr: 'un demi pain blanc', en: 'half a white loaf' }, null, null, { fr: 'Exactement ce qu’on dit au comptoir. Ajoute « gesneden » pour le faire trancher.', en: 'Exactly what you say at the counter. Add “gesneden” to have it sliced.' }),
+      W('de pistolet', { fr: 'le pistolet', en: 'crusty bread roll' }, 'de'),
+      W('de koffiekoek', { fr: 'la couque', en: 'breakfast pastry' }, 'de'),
+      W('een half wit', { fr: 'un demi pain blanc', en: 'half a white loaf' }, null),
       W('gesneden', { fr: 'tranché', en: 'sliced' }),
       W('de bakker', { fr: 'le boulanger', en: 'baker' }, 'de'),
-      W('de beenhouwer', { fr: 'le boucher', en: 'butcher' }, 'de', null, { fr: 'Mot flamand. Le nord dit « slager », qu’on n’emploie parfois même pas ici.', en: 'A Flemish word. The north says “slager”, which is sometimes not even used here.' }),
-      W('de hesp', { fr: 'le jambon', en: 'ham' }, 'de', null, { fr: 'Mot flamand. Le nord dit « ham ».', en: 'A Flemish word. The north says “ham”.' }),
+      W('de beenhouwer', { fr: 'le boucher', en: 'butcher' }, 'de'),
+      W('de hesp', { fr: 'le jambon', en: 'ham' }, 'de'),
       W('de kaas', { fr: 'le fromage', en: 'cheese' }, 'de'),
       W('de choco', { fr: 'la pâte à tartiner', en: 'chocolate spread' }, 'de'),
       W('de boter', { fr: 'le beurre', en: 'butter' }, 'de'),
@@ -166,24 +166,24 @@ NL.content.units = NL.content.units || [];
       W('de taart', { fr: 'la tarte', en: 'tart / cake' }, 'de'),
       W('de koffie', { fr: 'le café', en: 'coffee' }, 'de'),
       W('het water', { fr: 'l’eau', en: 'water' }, 'het'),
-      W('de pint', { fr: 'la bière', en: 'beer (a glass of lager)' }, 'de', null, { fr: 'Un « pintje » est la bière standard. Commander « een bier » te marque comme étranger.', en: 'A “pintje” is the standard beer. Ordering “een bier” marks you as a foreigner.' }),
-      W('de frieten', { fr: 'les frites', en: 'chips / fries' }, 'de', null, { fr: 'Toujours au pluriel en Flandre, et jamais « patat ».', en: 'Always plural in Flanders, and never “patat”.' }),
+      W('de pint', { fr: 'la bière', en: 'beer (a glass of lager)' }, 'de'),
+      W('de frieten', { fr: 'les frites', en: 'chips / fries' }, 'de'),
       W('lekker', { fr: 'bon (au goût)', en: 'tasty' }),
       W('de honger', { fr: 'la faim', en: 'hunger' }, 'de'),
       W('de dorst', { fr: 'la soif', en: 'thirst' }, 'de'),
       W('kosten', { fr: 'coûter', en: 'to cost' }),
       W('alles', { fr: 'tout', en: 'everything' }),
-      W('meenemen', { fr: 'emporter', en: 'to take away / to take along' }, null, null, { fr: 'Se sépare : ik neem mijn laptop mee.', en: 'Separable: ik neem mijn laptop mee.' })
+      W('meenemen', { fr: 'emporter', en: 'to take away / to take along' }, null)
     ],
     phrases: [
-      P('Een half wit, gesneden alstublieft.', { fr: 'Un demi pain blanc, tranché s’il vous plaît.', en: 'Half a white loaf, sliced, please.' }, null, { fr: 'Apprends-la mot pour mot et la boulangerie cesse d’être effrayante.', en: 'Learn it word for word and the bakery stops being frightening.' }),
+      P('Een half wit, gesneden alstublieft.', { fr: 'Un demi pain blanc, tranché s’il vous plaît.', en: 'Half a white loaf, sliced, please.' }),
       P('Mag ik twee pistolets?', { fr: 'Puis-je avoir deux pistolets ?', en: 'May I have two crusty rolls?' }),
-      P('Is dat alles?', { fr: 'Ce sera tout ?', en: 'Will that be all?' }, null, { fr: 'C’est eux qui te le demandent. Réponse : « Ja, dat is alles ».', en: 'They are the ones who ask you. Answer: “Ja, dat is alles”.' }),
+      P('Is dat alles?', { fr: 'Ce sera tout ?', en: 'Will that be all?' }),
       P('Ja, dat is alles, merci.', { fr: 'Oui, c’est tout, merci.', en: 'Yes, that is all, thanks.' }),
       P('Hoeveel is het?', { fr: 'Ça fait combien ?', en: 'How much is it?' }),
-      P('Ik zou graag een koffiekoek hebben.', { fr: 'Je voudrais une couque.', en: 'I would like a pastry.' }, null, { fr: 'La formule polie pour commander : ik zou graag ... hebben.', en: 'The polite way to order: ik zou graag ... hebben.' }),
+      P('Ik zou graag een koffiekoek hebben.', { fr: 'Je voudrais une couque.', en: 'I would like a pastry.' }),
       P('Een pintje, alstublieft.', { fr: 'Une bière, s’il vous plaît.', en: 'A beer, please.' }),
-      P('Voor hier of om mee te nemen?', { fr: 'Sur place ou à emporter ?', en: 'Eat in or take away?' }, null, { fr: 'Encore une question qu’on te pose, pas l’inverse.', en: 'Another question they ask you, not the other way round.' }),
+      P('Voor hier of om mee te nemen?', { fr: 'Sur place ou à emporter ?', en: 'Eat in or take away?' }),
       P('Ik heb honger.', { fr: 'J’ai faim.', en: 'I am hungry.' }),
       P('Dat is lekker.', { fr: 'C’est bon.', en: 'That is tasty.' })
     ]
@@ -194,25 +194,25 @@ NL.content.units = NL.content.units || [];
     blurb: { fr: 'Ta maison, ta rue, tes voisins, et les papiers de la commune.', en: 'Your house, your street, your neighbours, and the paperwork from the council.' },
     grammar: ['g-dehet'],
     words: [
-      W('het huis', { fr: 'la maison', en: 'house' }, 'het', null, { fr: '« het huis » est neutre alors que « la maison » est féminine. Les genres ne se correspondent pas : apprends l’article néerlandais à part.', en: 'Dutch nouns take “de” or “het”, and nothing in English predicts which: learn the article together with the noun.' }),
+      W('het huis', { fr: 'la maison', en: 'house' }, 'het'),
       W('de straat', { fr: 'la rue', en: 'street' }, 'de'),
       W('de tuin', { fr: 'le jardin', en: 'garden' }, 'de'),
       W('de buurman', { fr: 'le voisin', en: 'male neighbour' }, 'de'),
       W('de buurvrouw', { fr: 'la voisine', en: 'female neighbour' }, 'de'),
       W('de buren', { fr: 'les voisins', en: 'neighbours' }, 'de'),
       W('de keuken', { fr: 'la cuisine', en: 'kitchen' }, 'de'),
-      W('de living', { fr: 'le salon', en: 'living room' }, 'de', null, { fr: 'Mot flamand emprunté à l’anglais. Le nord dit « woonkamer ».', en: 'A Flemish word, short for the English “living room”. The north says “woonkamer”.' }),
+      W('de living', { fr: 'le salon', en: 'living room' }, 'de'),
       W('de badkamer', { fr: 'la salle de bain', en: 'bathroom' }, 'de'),
       W('de slaapkamer', { fr: 'la chambre', en: 'bedroom' }, 'de'),
       W('de garage', { fr: 'le garage', en: 'garage' }, 'de'),
       W('de brievenbus', { fr: 'la boîte aux lettres', en: 'letterbox' }, 'de'),
-      W('het gemeentehuis', { fr: 'la maison communale', en: 'town hall' }, 'het', null, { fr: 'Où tu vas pour tout ce qui est administratif à {stad}.', en: 'Where you go for anything administrative in {stad}.' }),
+      W('het gemeentehuis', { fr: 'la maison communale', en: 'town hall' }, 'het'),
       W('de gemeente', { fr: 'la commune', en: 'municipality' }, 'de'),
       W('het dorp', { fr: 'le village', en: 'village' }, 'het'),
       W('de kerk', { fr: 'l’église', en: 'church' }, 'de'),
-      W('het containerpark', { fr: 'le parc à conteneurs', en: 'recycling centre' }, 'het', null, { fr: 'Mot flamand. Le nord dit « milieustraat ».', en: 'A Flemish word. The north says “milieustraat”.' }),
+      W('het containerpark', { fr: 'le parc à conteneurs', en: 'recycling centre' }, 'het'),
       W('het vuil', { fr: 'les déchets', en: 'rubbish' }, 'het'),
-      W('het pakje', { fr: 'le colis', en: 'parcel' }, 'het', null, { fr: 'Diminutif en -je, donc het. Toujours.', en: 'A diminutive in -je, so het. Always.' }),
+      W('het pakje', { fr: 'le colis', en: 'parcel' }, 'het'),
       W('de sleutel', { fr: 'la clé', en: 'key' }, 'de'),
       W('de deur', { fr: 'la porte', en: 'door' }, 'de'),
       W('binnen', { fr: 'à l’intérieur', en: 'inside' }),
@@ -221,12 +221,12 @@ NL.content.units = NL.content.units || [];
       W('rustig', { fr: 'calme', en: 'calm / quiet' })
     ],
     phrases: [
-      P('Ik woon in de Kloosterstraat.', { fr: 'J’habite dans la Kloosterstraat.', en: 'I live on Kloosterstraat.' }, null, { fr: 'Les rues prennent « in », jamais « op ».', en: 'Streets take “in”, never “op”, even though English says “on”.' }),
+      P('Ik woon in de Kloosterstraat.', { fr: 'J’habite dans la Kloosterstraat.', en: 'I live on Kloosterstraat.' }),
       P('De buren zijn heel vriendelijk.', { fr: 'Les voisins sont très gentils.', en: 'The neighbours are very friendly.' }),
       P('Waar is het gemeentehuis?', { fr: 'Où est la maison communale ?', en: 'Where is the town hall?' }),
       P('Ik moet naar het containerpark.', { fr: 'Je dois aller au parc à conteneurs.', en: 'I have to go to the recycling centre.' }),
       P('Er ligt een pakje bij de buren.', { fr: 'Il y a un colis chez les voisins.', en: 'There is a parcel at the neighbours’.' }),
-      P('Mag ik uw pakje aannemen?', { fr: 'Puis-je réceptionner votre colis ?', en: 'May I take in your parcel? (formal)' }, null, { fr: 'Ce qu’un voisin te demande. Réponse : « Ja, graag, merci ! »', en: 'What a neighbour asks you. Answer: “Ja, graag, merci!”' }),
+      P('Mag ik uw pakje aannemen?', { fr: 'Puis-je réceptionner votre colis ?', en: 'May I take in your parcel? (formal)' }),
       P('Het is hier heel rustig.', { fr: 'C’est très calme ici.', en: 'It is very quiet here.' }),
       P('Ik ben nieuw in de straat.', { fr: 'Je suis nouveau dans la rue.', en: 'I am new in the street.' })
     ]
@@ -248,7 +248,7 @@ NL.content.units = NL.content.units || [];
       W('de papa', { fr: 'le papa', en: 'dad' }, 'de'),
       W('de zus', { fr: 'la sœur', en: 'sister' }, 'de'),
       W('de broer', { fr: 'le frère', en: 'brother' }, 'de'),
-      W('de vriend', { fr: 'l’ami', en: 'friend / boyfriend' }, 'de', null, { fr: 'Veut aussi dire « petit ami ». « Een vriend van mij » reste neutre.', en: 'Also means “boyfriend”. “Een vriend van mij” stays neutral.' }),
+      W('de vriend', { fr: 'l’ami', en: 'friend / boyfriend' }, 'de'),
       W('de vriendin', { fr: 'l’amie', en: 'female friend / girlfriend' }, 'de'),
       W('de collega', { fr: 'le collègue', en: 'colleague' }, 'de'),
       W('de baas', { fr: 'le patron', en: 'boss' }, 'de'),
@@ -259,14 +259,14 @@ NL.content.units = NL.content.units || [];
       W('jong', { fr: 'jeune', en: 'young' }),
       W('lief', { fr: 'gentil', en: 'sweet / kind' }),
       W('streng', { fr: 'sévère', en: 'strict' }),
-      W('onze', { fr: 'notre', en: 'our' }, null, null, { fr: 'ons devant un mot het, onze devant le reste : ons huis, onze tuin.', en: 'ons before a het word, onze before the rest: ons huis, onze tuin.' }),
+      W('onze', { fr: 'notre', en: 'our' }, null),
       W('hun', { fr: 'leur', en: 'their' })
     ],
     phrases: [
       P('Dit is mijn vrouw.', { fr: 'Voici ma femme.', en: 'This is my wife.' }),
       P('Wij hebben twee kinderen.', { fr: 'Nous avons deux enfants.', en: 'We have two children.' }),
       P('Mijn dochter gaat naar school in {stad}.', { fr: 'Ma fille va à l’école à {stad}.', en: 'My daughter goes to school in {stad}.' }),
-      P('Hoe gaat het met de familie?', { fr: 'Comment va la famille ?', en: 'How is the family?' }, null, { fr: 'Petite conversation standard. Attends-toi à la question et prépare une réponse.', en: 'Standard small talk. Expect the question and prepare an answer.' }),
+      P('Hoe gaat het met de familie?', { fr: 'Comment va la famille ?', en: 'How is the family?' }),
       P('Mijn collega’s spreken allemaal Nederlands.', { fr: 'Mes collègues parlent tous néerlandais.', en: 'My colleagues all speak Dutch.' }),
       P('Hij is een collega van mij.', { fr: 'C’est un collègue à moi.', en: 'He is a colleague of mine.' }),
       P('Onze zoon is zes jaar.', { fr: 'Notre fils a six ans.', en: 'Our son is six years old.' }),

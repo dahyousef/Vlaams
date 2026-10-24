@@ -915,11 +915,18 @@ const QUOTE_OK = {
    une traduction va entre parenthèses, sans guillemets. Hors d'explain, NL.gloss.quoted les déclare
    nl-BE à tort. Ce compte ne fait que baisser, jusqu'à 0. */
 const QUOTE_BUDGET = 36;
-/* Le champ de prose d'un texte du cours : sa clé, ou celle de son parent pour un côté fr ou en. */
-const fieldOf = (key, where) => key === 'fr' || key === 'en' ? (/\.(\w+)\.(?:fr|en)$/.exec(where) || [])[1] : key;
-/* Chaque texte du cours, et des emprunts, dont la note passe aussi par NL.gloss.quoted : fn(texte, champ, chemin). */
+/* Le champ de prose d'un texte du cours : sa clé, ou celle de son parent pour un côté fr ou en. Une valeur
+   de table (byDutch.notes["hallo"].fr) a pour parent le champ que sa table pose, que C.TABLES donne. */
+function fieldOf(key, where, C) {
+  if (key !== 'fr' && key !== 'en') return key;
+  const t = /^byDutch\.([^.[]+)\[.*\]\.(?:fr|en)$/.exec(where);
+  if (t) return ((C.TABLES || []).find(x => x.table === t[1]) || {}).field;
+  return (/\.(\w+)\.(?:fr|en)$/.exec(where) || [])[1];
+}
+/* Chaque texte du cours, les notes des mots comprises, et des emprunts, dont la note passe aussi par
+   NL.gloss.quoted : fn(texte, champ, chemin). */
 function eachText(C, fn) {
-  const read = (v, key, where) => { if (typeof v === 'string') fn(v, fieldOf(key, where), where); };
+  const read = (v, key, where) => { if (typeof v === 'string') fn(v, fieldOf(key, where, C), where); };
   tree.visitCourse(C, read);
   tree.visit(C.loans, read, 'loans', 'loans');
 }
@@ -952,19 +959,19 @@ function quoteChecks() {
     .then(() => footNote('en', English, '“<span lang="nl-BE">trager</span>”'));
 
   /* 6d.2. Chaque champ cité, planté d'une citation inventée (« zqN »), puis relu sur chaque écran :
-     chaque zqN montré est déclaré nl-BE, et chaque sorte de champ (collection.champ) se montre. Un
-     écran qui échappe un de ces champs sans NL.gloss.quoted échoue ici. */
+     chaque zqN montré est déclaré nl-BE, et chaque sorte de champ (collection.champ, ou byDutch.champ pour
+     une table : byDutch.note) se montre. Un écran qui échappe un de ces champs sans NL.gloss.quoted échoue ici. */
   const q2 = () => {
     const groups = [];
-    const plant = (s, key, where) => {
-      const f = fieldOf(key, where);
+    const plant = C => (s, key, where) => {
+      const f = fieldOf(key, where, C);
       if (typeof s !== 'string' || key === 'en' || QUOTED_FIELDS.indexOf(f) < 0) return s;
       groups.push(where.split(/[.[]/)[0] + '.' + f);
       return s + ' « zq' + (groups.length - 1) + ' »';
     };
     const B = boot({ prepare: NL => {
-      tree.rewriteCourse(NL.content, plant);
-      NL.content.loans = tree.rewrite(NL.content.loans, plant, 'loans', 'loans');
+      tree.rewriteCourse(NL.content, plant(NL.content));
+      NL.content.loans = tree.rewrite(NL.content.loans, plant(NL.content), 'loans', 'loans');
     } });
     return B.NL.state.open().then(() => {
       French(B);

@@ -4,8 +4,8 @@ NL.content = NL.content || {};
 NL.content.units = NL.content.units || [];
 (function () {
   'use strict';
-  const W = (nl, g, art, be, note) => ({ kind: 'word', nl, ...NL.gloss.pair(g), art, be, note });
-  const P = (nl, g, be, note) => ({ kind: 'phrase', nl, ...NL.gloss.pair(g), be, note });
+  const W = (nl, g, art) => ({ kind: 'word', nl, ...NL.gloss.pair(g), art });
+  const P = (nl, g) => ({ kind: 'phrase', nl, ...NL.gloss.pair(g) });
   const U = o => NL.content.units.push(o);
 
   U({
@@ -19,11 +19,11 @@ NL.content.units = NL.content.units || [];
       W('de bus', { fr: 'le bus', en: 'bus' }, 'de'),
       W('de tram', { fr: 'le tram', en: 'tram' }, 'de'),
       W('het station', { fr: 'la gare', en: 'station' }, 'het'),
-      W('het perron', { fr: 'le quai', en: 'platform' }, 'het', null, { fr: 'Emprunté au français, gardé tel quel.', en: 'Borrowed from French, kept as it is.' }),
-      W('het spoor', { fr: 'la voie', en: 'track' }, 'het', null, { fr: 'Les annonces disent « spoor 4 ». C’est le chiffre qu’il faut attraper.', en: 'The announcements say “spoor 4”. The number is what you need to catch.' }),
+      W('het perron', { fr: 'le quai', en: 'platform' }, 'het'),
+      W('het spoor', { fr: 'la voie', en: 'track' }, 'het'),
       W('de halte', { fr: 'l’arrêt', en: 'stop' }, 'de'),
-      W('de vertraging', { fr: 'le retard', en: 'delay' }, 'de', null, { fr: 'Tu l’entendras tous les jours : « tien minuten vertraging ».', en: 'You will hear it every day: “tien minuten vertraging”.' }),
-      W('de file', { fr: 'l’embouteillage', en: 'traffic jam' }, 'de', null, { fr: 'Obsession nationale et sujet de conversation sans risque.', en: 'A national obsession and a safe topic of conversation.' }),
+      W('de vertraging', { fr: 'le retard', en: 'delay' }, 'de'),
+      W('de file', { fr: 'l’embouteillage', en: 'traffic jam' }, 'de'),
       W('het kaartje', { fr: 'le ticket', en: 'ticket' }, 'het'),
       W('de rit', { fr: 'le trajet', en: 'journey' }, 'de'),
       W('vertrekken', { fr: 'partir', en: 'to leave' }),
@@ -40,11 +40,11 @@ NL.content.units = NL.content.units || [];
     ],
     phrases: [
       P('Ik neem de trein naar Brussel.', { fr: 'Je prends le train pour Bruxelles.', en: 'I am taking the train to Brussels.' }),
-      P('De trein heeft tien minuten vertraging.', { fr: 'Le train a dix minutes de retard.', en: 'The train is ten minutes late.' }, null, { fr: 'Le néerlandais dit que le train « a » du retard.', en: 'Dutch says the train “has” ten minutes of delay.' }),
+      P('De trein heeft tien minuten vertraging.', { fr: 'Le train a dix minutes de retard.', en: 'The train is ten minutes late.' }),
       P('Op welk spoor?', { fr: 'Sur quelle voie ?', en: 'Which track?' }),
       P('Ik moet overstappen in Dendermonde.', { fr: 'Je dois changer à Termonde.', en: 'I have to change at Dendermonde.' }),
       P('Hoe lang duurt het?', { fr: 'Ça prend combien de temps ?', en: 'How long does it take?' }),
-      P('Ik sta in de file.', { fr: 'Je suis dans les files.', en: 'I am stuck in traffic.' }, null, { fr: 'Littéralement « je me tiens dans la file ». Excuse universellement acceptée.', en: 'Literally “I stand in the queue”. A universally accepted excuse.' }),
+      P('Ik sta in de file.', { fr: 'Je suis dans les files.', en: 'I am stuck in traffic.' }),
       P('Ik kom een beetje later, sorry.', { fr: 'Je vais arriver un peu plus tard, désolé.', en: 'I will arrive a little later, sorry.' }),
       P('Rijdt deze bus naar Aalst?', { fr: 'Ce bus va à Alost ?', en: 'Does this bus go to Aalst?' }),
       P('Is het ver van hier?', { fr: 'C’est loin d’ici ?', en: 'Is it far from here?' }),
@@ -60,7 +60,7 @@ NL.content.units = NL.content.units || [];
       W('het werk', { fr: 'le travail', en: 'work' }, 'het'),
       W('de collega', { fr: 'le collègue', en: 'colleague' }, 'de'),
       W('de klant', { fr: 'le client', en: 'client' }, 'de'),
-      W('de vergadering', { fr: 'la réunion', en: 'meeting' }, 'de', null, { fr: 'Les bureaux flamands disent « meeting » aussi souvent que « vergadering ».', en: 'Flemish offices say “meeting” as often as “vergadering”.' }),
+      W('de vergadering', { fr: 'la réunion', en: 'meeting' }, 'de'),
       W('het project', { fr: 'le projet', en: 'project' }, 'het'),
       W('de code', { fr: 'le code', en: 'code' }, 'de'),
       W('de test', { fr: 'le test', en: 'test' }, 'de'),
@@ -70,8 +70,8 @@ NL.content.units = NL.content.units || [];
       W('het ticket', { fr: 'le ticket', en: 'ticket' }, 'het'),
       W('de deadline', { fr: 'la deadline', en: 'deadline' }, 'de'),
       W('de planning', { fr: 'le planning', en: 'schedule' }, 'de'),
-      W('de omgeving', { fr: 'l’environnement', en: 'environment' }, 'de', null, { fr: 'test-, acceptatie-, productieomgeving. Mot de tous les jours chez un dev.', en: 'test-, acceptatie-, productieomgeving. An everyday word for a developer.' }),
-      W('de databank', { fr: 'la base de données', en: 'database' }, 'de', null, { fr: 'La Flandre dit volontiers « databank » là où le nord dit « database ».', en: 'Flanders is happy to say “databank” where the north says “database”.' }),
+      W('de omgeving', { fr: 'l’environnement', en: 'environment' }, 'de'),
+      W('de databank', { fr: 'la base de données', en: 'database' }, 'de'),
       W('de server', { fr: 'le serveur', en: 'server' }, 'de'),
       W('de mail', { fr: 'le mail', en: 'email' }, 'de'),
       W('het verslag', { fr: 'le compte rendu', en: 'report' }, 'het'),
@@ -79,7 +79,7 @@ NL.content.units = NL.content.units || [];
       W('het kantoor', { fr: 'le bureau', en: 'office' }, 'het'),
       W('de afspraak', { fr: 'le rendez-vous', en: 'appointment' }, 'de'),
       W('klaar', { fr: 'prêt / terminé', en: 'ready / finished' }),
-      W('bezig', { fr: 'en cours', en: 'in progress' }, null, null, { fr: '« Ik ben ermee bezig » est LA réponse à « c’est fini ? »', en: '“Ik ben ermee bezig” is THE answer to “is it done?”' }),
+      W('bezig', { fr: 'en cours', en: 'in progress' }, null),
       W('dringend', { fr: 'urgent', en: 'urgent' }),
       W('sturen', { fr: 'envoyer', en: 'to send' }),
       W('uitleggen', { fr: 'expliquer', en: 'to explain' }),
@@ -89,16 +89,16 @@ NL.content.units = NL.content.units || [];
     ],
     phrases: [
       P('Ik werk bij {bedrijf}.', { fr: 'Je travaille chez {bedrijf}.', en: 'I work at {bedrijf}.' }),
-      P('Ik ben Java-ontwikkelaar.', { fr: 'Je suis développeur Java.', en: 'I am a Java developer.' }, null, { fr: '« ontwikkelaar » ou simplement « developer » : les deux passent.', en: '“ontwikkelaar” or simply “developer”: both are fine.' }),
+      P('Ik ben Java-ontwikkelaar.', { fr: 'Je suis développeur Java.', en: 'I am a Java developer.' }),
       P('Ik werk aan een project voor een klant.', { fr: 'Je travaille sur un projet pour un client.', en: 'I am working on a project for a client.' }),
       P('Ik heb een vergadering om tien uur.', { fr: 'J’ai une réunion à dix heures.', en: 'I have a meeting at ten o’clock.' }),
       P('Ik werk vandaag van thuis.', { fr: 'Je travaille de chez moi aujourd’hui.', en: 'I am working from home today.' }),
-      P('Ik stuur u een mail.', { fr: 'Je vous envoie un mail.', en: 'I will send you an email. (formal)' }, null, { fr: 'Le présent suffit pour un futur proche : pas besoin de « zal ».', en: 'The present tense is enough for the near future: no need for “zal”.' }),
-      P('Ik ben er nog mee bezig.', { fr: 'J’y travaille encore.', en: 'I am still working on it.' }, null, { fr: 'La phrase de statut la plus utile de toute ta journée.', en: 'The most useful status sentence of your whole day.' }),
+      P('Ik stuur u een mail.', { fr: 'Je vous envoie un mail.', en: 'I will send you an email. (formal)' }),
+      P('Ik ben er nog mee bezig.', { fr: 'J’y travaille encore.', en: 'I am still working on it.' }),
       P('Dat is klaar.', { fr: 'C’est terminé.', en: 'That is finished.' }),
-      P('Kunt u dat even uitleggen?', { fr: 'Pouvez-vous expliquer ça rapidement ?', en: 'Could you quickly explain that? (formal)' }, null, { fr: '« Even » adoucit toute demande. Sans lui, tu sonnes sec.', en: '“Even” softens any request. Without it, you sound curt.' }),
+      P('Kunt u dat even uitleggen?', { fr: 'Pouvez-vous expliquer ça rapidement ?', en: 'Could you quickly explain that? (formal)' }),
       P('De testen draaien nog.', { fr: 'Les tests tournent encore.', en: 'The tests are still running.' }),
-      P('Sorry, mijn Nederlands is nog niet zo goed.', { fr: 'Désolé, mon néerlandais n’est pas encore très bon.', en: 'Sorry, my Dutch is not very good yet.' }, null, { fr: 'Dis-le en réunion : les collègues flamands aident au lieu de basculer.', en: 'Say it in a meeting: Flemish colleagues help instead of switching language.' })
+      P('Sorry, mijn Nederlands is nog niet zo goed.', { fr: 'Désolé, mon néerlandais n’est pas encore très bon.', en: 'Sorry, my Dutch is not very good yet.' })
     ]
   });
 
@@ -107,12 +107,12 @@ NL.content.units = NL.content.units || [];
     blurb: { fr: 'Ta routine, et les verbes qui se cassent en deux quand tu les utilises.', en: 'Your routine, and the verbs that break in two when you use them.' },
     grammar: ['g-scheidbaar'],
     words: [
-      W('opstaan', { fr: 'se lever', en: 'to get up' }, null, null, { fr: 'Se sépare : ik sta om zes uur op.', en: 'Separable: ik sta om zes uur op.' }),
-      W('ontbijten', { fr: 'déjeuner (le matin)', en: 'to have breakfast' }, null, null, { fr: 'En Belgique on déjeune le matin, on dîne à midi, on soupe le soir.', en: null }),
+      W('opstaan', { fr: 'se lever', en: 'to get up' }, null),
+      W('ontbijten', { fr: 'déjeuner (le matin)', en: 'to have breakfast' }, null),
       W('vertrekken', { fr: 'partir', en: 'to leave' }),
-      W('thuiskomen', { fr: 'rentrer', en: 'to come home' }, null, null, { fr: 'Se sépare : ik kom om zes uur thuis.', en: 'Separable: ik kom om zes uur thuis.' }),
+      W('thuiskomen', { fr: 'rentrer', en: 'to come home' }, null),
       W('meenemen', { fr: 'emporter', en: 'to take away / to take along' }),
-      W('afspreken', { fr: 'convenir d’un rendez-vous', en: 'to arrange to meet' }, null, null, { fr: 'Se sépare : we spreken morgen af.', en: 'Separable: we spreken morgen af.' }),
+      W('afspreken', { fr: 'convenir d’un rendez-vous', en: 'to arrange to meet' }, null),
       W('opbellen', { fr: 'téléphoner', en: 'to phone' }, null),
       W('uitleggen', { fr: 'expliquer', en: 'to explain' }),
       W('slapen', { fr: 'dormir', en: 'to sleep' }),
@@ -121,7 +121,7 @@ NL.content.units = NL.content.units || [];
       W('douchen', { fr: 'se doucher', en: 'to shower' }),
       W('koken', { fr: 'cuisiner', en: 'to cook' }),
       W('wandelen', { fr: 'se promener', en: 'to go for a walk' }),
-      W('de voormiddag', { fr: 'la matinée', en: 'morning' }, 'de', null, { fr: 'La Flandre découpe la journée autrement : voormiddag, namiddag, avond.', en: 'Flanders divides the day differently: voormiddag, namiddag, avond.' }),
+      W('de voormiddag', { fr: 'la matinée', en: 'morning' }, 'de'),
       W('de namiddag', { fr: 'l’après-midi', en: 'afternoon' }, 'de'),
       W('de avond', { fr: 'le soir', en: 'evening' }, 'de'),
       W('moe', { fr: 'fatigué', en: 'tired' }),
@@ -134,12 +134,12 @@ NL.content.units = NL.content.units || [];
       W('daarna', { fr: 'ensuite', en: 'afterwards' })
     ],
     phrases: [
-      P('Ik sta om zes uur op.', { fr: 'Je me lève à six heures.', en: 'I get up at six o’clock.' }, null, { fr: 'Le « op » part tout à la fin. C’est la forme même du néerlandais.', en: 'The “op” goes right to the end. That is the very shape of Dutch.' }),
+      P('Ik sta om zes uur op.', { fr: 'Je me lève à six heures.', en: 'I get up at six o’clock.' }),
       P('Ik vertrek om kwart voor acht.', { fr: 'Je pars à huit heures moins le quart.', en: 'I leave at a quarter to eight.' }),
       P('Ik neem mijn laptop mee.', { fr: 'J’emporte mon portable.', en: 'I am taking my laptop.' }),
       P('Ik kom om zes uur thuis.', { fr: 'Je rentre à six heures.', en: 'I come home at six o’clock.' }),
       P('We spreken morgen af.', { fr: 'On se donne rendez-vous demain.', en: 'We are meeting tomorrow.' }),
-      P('Eerst werk ik, daarna kook ik.', { fr: 'D’abord je travaille, ensuite je cuisine.', en: 'First I work, then I cook.' }, null, { fr: 'Commence par autre chose que le sujet et le verbe reste quand même en deuxième position.', en: 'Start with something other than the subject and the verb still stays in second position.' }),
+      P('Eerst werk ik, daarna kook ik.', { fr: 'D’abord je travaille, ensuite je cuisine.', en: 'First I work, then I cook.' }),
       P('Het was een drukke dag.', { fr: 'C’était une journée chargée.', en: 'It was a busy day.' }),
       P('Ik ben moe.', { fr: 'Je suis fatigué.', en: 'I am tired.' }),
       P('Wat doe je meestal in het weekend?', { fr: 'Qu’est-ce que tu fais d’habitude le week-end ?', en: 'What do you usually do at the weekend? (informal)' })
@@ -155,11 +155,11 @@ NL.content.units = NL.content.units || [];
       W('de kassa', { fr: 'la caisse', en: 'checkout' }, 'de'),
       W('het geld', { fr: 'l’argent', en: 'money' }, 'het'),
       W('de euro', { fr: 'l’euro', en: 'euro' }, 'de'),
-      W('de kaart', { fr: 'la carte', en: 'card' }, 'de', null, { fr: 'En Belgique la carte de débit, c’est « Bancontact » — le mot écrit sur le terminal.', en: 'In Belgium the debit card is “Bancontact”: the word written on the terminal.' }),
+      W('de kaart', { fr: 'la carte', en: 'card' }, 'de'),
       W('cash', { fr: 'en liquide', en: 'cash' }),
       W('de korting', { fr: 'la réduction', en: 'discount' }, 'de'),
       W('de bon', { fr: 'le ticket de caisse', en: 'receipt' }, 'de'),
-      W('het zakje', { fr: 'le sachet', en: 'small bag' }, 'het', null, { fr: 'Diminutif en -je, donc het.', en: 'Diminutive in -je, so het.' }),
+      W('het zakje', { fr: 'le sachet', en: 'small bag' }, 'het'),
       W('de winkelkar', { fr: 'le caddie', en: 'shopping trolley' }, 'de'),
       W('de maat', { fr: 'la taille', en: 'size' }, 'de'),
       W('de kleur', { fr: 'la couleur', en: 'colour' }, 'de'),
@@ -173,7 +173,7 @@ NL.content.units = NL.content.units || [];
       W('zoeken', { fr: 'chercher', en: 'to look for' }),
       W('vinden', { fr: 'trouver', en: 'to find' }),
       W('open', { fr: 'ouvert', en: 'open' }),
-      W('gesloten', { fr: 'fermé', en: 'closed' }, null, null, { fr: 'Sur une porte, souvent juste « toe ».', en: 'On a door, often just “toe”.' }),
+      W('gesloten', { fr: 'fermé', en: 'closed' }, null),
       W('genoeg', { fr: 'assez', en: 'enough' })
     ],
     phrases: [
@@ -185,7 +185,7 @@ NL.content.units = NL.content.units || [];
       P('Ik ben op zoek naar brood.', { fr: 'Je cherche du pain.', en: 'I am looking for bread.' }),
       P('Waar is de kassa?', { fr: 'Où est la caisse ?', en: 'Where is the checkout?' }),
       P('Tot hoe laat zijn jullie open?', { fr: 'Vous êtes ouverts jusqu’à quelle heure ?', en: 'Until what time are you open? (informal)' }),
-      P('Ik kijk alleen even, merci.', { fr: 'Je regarde juste, merci.', en: 'I am just looking, thanks.' }, null, { fr: 'La façon polie d’échapper à un vendeur serviable.', en: 'The polite way to escape a helpful shop assistant.' })
+      P('Ik kijk alleen even, merci.', { fr: 'Je regarde juste, merci.', en: 'I am just looking, thanks.' })
     ]
   });
 
@@ -208,7 +208,7 @@ NL.content.units = NL.content.units || [];
       W('de dokter', { fr: 'le médecin', en: 'doctor' }, 'de'),
       W('de apotheek', { fr: 'la pharmacie', en: 'pharmacy' }, 'de'),
       W('het medicijn', { fr: 'le médicament', en: 'medicine' }, 'het'),
-      W('het voorschrift', { fr: 'l’ordonnance', en: 'prescription' }, 'het', null, { fr: 'Mot flamand. Le nord dit « recept ».', en: 'A Flemish word. The north says “recept”.' }),
+      W('het voorschrift', { fr: 'l’ordonnance', en: 'prescription' }, 'het'),
       W('de afspraak', { fr: 'le rendez-vous', en: 'appointment' }, 'de'),
       W('de wachtzaal', { fr: 'la salle d’attente', en: 'waiting room' }, 'de'),
       W('het ziekenhuis', { fr: 'l’hôpital', en: 'hospital' }, 'het'),
@@ -222,8 +222,8 @@ NL.content.units = NL.content.units || [];
     phrases: [
       P('Ik ben ziek.', { fr: 'Je suis malade.', en: 'I am ill.' }),
       P('Ik voel me niet goed.', { fr: 'Je ne me sens pas bien.', en: 'I do not feel well.' }),
-      P('Ik heb pijn aan mijn rug.', { fr: 'J’ai mal au dos.', en: 'My back hurts.' }, null, { fr: 'Le néerlandais dit « douleur à mon dos », comme le français.', en: 'Literally “I have pain at my back”.' }),
-      P('Ik heb koorts sinds gisteren.', { fr: 'J’ai de la fièvre depuis hier.', en: 'I have had a fever since yesterday.' }, null, { fr: 'Présent avec « sinds », comme en français.', en: 'Dutch uses the present tense with “sinds”: literally “I have fever since yesterday”.' }),
+      P('Ik heb pijn aan mijn rug.', { fr: 'J’ai mal au dos.', en: 'My back hurts.' }),
+      P('Ik heb koorts sinds gisteren.', { fr: 'J’ai de la fièvre depuis hier.', en: 'I have had a fever since yesterday.' }),
       P('Ik wil graag een afspraak maken.', { fr: 'Je voudrais prendre rendez-vous.', en: 'I would like to make an appointment.' }),
       P('Kan ik vandaag nog langskomen?', { fr: 'Je peux encore passer aujourd’hui ?', en: 'Can I still come by today?' }),
       P('Heeft u een voorschrift nodig?', { fr: 'Vous avez besoin d’une ordonnance ?', en: 'Do you need a prescription? (formal)' }),
@@ -245,14 +245,14 @@ NL.content.units = NL.content.units || [];
       W('warm', { fr: 'chaud', en: 'warm / hot' }),
       W('nat', { fr: 'mouillé', en: 'wet' }),
       W('het weekend', { fr: 'le week-end', en: 'weekend' }, 'het'),
-      W('het verlof', { fr: 'le congé', en: 'leave' }, 'het', null, { fr: 'Au travail on prend « verlof » ; les enfants ont « vakantie ».', en: 'At work you take “verlof”; children have “vakantie”.' }),
+      W('het verlof', { fr: 'le congé', en: 'leave' }, 'het'),
       W('het voetbal', { fr: 'le football', en: 'football' }, 'het'),
-      W('de match', { fr: 'le match', en: 'match' }, 'de', null, { fr: 'La Flandre dit « match » ; le nord dit « wedstrijd ».', en: 'Flanders says “match”; the north says “wedstrijd”.' }),
-      W('plezant', { fr: 'chouette', en: 'great / fun' }, null, null, { fr: 'Vient du français « plaisant ». Le nord dit « leuk ». L’utiliser te fait sonner d’ici tout de suite.', en: 'Comes from French “plaisant”. The north says “leuk”. Using it makes you sound local straight away.' }),
-      W('gezellig', { fr: 'convivial', en: 'cosy / convivial' }, null, null, { fr: 'Aucun équivalent exact. La chaleur d’être bien ensemble.', en: 'No exact equivalent. The warmth of being comfortable together.' }),
-      W('ambetant', { fr: 'embêtant', en: 'annoying' }, null, null, { fr: 'Vient tout droit du français « embêtant ». Le nord dirait « vervelend ».', en: 'Comes straight from French “embêtant”. The north would say “vervelend”.' }),
-      W('amai', { fr: 'oh là là', en: 'wow' }, null, null, { fr: 'Le mot le plus flamand qui soit. Surprise, compassion, admiration.', en: 'The most Flemish word there is. Surprise, sympathy, admiration.' }),
-      W('goesting', { fr: 'l’envie', en: 'desire / urge' }, null, null, { fr: 'L’équivalent flamand de « zin ». « Ik heb er geen goesting in » = je n’ai pas envie.', en: 'The Flemish equivalent of “zin”. “Ik heb er geen goesting in” = I do not feel like it.' }),
+      W('de match', { fr: 'le match', en: 'match' }, 'de'),
+      W('plezant', { fr: 'chouette', en: 'great / fun' }, null),
+      W('gezellig', { fr: 'convivial', en: 'cosy / convivial' }, null),
+      W('ambetant', { fr: 'embêtant', en: 'annoying' }, null),
+      W('amai', { fr: 'oh là là', en: 'wow' }, null),
+      W('goesting', { fr: 'l’envie', en: 'desire / urge' }, null),
       W('rustig', { fr: 'calme', en: 'calm / quiet' }),
       W('wandelen', { fr: 'se promener', en: 'to go for a walk' }),
       W('kijken', { fr: 'regarder', en: 'to watch / to look' }),
@@ -263,15 +263,15 @@ NL.content.units = NL.content.units || [];
       W('volgende', { fr: 'prochain', en: 'next' })
     ],
     phrases: [
-      P('Wat een weer!', { fr: 'Quel temps !', en: 'What weather!' }, null, { fr: 'Toujours disponible, jamais déplacé, ouvre n’importe quelle conversation.', en: 'Always available, never out of place, opens any conversation.' }),
+      P('Wat een weer!', { fr: 'Quel temps !', en: 'What weather!' }),
       P('Het regent weer.', { fr: 'Il pleut encore.', en: 'It is raining again.' }),
-      P('Hoe was uw weekend?', { fr: 'C’était comment, ton week-end ?', en: 'How was your weekend? (informal, Flemish u)' }, null, { fr: 'On te le demandera tous les lundis. Prépare une réponse.', en: 'You will be asked every Monday. Have an answer ready.' }),
-      P('Niks speciaals, en bij u?', { fr: 'Rien de spécial, et toi ?', en: 'Nothing special, and you? (informal, Flemish u)' }, null, { fr: 'Réponse complète et naturelle. Renvoyer la question est attendu.', en: 'A complete, natural answer. Asking back is expected.' }),
-      P('We hebben gewandeld.', { fr: 'On s’est promenés.', en: 'We went for a walk.' }, null, { fr: 'Ton premier passé composé : hebben plus le participe à la fin.', en: 'Your first perfect tense: hebben plus the participle at the end.' }),
+      P('Hoe was uw weekend?', { fr: 'C’était comment, ton week-end ?', en: 'How was your weekend? (informal, Flemish u)' }),
+      P('Niks speciaals, en bij u?', { fr: 'Rien de spécial, et toi ?', en: 'Nothing special, and you? (informal, Flemish u)' }),
+      P('We hebben gewandeld.', { fr: 'On s’est promenés.', en: 'We went for a walk.' }),
       P('Ik heb de match gezien.', { fr: 'J’ai vu le match.', en: 'I saw the match.' }),
       P('Dat was plezant.', { fr: 'C’était chouette.', en: 'That was great.' }),
-      P('Ik heb er geen goesting in.', { fr: 'Je n’ai pas envie.', en: 'I do not feel like it.' }, null, { fr: 'Typiquement flamand. Utilise-le et les gens sourient.', en: 'Typically Flemish. Use it and people smile.' }),
-      P('Een goed weekend nog!', { fr: 'Bon week-end !', en: 'Have a good weekend!' }, null, { fr: 'Le vendredi après-midi. Le « nog » n’est pas optionnel.', en: 'Friday afternoon. The “nog” is not optional.' }),
+      P('Ik heb er geen goesting in.', { fr: 'Je n’ai pas envie.', en: 'I do not feel like it.' }),
+      P('Een goed weekend nog!', { fr: 'Bon week-end !', en: 'Have a good weekend!' }),
       P('Tot maandag.', { fr: 'À lundi.', en: 'See you on Monday.' })
     ]
   });

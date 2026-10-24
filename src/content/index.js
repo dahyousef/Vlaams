@@ -45,6 +45,8 @@ NL.content = NL.content || {};
   const TABLES = [
     { table: 'be', field: 'be' },
     { table: 'open.phrases', field: 'open' },
+    { table: 'notes', field: 'note' },
+    { table: 'decoys', field: 'decoys' },
   ]; // A new table: its line goes just above this one.
 
   function build() {

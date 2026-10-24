@@ -9,7 +9,7 @@ const fs = require('fs'), path = require('path');
 const browser = require('./lib/browser');
 const spelling = require('./lib/spelling');
 const sequence = require('./lib/sequence');
-const { raw, owed, at } = require('./lib/prose');
+const { raw, owed, at, owedTables } = require('./lib/prose');
 const tree = require('./lib/tree');
 const ROOT = process.argv[2] || path.join(__dirname, '..');
 
@@ -81,7 +81,7 @@ NL.state.open().then(() => {
   ok((NL.content.TABLES || []).length > 0, 'NL.content.TABLES est vide ou absent : aucune table n’est contrôlée');
   /* Ce qu'une table pose, le lexique ne l'écrit plus : écrit aux deux endroits, la table
      masquerait le lexique sans rien dire. */
-  const MOVED = ['be'];
+  const MOVED = ['be', 'note'];
   const written = [];
   RAW.units.forEach(u => ['word', 'phrase'].forEach(kind => (u[kind + 's'] || []).forEach((x, i) =>
     MOVED.forEach(f => { if (x[f] !== undefined && x[f] !== null) written.push(u.id + ':' + kind[0] + i + ' ' + f); }))));
@@ -245,11 +245,11 @@ NL.state.open().then(() => {
      un mot. */
 
   /* Les listages d'un même mot ou d'une même phrase disent la même chose : les mêmes sens
-     dans chaque langue, le même article ; et une remarque, s'il y en a une, n'est que sur le
-     premier. Une fois les suivants devenus des alias, seul le premier se montre : ce qu'un
-     alias dirait seul serait perdu sans bruit. Un groupe, c'est le genre d'élément et le
-     néerlandais tel qu'il est écrit, jetons compris, sans casse ni ponctuation. La variante
-     flamande n'est plus au lexique : src/content/be.js en tient une par élément. */
+     dans chaque langue, le même article. Une fois les suivants devenus des alias, seul le
+     premier se montre : ce qu'un alias dirait seul serait perdu sans bruit. Un groupe, c'est
+     le genre d'élément et le néerlandais tel qu'il est écrit, jetons compris, sans casse ni
+     ponctuation. La variante flamande et la remarque ne sont plus au lexique (MOVED, plus
+     haut) : src/content/be.js et src/content/notes.js en tiennent une par élément. */
   const listings = new Map();
   RAW.units.forEach(u => ['word', 'phrase'].forEach(kind => (u[kind + 's'] || []).forEach((x, i) => {
     const key = kind + '|' + U.norm(x.nl);
@@ -266,8 +266,7 @@ NL.state.open().then(() => {
     group.slice(1).forEach(x => {
       const differ = NL.gloss.LANGS.filter(l => senseSet(x, l) !== senseSet(first, l))
         .map(l => l + ' « ' + NL.gloss.of(x, l) + ' » / « ' + NL.gloss.of(first, l) + ' »')
-        .concat(['art'].filter(k => orNull(x[k]) !== orNull(first[k])))
-        .concat(x.note ? ['une remarque, que seul le premier listage porte'] : []);
+        .concat(['art'].filter(k => orNull(x[k]) !== orNull(first[k])));
       if (differ.length) disagree++;
       ok(!differ.length, x.id + ' « ' + x.nl + ' » est un alias de ' + first.id + ' et ne dit pas la même chose : ' + differ.join(', '));
     });
@@ -317,6 +316,13 @@ NL.state.open().then(() => {
   ['patterns', 'openTasks'].forEach(k => owed(RAW[k], k, '', []).forEach(r => batches.grammaire.push(r)));
   ['register', 'hetRules', 'deRules', 'sheets'].forEach(k => owed(RAW[k], k, '', []).forEach(r => batches.references.push(r)));
   owed(RAW.scenarios, 'scenarios', '', []).forEach(r => batches.scenarios.push(r));
+  /* La note d'un mot vit dans src/content/notes.js, sous le néerlandais de son premier listage :
+     elle va au lot de l'unité qui l'enseigne d'abord. */
+  const unitOf = new Map();
+  RAW.units.forEach(u => ['words', 'phrases'].forEach(k => (u[k] || []).forEach(x => { if (!unitOf.has(x.nl)) unitOf.set(x.nl, u.n); })));
+  const tabled = owedTables(RAW, []);
+  tabled.forEach(r => batches[unitOf.get(r.nl) <= 6 ? 'lexiqueA1' : 'lexiqueA1b'].push(r));
+  ok(tabled.length > 0, 'aucune note lue dans src/content/notes.js : le contrôle 6 ne la voit pas');
   const left = [];
   Object.keys(batches).forEach(b => batches[b].filter(r => !r.ok).forEach(r => left.push(b + ' ' + r.where)));
   ok(left.length === 0, 'rien n’est dû : ' + left.length + ' anglais manquent   [' + left.slice(0, 3).join(', ') + ']');

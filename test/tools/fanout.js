@@ -346,11 +346,15 @@ async function main() {
   const HEAD = '/* La table d\'essai de test/tools/fanout.js. */\r\n';
   const before = HEAD + table.MARKER + '\r\nNL.content.byDutch[\'essai\'] = {\r\n  \'hallo\': \'avant\',\r\n  \'rustig\': \'avant\',\r\n};\r\n';
   fs.writeFileSync(TABLE, before);
-  edit('À l’entrée comme à la sortie.', 'À l’entrée et à la sortie.');
+  /* La note de dag vit dans src/content/notes.js : la changer change l'empreinte de dag. Elle se
+     change par la table, pas par son texte, que le Merge des explications récrit. */
+  const NOTES = path.join(TMP, 'src', 'content', 'notes.js'), notes = text(NOTES), note = table.load(NOTES).entries.dag;
+  ok(!!note, 'notes.js n\'a plus de note pour dag : l\'essai est à refaire');
+  table.update(NOTES, { dag: Object.assign({}, note, { fr: (note ? note.fr : '') + ' Autrement dit.' }) });
   const now = st(course(TMP).byId('overleven:w2'));
   same(run('merge.js', [TMP, KIND]), { code: 1, lines: ['fail essai overleven:w2: stale, stamped ' + S('overleven:w2') + ' at Split, the source now stamps ' + now] },
     'Merge refuse une ligne dont la source a changé depuis Split');
-  fs.writeFileSync(LEX, lexicon);
+  fs.writeFileSync(NOTES, notes);
   same(text(TABLE), before, 'un Merge refusé n\'écrit rien');
 
   const MERGED = ['ok essai 4 taken, 1 dropped', 'ok essai.js 4 set, 0 removed', 'ok essai.txt 4 rows'];
