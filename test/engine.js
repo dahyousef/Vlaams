@@ -1098,6 +1098,18 @@ NL.state.open().then(() => {
     const r3 = NL.state.rec('bakker:w22');
     ok(r3.ease === 2.5 && r3.said === true && r3.folded === true,
       'two records level at rung 3 folded to ease ' + r3.ease + ', said ' + r3.said + ', folded ' + r3.folded + ': not the word’s own record, said under its alias');
+    /* Au même échelon, l'intervalle départage avant la dernière réponse : la fiche de l'alias,
+       à l'intervalle plus long, passe devant celle du mot, plus récemment répondue. */
+    fresh();
+    put(word, 3, T0 + DAY);
+    put({ id: 'dedag:w4', kind: 'word' }, 3, T0 + DAY);
+    B.clock.advance(HOUR);
+    const longer = NL.state.rec('dedag:w4'); longer.interval = 2 * DAY; longer.due = T0 + 2 * DAY; longer.last = B.clock.now() - DAY; NL.state.setRec(longer);
+    const recent = NL.state.rec('bakker:w22'); recent.interval = DAY; recent.last = B.clock.now(); NL.state.setRec(recent);
+    fold();
+    const r4 = NL.state.rec('bakker:w22');
+    ok(r4.interval === 2 * DAY && r4.due === T0 + 2 * DAY && r4.folded === true,
+      'two records level at rung 3, the alias record with the longer interval, folded to interval ' + r4.interval + ' and due ' + new Date(r4.due).toISOString() + ': not the alias record’s, interval ' + 2 * DAY + ' and due ' + new Date(T0 + 2 * DAY).toISOString());
     /* Sans fiche d'alias, rien à replier : le mot n'est pas marqué. */
     fresh();
     put(word, 2, T0 + DAY);

@@ -1086,9 +1086,11 @@ const shown = dev => text(dev.root.innerHTML);
     const at = Date.now() - 3600000;
     const email = 'alias@example.com', kid = account(email).id;
     const metaAt = t => ({ dataVersion: 3, resetAt: EPOCH, xp: 0, reached: 0, scenariosDone: [], listenDone: [], progress: zero(), updatedAt: t });
-    const aliasRec = t => ({ id: 'dedag:w4', kind: 'word', stage: 4, due: t + 3 * DAY, interval: 3 * DAY, ease: 2.6, reps: 5, lapses: 0, last: t, said: true, retired: false, lastEx: 'type', updatedAt: t, base: EPOCH });
+    const fiche = (id, stage, t) => Object.assign(oldRec({ id, kind: 'word' }, t), { stage, reps: stage + 1, base: EPOCH });
+    const aliasRec = t => Object.assign(fiche('dedag:w4', 4, t), { due: t + 3 * DAY, interval: 3 * DAY, ease: 2.6, said: true });
     const rung = (dev, id) => { const r = dev.NL.state.rec(id); return r ? r.stage : -1; };
-    const onServer = id => rowsFor('srs_records', kid).find(r => r.item_id === id);
+    const row = (uid, id) => rowsFor('srs_records', uid).find(r => r.item_id === id);
+    const onServer = id => row(kid, id);
     putRow('user_meta', { user_id: kid, updated_at: at, data: metaAt(at) });
     putRow('srs_records', { user_id: kid, item_id: 'dedag:w4', data: aliasRec(at), updated_at: at });
 
@@ -1150,9 +1152,8 @@ const shown = dev => text(dev.root.innerHTML);
        « meenemen » à l'échelon 3. K4, fermé depuis l'ancienne version, porte encore les deux
        fiches d'avant et s'ouvre connecté : il prend l'échelon 3, et ne rend pas au serveur
        celui d'avant. */
-    const fiche = (id, stage, t) => ({ id, kind: 'word', stage, due: t + DAY, interval: DAY, ease: 2.5, reps: stage + 1, lapses: 0, last: t, said: false, retired: false, lastEx: 'type', updatedAt: t, base: EPOCH });
     const copies = () => [fiche('bakker:w22', 1, at), fiche('dedag:w4', 2, at)];
-    const serverRung = (uid, id) => { const r = rowsFor('srs_records', uid).find(x => x.item_id === id); return r ? r.data.stage : -1; };
+    const serverRung = (uid, id) => { const r = row(uid, id); return r ? r.data.stage : -1; };
     const kept = (srs, mail) => {
       const store = { 'vlaams/fallback': JSON.stringify({ srs, custom: [], log: [], meta: metaAt(at) }) };
       if (mail) { store['vlaams/owner'] = account(mail).id; store['sb-session'] = JSON.stringify({ user: account(mail) }); }
