@@ -343,7 +343,15 @@ NL.state.open().then(() => {
     /* Un `rx` borde « één » de `\b` comme tout mot : ses accents sont des lettres. */
     posed('g-getallen', 0, 'rx', /\b(één|twee|drie)\b/i, () =>
       meets('g-getallen', 'Mijn zoon is één jaar oud.', 0, true, '« één » is a word, its accents letters'));
-    console.log('  mots entiers   « in » hors de « kind », « geïnstalleerd » et « één » entiers, « om half » mot à mot');
+    /* `\B`, `\W` et `\w` entre crochets lisent les mêmes lettres : « één » commence un mot,
+       « é » n'est pas un non-mot, et « ï » est une lettre entre crochets aussi. */
+    posed('g-getallen', 0, 'rx', /\Béén/, () =>
+      meets('g-getallen', 'Mijn zoon is één jaar oud.', 0, false, '« één » begins a word: a boundary stands before it'));
+    posed('g-getallen', 0, 'rx', /\Wén/, () =>
+      meets('g-getallen', 'Mijn zoon is één jaar oud.', 0, false, '« é » is a letter, not a non-letter'));
+    posed('g-perfect-intro', 1, 'rx', /\bge[\w]{2,}\b/i, () =>
+      meets('g-perfect-intro', 'Gisteravond heb ik een nieuwe app op mijn gsm geïnstalleerd.', 1, true, '« ï » is a letter inside brackets too'));
+    console.log('  mots entiers   « in » hors de « kind », « geïnstalleerd » et « één » entiers, « om half » mot à mot, \\B, \\W et [\\w] sur les mêmes lettres');
   }
 
   console.log('\n' + checks + ' contrôles, ' + fails + ' en échec');
