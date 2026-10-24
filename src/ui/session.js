@@ -425,7 +425,9 @@ NL.screens.sessie = (function () {
        redit ; manquée, elle remplace la ligne de réponse, que la ligne flamande soit
        réglée ou non. Ailleurs la ligne flamande ne répète ni le standard ni la réponse. */
     const given = ok ? ex.given(c.task, L) : null;
-    const repeat = given != null && U.norm(given) === U.norm(ans);
+    /* Un mot tapé avec son article est juste (`U.typedOk`) : sa forme nue compte aussi, comme dans `hereLine`. */
+    const same = s => U.norm(s) === U.norm(ans);
+    const repeat = given != null && (same(given) || (it && it.kind === 'word' && same(U.bare(String(given).trim()))));
     const vl = c.ex === 'vlaams' && !repeat ? EX.hereLine(it, '', true) : '';
     const be = c.ex === 'vlaams' ? vl : NL.state.meta().showFlemish !== false ? EX.hereLine(it, [ans, given], false) : '';
     /* La langue de la réponse est un champ de l'exercice : du néerlandais, un sens dans sa langue,

@@ -288,6 +288,10 @@ NL.state.open().then(() => {
     const off = typed('nog eens', 'nog');
     if (off) ok(!off.right && off.answer === 'nog eens' && off.be !== null,
       '`nog` typed for `nog eens` is marked right, or loses its answer line or « ' + t.hereThey + ' »: ' + off.text);
+    /* Un mot tapé avec son article est juste (`U.typedOk`) : il n'est pas redit non plus. */
+    const withArt = typed('de fiets', 'de fiets');
+    if (withArt) ok(withArt.right && withArt.answer === null,
+      '`de fiets` typed for `de fiets` is right and shows « ' + withArt.answer + ' » in bold: a word typed with its article is repeated: ' + withArt.text);
     console.log('  pas redit      « nog eens » tapé juste, en flamand, faux');
   }
 
