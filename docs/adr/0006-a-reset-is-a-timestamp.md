@@ -91,3 +91,26 @@ The third limit above was the one the server could close. A `keep_reset` trigger
 incoming write would lower `resetAt`, and takes the rest of the write as it arrives. It keeps
 rather than refuses: a refused settings write made the previous build's whole flush fail and be
 retried every thirty seconds. `supabase/schema.sql` holds it, and `test/sync.js` mirrors it.
+
+## Amended 22 October 2026
+
+A word or phrase listed in two units is now one item, built under its first listing's id; the
+later ids find it. Progress learned under a later id before that change is folded into the
+item once, by `NL.srs.fold()`: at the end of a pull, after a restore, and at boot on a device
+that no account owns. A device that an account owns waits for the pull that follows its boot:
+folded from its own copies alone, the item would be marked folded before an alias record that
+the pull brings could count.
+
+The fold is written and sent as an answer is. Like an answer's, its `base` is the reset the
+device knows, so a reset another device made still erases what it folded, and a backup from
+before the aliases folds when it is restored. Unlike an answer's, its `updatedAt` is not the
+time of the fold but the newest `updatedAt` among the records it folds, so a newer write made
+on another device still wins: the server's `keep_newer` drops the fold when it holds a newer
+row, and the next pull brings that row. The folded record carries a new stored field,
+`folded: true`. A record that has it is never folded again, so an alias record that a later
+pull brings back cannot undo a miss made after the fold. Alias records stay on the device and
+on the server, inert.
+
+One case stays open. A device that no account owns folds at boot. If it then joins an account
+whose server holds an alias record newer than what it folded, and no newer record of the item
+itself, its fold stands and that alias record is never folded.

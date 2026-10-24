@@ -1052,6 +1052,60 @@ NL.state.open().then(() => {
     console.log('  « meenemen », dû sous bakker:w22 et dedag:w4 : dans la séance ' + served.length + ' fois');
   }
 
+  /* ------------------------------------------------------------------ */
+  console.log('\nUN MOT LISTÉ DANS DEUX UNITÉS — sa progression passe au premier listage, une fois');
+  /* Avant les alias, « meenemen » s'apprenait sous bakker:w22 et sous dedag:w4. NL.srs.fold()
+     donne au mot la fiche la plus avancée des deux, entière, et le mot est dit si l'une des
+     deux l'a été. Le repli date de la plus récente des fiches qu'il replie, pas de l'instant
+     du repli : une écriture plus récente, faite ailleurs, passe encore devant. Il ne replie
+     qu'une fois : un raté d'après tient, même quand un tirage ramène la fiche de l'alias. */
+  {
+    const fold = () => typeof NL.srs.fold === 'function' ? NL.srs.fold() : 'no NL.srs.fold';
+    fresh();
+    const word = NL.content.byId('bakker:w22');
+    put({ id: 'dedag:w4', kind: 'word' }, 4, T0 + 3 * DAY);
+    const ahead = NL.state.rec('dedag:w4'); ahead.said = true; NL.state.setRec(ahead);
+    const was = Object.assign({}, ahead);
+    /* La fiche du mot, en retard, est la plus récente des deux : ni celle qui gagne, ni l'instant
+       du repli. */
+    B.clock.advance(MIN);
+    put(word, 1, T0 + DAY);
+    const newest = NL.state.rec('bakker:w22').updatedAt;
+    B.clock.advance(HOUR);
+    const n = fold();
+    const r = Object.assign({}, NL.state.rec('bakker:w22'));
+    ok(n === 1, 'fold() with one alias record ahead folded ' + n + ' item(s), not 1');
+    ok(r.stage === 4 && r.due === was.due && r.interval === was.interval && r.reps === was.reps,
+      'after fold() bakker:w22 is at rung ' + r.stage + ', due ' + new Date(r.due).toISOString() + ': not the alias record whole, rung 4, due ' + new Date(was.due).toISOString());
+    ok(r.said === true && r.folded === true, 'after fold() bakker:w22 has said ' + r.said + ' and folded ' + r.folded + ', not both true');
+    ok(r.folded === true && r.base === NL.state.meta().resetAt && r.updatedAt === newest,
+      'fold() wrote bakker:w22 folded ' + r.folded + ', with base ' + r.base + ' and updatedAt ' + r.updatedAt + ': not folded with base = resetAt ' + NL.state.meta().resetAt + ' and updatedAt = the newest write of its group ' + newest + ' (the alias record’s is ' + was.updatedAt + ', now is ' + B.clock.now() + ')');
+    NL.srs.grade(word, false, { ex: 'type' });
+    const lapsed = NL.state.rec('bakker:w22').stage;
+    /* Un tirage ramène la fiche de l'alias, telle que l'ancienne version l'a écrite. */
+    B.clock.advance(MIN);
+    NL.state.setRec(Object.assign({}, was, { updatedAt: B.clock.now() }), true);
+    const again = fold();
+    const r2 = NL.state.rec('bakker:w22');
+    ok(again === 0 && r2.stage === lapsed, 'a second fold() folded ' + again + ' item(s) and moved bakker:w22 from rung ' + lapsed + ' to ' + r2.stage + ': the miss after the first fold did not hold');
+
+    /* À égalité, la fiche du mot reste la sienne ; dit sous l'alias, il est dit. */
+    fresh();
+    put(word, 3, T0 + DAY);
+    put({ id: 'dedag:w4', kind: 'word' }, 3, T0 + DAY);
+    const level = NL.state.rec('dedag:w4'); level.ease = 1.3; level.said = true; NL.state.setRec(level);
+    fold();
+    const r3 = NL.state.rec('bakker:w22');
+    ok(r3.ease === 2.5 && r3.said === true && r3.folded === true,
+      'two records level at rung 3 folded to ease ' + r3.ease + ', said ' + r3.said + ', folded ' + r3.folded + ': not the word’s own record, said under its alias');
+    /* Sans fiche d'alias, rien à replier : le mot n'est pas marqué. */
+    fresh();
+    put(word, 2, T0 + DAY);
+    const none = fold();
+    ok(none === 0 && !NL.state.rec('bakker:w22').folded, 'fold() with no alias record folded ' + none + ' item(s) and marked bakker:w22 ' + NL.state.rec('bakker:w22').folded);
+    console.log('  « meenemen » : échelon 1, alias à l’échelon 4 → ' + r.stage + ' ; un raté → ' + lapsed + ' ; second repli → ' + r2.stage + ' ; à égalité, facilité ' + r3.ease);
+  }
+
   console.log('\n' + checks + ' checks, ' + (fails ? fails + ' FAILED' : 'ENGINE OK'));
   process.exit(fails ? 1 : 0);
 }).catch(e => { console.log('CRASH ' + (e && e.stack || e)); process.exit(1); });

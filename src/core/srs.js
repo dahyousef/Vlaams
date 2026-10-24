@@ -303,6 +303,39 @@ NL.srs = (function () {
     return { due, said, retired, seen };
   }
 
+  /* ---------------- alias ---------------- */
+  /* Un mot ou une phrase listé dans deux unités est un seul élément, celui du premier
+     listage (content/index.js). Avant, il s'apprenait aussi sous l'id du second : cette
+     progression-là passe à l'élément, une fois. La fiche la plus avancée du groupe gagne,
+     entière — échelon, puis retirée, puis intervalle, puis dernière réponse ; à égalité,
+     celle de l'élément —, car son échéance, son intervalle et sa facilité vont ensemble.
+     Dit à voix haute sous l'un des ids, l'élément est dit. La fiche écrite porte `folded` :
+     une fiche d'alias qu'un tirage ramène ensuite ne repasse plus, et un raté d'après
+     tient. Elle part au serveur et descend de la remise à zéro en vigueur (`base`,
+     ADR 0006), comme une réponse, mais elle date de la plus récente des fiches qu'elle
+     replie, pas de l'instant du repli : une écriture plus récente, faite ailleurs, passe
+     encore devant elle. Les fiches d'alias restent où elles sont, inertes. Appelé là où les
+     fiches arrivent en bloc : au chargement d'un appareil qu'aucun compte ne possède, à la
+     fin d'un tirage, après une restauration. Rend le nombre d'éléments repliés. */
+  const FOLD_RANK = ['stage', 'retired', 'interval', 'last'];
+  const ahead = (a, b) => (FOLD_RANK.map(k => (+a[k] || 0) - (+b[k] || 0)).find(d => d !== 0) || 0) > 0;
+  function fold() {
+    let n = 0;
+    NL.content.allItems().forEach(it => {
+      if (!it.aliases) return;
+      const own = NL.state.rec(it.id);
+      if (own && own.folded) return;
+      const others = it.aliases.map(id => NL.state.rec(id)).filter(Boolean);
+      if (!others.length) return;
+      const group = (own ? [own] : []).concat(others);
+      const win = group.reduce((best, r) => ahead(r, best) ? r : best);
+      const newest = Math.max(...group.map(r => r.updatedAt || 0));
+      NL.state.setRec(Object.assign({}, win, { id: it.id, kind: it.kind, said: group.some(r => !!r.said), folded: true }), false, newest);
+      n++;
+    });
+    return n;
+  }
+
   /* ---------------- ce qui résiste ---------------- */
   /* Chaque réponse est enregistrée depuis le premier jour, et aucun écran ne
      l'avait jamais relue. Les éléments sont classés par nombre de réponses
@@ -484,7 +517,7 @@ NL.srs = (function () {
   return {
     RUNGS, STEP, PACE, MAX_STAGE, MAX_TASKS, PRODUCE, NEW_SHARE, NEW_MIN, NEW_MAX, TIER_MAX, RETIRE_AT,
     maxRung, pace, exerciseFor, firstAloud, needsVoice, supports, grade, seed, isSeen, stageOf, atTop,
-    dueItems, counts, freshItems, compose, plan, unitSpan, mistakes, recOf, budgetLeft, spend,
+    dueItems, counts, fold, freshItems, compose, plan, unitSpan, mistakes, recOf, budgetLeft, spend,
     SECOND_GAP, apart, lace
   };
 })();

@@ -1078,6 +1078,127 @@ const shown = dev => text(dev.root.innerHTML);
     ok(html2.includes(t.accTitle) || html2.includes(t.accSignedIn), 'account screen did not render');
   }
 
+  console.log('\nUN MOT LISTÉ DANS DEUX UNITÉS — sa progression d’avant les alias');
+  {
+    /* Avant les alias, « meenemen » s'apprenait aussi sous dedag:w4, son second listage. Le
+       seul appareil du compte tournait sur cette version-là : le serveur ne porte que la
+       fiche de l'alias, à l'échelon 4, dite à voix haute. */
+    const at = Date.now() - 3600000;
+    const email = 'alias@example.com', kid = account(email).id;
+    const metaAt = t => ({ dataVersion: 3, resetAt: EPOCH, xp: 0, reached: 0, scenariosDone: [], listenDone: [], progress: zero(), updatedAt: t });
+    const aliasRec = t => ({ id: 'dedag:w4', kind: 'word', stage: 4, due: t + 3 * DAY, interval: 3 * DAY, ease: 2.6, reps: 5, lapses: 0, last: t, said: true, retired: false, lastEx: 'type', updatedAt: t, base: EPOCH });
+    const rung = (dev, id) => { const r = dev.NL.state.rec(id); return r ? r.stage : -1; };
+    const onServer = id => rowsFor('srs_records', kid).find(r => r.item_id === id);
+    putRow('user_meta', { user_id: kid, updated_at: at, data: metaAt(at) });
+    putRow('srs_records', { user_id: kid, item_id: 'dedag:w4', data: aliasRec(at), updated_at: at });
+
+    /* Un appareil neuf se connecte : le mot a la progression de l'alias, et le serveur aussi. */
+    const K1 = device('K1');
+    await K1.boot(); await K1.signIn(email);
+    const k = Object.assign({}, K1.NL.state.rec('bakker:w22'));
+    ok(k.stage === 4 && k.said === true && k.folded === true,
+      'a fresh device signing in to alias-only progress has meenemen (bakker:w22) at rung ' + rung(K1, 'bakker:w22') + ': not the alias record’s rung 4, said, folded');
+    ok(!!onServer('bakker:w22') && onServer('bakker:w22').data.folded === true, 'the folded record of bakker:w22 did not reach the server');
+
+    /* Un raté après le repli. Puis un onglet resté sur l'ancienne version réécrit la fiche de
+       l'alias : le tirage suivant la ramène, plus récente. Le raté tient, ici et sur un
+       appareil qui se connecte ensuite. */
+    await wait(3);
+    K1.NL.srs.grade(K1.NL.content.byId('bakker:w22'), false, { ex: 'type' });
+    await K1.NL.sync.flush();
+    const lapsed = rung(K1, 'bakker:w22');
+    await wait(3);
+    putRow('srs_records', { user_id: kid, item_id: 'dedag:w4', data: aliasRec(Date.now()), updated_at: Date.now() });
+    await K1.NL.sync.pull();
+    const held = rung(K1, 'bakker:w22');
+    ok(lapsed === 2 && held === 2, 'a miss after the fold left meenemen at rung ' + lapsed + ', and the pull that brought the alias record back put it at rung ' + held + ': the miss did not hold');
+    const K2 = device('K2');
+    await K2.boot(); await K2.signIn(email);
+    const second = rung(K2, 'bakker:w22');
+    ok(second === 2, 'a second device signing in has meenemen at rung ' + second + ', not 2: it folded the alias record again over the miss');
+
+    /* Un troisième appareil, fermé depuis l'ancienne version, garde la fiche de l'alias.
+       Entre-temps, une remise à zéro sur K1. Il s'ouvre sur cette version, toujours connecté :
+       il ne replie pas au chargement, son tirage efface d'abord la fiche de l'alias, qui descend
+       de l'ancienne remise à zéro, et le repli de la fin du tirage ne trouve rien. */
+    await wait(3);
+    K1.NL.state.resetProgress();
+    await K1.NL.sync.flush();
+    await wait(3);
+    const K3 = device('K3', { whole: true, store: {
+      'vlaams/fallback': JSON.stringify({ srs: [aliasRec(at)], custom: [], log: [], meta: metaAt(at) }),
+      'vlaams/owner': kid,
+      'sb-session': JSON.stringify({ user: account(email) })
+    } });
+    await wait(30);
+    const left = rowsFor('srs_records', kid).map(r => r.item_id);
+    ok(rung(K3, 'bakker:w22') < 0 && rung(K3, 'dedag:w4') < 0 && left.length === 0,
+      'after a reset, a device that held an alias record has meenemen at rung ' + rung(K3, 'bakker:w22') + ', and the server holds ' + (left.join(', ') || 'nothing') + ': a fold outlived the reset');
+
+    /* Une sauvegarde faite sur l'ancienne version : la fiche de l'alias, sans marque. Rendue
+       depuis les réglages, elle se replie, et le repli part au serveur. */
+    K3.fields['backup-in'] = JSON.stringify({ app: 'vlaams-onderweg', v: 1, at, meta: metaAt(at), srs: [aliasRec(at)], custom: [], log: [] });
+    K3.tap({ act: 'paste-backup' });
+    await wait(20);
+    const b = K3.NL.state.rec('bakker:w22');
+    ok(!!b && b.stage === 4 && b.said === true && b.folded === true,
+      'a backup from before the aliases, restored, has meenemen at rung ' + rung(K3, 'bakker:w22') + ': not its alias record’s rung 4, said, folded');
+    ok(!!onServer('bakker:w22') && onServer('bakker:w22').data.folded === true, 'the record folded from a restored backup did not reach the server');
+    console.log('  appareil neuf : échelon ' + k.stage + ', ' + held + ' après un raté, ' + second + ' sur un second appareil ; remise à zéro : ' + (left.join(', ') || 'rien') + ' ; sauvegarde rendue : échelon ' + rung(K3, 'bakker:w22'));
+
+    /* Des copies d'avant sur un second appareil. P4 se connecte, replie, et fait monter
+       « meenemen » à l'échelon 3. K4, fermé depuis l'ancienne version, porte encore les deux
+       fiches d'avant et s'ouvre connecté : il prend l'échelon 3, et ne rend pas au serveur
+       celui d'avant. */
+    const fiche = (id, stage, t) => ({ id, kind: 'word', stage, due: t + DAY, interval: DAY, ease: 2.5, reps: stage + 1, lapses: 0, last: t, said: false, retired: false, lastEx: 'type', updatedAt: t, base: EPOCH });
+    const copies = () => [fiche('bakker:w22', 1, at), fiche('dedag:w4', 2, at)];
+    const serverRung = (uid, id) => { const r = rowsFor('srs_records', uid).find(x => x.item_id === id); return r ? r.data.stage : -1; };
+    const kept = (srs, mail) => {
+      const store = { 'vlaams/fallback': JSON.stringify({ srs, custom: [], log: [], meta: metaAt(at) }) };
+      if (mail) { store['vlaams/owner'] = account(mail).id; store['sb-session'] = JSON.stringify({ user: account(mail) }); }
+      return store;
+    };
+    const two = 'alias-two@example.com', tid = account(two).id;
+    putRow('user_meta', { user_id: tid, updated_at: at, data: metaAt(at) });
+    copies().forEach(r => putRow('srs_records', { user_id: tid, item_id: r.id, data: r, updated_at: at }));
+    const P4 = device('P4');
+    await P4.boot(); await P4.signIn(two);
+    await wait(3);
+    P4.NL.srs.grade(P4.NL.content.byId('bakker:w22'), true, { ex: 'type' });
+    await P4.NL.sync.flush();
+    const climbed = rung(P4, 'bakker:w22');
+    await wait(3);
+    const K4 = device('K4', { whole: true, store: kept(copies(), two) });
+    await wait(30);
+    ok(climbed === 3 && rung(K4, 'bakker:w22') === 3 && serverRung(tid, 'bakker:w22') === 3,
+      'a device reopened on copies from before has meenemen at rung ' + rung(K4, 'bakker:w22') + ' and the server at ' + serverRung(tid, 'bakker:w22') + ', after another device took it to rung ' + climbed + ': its fold went over newer progress');
+
+    /* Un onglet resté sur l'ancienne version a fait monter dedag:w4 à l'échelon 4 après la
+       dernière synchro de K5. K5 s'ouvre connecté sur ses copies d'avant : le tirage apporte
+       la fiche de l'alias, et le mot en prend l'échelon, ici et au serveur. */
+    const three = 'alias-three@example.com', hid = account(three).id;
+    putRow('user_meta', { user_id: hid, updated_at: at, data: metaAt(at) });
+    putRow('srs_records', { user_id: hid, item_id: 'bakker:w22', data: fiche('bakker:w22', 1, at), updated_at: at });
+    putRow('srs_records', { user_id: hid, item_id: 'dedag:w4', data: fiche('dedag:w4', 4, at + 60000), updated_at: at + 60000 });
+    const K5 = device('K5', { whole: true, store: kept(copies(), three) });
+    await wait(30);
+    const f5 = K5.NL.state.rec('bakker:w22') || {};
+    ok(f5.stage === 4 && f5.folded === true && serverRung(hid, 'bakker:w22') === 4,
+      'a device reopened on copies from before, with a newer alias record on the server, has meenemen at rung ' + rung(K5, 'bakker:w22') + ', folded ' + f5.folded + ', and the server at ' + serverRung(hid, 'bakker:w22') + ': not the alias record’s rung 4, folded');
+
+    /* Un appareil sans compte porte les mêmes copies d'avant : il replie au chargement, puis
+       rejoint le compte de P4. Son repli date des fiches qu'il replie, pas du chargement :
+       l'échelon 3 de P4, plus récent, passe devant. */
+    const K6 = device('K6', { whole: true, store: kept(copies()) });
+    await wait(10);
+    const alone = rung(K6, 'bakker:w22');
+    await K6.signIn(two);
+    await wait(20);
+    ok(alone === 2 && rung(K6, 'bakker:w22') === 3 && serverRung(tid, 'bakker:w22') === 3,
+      'a device without an account folded meenemen to rung ' + alone + ', and after joining an account where another device took it to rung ' + climbed + ', has it at rung ' + rung(K6, 'bakker:w22') + ' and the server at ' + serverRung(tid, 'bakker:w22') + ': its fold went over newer progress');
+    console.log('  copies d’avant : échelon ' + rung(K4, 'bakker:w22') + ' sur un appareil rouvert, ' + rung(K5, 'bakker:w22') + ' quand l’alias est plus récent au serveur, ' + rung(K6, 'bakker:w22') + ' sur un appareil sans compte qui rejoint le compte (' + alone + ' avant)');
+  }
+
   console.log('\n' + checks + ' checks, ' + (fails ? fails + ' FAILED' : 'SYNC OK'));
   process.exit(fails ? 1 : 0);
 })().catch(e => { console.log('CRASH ' + (e && e.stack || e)); process.exit(1); });

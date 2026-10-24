@@ -53,11 +53,13 @@ whether that stays.
   `vlaams/noaccount` (« continue without an account »). Renaming one orphans every
   database already on a device and every backup already written.
 - The same goes for **field names inside a stored record** — `stage`, `due`, `interval`,
-  `ease`, `reps`, `lapses`, `said`, `retired`, `base`, and `displayLang` in the stored meta.
-  Records are stored and synced whole, so a rename orphans them exactly as a key rename would
-  (a missing `displayLang` means English: renaming it puts every learner back in English
-  without a word). `GLOSSARY.md` says to call a stage a **rung** in prose and in new names;
-  it is not an instruction to rename the stored field.
+  `ease`, `reps`, `lapses`, `said`, `retired`, `base`, `folded`, and `displayLang` in the
+  stored meta. Records are stored and synced whole, so a rename orphans them exactly as a key
+  rename would (a missing `displayLang` means English: renaming it puts every learner back in
+  English without a word; a missing `folded` means a record not yet folded: renaming it folds
+  every word listed in two units again, over the misses made since, ADR 0006). `GLOSSARY.md`
+  says to call a stage a **rung** in prose and in new names; it is not an instruction to
+  rename the stored field.
 - `const`, or `let` where it changes; no optional chaining (`test/smoke.js` checks both).
   Arrows for short helpers and callbacks, `function` declarations for longer named
   functions; existing code is not converted.

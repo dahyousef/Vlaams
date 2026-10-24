@@ -1900,10 +1900,12 @@ NL.state = (function () {
 
   /* ---- SRS records ---- */
   const rec = id => mem.srs.get(id) || null;
-  function setRec(r, silent) {
+  function setRec(r, silent, at) {
     /* `base` : la remise à zéro en vigueur quand la fiche est écrite ici. Une
-       fiche venue du serveur garde la sienne. */
-    if (!silent) { r.updatedAt = Date.now(); r.base = meta.resetAt; }
+       fiche venue du serveur garde la sienne. `at` : l'instant dont la fiche
+       date, quand ce n'est pas celui de l'écriture — un repli d'alias date de
+       la plus récente des fiches qu'il replie (srs.js). */
+    if (!silent) { r.updatedAt = at || Date.now(); r.base = meta.resetAt; }
     mem.srs.set(r.id, r); put('srs', r); saveLS();
     if (!silent) emit('rec', r);
   }
@@ -2326,6 +2328,39 @@ NL.srs = (function () {
     return { due, said, retired, seen };
   }
 
+  /* ---------------- alias ---------------- */
+  /* Un mot ou une phrase listé dans deux unités est un seul élément, celui du premier
+     listage (content/index.js). Avant, il s'apprenait aussi sous l'id du second : cette
+     progression-là passe à l'élément, une fois. La fiche la plus avancée du groupe gagne,
+     entière — échelon, puis retirée, puis intervalle, puis dernière réponse ; à égalité,
+     celle de l'élément —, car son échéance, son intervalle et sa facilité vont ensemble.
+     Dit à voix haute sous l'un des ids, l'élément est dit. La fiche écrite porte `folded` :
+     une fiche d'alias qu'un tirage ramène ensuite ne repasse plus, et un raté d'après
+     tient. Elle part au serveur et descend de la remise à zéro en vigueur (`base`,
+     ADR 0006), comme une réponse, mais elle date de la plus récente des fiches qu'elle
+     replie, pas de l'instant du repli : une écriture plus récente, faite ailleurs, passe
+     encore devant elle. Les fiches d'alias restent où elles sont, inertes. Appelé là où les
+     fiches arrivent en bloc : au chargement d'un appareil qu'aucun compte ne possède, à la
+     fin d'un tirage, après une restauration. Rend le nombre d'éléments repliés. */
+  const FOLD_RANK = ['stage', 'retired', 'interval', 'last'];
+  const ahead = (a, b) => (FOLD_RANK.map(k => (+a[k] || 0) - (+b[k] || 0)).find(d => d !== 0) || 0) > 0;
+  function fold() {
+    let n = 0;
+    NL.content.allItems().forEach(it => {
+      if (!it.aliases) return;
+      const own = NL.state.rec(it.id);
+      if (own && own.folded) return;
+      const others = it.aliases.map(id => NL.state.rec(id)).filter(Boolean);
+      if (!others.length) return;
+      const group = (own ? [own] : []).concat(others);
+      const win = group.reduce((best, r) => ahead(r, best) ? r : best);
+      const newest = Math.max(...group.map(r => r.updatedAt || 0));
+      NL.state.setRec(Object.assign({}, win, { id: it.id, kind: it.kind, said: group.some(r => !!r.said), folded: true }), false, newest);
+      n++;
+    });
+    return n;
+  }
+
   /* ---------------- ce qui résiste ---------------- */
   /* Chaque réponse est enregistrée depuis le premier jour, et aucun écran ne
      l'avait jamais relue. Les éléments sont classés par nombre de réponses
@@ -2507,7 +2542,7 @@ NL.srs = (function () {
   return {
     RUNGS, STEP, PACE, MAX_STAGE, MAX_TASKS, PRODUCE, NEW_SHARE, NEW_MIN, NEW_MAX, TIER_MAX, RETIRE_AT,
     maxRung, pace, exerciseFor, firstAloud, needsVoice, supports, grade, seed, isSeen, stageOf, atTop,
-    dueItems, counts, freshItems, compose, plan, unitSpan, mistakes, recOf, budgetLeft, spend,
+    dueItems, counts, fold, freshItems, compose, plan, unitSpan, mistakes, recOf, budgetLeft, spend,
     SECOND_GAP, apart, lace
   };
 })();
@@ -2849,6 +2884,9 @@ NL.sync = (function () {
 
   const owner = () => { try { return localStorage.getItem(OWNER); } catch (e) { return null; } };
   const setOwner = id => { try { id ? localStorage.setItem(OWNER, id) : localStorage.removeItem(OWNER); } catch (e) {} };
+  /* Un compte possède l'appareil et la synchro est configurée : un tirage suivra le
+     chargement, et le repli des alias l'attend (app.js). */
+  const owned = () => enabled && !!owner();
 
   function notify() { subs.forEach(fn => { try { fn(status()); } catch (e) {} }); }
   const onChange = fn => subs.push(fn);
@@ -3130,6 +3168,7 @@ NL.sync = (function () {
       });
 
       NL.content.refresh();
+      NL.srs.fold();
       done();
     } catch (e) { fail(e); }
   }
@@ -3262,7 +3301,7 @@ NL.sync = (function () {
   }
 
   return {
-    enabled, init, signIn, verifyCode, signOut, pull, flush, queueAll, status, onChange, mergeMeta,
+    enabled, init, owned, signIn, verifyCode, signOut, pull, flush, queueAll, status, onChange, mergeMeta,
     get user() { return user; }
   };
 })();
@@ -6284,7 +6323,7 @@ NL.ui = (function () {
     try { data = JSON.parse(raw); } catch (e) { /* reported below */ }
     const old = NL.state.isOldBackup(data);
     if (NL.state.importAll(data)) {
-      NL.content.refresh(); sheet = null;
+      NL.content.refresh(); NL.srs.fold(); sheet = null;
       if (NL.sync.user) { NL.sync.queueAll(); NL.sync.flush(); }
       render(); toast(old ? t.importedOld : t.imported);
     }
@@ -8239,6 +8278,11 @@ NL.screens.compte = (function () {
       const wiped = NL.state.migrate();
       NL.lang.apply();
       NL.content.refresh();
+      /* Le repli des alias. Un appareil qu'un compte possède le fait à la fin du tirage qui
+         suit (sync.js), sur les fiches de tous les appareils du compte : fait ici, sur ses
+         seules copies, il marquerait le mot replié, et une fiche d'alias plus récente
+         qu'apporte le tirage ne passerait plus. */
+      if (!NL.sync.owned()) NL.srs.fold();
       NL.state.touchDay();
       NL.ui.bind(root);
       NL.ui.boot();

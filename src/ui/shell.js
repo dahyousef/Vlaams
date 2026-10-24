@@ -291,7 +291,7 @@ NL.ui = (function () {
     try { data = JSON.parse(raw); } catch (e) { /* reported below */ }
     const old = NL.state.isOldBackup(data);
     if (NL.state.importAll(data)) {
-      NL.content.refresh(); sheet = null;
+      NL.content.refresh(); NL.srs.fold(); sheet = null;
       if (NL.sync.user) { NL.sync.queueAll(); NL.sync.flush(); }
       render(); toast(old ? t.importedOld : t.imported);
     }
