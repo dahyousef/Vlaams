@@ -419,15 +419,19 @@ NL.screens.sessie = (function () {
       : L.close ? NL.t.almost
         : L.source === 'defi' && L.lives <= 0 ? NL.t.defiOut
           : NL.t.wrongTitle;
-    /* Dans « Comment le dit-on ici ? » la variante est la réponse : elle remplace
-       la ligne de réponse, juste ou faux, que la ligne flamande soit réglée ou non.
-       Ailleurs la ligne flamande ne répète ni le standard ni la réponse. */
-    const vl = c.ex === 'vlaams' ? EX.hereLine(it, '', true) : '';
-    const be = vl || (NL.state.meta().showFlemish !== false ? EX.hereLine(it, ans, false) : '');
-    /* Un autre élément au même sens a été tapé : on dit quel mot était demandé. */
+    /* Juste, ce que la personne a donné (`given`) est déjà à l'écran : la ligne de
+       réponse qui le répète disparaît, et « Ici on dit » ne le redit pas. Dans
+       « Comment le dit-on ici ? » la variante est la réponse : choisie, rien ne la
+       redit ; manquée, elle remplace la ligne de réponse, que la ligne flamande soit
+       réglée ou non. Ailleurs la ligne flamande ne répète ni le standard ni la réponse. */
+    const given = ok ? ex.given(c.task, L) : null;
+    const repeat = given != null && U.norm(given) === U.norm(ans);
+    const vl = c.ex === 'vlaams' && !repeat ? EX.hereLine(it, '', true) : '';
+    const be = c.ex === 'vlaams' ? vl : NL.state.meta().showFlemish !== false ? EX.hereLine(it, [ans, given], false) : '';
     /* La langue de la réponse est un champ de l'exercice : du néerlandais, un sens dans sa langue,
        ou rien quand les deux se mêlent (les paires de « match »). */
     const ansLang = ex.answers === 'nl' ? NL.gloss.attr('nl') : ex.answers === 'gloss' ? NL.gloss.langAttr(it) : '';
+    /* Un autre élément au même sens a été tapé : on dit quel mot était demandé. */
     const asked = ok && L.other ? '<p>' + NL.t.askedFor + ' <b' + ansLang + '>' + esc(ans) + '</b></p>' : '';
     const also = it && it.also && it.also.length
       ? '<p class="v-also">' + NL.t.alsoSaid + ' <span' + NL.gloss.attr('nl') + '>' + esc(it.also.join(', ')) + '</span></p>' : '';
@@ -437,7 +441,7 @@ NL.screens.sessie = (function () {
         ? '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7"/></svg>'
         : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>') + '</span>' +
       '<div><h5>' + note + '</h5>' +
-      (vl ? '' : asked || (ans ? '<p><b' + ansLang + '>' + esc(ans) + '</b></p>' : '')) +
+      (vl || repeat ? '' : asked || (ans ? '<p><b' + ansLang + '>' + esc(ans) + '</b></p>' : '')) +
       be + also +
       NL.ui.ifText(it && it.note, 'p', 'v-note') +
       '</div></div>' +

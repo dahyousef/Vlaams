@@ -50,6 +50,8 @@ NL.ex = (function () {
   const tileShuffleGuard = html => html || '<span class="muted">—</span>';
 
   const said = (task, L) => L.picked.map(i => task.bank[i]).join(' ');
+  /* Le libellé de l'option choisie, null sans choix. */
+  const chosenLabel = (task, L) => L.sel && task.opts[L.sel.i] ? task.opts[L.sel.i].label : null;
 
   /* Une note de prononciation se dit en mots reconnus, pas en pourcentage. */
   const wordScore = parts => NL.t.wordsHeard((parts || []).filter(p => p.ok).length, (parts || []).length);
@@ -143,13 +145,16 @@ NL.ex = (function () {
 
   /* ---------------- the types ----------------
      Chaque type dit en quoi il pose (`asks`) et en quoi il répond (`answers`) :
-     'nl' du néerlandais, 'gloss' un sens dans sa langue, null les deux mêlés. Le
-     pied de la séance lit `answers` ; test/lang.js refuse un type qui n'a pas les deux. */
+     'nl' du néerlandais, 'gloss' un sens dans sa langue, null les deux mêlés. Il
+     dit aussi ce que la personne a donné (`given`) : l'option choisie, les tuiles,
+     le texte tapé ou entendu, null quand rien ne se compare à la réponse. Le pied
+     de la séance lit `answers` et `given` ; test/lang.js refuse un type sans les trois. */
   const R = {};
 
   R.pick = {
     id: 'pick', get kicker() { return NL.t.exPick; },
     asks: 'gloss', answers: 'nl',
+    given: chosenLabel,
     build(item) {
       const right = U.bare(item.nl);
       /* Quatre options, pas trois : au hasard on tombe juste une fois sur quatre. */
@@ -168,6 +173,7 @@ NL.ex = (function () {
   R.recall = {
     id: 'recall', get kicker() { return NL.t.exRecall; },
     asks: 'nl', answers: 'gloss',
+    given: chosenLabel,
     build(item) {
       const opts = U.shuffle([{ label: NL.gloss.bare(item), ok: true }].concat(
         others(item, 3, 'gloss').map(l => ({ label: l, ok: false }))));
@@ -185,6 +191,7 @@ NL.ex = (function () {
   R.article = {
     id: 'article', get kicker() { return NL.t.exArticle; },
     asks: 'nl', answers: 'nl',
+    given: chosenLabel,
     build: item => ({ type: 'article', item, opts: [{ label: 'de', ok: item.art === 'de' }, { label: 'het', ok: item.art === 'het' }] }),
     view(t, L, phase) {
       const n = U.bare(t.item.nl);
@@ -201,6 +208,7 @@ NL.ex = (function () {
   R.bank = {
     id: 'bank', get kicker() { return NL.t.exBank; },
     asks: 'gloss', answers: 'nl',
+    given: said,
     build(item) {
       const d = (item.drills && item.drills.length) ? U.one(item.drills) : Object.assign({ nl: item.nl }, NL.gloss.meaning(item));
       return { type: 'bank', item, drill: d, target: d.nl, bank: bankFor(d.nl, item) };
@@ -216,6 +224,7 @@ NL.ex = (function () {
   R.order = {
     id: 'order', get kicker() { return NL.t.exOrder; },
     asks: 'gloss', answers: 'nl',
+    given: said,
     build(item) {
       const d = U.one(item.drills || [Object.assign({ nl: item.nl }, NL.gloss.meaning(item))]);
       return { type: 'order', item, drill: d, target: d.nl, bank: U.shuffle(U.tiles(d.nl)) };
@@ -232,6 +241,7 @@ NL.ex = (function () {
   R.cloze = {
     id: 'cloze', get kicker() { return NL.t.exCloze; },
     asks: 'nl', answers: 'nl',
+    given: chosenLabel,
     build(item) {
       const d = item.drills ? U.one(item.drills) : Object.assign({ nl: item.nl }, NL.gloss.meaning(item));
       /* Pour un mot, le trou tombe sur le mot enseigné, pas sur le plus long de
@@ -268,6 +278,7 @@ NL.ex = (function () {
   R.dictation = {
     id: 'dictation', get kicker() { return NL.t.exDictation; },
     asks: 'nl', answers: 'nl',
+    given: (t, L) => t.bank ? said(t, L) : L.input,
     build(item) {
       const target = item.kind === 'word' ? U.bare(item.nl) : item.nl;
       return { type: 'dictation', item, target, bank: item.kind === 'word' ? null : bankFor(target, item, 3) };
@@ -292,6 +303,7 @@ NL.ex = (function () {
   R.type = {
     id: 'type', get kicker() { return NL.t.exType; },
     asks: 'gloss', answers: 'nl',
+    given: (t, L) => L.input,
     build(item) {
       return { type: 'type', item, target: item.kind === 'word' ? U.bare(item.nl) : (item.drills ? item.nl : item.nl), prompt: item.kind === 'word' ? NL.gloss.bare(item) : NL.gloss.of(item) };
     },
@@ -321,6 +333,7 @@ NL.ex = (function () {
   R.speak = {
     id: 'speak', get kicker() { return NL.t.exSpeak; },
     asks: 'nl', answers: 'nl',
+    given: (t, L) => L.speech.heard || null,
     build(item) {
       return { type: 'speak', item, target: item.kind === 'word' ? U.bare(item.nl) : item.nl, prompt: item.kind === 'word' ? NL.gloss.bare(item) : NL.gloss.of(item) };
     },
@@ -444,6 +457,7 @@ NL.ex = (function () {
   R.intrus = {
     id: 'intrus', get kicker() { return NL.t.exIntrus; },
     asks: 'nl', answers: 'nl',
+    given: chosenLabel,
     build(item) {
       const pool = NL.content.allItems().filter(x => x.kind === 'word' && x.art && x.id !== item.id);
       const same = U.sample(pool.filter(x => x.art === item.art), 2);
@@ -467,6 +481,7 @@ NL.ex = (function () {
   R.corrige = {
     id: 'corrige', get kicker() { return NL.t.exCorrige; },
     asks: 'nl', answers: 'nl',
+    given: () => null,
     build(item) {
       const toks = U.tiles(item.nl);
       const i = 1 + ((Math.random() * Math.max(1, toks.length - 2)) | 0);
@@ -495,6 +510,7 @@ NL.ex = (function () {
   R.vlaams = {
     id: 'vlaams', get kicker() { return NL.t.exVlaams; },
     asks: 'nl', answers: 'nl',
+    given: chosenLabel,
     build(item) {
       const any = NL.content.allItems().filter(x =>
         x.be && x.id !== item.id && U.norm(x.be) !== U.norm(x.nl) && U.norm(x.be) !== U.norm(item.be));
@@ -529,6 +545,7 @@ NL.ex = (function () {
   R.open = {
     id: 'open', get kicker() { return NL.t.exOpen; },
     asks: 'gloss', answers: 'nl',
+    given: () => null,
     build: item => ({ type: 'open', item, task: item.open }),
     view(t, L, phase) {
       const met = phase === 'ask' ? null : rubric(t.task, L.input);
@@ -550,6 +567,7 @@ NL.ex = (function () {
   R.match = {
     id: 'match', get kicker() { return NL.t.exMatch; },
     asks: null, answers: null,
+    given: () => null,
     build(items) {
       const pairs = items.slice(0, 5).map(it => ({ id: it.id, nl: U.bare(it.nl), gloss: NL.gloss.bare(it), lang: NL.gloss.langOf(it), item: it }));
       return {
@@ -587,8 +605,9 @@ NL.ex = (function () {
   };
 
   /* La ligne « Ici on dit » : les formes flamandes de l'élément, sans celle qui
-     répète le néerlandais standard ni la réponse déjà affichée (`shown`), sauf
-     `keepSame` — dans « Comment le dit-on ici ? » la variante EST la réponse. En
+     répète le néerlandais standard ni ce qui est déjà à l'écran (`shown` : la
+     réponse, et ce que la personne a donné), sauf `keepSame` — dans « Comment
+     le dit-on ici ? » la variante EST la réponse. En
      gras, ce qui change par rapport au standard ; la ponctuation reste dehors. */
   const PUNCT = '[.,!?;:"()…]*';
   function boldForm(item, form) {
@@ -612,8 +631,8 @@ NL.ex = (function () {
   }
   function hereLine(item, shown, keepSame) {
     if (!item || !item.be) return '';
-    const own = U.norm(U.bare(item.nl)), seen = U.norm(shown);
-    const forms = variants(item).filter(f => keepSame || (U.norm(U.bare(f)) !== own && U.norm(U.bare(f)) !== seen));
+    const own = U.norm(U.bare(item.nl)), seen = [].concat(shown).filter(s => s != null).map(s => U.norm(U.bare(s)));
+    const forms = variants(item).filter(f => keepSame || (U.norm(U.bare(f)) !== own && seen.indexOf(U.norm(U.bare(f))) < 0));
     if (!forms.length) return '';
     return '<p class="v-be">' + NL.t.hereThey + ' ' + forms.map(f => '<span' + NL.gloss.attr('nl') + '>' + boldForm(item, f) + '</span>').join(', ') + '</p>';
   }

@@ -46,15 +46,18 @@ function ask(it, ex, rung, lastEx) {
 }
 const askTyped = it => it.kind === 'word' ? ask(it, 'type', 2, 'dictation') : ask(it, 'type', 3, 'speak');
 
-/* Le panneau qui suit « Vérifier », et ce que la réponse a laissé à l'élément. */
+/* Le panneau qui suit « Vérifier », et ce que la réponse a laissé à l'élément.
+   `answer` est la ligne de réponse en gras, null quand le panneau ne la montre pas. */
 function verdict(it) {
   const html = B.app.innerHTML, at = html.indexOf('<div class="foot');
   const foot = at >= 0 ? html.slice(at) : '';
   const be = (foot.match(/<p class="v-be">([\s\S]*?)<\/p>/) || [null, null])[1];
+  const line = (foot.match(/<p><b[^>]*>([\s\S]*?)<\/b><\/p>/) || [null, null])[1];
   const r = NL.srs.recOf(it);
   return {
     right: foot.indexOf('<div class="foot ok"') === 0, foot, text: text(foot),
     be: be === null ? null : text(be),
+    answer: line === null ? null : text(line),
     bold: be === null ? [] : (be.match(/<b>([\s\S]*?)<\/b>/g) || []).map(b => text(b)).join(' ').split(' ').filter(Boolean).map(U.norm),
     rec: { stage: NL.srs.stageOf(it), lapses: r.lapses, reps: r.reps, interval: r.interval, ease: r.ease, said: r.said, retired: !!r.retired }
   };
@@ -230,25 +233,29 @@ NL.state.open().then(() => {
   }
 
   console.log('\nLE PANNEAU');
-  /* « Comment le dit-on ici ? » : la variante est la réponse, une seule fois, et
-     ce qui change par rapport à la phrase standard du sujet est en gras. Même
-     sans la ligne flamande dans les réglages : c'est la réponse. */
-  [true, false].forEach(showFlemish => {
+  /* « Comment le dit-on ici ? » : passé, la variante est la réponse, une seule
+     fois, et ce qui change par rapport à la phrase standard du sujet est en gras.
+     Même sans la ligne flamande dans les réglages : c'est la réponse. Choisie,
+     elle est déjà à l'écran : le panneau ne la redit pas. */
+  [true, false].forEach(showFlemish => ['right', 'wrong'].forEach(how => {
     fresh();
     NL.state.setMeta({ showFlemish });
     const it = find('Ik ben Nederlands aan het leren.');
     if (!ask(it, 'vlaams', 1, 'bank')) { ok(false, 'setup: the hè sentence is never asked in « Comment le dit-on ici ? »'); return; }
-    answer.right();
+    answer[how]();
     const v = verdict(it), be = U.norm(it.be);
     const times = U.norm(v.text).split(be).length - 1;
-    ok(v.right, '« Comment le dit-on ici ? » marked the right option wrong');
-    ok(times === 1, '« Comment le dit-on ici ? » (showFlemish ' + showFlemish + ') shows the be variant ' + times + ' times: ' + v.text);
-    ok(JSON.stringify(v.bold) === JSON.stringify(['hè']),
-      '« Comment le dit-on ici ? » (showFlemish ' + showFlemish + ') puts ' + JSON.stringify(v.bold) + ' in bold, not « hè » alone: ' + v.text);
+    const at = '« Comment le dit-on ici ? » (showFlemish ' + showFlemish + ', ' + how + ')';
+    ok(v.right === (how === 'right'), at + ' gives the wrong verdict');
+    if (how === 'right') ok(times === 0 && v.be === null && v.answer === null, at + ' repeats the option just chosen: ' + v.text);
+    else {
+      ok(times === 1, at + ' shows the be variant ' + times + ' times: ' + v.text);
+      ok(JSON.stringify(v.bold) === JSON.stringify(['hè']), at + ' puts ' + JSON.stringify(v.bold) + ' in bold, not « hè » alone: ' + v.text);
+    }
     S.abandon();
-  });
+  }));
   NL.state.setMeta({ showFlemish: true });
-  console.log('  vlaams         la variante une fois, « hè » en gras');
+  console.log('  vlaams         choisie, rien de redit ; passée, la variante une fois, « hè » en gras');
 
   {
     const spoor = typed('Op welk spoor?', 'Op welk spoor?');
@@ -268,6 +275,20 @@ NL.state.open().then(() => {
     const dank = typed('dank u wel', 'dank u wel');
     if (dank) ok(dank.text.indexOf(t.alsoSaid + ' dank u, bedankt') >= 0, '`dank u wel` does not show « ' + t.alsoSaid + ' dank u, bedankt »: ' + dank.text);
     console.log('  ici on dit     rien pour « Op welk spoor? », « hè », « da nie », « jaja » ; on dit aussi');
+
+    /* Une bonne réponse n'est pas redite. Tapée telle quelle, la ligne en gras
+       disparaît et « Ici on dit » garde l'autre forme. Tapée en flamand, la
+       réponse standard reste et la forme tapée ne revient pas. Fausse, tout reste. */
+    const same = typed('nog eens', 'nog eens');
+    if (same) ok(same.right && same.answer === null && same.be !== null && U.norm(same.be) === U.norm(t.hereThey + ' nog is'),
+      '`nog eens` typed right shows « ' + same.answer + ' » in bold and « ' + same.be + ' », not only « ' + t.hereThey + ' nog is »: ' + same.text);
+    const asBe = typed('nog eens', 'nog is');
+    if (asBe) ok(asBe.right && asBe.answer === 'nog eens' && asBe.be === null,
+      '`nog is` typed for `nog eens` shows « ' + asBe.answer + ' » in bold and « ' + asBe.be + ' », not « nog eens » alone: ' + asBe.text);
+    const off = typed('nog eens', 'nog');
+    if (off) ok(!off.right && off.answer === 'nog eens' && off.be !== null,
+      '`nog` typed for `nog eens` is marked right, or loses its answer line or « ' + t.hereThey + ' »: ' + off.text);
+    console.log('  pas redit      « nog eens » tapé juste, en flamand, faux');
   }
 
   console.log('\n' + checks + ' contrôles, ' + fails + ' en échec');

@@ -674,6 +674,9 @@ function displayChecks() {
       const E = NL.ex.registry[id];
       ['asks', 'answers'].forEach(f => ok(Object.prototype.hasOwnProperty.call(E, f) && SIDES.indexOf(E[f]) >= 0,
         '#75.3 : ' + id + '.' + f + ' manque, ou ne vaut ni nl, ni gloss, ni null'));
+      /* Et ce que la personne a donné (`given`), que le pied ne redit pas quand c'est juste. */
+      ok(Object.prototype.hasOwnProperty.call(E, 'given') && typeof E.given === 'function',
+        id + '.given manque : le pied ne sait pas ce que la personne a donné');
       if (E.answers !== 'nl' && E.answers !== 'gloss') return;
       [brood, phrase, rule].some(x => {
         let a; try { a = E.answer(E.build(x)); } catch (e) { return false; }
