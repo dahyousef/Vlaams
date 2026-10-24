@@ -3,7 +3,7 @@
    coupe les mots qui en ont en lots d'unités entières ; le rédacteur en prend une ou deux, telles
    que Tatoeba les écrit (5b), chacune avec une traduction anglaise et une française que Tatoeba
    lui lie ; Check refait à HEAD les règles du classement ; Merge écrit les phrases dans
-   src/content/sourced.js, sous le néerlandais du mot.
+   src/content/sourced.js, sous le néerlandais du mot, et récrit docs/attribution/tatoeba.tsv.
 
    Une ligne écrite : { id, stamp, sentences: [phrase…] }, de 0 à 2 phrases, et skip, la raison
    sur une ligne, quand il n'y en a aucune. Une phrase : { src, nl, gap, en, enSrc, fr, frSrc },
@@ -13,15 +13,18 @@
    (src/content/examples.js). Les phrases sourcées n'y sont pas : Merge les écrit, et une
    seconde Merge ne doit pas trouver ses propres lignes périmées.
 
-   Le genre examples-gen (tools/content/kinds/examples-gen.js) reprend d'ici RULES, cut, MAX et
-   stamp. Ce que Check imprime est en anglais, comme le reste du kit. */
+   Le genre examples-gen (tools/content/kinds/examples-gen.js) reprend d'ici RULES, cut, line, MAX
+   et stamp. Ce que Check imprime est en anglais, comme le reste du kit. */
+const fs = require('fs'), path = require('path');
 const tatoeba = require('../tatoeba');
+const table = require('../lib/table');
 const sequence = require('../../../test/lib/sequence');
 const spelling = require('../../../test/lib/spelling');
 const { tokens } = spelling;
 
 const MAX = 40;
 const FIELDS = ['src', 'nl', 'gap', 'en', 'enSrc', 'fr', 'frSrc'];
+const CREDITS = 'word	nld	nld_owner	eng	eng_owner	fra	fra_owner	adapted';
 
 const line = s => typeof s === 'string' && s.trim() !== '' && !/[\r\n]/.test(s);
 /* Les chiffres et les {jetons} d'un texte, triés : test/content.js tient le fr et l'en de chaque
@@ -133,6 +136,32 @@ function check(row, input, ctx) {
   return out;
 }
 
+/* Le crédit : docs/attribution/tatoeba.tsv récrit en entier, ses commentaires et ses fins de
+   ligne gardés. Une ligne par phrase de Tatoeba que src/content/sourced.js tient : celles de
+   cette Merge, prises dans leur ligne d'entrée, et celles d'avant, gardées telles qu'elles
+   étaient. Triées par mot, puis par numéro. */
+function credit(taken, ctx) {
+  const file = path.join(ctx.repo, 'docs', 'attribution', 'tatoeba.tsv');
+  const was = fs.readFileSync(file, 'utf8'), eol = /\r\n/.test(was) ? '\r\n' : '\n';
+  const all = was.split(/\r?\n/), head = all.filter(l => l[0] === '#');
+  const old = all.filter(l => l && l[0] !== '#' && l !== CREDITS).map(l => l.split('\t'));
+  const sourced = table.load(path.join(ctx.repo, 'src', 'content', 'sourced.js')).entries;
+  const held = new Set();
+  Object.keys(sourced).forEach(nl => sourced[nl].forEach(d => { if (Number.isInteger(d.src)) held.add(nl + '\t' + d.src); }));
+  const rows = new Map();
+  old.forEach(c => { if (held.has(c[0] + '\t' + c[1])) rows.set(c[0] + '\t' + c[1], c); });
+  const owner = o => o || '-';
+  taken.forEach(t => (t.row.sentences || []).forEach(d => {
+    const c = t.input.candidates.find(x => x.id === d.src);
+    const en = c.en.find(x => x.id === d.enSrc), fr = c.fr.find(x => x.id === d.frSrc);
+    const adapted = [d.en !== en.text ? 'en' : '', d.fr !== fr.text ? 'fr' : ''].filter(Boolean).join(' ') || '-';
+    rows.set(t.src.nl + '\t' + d.src, [t.src.nl, d.src, owner(c.owner), d.enSrc, owner(en.owner), d.frSrc, owner(fr.owner), adapted]);
+  }));
+  const sorted = [...rows.values()].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : Number(a[1]) - Number(b[1])));
+  fs.writeFileSync(file, head.concat([CREDITS], sorted.map(c => c.join('\t'))).join(eol) + eol);
+  return ['ok tatoeba.tsv ' + sorted.length + ' rows'];
+}
+
 module.exports = {
   stamp: ['meaning', 'art', hand],
   fields: ['sentences'],
@@ -141,6 +170,7 @@ module.exports = {
   split,
   check,
   merge: row => ({ sourced: row.sentences.length ? row.sentences.map(d => ({ nl: d.nl, fr: d.fr, en: d.en, gap: d.gap, src: d.src })) : undefined }),
+  write: credit,
   readWhole: row => (row.sentences || []).some(d => 'edited' in d) ? 'edited translation' : '',
-  MAX, RULES, cut
+  MAX, CREDITS, RULES, cut, line
 };

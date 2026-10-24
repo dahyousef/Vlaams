@@ -796,7 +796,77 @@ async function main() {
     same(K.check(row('ikengij:w24', { sentences: [good] }), engels, { repo: EX, course: () => course(EX) }), [missing], 'Check sans l\'extrait');
     same(runEx('split.js', [EX, path.join(EX, 'sans-extrait', 'examples')]), { code: 1, lines: ['fail examples -: the kind\'s split threw: ' + missing] }, 'Split sans l\'extrait');
     fs.renameSync(EXTRACT + '.ôté', EXTRACT);
-    console.log('  examples       ' + cut.length + ' lots sur le cours mesuré ; Split, Check et ses règles sur un extrait de 5 phrases');
+
+    /* Merge : les phrases sous le néerlandais du mot dans sourced.js, et le crédit récrit. Avant,
+       sourced.js tient une phrase de « sorry », créditée, et le crédit une ligne de trop. */
+    draft[0].sentences[0].gap = 'Misschien';
+    draft[1].sentences[1] = Object.assign({}, other, { fr: 'Pardon, vous parlez anglais ?', edited: 'the learner hears a plain question' });
+    put(BATCH, 'draft.json', draft);
+    put(BATCH, 'review.json', draft.map(r => ({ id: r.id, verdict: 'keep' })));
+    const sorry = [{ nl: 'Sorry, ik ben te laat.', fr: 'Pardon, je suis en retard.', en: 'Sorry, I am late.', gap: 'Sorry', src: 900 }];
+    table.update(SOURCED, { sorry });
+    /* Le crédit de la copie réduit à ses commentaires et à son en-tête, comme sourced.js est vidé. */
+    const CREDITS = path.join(EX, 'docs', 'attribution', 'tatoeba.tsv'), was = text(CREDITS);
+    const eol = /\r\n/.test(was) ? '\r\n' : '\n';
+    const credits = was.split(/\r?\n/).filter(l => l[0] === '#').concat([K.CREDITS]).join(eol) + eol;
+    fs.writeFileSync(CREDITS, credits + ['sorry\t900\tanna\t901\tbob\t902\tdora\t-', 'drie\t777\tanna\t778\tbob\t779\tdora\t-'].join(eol) + eol);
+    const MERGED = ['ok examples 3 taken, 0 dropped', 'ok sourced.js 2 set, 0 removed', 'ok tatoeba.tsv 4 rows'];
+    same(runEx('merge.js', [EX, KD]), { code: 0, lines: MERGED }, 'Merge écrit les phrases prises, rien pour une ligne sans phrase, et récrit le crédit');
+    const held = table.load(SOURCED).entries;
+    same([held['het Engels'], held.misschien, held.sorry, 'drie' in held], [[
+      { nl: 'Ze spreekt goed Engels.', fr: 'Elle parle bien anglais.', en: 'She speaks English well.', gap: 'Engels', src: 102 },
+      { nl: 'Sorry, spreekt u Engels?', fr: 'Pardon, vous parlez anglais ?', en: 'Sorry, do you speak English?', gap: 'Engels', src: 101 }
+    ], [{ nl: 'Misschien is het waar.', fr: 'C\'est peut-être vrai.', en: 'Maybe it\'s true.', gap: 'Misschien', src: 104 }], sorry, false],
+    'sourced.js : { nl, fr, en, gap, src } dans l\'ordre de la ligne, la phrase d\'avant gardée');
+    same(text(CREDITS), credits + ['het Engels\t101\tanna\t201\tbob\t301\t-\tfr', 'het Engels\t102\t-\t203\tcarl\t302\tdora\t-',
+      'misschien\t104\tanna\t204\tbob\t304\tdora\t-', 'sorry\t900\tanna\t901\tbob\t902\tdora\t-'].join(eol) + eol,
+    'le crédit : une ligne par phrase de Tatoeba que sourced.js tient, triée, l\'auteur absent écrit « - », adapted pour une traduction changée');
+    same(course(EX).byId('ikengij:w24').drills, held['het Engels'], 'le mot a ses phrases');
+    const after = text(SOURCED);
+    same(runEx('merge.js', [EX, KD]), { code: 0, lines: MERGED }, 'une seconde Merge ne trouve pas ses lignes périmées');
+    same(text(SOURCED), after, 'et ne change rien');
+    same(runEx('split.js', [EX, path.join(EX, 'encore', 'examples')]), { code: 0, lines: ['tijd 1'] }, 'Split ne propose plus un mot qui a ses phrases');
+
+    /* examples-gen : les mots nommés dans named.txt, une phrase écrite pour chacun, lue deux fois. */
+    const G = require(path.join(EX, 'tools', 'content', 'kinds', 'examples-gen'));
+    const genDir = parent => path.join(EX, parent, 'examples-gen');
+    const named = (parent, body) => { fs.mkdirSync(genDir(parent), { recursive: true }); fs.writeFileSync(path.join(genDir(parent), 'named.txt'), body); };
+    same(runEx('split.js', [EX, genDir('sans-liste')]), { code: 1, lines: ['fail examples-gen -: the kind\'s split threw: named.txt is missing: it holds the words the maintainer named, one per line, or none'] },
+      'Split refuse sans named.txt');
+    named('mauvaise', 'drie\nhet Engels\nzzz\ndrie\n');
+    same(runEx('split.js', [EX, genDir('mauvaise')]), { code: 1, lines: ['fail examples-gen -: the kind\'s split threw: named.txt: « het Engels » already has sentences; « zzz » is not a word of the course; « drie » twice'] },
+      'un mot nommé est un mot du cours encore sans phrase, une fois');
+    named('aucun', '# the maintainer named none\n\n');
+    same(runEx('split.js', [EX, genDir('aucun')]), { code: 0, lines: [] }, 'aucun mot nommé : zéro ligne');
+    same(runEx('merge.js', [EX, genDir('aucun')]), { code: 0, lines: ['ok examples-gen 0 taken, 0 dropped'] }, 'et Merge n\'écrit rien');
+    same(text(SOURCED), after, 'sourced.js n\'a pas changé');
+    const GD = genDir('drafts');
+    named('drafts', '# gate 35\nde dorst\r\ndrie\n');
+    same(runEx('split.js', [EX, GD]), { code: 0, lines: ['tijd-bakker 2'] }, 'Split coupe les mots nommés, dans l\'ordre du cours');
+    const GB = path.join(GD, 'tijd-bakker'), gin = JSON.parse(text(path.join(GB, 'input.json')));
+    same(gin.map(r => [r.id, Object.keys(r).join(' ')]), [['tijd:w3', 'id stamp copies nl unit art meaning'], ['bakker:w19', 'id stamp copies nl unit art meaning']], 'une ligne d\'entrée');
+    const gen = (id, sentence) => ({ id, stamp: gin.find(r => r.id === id).stamp, sentence });
+    const gdraft = [gen('tijd:w3', { nl: 'Het is drie uur.', gap: 'drie', en: 'It is three o\'clock.', fr: 'Il est trois heures.' }),
+      gen('bakker:w19', { nl: 'Ik heb dorst, gij ook?', gap: 'dorst', en: 'I am thirsty, are you?', fr: 'J’ai soif, et toi ?' })];
+    const gctx = { repo: EX, course: () => course(EX) };
+    const gwhy = sentence => G.check(gen('bakker:w19', sentence), gin[1], gctx);
+    same(gwhy(gdraft[1].sentence), [], 'une phrase écrite qui suit les règles');
+    same(gwhy({ nl: 'Heb jij ook dorst?', gap: 'dorst', en: 'Are you thirsty too?', fr: 'Tu as soif aussi ?' }), ['sentence: « jij » is not how the course says you: ge or gij'], 'ge ou gij, jamais jij');
+    same(gwhy({ nl: 'Ik heb dorst.', gap: 'dorst', en: 'I am thirsty.', fr: 'J’ai soif.' }), ['sentence has 3 tiles: 4 to 8'], 'les règles des phrases sourcées');
+    same(gwhy({ nl: 'Ik heb dorst, gij ook?', gap: 'dorst', en: 'I am thirsty, are you?' }), ['sentence has the fields nl, gap, en, fr'], 'ses quatre champs');
+    put(GB, 'draft.json', gdraft);
+    put(GB, 'review.json', gdraft.map(r => ({ id: r.id, verdict: 'keep' })));
+    same(runEx('check.js', [GB]), { code: 1, lines: ['ok input.json 2 rows', 'ok draft.json 2 rows',
+      'fail review.json tijd:w3: a verdict carries the reader\'s own en and fr of nl, each on one line',
+      'fail review.json bakker:w19: a verdict carries the reader\'s own en and fr of nl, each on one line'] }, 'le verdict porte la traduction du lecteur');
+    put(GB, 'review.json', [{ id: 'tijd:w3', verdict: 'keep', en: 'It\'s three o\'clock.', fr: 'Il est trois heures.' },
+      { id: 'bakker:w19', verdict: 'keep', en: 'I\'m thirsty, and you?', fr: 'J’ai soif, et vous ?' }]);
+    same(runEx('check.js', [GB]), { code: 0, lines: ['ok input.json 2 rows', 'ok draft.json 2 rows', 'ok review.json 2 keep, 0 dispute'] }, 'le lot passe Check');
+    same(G.readWhole(gdraft[0]), 'generated sentence', 'le mainteneur lit chaque phrase écrite');
+    same(runEx('merge.js', [EX, GD]), { code: 0, lines: ['ok examples-gen 2 taken, 0 dropped', 'ok sourced.js 2 set, 0 removed'] }, 'Merge écrit les phrases, sans crédit');
+    same(table.load(SOURCED).entries.drie, [{ nl: 'Het is drie uur.', fr: 'Il est trois heures.', en: 'It is three o\'clock.', gap: 'drie', src: 'gen' }], 'src « gen »');
+    same(text(CREDITS).split(eol).length, credits.split(eol).length + 4, 'le crédit n\'a pas changé');
+    console.log('  examples       ' + cut.length + ' lots sur le cours mesuré ; Split, Check, ses règles, Merge et le crédit sur un extrait de 5 phrases ; examples-gen sur 2 mots nommés');
   }
 
   console.log('\n' + checks + ' contrôles, ' + (fails === 0 ? 'KIT CONFORME' : fails + ' ÉCHEC(S)'));
