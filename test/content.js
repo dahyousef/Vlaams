@@ -121,6 +121,31 @@ NL.state.open().then(() => {
   ok(pairs > 5000, 'only ' + pairs + ' exercises were built: the content did not load');
   console.log('  exercices       ' + pairs + ' construits, ' + broken + ' échec(s), ' + hollow + ' échelon(s) de secours');
 
+  /* Une réponse libre se note sur ce qu'elle contient, par le barème de la séance
+     (NL.ex.rubric). L'exemple, montré après « Vérifier », coche chaque besoin. Et chaque
+     besoin a sa réponse manquée (`miss`), qui le manque, lui seul : un besoin que rien ne
+     manque ne note rien, et un besoin que sa réponse manquée coche ne se distingue pas. */
+  ok(typeof NL.ex.rubric === 'function', 'NL.ex.rubric n’est pas exporté : la réponse libre ne se note pas hors de la séance');
+  const rubric = NL.ex.rubric || (() => []);
+  const needName = n => '« ' + NL.gloss.of(n.what, 'fr') + ' »';
+  const openItems = items.filter(it => it.open);
+  let whole = 0, alone = 0;
+  openItems.forEach(it => {
+    const task = it.open, need = task.need || [];
+    const byModel = rubric(task, task.model), lacks = need.filter(n => byModel.indexOf(n.what) < 0);
+    ok(lacks.length === 0, it.id + ' : l’exemple « ' + task.model + ' » ne coche pas ' + lacks.map(needName).join(', '));
+    if (!lacks.length) whole++;
+    need.forEach(n => {
+      if (typeof n.miss !== 'string' || !n.miss) { ok(false, it.id + ' : le besoin ' + needName(n) + ' n’a pas de réponse manquée (`miss`)'); return; }
+      const met = rubric(task, n.miss), hit = met.indexOf(n.what) >= 0, also = need.filter(m => m !== n && met.indexOf(m.what) < 0);
+      ok(!hit, it.id + ' : « ' + n.miss + ' » coche ' + needName(n) + ', le besoin qu’il doit manquer');
+      ok(also.length === 0, it.id + ' : « ' + n.miss + ' » manque aussi ' + also.map(needName).join(', ') + ' : il ne doit manquer que ' + needName(n));
+      if (!hit && !also.length) alone++;
+    });
+  });
+  ok(openItems.length > 0, 'aucune réponse libre dans le cours : le contrôle est creux');
+  console.log('  réponse libre   ' + openItems.length + ' tâches, ' + whole + ' exemples qui cochent tout, ' + alone + ' besoins manqués un à un');
+
   /* ================= 3. une phrase d'exemple n'emprunte pas en avant */
   /* src/content/examples.js s'impose « du vocabulaire déjà rencontré ». Non
      vérifiée, la règle était tenue six fois sur sept. Les mots-outils ne
