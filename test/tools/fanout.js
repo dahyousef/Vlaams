@@ -800,7 +800,10 @@ async function main() {
     /* Merge : les phrases sous le néerlandais du mot dans sourced.js, et le crédit récrit. Avant,
        sourced.js tient une phrase de « sorry », créditée, et le crédit une ligne de trop. */
     draft[0].sentences[0].gap = 'Misschien';
-    draft[1].sentences[1] = Object.assign({}, other, { fr: 'Pardon, vous parlez anglais ?', edited: 'the learner hears a plain question' });
+    /* Les trois valeurs de adapted : fr seul (102), en seul (104), les deux (101). */
+    draft[0].sentences[0] = Object.assign({}, draft[0].sentences[0], { en: 'Maybe it is true.', edited: 'the learner hears the plain verb' });
+    draft[1].sentences[0] = Object.assign({}, good, { fr: 'Elle parle bien l\'anglais.', edited: 'the learner hears the article' });
+    draft[1].sentences[1] = Object.assign({}, other, { en: 'Excuse me, do you speak English?', fr: 'Pardon, vous parlez anglais ?', edited: 'the learner hears a plain question' });
     put(BATCH, 'draft.json', draft);
     put(BATCH, 'review.json', draft.map(r => ({ id: r.id, verdict: 'keep' })));
     const sorry = [{ nl: 'Sorry, ik ben te laat.', fr: 'Pardon, je suis en retard.', en: 'Sorry, I am late.', gap: 'Sorry', src: 900 }];
@@ -814,13 +817,13 @@ async function main() {
     same(runEx('merge.js', [EX, KD]), { code: 0, lines: MERGED }, 'Merge écrit les phrases prises, rien pour une ligne sans phrase, et récrit le crédit');
     const held = table.load(SOURCED).entries;
     same([held['het Engels'], held.misschien, held.sorry, 'drie' in held], [[
-      { nl: 'Ze spreekt goed Engels.', fr: 'Elle parle bien anglais.', en: 'She speaks English well.', gap: 'Engels', src: 102 },
-      { nl: 'Sorry, spreekt u Engels?', fr: 'Pardon, vous parlez anglais ?', en: 'Sorry, do you speak English?', gap: 'Engels', src: 101 }
-    ], [{ nl: 'Misschien is het waar.', fr: 'C\'est peut-être vrai.', en: 'Maybe it\'s true.', gap: 'Misschien', src: 104 }], sorry, false],
+      { nl: 'Ze spreekt goed Engels.', fr: 'Elle parle bien l\'anglais.', en: 'She speaks English well.', gap: 'Engels', src: 102 },
+      { nl: 'Sorry, spreekt u Engels?', fr: 'Pardon, vous parlez anglais ?', en: 'Excuse me, do you speak English?', gap: 'Engels', src: 101 }
+    ], [{ nl: 'Misschien is het waar.', fr: 'C\'est peut-être vrai.', en: 'Maybe it is true.', gap: 'Misschien', src: 104 }], sorry, false],
     'sourced.js : { nl, fr, en, gap, src } dans l\'ordre de la ligne, la phrase d\'avant gardée');
-    same(text(CREDITS), credits + ['het Engels\t101\tanna\t201\tbob\t301\t-\tfr', 'het Engels\t102\t-\t203\tcarl\t302\tdora\t-',
-      'misschien\t104\tanna\t204\tbob\t304\tdora\t-', 'sorry\t900\tanna\t901\tbob\t902\tdora\t-'].join(eol) + eol,
-    'le crédit : une ligne par phrase de Tatoeba que sourced.js tient, triée, l\'auteur absent écrit « - », adapted pour une traduction changée');
+    same(text(CREDITS), credits + ['het Engels\t101\tanna\t201\tbob\t301\t-\ten fr', 'het Engels\t102\t-\t203\tcarl\t302\tdora\tfr',
+      'misschien\t104\tanna\t204\tbob\t304\tdora\ten', 'sorry\t900\tanna\t901\tbob\t902\tdora\t-'].join(eol) + eol,
+    'le crédit : une ligne par phrase de Tatoeba que sourced.js tient, triée, l\'auteur absent écrit « - », adapted : fr, en ou en fr, selon la traduction changée');
     same(course(EX).byId('ikengij:w24').drills, held['het Engels'], 'le mot a ses phrases');
     const after = text(SOURCED);
     same(runEx('merge.js', [EX, KD]), { code: 0, lines: MERGED }, 'une seconde Merge ne trouve pas ses lignes périmées');
