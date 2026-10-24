@@ -486,6 +486,156 @@ async function main() {
   ok(text(path.join(ROOT, '.gitignore')).split(/\r?\n/).indexOf('.cache/') >= 0, '.gitignore n\'ignore pas .cache/ : les données téléchargées entreraient dans le dépôt');
   console.log('  cache          dossier, serveur local, redirection, bzip2, tar');
 
+  /* ==================================================== le genre flemish */
+  {
+    /* tools/content/kinds/flemish.js dans un dépôt à lui, sous la copie : test/data en plus
+       (OpenTaal et flemish.tsv), les sources de l'essai ôtées de be.js et deux formes ôtées de
+       flemish.tsv, pour que l'essai ne dépende pas de ce que le cours tient déjà, et un extrait
+       du Wiktionnaire fait ici, d'une ligne. check.js lit le dépôt qui le contient : les outils
+       se lancent donc depuis celui-ci. */
+    const spelling = require('../lib/spelling');
+    const FR = path.join(TMP, 'flamand');
+    ['build.sh', 'src', 'test/lib', 'test/data', 'tools'].forEach(p => fs.cpSync(path.join(ROOT, p), path.join(FR, p), { recursive: true }));
+    const runFr = (script, args) => {
+      const r = spawnSync(process.execPath, [path.join(FR, 'tools', 'content', script)].concat(args), { encoding: 'utf8' });
+      return { code: r.status, lines: (r.stdout || '').split(/\r?\n/).filter(Boolean) };
+    };
+    const PICK = {
+      'overleven:p3': { be: 'Sorry, ik heb da nie verstaan.', evidence: 'rule:da+nie' },
+      'dokter:p6': { be: 'Hebde een voorschrift nodig?', evidence: 'rule:kunde' },
+      'onderweg:w0': { be: 'de velo, de fiets', evidence: 'wiktionary:velo' },
+      'weekend:p1': { be: 'Allez, ’t regent weer.', evidence: 'none' }
+    };
+    const BE = path.join(FR, 'src', 'content', 'be.js'), TSV = path.join(FR, 'test', 'data', 'flemish.tsv');
+    const off = {};
+    Object.keys(PICK).concat(['overleven:w2', 'overleven:w12', 'overleven:p9', 'ikengij:p4']).forEach(id => { off[C.byId(id).nl] = null; });
+    table.update(BE, off);
+    fs.writeFileSync(TSV, text(TSV).replace(/^(allez|hebde)\t[^\n]*\n/gm, ''));
+    const EXTRACT = path.join(FR, '.cache', 'kaikki', 'belgian.tsv');
+    fs.mkdirSync(path.dirname(EXTRACT), { recursive: true });
+    fs.writeFileSync(EXTRACT, '# kaikki/nl.jsonl sha256 ' + cache.PINS['kaikki/nl.jsonl'].sha256 + '\nvelo\tnoun\tBelgium\t(essai)\n');
+    const K = require(path.join(FR, 'tools', 'content', 'kinds', 'flemish'));
+    const CF = course(FR);
+
+    /* Les règles : celles que be.js suit déjà, sur des mots entiers, majuscule gardée. */
+    same(K.RULES.map(r => r.name), ['kunde', 'ge', 'da', 'nie', 't', 'is'], 'six règles, dans leur ordre');
+    [['Dat is lekker.', 'rule:da'], ['Wat betekent dat?', 'rule:da'], ['Is dat alles?', 'rule:da'], ['Sorry, ik heb dat niet verstaan.', 'rule:da+nie'],
+      ['Kunt u mij helpen?', 'rule:kunde'], ['Hoe laat is het?', 'rule:t'], ['Hoeveel is het?', 'rule:t'], ['nog eens', 'rule:is']].forEach(([nl, ev]) =>
+      same(K.outputs(nl)[ev], C.NL.content.byDutch.be[nl], 'les règles écrivent ce que be.js tient déjà : « ' + nl + ' », ' + ev));
+    same(K.compose('Wat is dat? Dat is het.', ['da', 't']), { text: 'Wa is da? Da’s ’t.', idle: [] }, '« dat is » se contracte, et une règle garde la majuscule');
+    same(K.compose('Het regent. Kunt u het?', ['kunde', 't']).text, '’t Regent. Kunde ’t?', '« ’t » passe sa majuscule au mot suivant');
+    same(K.compose('Water, niets en wattig.', ['da', 'nie']), { text: 'Water, niets en wattig.', idle: ['da', 'nie'] }, 'une règle ne touche que des mots entiers');
+    const all = K.outputs('Kunt u dat niet eens?');
+    same([Object.keys(all).length, all['rule:kunde+da+nie+is'], 'rule:kunde+ge' in all], [23, 'Kunde da nie is?', false],
+      'outputs donne chaque combinaison où chaque règle change quelque chose');
+    same(K.outputs('Goedemorgen.'), {}, 'sans règle qui s\'applique, rien');
+
+    /* Split : un lot par unité, ses mots et ses phrases sans forme flamande. */
+    const KD = path.join(FR, 'drafts', 'flemish');
+    const want = CF.RAW.units.map(u => [u.id, CF.sources.filter(s => s.unit === u.id && !s.be).length]).filter(x => x[1]).map(x => x.join(' '));
+    same(runFr('split.js', [FR, KD]), { code: 0, lines: want }, 'Split coupe un lot par unité, des mots et des phrases que be.js ne tient pas');
+    const rowOf = id => JSON.parse(text(path.join(KD, CF.byId(id).unit, 'input.json'))).find(r => r.id === id);
+    ok(!rowOf('overleven:w0'), 'un mot que be.js tient n\'est pas recoupé');
+    const sorry = CF.byId('overleven:p3');
+    same(rowOf('overleven:p3'), {
+      id: 'overleven:p3', stamp: kit.stamp(kit.loadKind(FR, 'flemish'), sorry, CF.NL), copies: [],
+      nl: 'Sorry, ik heb dat niet verstaan.', kind: 'phrase', unit: 'overleven', meaning: CF.NL.gloss.meaning(sorry), siblings: [],
+      rules: { 'rule:da': 'Sorry, ik heb da niet verstaan.', 'rule:nie': 'Sorry, ik heb dat nie verstaan.', 'rule:da+nie': 'Sorry, ik heb da nie verstaan.' }
+    }, 'une ligne d\'entrée : le néerlandais, son genre, son unité, son sens, ses frères de sens et ce que les règles en font');
+    same(rowOf('overleven:w2').siblings.map(s => s.nl), ['de dag'], 'les frères de sens d\'une source sont dans sa ligne');
+
+    /* Check : les raisons du genre, une par une. */
+    const ctx = { repo: FR, course: () => CF };
+    const why = (id, be, evidence, c) => K.check({ id, be, evidence }, rowOf(id), c || ctx);
+    Object.keys(PICK).forEach(id => same(why(id, PICK[id].be, PICK[id].evidence), [], 'une ligne juste passe : ' + id + ', ' + PICK[id].evidence));
+    same(why('overleven:w12', null, null), [], 'be null, sans preuve : le néerlandais suffit');
+    same(why('overleven:w12', null, 'none'), ['evidence is null when be is null'], 'be null n\'a pas de preuve');
+    same(why('overleven:w12', ' nie', 'rule:nie'), ['be is a form on one line, or null'], 'be est une forme sur une ligne');
+    same(why('overleven:w12', 'nie', 'rule'), ['evidence is rule:<rule>[+<rule>…], wiktionary:<lemma> or none'], 'une preuve a sa forme');
+    same(why('overleven:w12', 'Niet', 'none'), ['be is the Dutch itself: with nothing Flemish to teach, be is null'], 'be n\'est pas le néerlandais');
+    same(why('onderweg:w0', 'de fiets, de velo', 'wiktionary:velo'), ['a word\'s first form is the Flemish one, and here it is the Dutch itself'],
+      'la première forme d\'un mot est la flamande');
+    same(why('onderweg:w0', 'de velo, , de fiets', 'wiktionary:velo'), ['a word\'s forms are separated by commas, none empty, none twice'], 'pas de forme vide');
+    same(why('overleven:p9', 'Kunde?', 'none'), ['be has 1 tiles: a phrase\'s be has at least 3'], 'une phrase garde de quoi faire ses tuiles');
+    same([why('werkbasis:p7', 'Da’s klaar.', 'rule:da'), rowOf('werkbasis:p7').rules], [['be has 2 tiles: a phrase\'s be has at least 3'], {}],
+      'une sortie de règle qui laisse trop peu de tuiles est refusée, et Split ne l\'offre pas');
+    same([why('dokter:w2', '’t hoofd', 'rule:t'), why('dokter:w2', '’t hoofd, het hoofd', 'none'), rowOf('dokter:w2').rules],
+      [['only the article changes, « ’t » for « het »: everyone says that, so be is null'], ['only the article changes, « ’t » for « het »: everyone says that, so be is null'], {}],
+      'un mot dont seul l\'article devient « ’t » n\'a rien de flamand à apprendre, et Split ne l\'offre pas');
+    same(why('ikengij:p4', 'Ik werk bij de firma.', 'none'), ['be keeps the Dutch\'s {…} tokens: « {bedrijf} »'], 'be garde les jetons du néerlandais');
+    same(why('overleven:p3', PICK['overleven:p3'].be, 'rule:da+zeg'), ['no rule « zeg »: the rules are kunde, ge, da, nie, t, is'], 'une règle inconnue est nommée');
+    same(why('overleven:p3', PICK['overleven:p3'].be, 'rule:nie+da'), ['rules are cited once each, in the order kunde, ge, da, nie, t, is'], 'les règles se citent dans leur ordre');
+    same(why('overleven:p3', PICK['overleven:p3'].be, 'rule:da+nie+t'), ['rule t changes nothing here'], 'une règle citée change quelque chose');
+    same(why('overleven:p3', PICK['overleven:p3'].be, 'rule:da'), ['rule:da gives « Sorry, ik heb da niet verstaan. », not be'], 'les règles citées donnent be, exactement');
+    same(why('onderweg:w0', 'de velo, de fiets', 'wiktionary:fietske'), ['« fietske » has no Belgian or Flemish sense in the pinned Wiktionary extract'],
+      'le lemme est dans l\'extrait');
+    same(why('onderweg:w0', 'het rijwiel, de fiets', 'wiktionary:velo'), ['be does not use the lemma « velo »'], 'be emploie le lemme');
+    same(why('onderweg:w0', 'het velootje, de fiets', 'wiktionary:velo'), [], 'une forme tirée du lemme a sa raison, même inconnue d\'OpenTaal');
+    same(why('onderweg:w0', 'de velo, het fietske', 'wiktionary:velo'),
+      ['« fietske » is not a form OpenTaal knows, and wiktionary:velo does not account for it: correct it, or cite evidence none'], 'une forme inconnue sans raison est nommée');
+    same(why('weekend:p1', PICK['weekend:p1'].be, 'rule:t'), [
+      'rule:t gives « ’t Regent weer. », not be',
+      '« allez » is not a form OpenTaal knows, and rule:t does not account for it: correct it, or cite evidence none'
+    ], 'chaque raison est dite');
+    fs.renameSync(EXTRACT, EXTRACT + '.old');
+    same(why('onderweg:w0', PICK['onderweg:w0'].be, 'wiktionary:velo', { repo: FR, course: () => CF }), ['.cache/kaikki/belgian.tsv is missing: run node tools/content/kaikki.js .'],
+      'sans extrait, une preuve du Wiktionnaire dit la commande qui manque');
+    fs.renameSync(EXTRACT + '.old', EXTRACT);
+    same([K.forMaintainer(PICK['weekend:p1']), K.forMaintainer(PICK['dokter:p6']), K.forMaintainer({ be: null, evidence: null })], ['evidence none', '', ''],
+      'evidence none, et elle seule, va au mainteneur');
+    same([K.readWhole(PICK['dokter:p6']), K.readWhole({ be: null, evidence: null })], ['new be', ''], 'le relecteur lit en entier chaque forme nouvelle');
+
+    /* De bout en bout : chaque lot rédigé (be null, sauf les lignes de l'essai) et relu,
+       check.js, puis Merge, et Merge relancée. */
+    const batches = text(path.join(KD, 'split.txt')).split('\n').filter(Boolean).map(l => l.split(' ')[0]);
+    let rows = 0;
+    batches.forEach(b => {
+      const dir = path.join(KD, b), inp = JSON.parse(text(path.join(dir, 'input.json')));
+      rows += inp.length;
+      put(dir, 'draft.json', inp.map(r => Object.assign({ id: r.id, stamp: r.stamp }, PICK[r.id] || { be: null, evidence: null })));
+      put(dir, 'review.json', inp.map(r => ({ id: r.id, verdict: PICK[r.id] && PICK[r.id].evidence === 'none' ? 'for maintainer: evidence none' : 'keep' })));
+    });
+    const WEEKEND = path.join(KD, 'weekend'), DOKTER = path.join(KD, 'dokter');
+    const review = text(path.join(WEEKEND, 'review.json'));
+    put(WEEKEND, 'review.json', review.replace('"for maintainer: evidence none"', '"keep"'));
+    same(runFr('check.js', [WEEKEND]).lines.filter(l => /^fail /.test(l)),
+      ['fail review.json weekend:p1: the format sends this row to the maintainer (evidence none): its verdict is « for maintainer: <reason> »'],
+      'une ligne sans preuve va au mainteneur, quoi qu\'en dise la relecture');
+    put(WEEKEND, 'review.json', review);
+    put(WEEKEND, 'disputes.md', '## weekend:p1\nSource: Het regent weer.\nRow: Allez, ’t regent weer. (none)\nFirst reader: for maintainer: evidence none\nYour ruling:\n');
+    put(WEEKEND, 'rulings.json', [{ id: 'weekend:p1', ruling: 'keep', words: null, confirmed: true, date: '2026-10-22' }]);
+    same(runFr('check.js', [WEEKEND]).code, 0, 'le lot, avec la décision du mainteneur, passe');
+    const draft = text(path.join(DOKTER, 'draft.json'));
+    put(DOKTER, 'draft.json', draft.replace('"rule:kunde"', '"rule:ge"'));
+    same(runFr('check.js', [DOKTER]).lines.filter(l => /^fail /.test(l)), [
+      'fail draft.json dokter:p6: rule:ge gives « Heeft ge een voorschrift nodig? », not be',
+      'fail draft.json dokter:p6: « hebde » is not a form OpenTaal knows, and rule:ge does not account for it: correct it, or cite evidence none',
+      'fail review.json -: draft.json missing or failing'
+    ], 'check.js dit les raisons du genre, et ne lit pas la suite');
+    put(DOKTER, 'draft.json', draft);
+
+    const n0 = Object.keys(table.load(BE).entries).length, tsv0 = text(TSV);
+    const MERGED_FR = ['ok flemish ' + rows + ' taken, 0 dropped', 'ok be.js 4 set, 0 removed', 'ok flemish.tsv 2 added: allez, hebde'];
+    same(runFr('merge.js', [FR, KD]), { code: 0, lines: MERGED_FR },
+      'Merge prend chaque ligne, n\'écrit rien pour be null, et inscrit dans flemish.tsv les formes qu\'OpenTaal ne connaît pas');
+    const entries = table.load(BE).entries;
+    same(Object.keys(PICK).map(id => entries[CF.byId(id).nl]), Object.keys(PICK).map(id => PICK[id].be), 'be.js tient chaque forme sous son néerlandais');
+    same(Object.keys(entries).length, n0 + 4, 'et rien d\'autre');
+    const forms = spelling.readFlemish(TSV), eol = /\r\n/.test(tsv0) ? '\r\n' : '\n';
+    same([forms.get('allez'), forms.get('hebde')], ['forme flamande sans source écrite, gardée par le mainteneur', '« hebt ge » contracté, flamand parlé'],
+      'chaque forme nouvelle a la raison que sa preuve donne');
+    same(forms.size, tsv0.split(/\r?\n/).filter(l => l && l[0] !== '#').length + 2, 'flemish.tsv garde ses formes');
+    ok(text(TSV).split(eol).every(l => !/[\r\n]/.test(l)) && text(TSV).indexOf(tsv0.split(/\r?\n/).filter(l => l[0] === '#').join(eol) + eol) === 0,
+      'flemish.tsv garde ses commentaires en tête et ses fins de ligne');
+    const beAfter = text(BE), tsvAfter = text(TSV);
+    const again = runFr('merge.js', [FR, KD]);
+    same([again.code, again.lines.map(l => l.replace(/: stale, stamped [0-9a-f]{8} at Split, the source now stamps [0-9a-f]{8}$/, ': stale'))],
+      [1, ['overleven:p3', 'onderweg:w0', 'dokter:p6', 'weekend:p1'].map(id => 'fail flemish ' + id + ': stale')],
+      'le tampon couvre be : relancée après un succès, Merge refuse comme périmée chaque ligne dont elle a écrit la forme');
+    ok(text(BE) === beAfter && text(TSV) === tsvAfter, 'refusée, Merge n\'écrit rien');
+    console.log('  flemish        ' + batches.length + ' lots, ' + rows + ' lignes ; six règles ; Check, Merge et flemish.tsv');
+  }
+
   console.log('\n' + checks + ' contrôles, ' + (fails === 0 ? 'KIT CONFORME' : fails + ' ÉCHEC(S)'));
 }
 
