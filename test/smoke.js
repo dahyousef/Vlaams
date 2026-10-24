@@ -730,9 +730,11 @@ NL.state.open().then(() => {
     });
     NL.gloss.use(was);
 
-    /* « Comment le dit-on ici ? » : une phrase face à deux mots isolés se devine. */
+    /* « Comment le dit-on ici ? » : une phrase face à deux mots isolés se devine. Seuls les
+       leurres tirés au hasard le peuvent : ceux qu'on écrit (src/content/decoys.js), test/content.js
+       les lit. */
     let mixed = 0, vl = 0;
-    all.filter(i => i.kind === 'phrase' && i.be && UU.norm(i.be) !== UU.norm(i.nl)).forEach(it => {
+    all.filter(i => i.kind === 'phrase' && !i.decoys && i.be && UU.norm(i.be) !== UU.norm(i.nl)).forEach(it => {
       const t = NL.ex.get('vlaams').build(it); vl++;
       const kinds = t.opts.filter(o => !o.ok).map(o => (all.find(x => x.be === o.label) || {}).kind);
       if (kinds.some(k => k !== 'phrase')) mixed++;

@@ -232,6 +232,27 @@ NL.state.open().then(() => {
     console.log('  pick et recall, six graines × 60 tirages : ni « dag » ni « hallo » face à « bonjour »');
   }
 
+  /* « Comment le dit-on ici ? » propose la forme flamande et les deux leurres écrits pour
+     l'élément (src/content/decoys.js), rien d'autre. Tirés parmi les formes flamandes des autres
+     éléments, ils parlaient d'autre chose, et la bonne réponse se devinait sans rien savoir. */
+  {
+    const nl = 'Is dat alles?', decoys = ['Is da allemaal?', 'Is dat alle?'];
+    NL.content.byDutch.decoys[nl] = decoys;
+    fresh();
+    const it = find(nl);
+    if (!ask(it, 'vlaams', 1, 'bank')) ok(false, 'setup: ' + say(nl) + ' is never asked in « Comment le dit-on ici ? »');
+    else {
+      const shown = Array.from(B.app.innerHTML.matchAll(/data-opt="\d+"[^>]*><span class="opt-key">\d+<\/span><span[^>]*>([\s\S]*?)<\/span><\/button>/g), m => decode(m[1]));
+      const want = [it.be].concat(decoys);
+      ok(JSON.stringify(shown.slice().sort()) === JSON.stringify(want.slice().sort()),
+        say(nl) + ' offers ' + JSON.stringify(shown) + ', not its Flemish form and its two written decoys ' + JSON.stringify(want));
+    }
+    S.abandon();
+    delete NL.content.byDutch.decoys[nl];
+    fresh();
+    console.log('  vlaams         « Is da alles? » et ses deux leurres écrits, rien d’autre');
+  }
+
   console.log('\nLE PANNEAU');
   /* « Comment le dit-on ici ? » : passé, la variante est la réponse, une seule
      fois, et ce qui change par rapport à la phrase standard du sujet est en gras.

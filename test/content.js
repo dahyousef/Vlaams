@@ -121,6 +121,26 @@ NL.state.open().then(() => {
   ok(pairs > 5000, 'only ' + pairs + ' exercises were built: the content did not load');
   console.log('  exercices       ' + pairs + ' construits, ' + broken + ' échec(s), ' + hollow + ' échelon(s) de secours');
 
+  /* Les leurres de « Comment le dit-on ici ? » (src/content/decoys.js) : deux formes distinctes par
+     élément, dont aucune n'est une réponse que le cours accepte, pour cet élément ou pour un autre :
+     son néerlandais, ses formes flamandes, ses « on dit aussi » (NL.ex.accepted). Sinon l'exercice
+     compte faux ce qui est juste. Un leurre est faux exprès : l'orthographe ne le lit pas. */
+  ok(typeof NL.ex.accepted === 'function', 'NL.ex.accepted n’est pas exporté : les leurres ne se comparent à rien');
+  const acceptedForms = new Set([].concat(...items.map(x => (NL.ex.accepted || (() => []))(x))));
+  /* Les fautes d'une liste de [id, leurres] : la forme de la valeur, puis chaque leurre accepté. */
+  const decoyFaults = list => [].concat(...list.map(([id, d]) => {
+    const forms = Array.isArray(d) ? d : [];
+    const shape = forms.length === 2 && U.norm(forms[0]) !== U.norm(forms[1]) ? [] : [id + ' : ' + JSON.stringify(d) + ' n’est pas deux formes distinctes'];
+    return shape.concat(forms.filter(f => acceptedForms.has(U.norm(f)) || acceptedForms.has(U.norm(U.bare(f))))
+      .map(f => id + ' : « ' + f + ' » est une réponse que le cours accepte'));
+  }));
+  const planted = decoyFaults([['plant:p0', ['Is da alles?', 'hallo']], ['plant:p1', ['Is dat alle?']]]);
+  ok(planted.length === 3, 'les leurres plantés donnent ' + planted.length + ' faute(s), pas 3 : ' + planted.join(' ; '));
+  const decoyed = items.filter(x => x.decoys);
+  const wrongDecoys = decoyFaults(decoyed.map(x => [x.id, x.decoys]));
+  ok(wrongDecoys.length === 0, wrongDecoys.length + ' leurre(s) fautif(s) : ' + wrongDecoys.slice(0, 3).join(' ; '));
+  console.log('  leurres         ' + decoyed.length + ' élément(s) avec leurs leurres, ' + wrongDecoys.length + ' faute(s)');
+
   /* Une réponse libre se note sur ce qu'elle contient, par le barème de la séance
      (NL.ex.rubric). L'exemple, montré après « Vérifier », coche chaque besoin. Et chaque
      besoin a sa réponse manquée (`miss`), qui le manque, lui seul : un besoin que rien ne

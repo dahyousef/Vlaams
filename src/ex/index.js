@@ -506,6 +506,22 @@ NL.ex = (function () {
     answer: t => t.target
   };
 
+  /* Les deux mauvaises réponses de « Comment le dit-on ici ? ». Elles sont écrites pour l'élément
+     (src/content/decoys.js) : deux fautes qu'un apprenant ferait, aussi flamandes à l'œil que la
+     bonne. Tirées parmi les formes flamandes des autres éléments, elles parlaient d'autre chose, et
+     la bonne se devinait sans rien savoir. Un élément sans leurres écrits (un mot à soi, ou une
+     table pas encore remplie) les tire encore là. */
+  function vlaamsDecoys(item) {
+    if (item.decoys) return item.decoys;
+    const any = NL.content.allItems().filter(x =>
+      x.be && x.id !== item.id && U.norm(x.be) !== U.norm(x.nl) && U.norm(x.be) !== U.norm(item.be));
+    /* Une phrase contre deux mots isolés se devine sans rien savoir : les
+       leurres viennent d'abord du même genre d'élément. */
+    const same = any.filter(x => x.kind === item.kind);
+    const pool = same.length >= 2 ? same : any;
+    return U.sample(pool, 2).map(x => x.be);
+  }
+
   /* La phrase standard est donnée : comment la dit-on ici ? Unique à cette app,
      et la donnée existe déjà sur chaque élément. */
   R.vlaams = {
@@ -513,14 +529,8 @@ NL.ex = (function () {
     asks: 'nl', answers: 'nl',
     given: chosenLabel,
     build(item) {
-      const any = NL.content.allItems().filter(x =>
-        x.be && x.id !== item.id && U.norm(x.be) !== U.norm(x.nl) && U.norm(x.be) !== U.norm(item.be));
-      /* Une phrase contre deux mots isolés se devine sans rien savoir : les
-         leurres viennent d'abord du même genre d'élément. */
-      const same = any.filter(x => x.kind === item.kind);
-      const pool = same.length >= 2 ? same : any;
       const opts = U.shuffle([{ label: item.be, ok: true }]
-        .concat(U.sample(pool, 2).map(x => ({ label: x.be, ok: false }))));
+        .concat(vlaamsDecoys(item).map(label => ({ label, ok: false }))));
       return { type: 'vlaams', item, opts };
     },
     view(t, L, phase) {
@@ -675,5 +685,5 @@ NL.ex = (function () {
      part ailleurs ; le pied la rend par NL.ui.ifProse, qui déclare nl-BE ce qu'elle cite. */
   const explanation = item => (item && item.note) || null;
 
-  return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, recordPanel, selfRate, wordScore, hereLine, rubric, explanation };
+  return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, recordPanel, selfRate, wordScore, hereLine, rubric, explanation, accepted };
 })();
