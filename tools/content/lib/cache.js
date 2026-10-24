@@ -99,7 +99,10 @@ function bunzip(archive, file) {
 async function one(repo, key, pin, from) {
   const file = path.join(dirOf(repo), key), part = file + '.part';
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  if (fs.existsSync(file) && fs.statSync(file).size === pin.bytes && sha256(file) === pin.sha256) return 'ok ' + key + ' (cached)';
+  if (fs.existsSync(file)) {
+    if (fs.statSync(file).size === pin.bytes && sha256(file) === pin.sha256) return 'ok ' + key + ' (cached)';
+    fs.unlinkSync(file);
+  }
   try {
     if (from) {
       const seed = path.join(from, path.basename(key));

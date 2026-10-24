@@ -80,7 +80,7 @@ function split(repo, kindDir) {
   let batches;
   try { batches = kind.split(C, { repo: path.resolve(repo), kind, kindDir, course: () => C }); } catch (e) { return { ok: false, lines: ['fail ' + name + ' -: the kind\'s split threw: ' + e.message] }; }
   const lines = [], seen = new Map(), names = new Set();
-  if (!Array.isArray(batches) || batches.some(b => !b || !Array.isArray(b.rows) || b.rows.some(r => !r || typeof r.id !== 'string'))) {
+  if (!Array.isArray(batches) || batches.some(b => !b || typeof b.batch !== 'string' || !Array.isArray(b.rows) || b.rows.some(r => !r || typeof r.id !== 'string'))) {
     return { ok: false, lines: ['fail ' + name + ' -: the kind\'s split returns a list of { batch, rows }, each row an object with its id'] };
   }
   batches.forEach(b => {
@@ -357,6 +357,10 @@ function merge(repo, kindDir) {
   });
   const files = kind.tables.map(t => path.join(path.resolve(repo), 'src', 'content', t + '.js'));
   files.forEach(f => { if (!fs.existsSync(f)) lines.push('fail ' + name + ' -: no table file ' + path.relative(path.resolve(repo), f).split(path.sep).join('/')); });
+  files.forEach(f => {
+    if (!fs.existsSync(f)) return;
+    try { table.load(f); } catch (e) { lines.push('fail ' + name + ' -: ' + e.message); }
+  });
   if (failed(lines)) return { ok: false, lines };
 
   lines.push('ok ' + name + ' ' + taken.length + ' taken, ' + rows.filter(r => r.drop).length + ' dropped');

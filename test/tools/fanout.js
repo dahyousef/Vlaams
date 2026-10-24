@@ -157,6 +157,10 @@ async function main() {
     'un genre qui rend autre chose que des lots est nommé');
   same(run('split.js', [TMP, path.join(TMP, 'drafts', 'inconnu')]), { code: 1, lines: ['fail inconnu -: no kind module tools/content/kinds/inconnu.js'] },
     'un dossier sans genre est nommé');
+  kindFile('sans', 'module.exports = { stamp: [], fields: [\'mot\'], tables: [], check: () => [], merge: () => ({}), split: () => [{ rows: [{ id: \'overleven:w1\' }] }] };\n');
+  same(run('split.js', [TMP, path.join(TMP, 'drafts', 'sans')]), { code: 1, lines: ['fail sans -: the kind\'s split returns a list of { batch, rows }, each row an object with its id'] },
+    'un lot sans nom est refusé');
+  ok(!fs.existsSync(path.join(TMP, 'drafts', 'sans')), 'un lot sans nom n\'écrit aucun dossier');
   console.log('  Split          ' + inputEen.length + ' + ' + inputTwee.length + ' lignes, refus et reprise');
 
   /* ==================================================== 4. Check */
@@ -363,7 +367,17 @@ async function main() {
   same(run('merge.js', [TMP, KIND]), { code: 0, lines: MERGED }, 'Merge se relance');
   same(text(TABLE), after, 'relancé, Merge redonne les mêmes octets');
 
-  kindFile('vide', 'module.exports = { stamp: [], fields: [\'mot\'], tables: [\'vide\'], split: () => [], check: () => [], merge: () => ({}) };\n');
+  /* Une seconde table illisible : rien n'est écrit, pas même la première. */
+  const DEUX = path.join(TMP, 'drafts', 'deux');
+  fs.cpSync(KIND, DEUX, { recursive: true });
+  kindFile('deux', text(path.join(KINDS, 'essai.js')).replace('tables: [\'essai\']', 'tables: [\'essai\', \'casse2\']').replace('merge: row => ({ essai: row.mot + \'|\' + (row.raison || \'\') })', 'merge: row => ({ essai: \'autre\', casse2: row.mot })'));
+  fs.writeFileSync(path.join(TMP, 'src', 'content', 'casse2.js'), '/* casse2 */\nNL.content.byDutch = {};\n');
+  const tableBefore = text(TABLE);
+  const broken = run('merge.js', [TMP, DEUX]);
+  ok(broken.code === 1 && broken.lines.length === 1 && /^fail deux -: .*casse2\.js/.test(broken.lines[0]), 'Merge refuse une table illisible : ' + JSON.stringify(broken));
+  same(text(TABLE), tableBefore, 'une seconde table illisible : la première n\'est pas écrite');
+
+  kindFile('vide','module.exports = { stamp: [], fields: [\'mot\'], tables: [\'vide\'], split: () => [], check: () => [], merge: () => ({}) };\n');
   same(run('split.js', [TMP, path.join(TMP, 'drafts', 'vide')]), { code: 0, lines: [] }, 'un genre sans travail se coupe en rien');
   same(run('merge.js', [TMP, path.join(TMP, 'drafts', 'vide')]), { code: 0, lines: ['ok vide 0 taken, 0 dropped'] }, 'un genre sans travail se fond sans table');
   console.log('  Merge          4 prises, 1 écartée, refus et relance');
@@ -422,6 +436,12 @@ async function main() {
     'un fichier déjà vérifié n\'est pas recopié, et un nom inconnu est nommé');
   same(cache.get(TMP, 't/a.txt', pins), path.join(TMP, '.cache', 't', 'a.txt'), 'get rend le chemin d\'un fichier en cache');
   throws(() => cache.get(TMP, 't/b.txt', pins), /^\.cache\/t\/b\.txt is missing: run node tools\/content\/fetch\.js \. t\/b\.txt$/, 'get dit la commande qui manque');
+  fs.writeFileSync(path.join(SEED, 'd.txt'), 'pas pareil\n');
+  const pinsD = { 't2/d.txt': PIN('https://example.invalid/d.txt', 'bonjour\n') };
+  fs.mkdirSync(path.join(TMP, '.cache', 't2'), { recursive: true });
+  fs.writeFileSync(path.join(TMP, '.cache', 't2', 'd.txt'), 'bonjour?\n');
+  await cache.fetch(TMP, ['t2'], { from: SEED, pins: pinsD });
+  ok(!fs.existsSync(path.join(TMP, '.cache', 't2', 'd.txt')), 'un fichier en cache de la bonne taille mais d\'un autre sha256 est effacé');
 
   /* Un serveur local : une redirection, un .bz2, un .tar.bz2 dont on prend un membre, et
      une adresse absente. Les archives sont faites ici, avec bzip2 et tar. */
