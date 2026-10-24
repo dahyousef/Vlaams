@@ -67,17 +67,17 @@ and generated sentences, folded into the words' drills), `open.phrases.js` (open
 - Kit lines (i)–(iv) land as one pull request into `phase-3-content` before task 1, with no Status row: the
   `gate` class; a merge task holds until its fan-out row is `done`; a format may send rows to the maintainer by
   rule, with no retry; a reader's verdict may carry the fields a format asks for.
-- Tickets: eight sub-issues of #12, filed at set-up, one per part. The set-up replaces each placeholder in the
-  briefs with its issue number:
-  - `{T-75}` is #75 itself: tasks 1, 2 and 15;
-  - `{T-aliases}`: tasks 3, 4 and 5;
-  - `{T-tools}`: tasks 6 and 33;
-  - `{T-flemish}`: tasks 7, 8, 9, 26 and 30;
-  - `{T-sentences}`: tasks 10 to 14, 34, 35, 36 and 41;
-  - `{T-open}`: tasks 18 to 22 and 37;
-  - `{T-explanations}`: tasks 24, 25, 27, 28, 31, 32, 38, 39, 40 and 43;
-  - `{T-remarks}`: tasks 16 and 23;
-  - `{T-langmarks}`: tasks 17, 23a, 29 and 29a;
+- Tickets: eight sub-issues of #12, filed at set-up (24 October 2026), one per part. The set-up replaced each
+  placeholder in the briefs with its issue number:
+  - #75 itself: tasks 1, 2 and 15;
+  - #84 (aliases): tasks 3, 4 and 5;
+  - #85 (tools): tasks 6 and 33;
+  - #86 (flemish): tasks 7, 8, 9, 26 and 30;
+  - #87 (sentences): tasks 10 to 14, 34, 35, 36 and 41;
+  - #88 (open): tasks 18 to 22 and 37;
+  - #89 (explanations): tasks 24, 25, 27, 28, 31, 32, 38, 39, 40 and 43;
+  - #90 (remarks): tasks 16 and 23;
+  - #91 (langmarks): tasks 17, 23a, 29 and 29a;
   - task 42: none.
 - `<dl>`, in tasks 6 and 10, is `%USERPROFILE%\.claude\jobs\18633c4e\tmp`: the design sitting's downloads
   (`kaikki-dl`, `tatoeba-dl`, `tatoeba-detailed-dl`), outside every worktree. If it is gone, `fetch.js`
@@ -217,51 +217,51 @@ One line per task: `<id>. <name> — <class> — <ticket> — waits <ids>`. Fan-
 `Drafting after:`, gates for their `After:`.
 
 ```
-1. One shape for a meaning: `NL.gloss.meaning` on `LANGS` — mechanical — {T-75} — waits none
-2. One source for a lang attribute: `NL.gloss.TAGS` and `NL.gloss.attr` — mechanical — {T-75} — waits 1
-3. The two listings of a word or phrase say the same thing — mechanical — {T-aliases} — waits 1
-4. A word or phrase listed in two units is one item, resolved at load — engine — {T-aliases} — waits 3
-5. Progress learned under an alias folds into its item, once — engine — {T-aliases} — waits 4
-6. The fan-out kit: Split, Check and Merge over one module per kind — mechanical — {T-tools} — waits 4
-7. Flemish forms in one table — mechanical — {T-flemish} — waits 6
-8. flemish scripts — mechanical — {T-flemish} — waits 6, 7
-9. FAN flemish — fan-out — {T-flemish} — waits 1, 3, 4, 6, 7, 8
-10. Tatoeba source — mechanical — {T-sentences} — waits 6
-11. Sourced sentences table — mechanical — {T-sentences} — waits 4
-12. examples scripts: Split and Check — mechanical — {T-sentences} — waits 6, 10, 11
-13. examples Merge, and the examples-gen scripts — mechanical — {T-sentences} — waits 12
-14. FAN examples — fan-out — {T-sentences} — waits 1, 3, 4, 6, 10, 11, 12, 13
-15. The answer's language on each exercise: `asks` and `answers` — mechanical — {T-75} — waits 2
-16. A right answer is not repeated in the panel (D1) — engine — {T-remarks} — waits 15
-17. Quotes are the mark (E1) — engine — {T-langmarks} — waits 2, 16
-18. The open rubric reads whole words, and letters beyond ASCII — engine — {T-open} — waits none
-19. Every model passes, every need has a near-miss — mechanical — {T-open} — waits 18
-20. A phrase takes its open task from a table keyed by its Dutch — mechanical — {T-open} — waits 4, 19
-21. The open kind: 36 phrases in two batches, each task checked by the session's rubric — mechanical — {T-open} — waits 6, 7, 10, 18, 19, 20
-22. FAN open — fan-out — {T-open} — waits 1, 3, 4, 6, 7, 10, 17, 18, 19, 20, 21
-23. The meaning when both sides are Dutch (D2) — engine — {T-remarks} — waits 15, 16, 17
-23a. Every meaning carries its lang — mechanical — {T-langmarks} — waits 23
-24. Notes and decoys in tables — mechanical — {T-explanations} — waits 3, 4
-25. Written wrong options — mechanical — {T-explanations} — waits 24
-26. Words in « Comment le dit-on ici ? » — engine — {T-flemish} — waits 25
-27. explanations scripts: Split, note and quote Check — mechanical — {T-explanations} — waits 6, 7, 17, 24, 26
-28. explanations scripts: the « on dit aussi » and the decoys, and also.js as a table — mechanical — {T-explanations} — waits 27
-29. Hand-written prose to the quote rule — mechanical — {T-langmarks} — waits 17, 24
-29a. The rest of the Dutch in prose is marked — mechanical — {T-langmarks} — waits 29
-30. Merge flemish — mechanical — {T-flemish} — waits 9
-31. FAN explanations-be — fan-out — {T-explanations} — waits 1, 3, 4, 6, 17, 24, 25, 26, 27, 28, 30
-32. Budgets, and the pattern's rule in the panel — mechanical — {T-explanations} — waits 23, 26, 30
-33. The reading tool — mechanical — {T-tools} — waits 6
-34. Merge examples — mechanical — {T-sentences} — waits 14
-35. GATE (b): the words that get a generated sentence — gate — {T-sentences} — waits 33, 34
-36. FAN examples-gen — fan-out — {T-sentences} — waits 13, 34, 35
-37. Merge open — mechanical — {T-open} — waits 22
-38. Merge explanations-be — mechanical — {T-explanations} — waits 31, 32
-39. GATE (a): the maintainer reads the Flemish items' explanations — gate — {T-explanations} — waits 33, 38
-40. FAN explanations — fan-out — {T-explanations} — waits 27, 28, 38, 39
-41. Merge examples-gen — mechanical — {T-sentences} — waits 36
+1. One shape for a meaning: `NL.gloss.meaning` on `LANGS` — mechanical — #75 — waits none
+2. One source for a lang attribute: `NL.gloss.TAGS` and `NL.gloss.attr` — mechanical — #75 — waits 1
+3. The two listings of a word or phrase say the same thing — mechanical — #84 — waits 1
+4. A word or phrase listed in two units is one item, resolved at load — engine — #84 — waits 3
+5. Progress learned under an alias folds into its item, once — engine — #84 — waits 4
+6. The fan-out kit: Split, Check and Merge over one module per kind — mechanical — #85 — waits 4
+7. Flemish forms in one table — mechanical — #86 — waits 6
+8. flemish scripts — mechanical — #86 — waits 6, 7
+9. FAN flemish — fan-out — #86 — waits 1, 3, 4, 6, 7, 8
+10. Tatoeba source — mechanical — #87 — waits 6
+11. Sourced sentences table — mechanical — #87 — waits 4
+12. examples scripts: Split and Check — mechanical — #87 — waits 6, 10, 11
+13. examples Merge, and the examples-gen scripts — mechanical — #87 — waits 12
+14. FAN examples — fan-out — #87 — waits 1, 3, 4, 6, 10, 11, 12, 13
+15. The answer's language on each exercise: `asks` and `answers` — mechanical — #75 — waits 2
+16. A right answer is not repeated in the panel (D1) — engine — #90 — waits 15
+17. Quotes are the mark (E1) — engine — #91 — waits 2, 16
+18. The open rubric reads whole words, and letters beyond ASCII — engine — #88 — waits none
+19. Every model passes, every need has a near-miss — mechanical — #88 — waits 18
+20. A phrase takes its open task from a table keyed by its Dutch — mechanical — #88 — waits 4, 19
+21. The open kind: 36 phrases in two batches, each task checked by the session's rubric — mechanical — #88 — waits 6, 7, 10, 18, 19, 20
+22. FAN open — fan-out — #88 — waits 1, 3, 4, 6, 7, 10, 17, 18, 19, 20, 21
+23. The meaning when both sides are Dutch (D2) — engine — #90 — waits 15, 16, 17
+23a. Every meaning carries its lang — mechanical — #91 — waits 23
+24. Notes and decoys in tables — mechanical — #89 — waits 3, 4
+25. Written wrong options — mechanical — #89 — waits 24
+26. Words in « Comment le dit-on ici ? » — engine — #86 — waits 25
+27. explanations scripts: Split, note and quote Check — mechanical — #89 — waits 6, 7, 17, 24, 26
+28. explanations scripts: the « on dit aussi » and the decoys, and also.js as a table — mechanical — #89 — waits 27
+29. Hand-written prose to the quote rule — mechanical — #91 — waits 17, 24
+29a. The rest of the Dutch in prose is marked — mechanical — #91 — waits 29
+30. Merge flemish — mechanical — #86 — waits 9
+31. FAN explanations-be — fan-out — #89 — waits 1, 3, 4, 6, 17, 24, 25, 26, 27, 28, 30
+32. Budgets, and the pattern's rule in the panel — mechanical — #89 — waits 23, 26, 30
+33. The reading tool — mechanical — #85 — waits 6
+34. Merge examples — mechanical — #87 — waits 14
+35. GATE (b): the words that get a generated sentence — gate — #87 — waits 33, 34
+36. FAN examples-gen — fan-out — #87 — waits 13, 34, 35
+37. Merge open — mechanical — #88 — waits 22
+38. Merge explanations-be — mechanical — #89 — waits 31, 32
+39. GATE (a): the maintainer reads the Flemish items' explanations — gate — #89 — waits 33, 38
+40. FAN explanations — fan-out — #89 — waits 27, 28, 38, 39
+41. Merge examples-gen — mechanical — #87 — waits 36
 42. Docs: the tables a kind's Merge writes, the phase 3 plan, and the kit's tests — mechanical — none — waits 38
-43. Merge explanations — mechanical — {T-explanations} — waits 40, 42
+43. Merge explanations — mechanical — #89 — waits 40, 42
 ```
 
 ## The run file's lines
@@ -335,7 +335,7 @@ follows the call.
 
 ### Task 1: One shape for a meaning: `NL.gloss.meaning` on `LANGS`
 Class: mechanical
-Ticket: {T-75}
+Ticket: #75
 Promises: none
 Why: #75's first item, decision 1 (« meaning() on LANGS »). At seven sites, the code rebuilds a meaning in
 both languages by hand as `{ fr: x.fr, en: x.en }`: three drill fallbacks in `src/ex/index.js`, three
@@ -487,14 +487,13 @@ insertion is in English, like its neighbours.
   git add src/core/gloss.js src/ex/index.js src/ui/scenario.js src/content/index.js test/smoke.js TESTING.md index.html artifact.html
   git commit -m "refactor(gloss): a meaning in both languages is copied by NL.gloss.meaning, on NL.gloss.LANGS, and smoke bans the copy by hand (#75)"
   ```
-  Replace `#75` with the ticket the set-up gives.
 
 Done when: `node test/smoke.js .` prints `ALL CHECKS PASSED`, `grep -rnE "(fr|en): *[A-Za-z_.]+\.(fr|en)" src` prints
 nothing, and `git status --short` is clean after the commit.
 
 ### Task 2: One source for a lang attribute: `NL.gloss.TAGS` and `NL.gloss.attr`
 Class: mechanical
-Ticket: {T-75}
+Ticket: #75
 Promises: none
 Why: #75's second item, decision 2 (« TAGS + attr(l) »). The tag of a language is written out in 41 places.
 `src/ex` and `src/ui` hold 37 literal `lang="nl-BE"` (`NL_BE` in `src/ex/index.js` among them) and 4 literal
@@ -721,7 +720,6 @@ text. Leave all of these. Comments in `src/` and `test/lang.js` are French. The 
   git add src/core/gloss.js src/ex/index.js src/ui/home.js src/ui/library.js src/ui/listen.js src/ui/mistakes.js src/ui/scenario.js src/ui/session.js src/ui/shell.js test/smoke.js test/lang.js TESTING.md index.html artifact.html
   git commit -m "fix(gloss): a lang attribute comes from NL.gloss.TAGS through NL.gloss.attr, the English false friends say en-GB, a scenario choice's meaning carries its language, and smoke bans lang=\" outside gloss.js (#75)"
   ```
-  Replace `#75` with the ticket the set-up gives.
 
 Done when:
 - `node test/smoke.js .` prints `ALL CHECKS PASSED`.
@@ -731,7 +729,7 @@ Done when:
 
 ### Task 3: The two listings of a word or phrase say the same thing
 Class: mechanical
-Ticket: {T-aliases}
+Ticket: #84
 Promises: none
 Why: decision 4c. Nine words and phrases are listed in two units (recon/aliases.md). Task 4 makes the later
 listing an alias: only the first is built, so only the first is ever shown. Whatever the later listing says
@@ -898,9 +896,8 @@ Notes:
 - [ ] **Step 6: Commit.**
   ```
   git add src/content/lexicon.a1.js src/content/lexicon.a1b.js test/data/ids.tsv test/content.js TESTING.md index.html artifact.html
-  git commit -m "fix(content): the two listings of a word or phrase say the same thing, and test/content.js holds them to it ({T-aliases})"
+  git commit -m "fix(content): the two listings of a word or phrase say the same thing, and test/content.js holds them to it (#84)"
   ```
-  Replace `{T-aliases}` with the ticket the set-up gives.
 
 Done when:
 - `node test/content.js .` prints `  alias           9 élément(s) listé(s) deux fois, 0 en désaccord` and
@@ -910,7 +907,7 @@ Done when:
 
 ### Task 4: A word or phrase listed in two units is one item, resolved at load
 Class: engine
-Ticket: {T-aliases}
+Ticket: #84
 Promises: none
 Why: decisions 4a and 4b (recon/aliases.md). Nine words and phrases are listed in two units, and each listing
 is built as an item of its own. So `meenemen` is drilled twice in parallel, as bakker:w22 and as dedag:w4, it
@@ -1369,9 +1366,8 @@ Notes:
 - [ ] **Step 6: Commit.**
   ```
   git add src/content/index.js src/core/srs.js test/content.js test/engine.js test/screens.js test/tools/check-files.js TESTING.md README.md index.html artifact.html
-  git commit -m "feat(content): a word or phrase listed in two units is one item, built at its first listing, and the later ids are its aliases ({T-aliases})"
+  git commit -m "feat(content): a word or phrase listed in two units is one item, built at its first listing, and the later ids are its aliases (#84)"
   ```
-  Replace `{T-aliases}` with the ticket the set-up gives.
 
 Done when:
 - `node test/content.js .` prints `  une fiche       430 listages, 421 mots et phrases construits, 421 distincts`.
@@ -1381,7 +1377,7 @@ Done when:
 
 ### Task 5: Progress learned under an alias folds into its item, once
 Class: engine
-Ticket: {T-aliases}
+Ticket: #84
 Promises: none
 Why: decision 4b (recon/aliases.md, F-a). After task 4, a record under an alias id is never read. A learner
 who met `meenemen` only in unit 9, as dedag:w4, finds the word new again at bakker:w22. A learner who
@@ -1908,9 +1904,8 @@ Notes:
 - [ ] **Step 6: Commit.**
   ```
   git add src/core/srs.js src/core/state.js src/app.js src/core/sync.js src/ui/shell.js test/engine.js test/sync.js CLAUDE.md docs/adr/0006-a-reset-is-a-timestamp.md TESTING.md index.html artifact.html
-  git commit -m "feat(srs): progress learned under an alias id folds into its item once, stamped with the newest write it folds, after a pull, after a restore, and at boot on a device no account owns, marked folded ({T-aliases})"
+  git commit -m "feat(srs): progress learned under an alias id folds into its item once, stamped with the newest write it folds, after a pull, after a restore, and at boot on a device no account owns, marked folded (#84)"
   ```
-  Replace `{T-aliases}` with the ticket the set-up gives.
 
 Done when:
 - `node test/engine.js .` prints `ENGINE OK`, and `node test/sync.js .` prints `SYNC OK`.
@@ -1920,7 +1915,7 @@ Done when:
 
 ### Task 6: The fan-out kit: Split, Check and Merge over one module per kind
 Class: mechanical
-Ticket: {T-tools}
+Ticket: #85
 Promises: none
 Why: the phase writes about 935 content rows in six fan-out kinds (outline, « Fan-outs »). design-sitting.md's
 « The fan-out form » sets the contract of their three scripts, and batch-controller.md sets the files of a
@@ -3358,9 +3353,8 @@ Notes:
 - [ ] **Step 6: Commit.**
   ```
   git add .gitignore tools/content/lib/course.js tools/content/lib/kit.js tools/content/lib/table.js tools/content/lib/cache.js tools/content/split.js tools/content/check.js tools/content/merge.js tools/content/fetch.js test/tools/fanout.js test/run-all.sh
-  git commit -m "feat(tools): the fan-out kit, Split, Check and Merge over one module per kind, with stamps, the table writer and a pinned cache ({T-tools})"
+  git commit -m "feat(tools): the fan-out kit, Split, Check and Merge over one module per kind, with stamps, the table writer and a pinned cache (#85)"
   ```
-  Replace `{T-tools}` with the ticket the set-up gives.
 
 Done when:
 - `node test/tools/fanout.js .` prints `116 contrôles, KIT CONFORME`, and `test/run-all.sh` runs it.
@@ -3369,7 +3363,7 @@ Done when:
 
 ### Task 7: Flemish forms in one table
 Class: mechanical
-Ticket: {T-flemish}
+Ticket: #86
 Promises: none
 Why: decision 6a. The Flemish pass (tasks 8 to 10) writes a `be` for each of the 370 items that lack one, and its
 Merge writes them into a table keyed by the Dutch. Today the 61 `be` are arguments of the lexicons' `W(…)` and
@@ -4287,9 +4281,8 @@ Notes:
 - [ ] **Step 6: Commit.**
   ```
   git add src/content/be.js src/content/index.js src/content/lexicon.a1.js src/content/lexicon.a1b.js tools/content/lib/course.js tools/content/kaikki.js build.sh ATTRIBUTION.md index.html artifact.html test/content.js test/lib/spelling.js test/data/flemish.tsv test/lib/tree.js test/lang.js test/tools/fanout.js test/smoke.js test/tools/sources.js test/run-all.sh
-  git commit -m "refactor(content): the Flemish forms live in one table keyed by the Dutch, src/content/be.js, attached at load; their spelling exceptions in test/data/flemish.tsv; the Belgian senses of the pinned dump extracted ({T-flemish})"
+  git commit -m "refactor(content): the Flemish forms live in one table keyed by the Dutch, src/content/be.js, attached at load; their spelling exceptions in test/data/flemish.tsv; the Belgian senses of the pinned dump extracted (#86)"
   ```
-  Replace `{T-flemish}` with the ticket the set-up gives.
 
 Done when:
 - `node test/content.js .` prints `tables          be 61 ; be hors du lexique` and `700 contrôles, CONTENU CONFORME`.
@@ -4299,7 +4292,7 @@ Done when:
 
 ### Task 8: flemish scripts
 Class: mechanical
-Ticket: {T-flemish}
+Ticket: #86
 Promises: none
 Why: decision 6a. The fan-out `flemish` (task 9) gives every word and phrase without a `be` a Flemish form,
 or says that a Flemish colleague says the standard. Each form comes with its evidence: a rule, a lemma that
@@ -4820,9 +4813,8 @@ Notes:
 - [ ] **Step 5: Commit.**
   ```
   git add tools/content/kinds/flemish.js test/tools/fanout.js
-  git commit -m "feat(tools): the flemish kind, six spoken-Flemish rules as code, a form checked against its rule, its Wiktionary lemma or the maintainer, and Merge into be.js and flemish.tsv ({T-flemish})"
+  git commit -m "feat(tools): the flemish kind, six spoken-Flemish rules as code, a form checked against its rule, its Wiktionary lemma or the maintainer, and Merge into be.js and flemish.tsv (#86)"
   ```
-  Replace `{T-flemish}` with the ticket the set-up gives.
 
 Done when:
 - `node test/tools/fanout.js .` prints
@@ -4833,7 +4825,7 @@ Done when:
 
 ### Task 9: FAN flemish
 Class: fan-out
-Ticket: {T-flemish}
+Ticket: #86
 Kind: flemish
 Drafting after: 1, 3, 4, 6, 7, 8
 Split: node tools/content/split.js . "<WS>/drafts/flemish"
@@ -4907,7 +4899,7 @@ no form.
 
 ### Task 10: Tatoeba source
 Class: mechanical
-Ticket: {T-sentences}
+Ticket: #87
 Promises: none
 Why: decision 5a. In task 14, a drafter picks one or two Tatoeba sentences for each word without a sentence,
 and credits them under CC BY. This task writes the source those sentences come from,
@@ -5520,9 +5512,8 @@ Notes:
 - [ ] **Step 6: Commit.**
   ```
   git add tools/content/tatoeba.js test/lib/sequence.js test/lib/spelling.js tools/content/lib/cache.js test/content.js test/tools/sources.js test/tools/fanout.js test/run-all.sh ATTRIBUTION.md
-  git commit -m "feat(tools): the Tatoeba source, ranked for a word of the course, with its authors and the native mark ({T-sentences})"
+  git commit -m "feat(tools): the Tatoeba source, ranked for a word of the course, with its authors and the native mark (#87)"
   ```
-  Replace `{T-sentences}` with the ticket the set-up gives.
 
 Done when:
 - `node test/tools/sources.js .` prints the `tatoeba` line and `31 contrôles, SOURCES CONFORMES`.
@@ -5533,7 +5524,7 @@ Done when:
 
 ### Task 11: Sourced sentences table
 Class: mechanical
-Ticket: {T-sentences}
+Ticket: #87
 Promises: none
 Why: decision 5a. The sentences that task 14 takes from Tatoeba, and those task 36 writes for the words the
 maintainer names, live in a table of their own, `src/content/sourced.js`. They follow other rules than the
@@ -5801,9 +5792,8 @@ Notes:
 - [ ] **Step 6: Commit.**
   ```
   git add src/content/sourced.js docs/attribution/tatoeba.tsv build.sh src/content/examples.js test/content.js index.html artifact.html
-  git commit -m "feat(content): sourced sentences in their own table, src/content/sourced.js, folded into the words by examples.js, each Tatoeba one credited in docs/attribution/tatoeba.tsv, and none allowed a form the course has not taught by its word's unit ({T-sentences})"
+  git commit -m "feat(content): sourced sentences in their own table, src/content/sourced.js, folded into the words by examples.js, each Tatoeba one credited in docs/attribution/tatoeba.tsv, and none allowed a form the course has not taught by its word's unit (#87)"
   ```
-  Replace `{T-sentences}` with the ticket the set-up gives.
 
 Done when:
 - `node test/content.js .` prints the `sourcées` line with `0 phrase(s) sur 0 mot(s)`, then
@@ -5814,7 +5804,7 @@ Done when:
 
 ### Task 12: examples scripts: Split and Check
 Class: mechanical
-Ticket: {T-sentences}
+Ticket: #87
 Promises: none
 Why: decisions 5a and 5b. In the fan-out `examples` (task 14), each word without an example sentence gets
 one or two Tatoeba sentences, as Tatoeba writes them, each with an English and a French translation that
@@ -6212,9 +6202,8 @@ Notes:
 - [ ] **Step 5: Commit.**
   ```
   git add tools/content/kinds/examples.js test/tools/fanout.js
-  git commit -m "feat(tools): the examples kind, Split and Check: each word without a sentence that Tatoeba can give one, in batches of whole units, its sentences checked against the pinned extract and the course's order ({T-sentences})"
+  git commit -m "feat(tools): the examples kind, Split and Check: each word without a sentence that Tatoeba can give one, in batches of whole units, its sentences checked against the pinned extract and the course's order (#87)"
   ```
-  Replace `{T-sentences}` with the ticket the set-up gives.
 
 Done when:
 - `node test/tools/fanout.js .` prints the `examples` line and `216 contrôles, KIT CONFORME`.
@@ -6222,7 +6211,7 @@ Done when:
 
 ### Task 13: examples Merge, and the examples-gen scripts
 Class: mechanical
-Ticket: {T-sentences}
+Ticket: #87
 Promises: none
 Why: decisions 5a and 5c. Two things are still missing for the sentences to reach the course:
 - **The `examples` Merge.** Task 12's kind already maps a row to its sentences. This task adds the credit
@@ -6546,9 +6535,8 @@ Notes:
 - [ ] **Step 5: Commit.**
   ```
   git add tools/content/kinds/examples.js tools/content/kinds/examples-gen.js test/tools/fanout.js
-  git commit -m "feat(tools): examples Merge writes the sentences and rewrites the Tatoeba credit; the examples-gen kind writes one sentence for each word the maintainer named ({T-sentences})"
+  git commit -m "feat(tools): examples Merge writes the sentences and rewrites the Tatoeba credit; the examples-gen kind writes one sentence for each word the maintainer named (#87)"
   ```
-  Replace `{T-sentences}` with the ticket the set-up gives.
 
 Done when:
 - `node test/tools/fanout.js .` prints the `examples` line ending `examples-gen sur 2 mots nommés`, then
@@ -6557,7 +6545,7 @@ Done when:
 
 ### Task 14: FAN examples
 Class: fan-out
-Ticket: {T-sentences}
+Ticket: #87
 Kind: examples
 Drafting after: 1, 3, 4, 6, 10, 11, 12, 13
 Split: node tools/content/split.js . "<WS>/drafts/examples"
@@ -6641,7 +6629,7 @@ sentence or changes a word's article or meaning.
 
 ### Task 15: The answer's language on each exercise: `asks` and `answers`
 Class: mechanical
-Ticket: {T-75}
+Ticket: #75
 Promises: none
 Why: #75's third item, decision 3 (« asks + answers »). The foot decides the language of the answer it shows from a
 list of exercise names (`session.js:430`): `recall` answers with a meaning, `match` with mixed pairs, and every
@@ -6795,7 +6783,6 @@ after task 13, in the plan's order; the verdict words are what count.
   git add src/ex/index.js src/ui/session.js test/lang.js TESTING.md index.html artifact.html
   git commit -m "fix(ex): each exercise says the language it asks and answers in, the foot reads answers instead of a list of exercise names, and lang.js walks the registry for both (#75)"
   ```
-  Replace `#75` with the ticket the set-up gives.
 
 Done when:
 - `node test/lang.js .` prints `LANGUE CONFORME`.
@@ -6805,7 +6792,7 @@ Done when:
 
 ### Task 16: A right answer is not repeated in the panel (D1)
 Class: engine
-Ticket: {T-remarks}
+Ticket: #90
 Promises: none
 Why: decision 9a. After « Vérifier », the panel prints the answer in bold even when the learner has just
 chosen, built, typed or said exactly that, and « Ici on dit » can show the Flemish form they typed. In
@@ -7105,9 +7092,8 @@ Notes:
 - [ ] **Step 6: Commit.**
   ```
   git add src/ex/index.js src/ui/session.js test/typed.js test/lang.js test/journey.js TESTING.md index.html artifact.html
-  git commit -m "fix(ui): a right answer is not repeated in the panel: each exercise says what the learner gave, the foot drops the answer line it equals, and « Ici on dit » leaves out the form just typed ({T-remarks})"
+  git commit -m "fix(ui): a right answer is not repeated in the panel: each exercise says what the learner gave, the foot drops the answer line it equals, and « Ici on dit » leaves out the form just typed (#90)"
   ```
-  Replace `{T-remarks}` with the ticket the set-up gives.
 
 Done when:
 - `node test/typed.js .` prints `0 en échec`, and `node test/lang.js .` prints `LANGUE CONFORME`.
@@ -7117,7 +7103,7 @@ Done when:
 
 ### Task 17: Quotes are the mark (E1)
 Class: engine
-Ticket: {T-langmarks}
+Ticket: #91
 Promises: none
 Why: decision 10, on the one table of decision 2. The course's prose quotes Dutch between « » or “ ”: « trager »
 in an item's note, « Ik ben ermee bezig » in another. Every screen escapes that prose whole, so the quoted Dutch is
@@ -7615,9 +7601,8 @@ Notes:
 - [ ] **Step 6: Commit.**
   ```
   git add src/core/gloss.js src/ui/shell.js src/ui/home.js src/ui/library.js src/ui/scenario.js src/ui/session.js src/ex/index.js src/content/grammar.js src/content/reference.js test/lang.js test/screens.js test/content.js test/smoke.js TESTING.md index.html artifact.html
-  git commit -m "fix(lang): Dutch quoted in the course's prose is declared nl-BE: NL.gloss.quoted marks each « … » and “…” at every screen that shows a note, a blurb, a rule or a prompt, the course writes class=\"nl\", and test/lang.js keeps quotes that are not Dutch under a falling budget ({T-langmarks})"
+  git commit -m "fix(lang): Dutch quoted in the course's prose is declared nl-BE: NL.gloss.quoted marks each « … » and “…” at every screen that shows a note, a blurb, a rule or a prompt, the course writes class=\"nl\", and test/lang.js keeps quotes that are not Dutch under a falling budget (#91)"
   ```
-  Replace `{T-langmarks}` with the ticket the set-up gives.
 
 Done when:
 - `node test/lang.js .` prints `LANGUE CONFORME`, and its `guillemets` line shows the count equal to the budget.
@@ -7630,7 +7615,7 @@ Done when:
 
 ### Task 18: The open rubric reads whole words, and letters beyond ASCII
 Class: engine
-Ticket: {T-open}
+Ticket: #88
 Promises: none
 Why: decision 7 (C-a). A free answer (`open`) is judged by `rubric()` in `src/ex/index.js`, need by need. Two of
 its readings are wrong today:
@@ -7846,9 +7831,8 @@ Notes:
 - [ ] **Step 6: Commit.**
   ```
   git add src/ex/index.js test/typed.js TESTING.md index.html artifact.html
-  git commit -m "fix(ex): the open rubric reads whole words and runs of words, and an rx's word boundaries see letters beyond ASCII ({T-open})"
+  git commit -m "fix(ex): the open rubric reads whole words and runs of words, and an rx's word boundaries see letters beyond ASCII (#88)"
   ```
-  Replace `{T-open}` with the ticket the set-up gives.
 
 Done when:
 - `node test/typed.js .` prints the `mots entiers` line and `0 en échec`.
@@ -7858,7 +7842,7 @@ Done when:
 
 ### Task 19: Every model passes, every need has a near-miss
 Class: mechanical
-Ticket: {T-open}
+Ticket: #88
 Promises: none
 Why: decision 7 (C-b). An open task is judged by `rubric()` alone: a model that fails its own needs teaches a
 wrong « right answer », and a need that nothing fails checks nothing. Task 18 made the rubric read whole words
@@ -8184,9 +8168,8 @@ Notes:
 - [ ] **Step 6: Commit.**
   ```
   git add src/content/open.js src/ex/index.js test/content.js TESTING.md index.html artifact.html
-  git commit -m "fix(content): every open task's model meets all its needs, and each need stores a miss that fails it alone, held by test/content.js through the exported rubric ({T-open})"
+  git commit -m "fix(content): every open task's model meets all its needs, and each need stores a miss that fails it alone, held by test/content.js through the exported rubric (#88)"
   ```
-  Replace `{T-open}` with the ticket the set-up gives.
 
 Done when:
 - `node test/content.js .` prints `  réponse libre   9 tâches, 9 exemples qui cochent tout, 28 besoins manqués un à un`
@@ -8196,7 +8179,7 @@ Done when:
 
 ### Task 20: A phrase takes its open task from a table keyed by its Dutch
 Class: mechanical
-Ticket: {T-open}
+Ticket: #88
 Promises: none
 Why: decision 7. The phrase ladder offers `open` at rung 6 (`['speak','type','open','corrige','dictation']`,
 `src/core/srs.js:84`), but only the nine patterns carry a task, so no phrase is ever served one. This task gives
@@ -8371,9 +8354,8 @@ Notes:
 - [ ] **Step 6: Commit.**
   ```
   git add src/content/open.phrases.js src/content/index.js build.sh test/smoke.js test/typed.js TESTING.md index.html artifact.html
-  git commit -m "feat(content): a phrase takes its open task from src/content/open.phrases.js, keyed by its Dutch, and is served it at rung 6, its rx kept a regular expression ({T-open})"
+  git commit -m "feat(content): a phrase takes its open task from src/content/open.phrases.js, keyed by its Dutch, and is served it at rung 6, its rx kept a regular expression (#88)"
   ```
-  Replace `{T-open}` with the ticket the set-up gives.
 
 Done when:
 - `node test/typed.js .` prints `  phrase         « Hoeveel kost dat? » en réponse libre à l’échelon 6 : l’exemple juste, sans « ? » faux`
@@ -8384,7 +8366,7 @@ Done when:
 
 ### Task 21: The open kind: 36 phrases in two batches, each task checked by the session's rubric
 Class: mechanical
-Ticket: {T-open}
+Ticket: #88
 Promises: none
 Why: decision 7. Task 20 gave phrases a table for open tasks, `src/content/open.phrases.js`, which holds none.
 This task writes the kind module that fans the tasks out: `tools/content/kinds/open.js`, run by task 6's kit as
@@ -8880,9 +8862,8 @@ Notes:
 - [ ] **Step 6: Commit.**
   ```
   git add tools/content/kinds/open.js test/tools/fanout.js
-  git commit -m "feat(content): the open kind splits 36 phrases into two batches and checks each task, and the reader's right answers, by the session's rubric ({T-open})"
+  git commit -m "feat(content): the open kind splits 36 phrases into two batches and checks each task, and the reader's right answers, by the session's rubric (#88)"
   ```
-  Replace `{T-open}` with the ticket the set-up gives.
 
 Done when:
 - `node test/tools/fanout.js .` prints the `genre open` line, no FAIL, and `KIT CONFORME`.
@@ -8891,7 +8872,7 @@ Done when:
 
 ### Task 22: FAN open
 Class: fan-out
-Ticket: {T-open}
+Ticket: #88
 Kind: open
 Drafting after: 1, 3, 4, 6, 7, 10, 17, 18, 19, 20, 21
 Split: node tools/content/split.js . "<WS>/drafts/open"
@@ -8983,7 +8964,7 @@ and the reader's verdict on it:
 
 ### Task 23: The meaning when both sides are Dutch (D2)
 Class: engine
-Ticket: {T-remarks}
+Ticket: #90
 Promises: none
 Why: decisions 9b and 9c, the second remark of #12. After « Vérifier », an exercise that asks in Dutch and
 answers in Dutch (`article`, `cloze`, `dictation`, `speak`, `intrus`, `corrige`, `vlaams`: task 15's fields
@@ -9188,9 +9169,8 @@ are what count.
 - [ ] **Step 6: Commit.**
   ```
   git add src/ex/index.js src/ui/session.js test/typed.js test/lang.js TESTING.md index.html artifact.html
-  git commit -m "feat(ui): when an exercise asks and answers in Dutch, the panel gives the item's meaning in the display language, marked with its lang, the odd word's in the intrus, and reads the explanation through NL.ex.explanation ({T-remarks})"
+  git commit -m "feat(ui): when an exercise asks and answers in Dutch, the panel gives the item's meaning in the display language, marked with its lang, the odd word's in the intrus, and reads the explanation through NL.ex.explanation (#90)"
   ```
-  Replace `{T-remarks}` with the ticket the set-up gives.
 
 Done when:
 - `node test/typed.js .` prints `0 en échec`, and `node test/lang.js .` prints `LANGUE CONFORME`.
@@ -9200,7 +9180,7 @@ Done when:
 
 ### Task 23a: Every meaning carries its lang
 Class: mechanical
-Ticket: {T-langmarks}
+Ticket: #91
 Promises: none
 Why: decision 2's rule, that every text on screen declares its language, still has two gaps after task 23.
 - The meaning of a rule's example (`src/ui/home.js`, the grammar card) and of a sheet row (`src/ui/library.js`)
@@ -9511,9 +9491,8 @@ measured after task 23, in the plan's order; the verdict words are what count.
 - [ ] **Step 6: Commit.**
   ```
   git add src/ui/shell.js src/ex/index.js src/ui/listen.js src/ui/scenario.js src/ui/home.js src/ui/library.js test/lib/browser.js test/lang.js test/screens.js TESTING.md index.html artifact.html
-  git commit -m "fix(lang): what the microphone heard, the words it compared and the meanings of a rule's examples and a sheet's rows declare their language, and NL.ui.ifText takes the language of its text ({T-langmarks})"
+  git commit -m "fix(lang): what the microphone heard, the words it compared and the meanings of a rule's examples and a sheet's rows declare their language, and NL.ui.ifText takes the language of its text (#91)"
   ```
-  Replace `{T-langmarks}` with the ticket the set-up gives.
 
 Done when:
 - `node test/lang.js .` prints `LANGUE CONFORME`, and `node test/screens.js .` prints `SCREENS OK`.
@@ -9525,7 +9504,7 @@ Done when:
 
 ### Task 24: Notes and decoys in tables
 Class: mechanical
-Ticket: {T-explanations}
+Ticket: #89
 Promises: none
 Why: decisions 8a and 8d. The explanations pass (tasks 27, 28 and its fan-out) writes a note for every item,
 and two decoys for every item that has a Flemish form. Its Merge writes them into tables keyed by the Dutch,
@@ -10235,9 +10214,8 @@ Notes:
 - [ ] **Step 5: Commit.**
   ```
   git add src/content/notes.js src/content/decoys.js src/content/index.js src/content/lexicon.a1.js src/content/lexicon.a1b.js build.sh test/smoke.js test/lib/prose.js test/lib/tree.js test/lang.js test/content.js test/tools/check-files.js test/tools/fanout.js index.html artifact.html
-  git commit -m "refactor(content): the word notes live in one table keyed by the Dutch, src/content/notes.js, beside an empty src/content/decoys.js, both attached at load; the test helpers read the prose tables ({T-explanations})"
+  git commit -m "refactor(content): the word notes live in one table keyed by the Dutch, src/content/notes.js, beside an empty src/content/decoys.js, both attached at load; the test helpers read the prose tables (#89)"
   ```
-  Replace `{T-explanations}` with the ticket the set-up gives.
 
 Done when:
 - `node test/content.js .` prints `tables          be 61, open.phrases 0, notes 91, decoys 0 ; be, note hors du lexique` and
@@ -10248,7 +10226,7 @@ Done when:
 
 ### Task 25: Written wrong options
 Class: mechanical
-Ticket: {T-explanations}
+Ticket: #89
 Promises: none
 Why: decision 8d. « Comment le dit-on ici ? » (`R.vlaams`) gives the standard Dutch and asks which of three
 options is the Flemish form. Its two wrong options are drawn at random from the Flemish forms of other items.
@@ -10467,9 +10445,8 @@ Notes:
 - [ ] **Step 6: Commit.**
   ```
   git add src/ex/index.js test/typed.js test/content.js test/smoke.js index.html artifact.html
-  git commit -m "feat(ex): « Comment le dit-on ici ? » offers the two decoys written for its item, and the random pool only to an item without them; no written decoy is an answer the course accepts ({T-explanations})"
+  git commit -m "feat(ex): « Comment le dit-on ici ? » offers the two decoys written for its item, and the random pool only to an item without them; no written decoy is an answer the course accepts (#89)"
   ```
-  Replace `{T-explanations}` with the ticket the set-up gives.
 
 Done when:
 - `node test/typed.js .` prints `0 en échec`, and `node test/content.js .` prints `CONTENU CONFORME` with its
@@ -10480,7 +10457,7 @@ Done when:
 
 ### Task 26: Words in « Comment le dit-on ici ? »
 Class: engine
-Ticket: {T-flemish}
+Ticket: #86
 Promises: none
 Why: decision 6b. « Comment le dit-on ici ? » (`R.vlaams`) gives the standard Dutch and asks which of three
 options is the Flemish form. Today only a phrase meets it: `RUNGS.word` never offers it, so the 37 words with a
@@ -10861,9 +10838,8 @@ Notes:
 - [ ] **Step 6: Commit.**
   ```
   git add src/content/index.js src/core/srs.js src/ex/index.js test/engine.js test/typed.js test/smoke.js TESTING.md index.html artifact.html
-  git commit -m "feat(srs): a word with a Flemish form meets « Comment le dit-on ici ? » at rung 1, offered the first form of its list, beside decoys that are never right for it ({T-flemish})"
+  git commit -m "feat(srs): a word with a Flemish form meets « Comment le dit-on ici ? » at rung 1, offered the first form of its list, beside decoys that are never right for it (#86)"
   ```
-  Replace `{T-flemish}` with the ticket the set-up gives.
 
 Done when:
 - `node test/engine.js .` prints `ENGINE OK` with its line `15 mots le portent`, and `node test/typed.js .`
@@ -10876,7 +10852,7 @@ Done when:
 
 ### Task 27: explanations scripts: Split, note and quote Check
 Class: mechanical
-Ticket: {T-explanations}
+Ticket: #89
 Promises: none
 Why: decisions 8a, 8b, 8c and 10. Every word and phrase gets an explanation, a note in French and in English
 that says what the meaning alone does not. Drafters write the notes in two fan-out kinds. `explanations-be`
@@ -11390,9 +11366,8 @@ Notes:
 - [ ] **Step 5: Commit.**
   ```
   git add tools/content/lib/explain.js tools/content/kinds/explanations-be.js tools/content/kinds/explanations.js test/lib/dutch.js test/lang.js test/tools/fanout.js
-  git commit -m "feat(tools): the two explanations kinds, explanations-be for the items whose Flemish is not the Dutch and explanations for the rest, each note checked for its length, its two languages and quotes that hold Dutch only ({T-explanations})"
+  git commit -m "feat(tools): the two explanations kinds, explanations-be for the items whose Flemish is not the Dutch and explanations for the rest, each note checked for its length, its two languages and quotes that hold Dutch only (#89)"
   ```
-  Replace `{T-explanations}` with the ticket the set-up gives.
 
 Done when:
 - `node test/tools/fanout.js .` prints its `explanations` line and `KIT CONFORME`.
@@ -11403,7 +11378,7 @@ Done when:
 
 ### Task 28: explanations scripts: the « on dit aussi » and the decoys, and also.js as a table
 Class: mechanical
-Ticket: {T-explanations}
+Ticket: #89
 Promises: none
 Why: decisions 8a and 8d. Task 27 wrote the two explanations kinds with the note alone. A row now also writes
 its « on dit aussi » forms (decision 8a puts them in the same rows), and a Flemish row whose item
@@ -11953,9 +11928,8 @@ Notes:
 - [ ] **Step 6: Commit.**
   ```
   git add tools/content/lib/explain.js test/lib/dutch.js test/tools/fanout.js test/content.js src/content/index.js src/content/decoys.js src/content/also.js index.html artifact.html
-  git commit -m "feat(content): explanation rows write their also forms and, for the Flemish ones, two decoys; also.js becomes a table keyed by the Dutch, and Merge writes notes.js, also.js and decoys.js ({T-explanations})"
+  git commit -m "feat(content): explanation rows write their also forms and, for the Flemish ones, two decoys; also.js becomes a table keyed by the Dutch, and Merge writes notes.js, also.js and decoys.js (#89)"
   ```
-  Replace `{T-explanations}` with the ticket the set-up gives.
 
 Done when:
 - `node test/tools/fanout.js .` prints its `explanations` line with `les « on dit aussi », les leurres` and
@@ -11967,7 +11941,7 @@ Done when:
 
 ### Task 29: Hand-written prose to the quote rule
 Class: mechanical
-Ticket: {T-langmarks}
+Ticket: #91
 Promises: none
 Why: decision 10 is that quotes are the mark: a passage between « » or “ ” in the course's prose is Dutch, and
 nothing else is. `NL.gloss.quoted` declares each quoted passage `nl-BE`. Task 17 made the rule hold on screen and
@@ -12609,9 +12583,8 @@ Notes:
 - [ ] **Step 6: Commit.**
   ```
   git add src/content/grammar.js src/content/open.js src/content/lexicon.a1.js src/content/lexicon.a1b.js src/content/reference.js test/lang.js test/typed.js TESTING.md index.html artifact.html
-  git commit -m "fix(content): the hand-written prose quotes only the Dutch it cites, the grammar cards mark their bare Dutch, and test/lang.js catches course Dutch left bare in both languages ({T-langmarks})"
+  git commit -m "fix(content): the hand-written prose quotes only the Dutch it cites, the grammar cards mark their bare Dutch, and test/lang.js catches course Dutch left bare in both languages (#91)"
   ```
-  Replace `{T-langmarks}` with the ticket the set-up gives.
 
 Done when:
 - `node test/lang.js .` prints `LANGUE CONFORME`. Its `guillemets` line shows a budget equal to its count, and
@@ -12624,7 +12597,7 @@ Done when:
 
 ### Task 29a: The rest of the Dutch in prose is marked
 Class: mechanical
-Ticket: {T-langmarks}
+Ticket: #91
 Promises: none
 Why: the maintainer ruled on the Dutch that task 29 left unmarked: phase 3 marks it. Two places are left.
 - **Titles.** `title` and `h` cannot quote (6d.3), so their Dutch carries `class="nl"`, with no quotes. It is
@@ -13358,9 +13331,8 @@ Notes:
 - [ ] **Step 6: Commit.**
   ```
   git add src/content/grammar.js src/content/reference.js src/core/fr.js src/core/en.js src/ui/home.js src/ui/library.js src/ui/scenario.js src/ui/listen.js test/lang.js TESTING.md index.html artifact.html
-  git commit -m "fix(lang): the rest of the Dutch in prose is marked: titles carry class=\"nl\", the sound and false-friend tables quote theirs, and the quote guard reads those tables ({T-langmarks})"
+  git commit -m "fix(lang): the rest of the Dutch in prose is marked: titles carry class=\"nl\", the sound and false-friend tables quote theirs, and the quote guard reads those tables (#91)"
   ```
-  Replace `{T-langmarks}` with the ticket the set-up gives.
 
 Done when:
 - `node test/lang.js .` prints `LANGUE CONFORME`, and its `guillemets` line reads `25 citations … (budget 25)`.
@@ -13372,7 +13344,7 @@ Done when:
 
 ### Task 30: Merge flemish
 Class: mechanical
-Ticket: {T-flemish}
+Ticket: #86
 Merges: flemish
 Promises: none
 Why: decision 6a, « Every item, with evidence ». Task 9's drafters, its readers and the maintainer have settled
@@ -13502,10 +13474,9 @@ Notes:
 - [ ] **Step 6: Commit.**
   ```
   git add src/content/be.js test/data/flemish.tsv index.html artifact.html
-  git commit -m "feat(content): every word and phrase gets its Flemish form or keeps the standard, each new form with its evidence, merged into be.js and flemish.tsv ({T-flemish})"
+  git commit -m "feat(content): every word and phrase gets its Flemish form or keeps the standard, each new form with its evidence, merged into be.js and flemish.tsv (#86)"
   ```
-  Add `test/lang.js` to the `git add` if step 4 changed it. Replace `{T-flemish}` with the ticket the set-up
-  gives.
+  Add `test/lang.js` to the `git add` if step 4 changed it.
 
 Done when:
 - `src/content/be.js` and `test/data/flemish.tsv` hold what one successful run of Merge wrote, the run that
@@ -13516,7 +13487,7 @@ Done when:
 
 ### Task 31: FAN explanations-be
 Class: fan-out
-Ticket: {T-explanations}
+Ticket: #89
 Kind: explanations-be
 Drafting after: 1, 3, 4, 6, 17, 24, 25, 26, 27, 28, 30
 Split: node tools/content/split.js . "<WS>/drafts/explanations-be"
@@ -13600,7 +13571,7 @@ covers.
 
 ### Task 32: Budgets, and the pattern's rule in the panel
 Class: mechanical
-Ticket: {T-explanations}
+Ticket: #89
 Promises: none
 Why: decisions 8a and 8d. Task 23 gave the panel one place to read an item's explanation, `NL.ex.explanation`,
 and it reads only `note`. A pattern has no note: its explanation is its `rule`, which today the learner sees
@@ -13828,9 +13799,8 @@ Notes:
 - [ ] **Step 6: Commit.**
   ```
   git add src/ex/index.js src/ui/session.js test/typed.js test/content.js TESTING.md index.html artifact.html
-  git commit -m "feat(ui): a pattern's rule is its explanation in the panel, not repeated after « Remets dans l'ordre », and two budgets count the items still owed decoys and explanations ({T-explanations})"
+  git commit -m "feat(ui): a pattern's rule is its explanation in the panel, not repeated after « Remets dans l'ordre », and two budgets count the items still owed decoys and explanations (#89)"
   ```
-  Replace `{T-explanations}` with the ticket the set-up gives.
 
 Done when:
 - `node test/typed.js .` prints its `règle` line and `0 en échec`.
@@ -13844,7 +13814,7 @@ Done when:
 
 ### Task 33: The reading tool
 Class: mechanical
-Ticket: {T-tools}
+Ticket: #85
 Promises: none
 Why: decisions 5c and 8c, and the content check, which is the outline's call. The maintainer reads three
 things, and each is one mode of `tools/content/reading.js`:
@@ -14425,9 +14395,8 @@ Notes:
 - [ ] **Step 6: Commit.**
   ```
   git add tools/content/lib/reading.js tools/content/reading.js tools/content/lib/kit.js test/tools/fanout.js test/run-all.sh
-  git commit -m "feat(tools): the reading tool, tools/content/reading.js, prints what the maintainer reads at HEAD: the content check's list with its seeded sample, every row of a kind, and the words without a sentence ({T-tools})"
+  git commit -m "feat(tools): the reading tool, tools/content/reading.js, prints what the maintainer reads at HEAD: the content check's list with its seeded sample, every row of a kind, and the words without a sentence (#85)"
   ```
-  Replace `{T-tools}` with the ticket the set-up gives.
 
 Done when:
 - `node test/tools/fanout.js .` prints the `lecture` line and `KIT CONFORME`, with 40 checks more than before.
@@ -14438,7 +14407,7 @@ Done when:
 
 ### Task 34: Merge examples
 Class: mechanical
-Ticket: {T-sentences}
+Ticket: #87
 Merges: examples
 Promises: none
 Why: decisions 5a and 5b. Task 14's drafters, its readers and the maintainer have settled every row of the
@@ -14577,10 +14546,9 @@ Notes:
 - [ ] **Step 6: Commit.**
   ```
   git add src/content/sourced.js docs/attribution/tatoeba.tsv index.html artifact.html
-  git commit -m "feat(content): every word Tatoeba could give a sentence gets one or two, as Tatoeba writes them, merged into sourced.js and credited to their authors in tatoeba.tsv ({T-sentences})"
+  git commit -m "feat(content): every word Tatoeba could give a sentence gets one or two, as Tatoeba writes them, merged into sourced.js and credited to their authors in tatoeba.tsv (#87)"
   ```
   Add `test/lang.js` to the `git add` if step 4 changed it.
-  Replace `{T-sentences}` with the ticket the set-up gives.
 
 Done when:
 - `src/content/sourced.js` and `docs/attribution/tatoeba.tsv` hold what one successful run of Merge wrote,
@@ -14592,7 +14560,7 @@ Done when:
 
 ### Task 35: GATE (b): the words that get a generated sentence
 Class: gate
-Ticket: {T-sentences}
+Ticket: #87
 After: 33, 34
 Show: node tools/content/reading.js . "<WS>" --unsentenced
 Ask: « Which of these words get a generated sentence? (none is an answer) »
@@ -14623,7 +14591,7 @@ Then:
 
 ### Task 36: FAN examples-gen
 Class: fan-out
-Ticket: {T-sentences}
+Ticket: #87
 Kind: examples-gen
 Drafting after: 13, 34, 35
 Split: node tools/content/split.js . "<WS>/drafts/examples-gen"
@@ -14703,7 +14671,7 @@ and the reader's verdict on it:
 
 ### Task 37: Merge open
 Class: mechanical
-Ticket: {T-open}
+Ticket: #88
 Merges: open
 Promises: none
 Why: decision 7, « On phrases, ~3 per unit ». Task 22's drafters and readers have settled every row of the kind
@@ -14946,9 +14914,8 @@ Notes:
 - [ ] **Step 10: Commit.**
   ```
   git add src/content/open.phrases.js index.html artifact.html test/lib/prose.js test/content.js
-  git commit -m "feat(content): phrases get open tasks of their own, merged into open.phrases.js and served at their rung 6, and the test helpers read each task's ask and needs as prose ({T-open})"
+  git commit -m "feat(content): phrases get open tasks of their own, merged into open.phrases.js and served at their rung 6, and the test helpers read each task's ask and needs as prose (#88)"
   ```
-  Replace `{T-open}` with the ticket that the set-up gives.
 
 Done when:
 - `src/content/open.phrases.js` holds what one run of Merge wrote. That run printed
@@ -14961,7 +14928,7 @@ Done when:
 
 ### Task 38: Merge explanations-be
 Class: mechanical
-Ticket: {T-explanations}
+Ticket: #89
 Merges: explanations-be
 Promises: none
 Why: decisions 8a, 8c and 8d. Task 31's drafters, its readers and the maintainer have settled every row of the
@@ -15337,9 +15304,8 @@ Notes:
 - [ ] **Step 9: Commit.**
   ```
   git add src/content/notes.js src/content/also.js src/content/decoys.js test/content.js test/lang.js test/typed.js TESTING.md index.html artifact.html
-  git commit -m "feat(content): the Flemish items' notes, « on dit aussi » forms and decoys merged; every item of « Comment le dit-on ici ? » must have its decoys, and a note's quote that both its languages make and the spelling knows counts as Dutch ({T-explanations})"
+  git commit -m "feat(content): the Flemish items' notes, « on dit aussi » forms and decoys merged; every item of « Comment le dit-on ici ? » must have its decoys, and a note's quote that both its languages make and the spelling knows counts as Dutch (#89)"
   ```
-  Replace `{T-explanations}` with the ticket the set-up gives.
 
 Done when:
 - `src/content/notes.js`, `src/content/also.js` and `src/content/decoys.js` hold what one successful run of
@@ -15353,7 +15319,7 @@ Done when:
 
 ### Task 39: GATE (a): the maintainer reads the Flemish items' explanations
 Class: gate
-Ticket: {T-explanations}
+Ticket: #89
 After: 33, 38
 Show: node tools/content/reading.js . "<WS>" --kind explanations-be
 Ask: « The Flemish items' explanations: go for the rest? »
@@ -15392,7 +15358,7 @@ Then:
 
 ### Task 40: FAN explanations
 Class: fan-out
-Ticket: {T-explanations}
+Ticket: #89
 Kind: explanations
 Drafting after: 27, 28, 38, 39
 Split: node tools/content/split.js . "<WS>/drafts/explanations"
@@ -15467,7 +15433,7 @@ note or `also`, which the stamp covers.
 
 ### Task 41: Merge examples-gen
 Class: mechanical
-Ticket: {T-sentences}
+Ticket: #87
 Merges: examples-gen
 Promises: none
 Why: decision 5c. Task 36's drafters and readers and the maintainer have settled every sentence written for a
@@ -15605,10 +15571,9 @@ Notes:
 - [ ] **Step 6: Commit.**
   ```
   git add src/content/sourced.js index.html artifact.html
-  git commit -m "feat(content): each word the maintainer named gets one sentence written for the course, translated twice and read whole, merged into sourced.js ({T-sentences})"
+  git commit -m "feat(content): each word the maintainer named gets one sentence written for the course, translated twice and read whole, merged into sourced.js (#87)"
   ```
-  Add `test/lang.js` to the `git add` if step 4 changed it. Replace
-  `{T-sentences}` with the ticket the set-up gives.
+  Add `test/lang.js` to the `git add` if step 4 changed it.
 
 Done when:
 - Either `named.txt` names no word, Merge printed `ok examples-gen 0 taken, 0 dropped`, and
@@ -15777,7 +15742,7 @@ Done when:
 
 ### Task 43: Merge explanations
 Class: mechanical
-Ticket: {T-explanations}
+Ticket: #89
 Merges: explanations
 Promises: none
 Why: decisions 8a and 8b. Task 40's drafters, its readers and the maintainer have settled every row of the kind
@@ -16069,9 +16034,8 @@ Notes:
 - [ ] **Step 8: Commit.**
   ```
   git add src/content/notes.js src/content/also.js test/content.js test/lang.js TESTING.md index.html artifact.html
-  git commit -m "feat(content): every other word's and phrase's note and « on dit aussi » forms merged; every item must have its explanation in both languages, and the course's prose may quote Dutch only ({T-explanations})"
+  git commit -m "feat(content): every other word's and phrase's note and « on dit aussi » forms merged; every item must have its explanation in both languages, and the course's prose may quote Dutch only (#89)"
   ```
-  Replace `{T-explanations}` with the ticket the set-up gives.
 
 - [ ] **Step 9: Write the reading list.** From the worktree, with the commit made:
   ```
