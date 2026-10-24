@@ -11,25 +11,25 @@ decisions to make and one-line news, never material to read.
 
 ## What you read
 
-`run-controller.md`'s list, plus the **Batches** table of `<WS>/progress.md` and the `Fan-out:` lines of
-`run.md`. A batch controller's return is one line; the batch's files are its agents' to read.
+`run-controller.md`'s list, plus the **Batches** table of `<WS>/progress.md` and the `Fan-out:` and `Gate:`
+lines of `run.md`. A batch controller's return is one line; the batch's files are its agents' to read.
 
 ## The two lanes
 
 - **The code lane** is `run-controller.md`'s loop: one task at a time, through task controllers. It alone
-  builds, commits and pushes. Its loop passes over `fan-out` tasks.
+  builds, commits and pushes. Its loop passes over `fan-out` and `gate` tasks.
 - **The drafting lane** runs `fan-out` tasks: rows of content written in batches by drafters and confirmed by
   readers, inside `<WS>/drafts/<kind>/` only. Up to six batch controllers run at once, beside the code lane.
 
-The lanes meet twice. A fan-out task starts once the code-lane tasks it waits for are `done`. Its rows reach
-`src/` through its merge task, a `mechanical` code-lane task: when the code lane reaches that task and the
-kind still has a batch that is not `accepted` or `ruled`, the code lane holds there while drafting goes on,
-and dispatches the merge task as soon as the last batch of the kind settles.
+The lanes meet twice. A fan-out task starts once the tasks it waits for, code-lane tasks or a gate, are
+`done`. Its rows reach `src/` through its merge task, a `mechanical` code-lane task: when the code lane
+reaches that task before the fan-out task's Status row is `done`, whether its Split has run or not, the code
+lane holds there while drafting goes on, and dispatches the merge task once that row is `done`.
 
 ## Starting a fan-out task
 
-Between two code-lane tasks (a return written, the next not yet dispatched), take each `fan-out` row still
-`pending` whose `Fan-out:` line's `after` tasks are all `done`:
+Between two code-lane tasks (a return written, the next not yet dispatched, and all through a hold at a merge
+task), take each `fan-out` row still `pending` whose `Fan-out:` line's `after` tasks are all `done`:
 
 1. Set its Status row to `in progress`.
 2. Run its `Split:` command in the run's worktree. Split reads `src/` at a committed HEAD, hence the moment.
@@ -37,7 +37,14 @@ Between two code-lane tasks (a return written, the next not yet dispatched), tak
    prints them again.
 3. Add one Batches row per line, state `pending`, path `<WS>/drafts/<kind>/<batch>/`.
 
-The fan-out row becomes `done` when every batch of its kind is `accepted` or `ruled`.
+The fan-out row becomes `done` when every batch of its kind is `accepted` or `ruled` (at once, if Split
+printed no batch).
+
+At the same moment, take each `gate` row still `pending` whose `Gate:` line's `after` tasks are all `done`.
+Run its `show` command in the run's worktree, into `<WS>/tmp/gate-<id>.md`, set its row to `in progress`, and
+tell the maintainer, with that path. On their word, add a Rulings line for the gate (its question, their
+answer), write the answer to its `answer to` path unless that is `Rulings` (one item per line; an empty file
+for « none »), and set its row to `done`. Only a fan-out whose `after` names a gate waits for it.
 
 ## Running batches
 
@@ -72,11 +79,12 @@ One line per event, with a path for the detail, in place of the loop's paragraph
     Task 2 (#75) done — abc1234, tests pass.
     Batch explanations/04 accepted — 40 rows kept.
     Batch explanations/07 for you — 3 rows: <WS>/drafts/explanations/07/disputes.md
+    Gate 39 for you — <its question>: <WS>/tmp/gate-39.md
     Task 5 needs a ruling: <the question>
 
 When they ask where things stand, one line:
 
-    Code: task 4 of 9 in progress. Drafting: 5 of 12 batches accepted, 4 drafting. Waiting for you: 1 dispute.
+    Code: task 4 of 9 in progress. Drafting: 5 of 12 batches accepted, 4 drafting. Waiting for you: 1 dispute, 1 gate.
 
 An idea that would make the run easier (a script, a check, a change to this kit) goes to them the same way,
 as a proposed task. It becomes a task, with a brief and a Status row, on their word.
@@ -89,7 +97,7 @@ as a proposed task. It becomes a task, with a brief and a Status row, on their w
   launches and stop. One run controller at a time: the next one is the session that sitting launches.
 - After a cut-off, the next session starts as `run-controller.md` says (six minutes' wait, the command, the
   start prompt) and adds its own `Sitting:` line. It dispatches the batches left `drafting` again: their
-  batch controllers carry on from the files.
+  batch controllers carry on from the files. It tells the maintainer again of each gate left `in progress`.
 - After a compaction, the hook's reminder covers this file too: re-read it with `run-controller.md`.
 
 ## Names for the measures

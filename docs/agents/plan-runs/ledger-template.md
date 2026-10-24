@@ -14,8 +14,9 @@ append to the Log. A plan with no `fan-out` task leaves out the Batches section.
 |---|---|---|---|---|---|---|
 | 1 | mechanical | #<n> | pending | | | |
 
-Class: `engine`, `mechanical`, `fan-out` (drafted in batches, `one-session.md`) or `sitting` (a `sitting` task
-is launched as a session of its own, and stops the run).
+Class: `engine`, `mechanical`, `fan-out` (drafted in batches, `one-session.md`), `gate` (a question the run
+controller puts to the maintainer itself, `one-session.md`) or `sitting` (a `sitting` task is launched as a
+session of its own, and stops the run).
 
 States: `pending`, `in progress`, `done`, `fallback`, `needs ruling`, `needs design`, `failed`, `replaced by <id>`.
 
