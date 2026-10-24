@@ -27,6 +27,9 @@ node test/hooks.js    "$ROOT"
 # Les contrôles de l'outil de la séance de contrôle de l'anglais, sans écrire ses fichiers :
 # une glose que owed() ne compte pas, ou un côté vide que le contenu n'explique pas.
 node test/tools/check-files.js "$ROOT"
+# Le kit de répartition (tools/content/) : Split, Check et Merge, les tables et le cache
+# épinglé, dans une copie du dépôt et sans réseau.
+node test/tools/fanout.js "$ROOT"
 
 # Une voix et un navigateur par ligne : c'est là que vivent les vrais problèmes.
 for c in "nl-BE OPR" "nl-NL OPR" "none OPR" "nl-BE EDG" "nl-NL EDG" "none EDG" "nl-BE IOS" "nl-BE SAF"; do
