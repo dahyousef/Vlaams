@@ -391,6 +391,53 @@ NL.state.open().then(() => {
     }
   }
 
+  console.log('\nLE SENS');
+  /* Quand l'exercice pose et répond en néerlandais, la réponse ne dit pas ce que l'élément veut dire : le
+     pied le dit, dans la langue d'affichage et marqué comme tel, juste ou faux, après « Ici on dit » et
+     « On dit aussi », avant l'explication (#12, deuxième remarque). Ce sont les champs `asks` et
+     `answers` qui désignent les sept exercices. Le texte à trou donne le sens de l'élément, pas celui
+     de sa phrase ; l'intrus, celui du mot qui n'est pas à sa place. Ni « Écris-le », qui pose un sens, ni le
+     rappel, qui y répond, n'en ajoutent un. */
+  {
+    const meanLine = v => (v.foot.match(/<p class="v-mean"[^>]*>[\s\S]*?<\/p>/) || [null])[0];
+    const meanOf = x => '<p class="v-mean"' + NL.gloss.langAttr(x) + '>' + U.esc(NL.gloss.of(x)) + '</p>';
+    ['right', 'wrong'].forEach(how => {
+      fresh();
+      const it = find('nog eens');
+      if (!ask(it, 'dictation', 2, 'type')) { ok(false, 'setup: nog eens is never dictated'); return; }
+      answer[how]();
+      const v = verdict(it);
+      ok(meanLine(v) === '<p class="v-mean" lang="en-GB">once more / again</p>',
+        'the dictation of `nog eens`, ' + how + ', shows ' + meanLine(v) + ', not « once more / again » marked lang="en-GB": ' + v.text);
+      S.abandon();
+    });
+
+    /* [exercice, élément, échelon, dernier exercice servi] : l'élément seul dans l'exercice voulu, passé. */
+    [['article', 'het perron', 1, 'intrus'], ['intrus', 'het perron', 1, 'article'], ['dictation', 'dank u wel', 2, 'type'],
+      ['speak', 'nog eens', 3, 'type'], ['cloze', 'het perron', 4, 'type'], ['corrige', 'Is dat alles?', 2, 'cloze'],
+      ['vlaams', 'Is dat alles?', 1, 'bank'], ['type', 'nog eens', 2, 'dictation'], ['recall', 'nog eens', 0, 'pick']].forEach(([ex, nl, rung, lastEx]) => {
+      fresh();
+      const it = find(nl);
+      if (!ask(it, ex, rung, lastEx)) { ok(false, 'setup: ' + say(nl) + ' is never asked in ' + ex); return; }
+      const E = NL.ex.get(ex), task = S.peek().task;
+      answer.wrong();
+      const v = verdict(it);
+      if (E.asks !== 'nl' || E.answers !== 'nl') ok(meanLine(v) === null, ex + ' (asks ' + E.asks + ', answers ' + E.answers + ') shows a meaning line: ' + meanLine(v));
+      else if (ex === 'intrus') {
+        ok(!!task.odd && task.odd.id !== it.id, 'intrus keeps no odd word in its task');
+        if (task.odd) ok(meanLine(v) === meanOf(task.odd), 'intrus shows ' + meanLine(v) + ', not the odd word’s meaning ' + meanOf(task.odd));
+      } else ok(meanLine(v) === meanOf(it), ex + ' on ' + say(nl) + ' shows ' + meanLine(v) + ', not ' + meanOf(it));
+      if (ex === 'cloze') ok(meanLine(v) !== meanOf(task.drill), 'cloze shows the meaning of its sentence, not of ' + say(nl));
+      if (ex === 'dictation') {
+        const at = ['v-be', 'v-also', 'v-mean', 'v-note'].map(k => v.foot.indexOf('<p class="' + k + '"'));
+        ok(at.every((p, k) => p >= 0 && (k === 0 || p > at[k - 1])),
+          'the panel of `dank u wel` does not read « ' + t.hereThey + ' », « ' + t.alsoSaid + ' », the meaning, then the explanation: ' + v.text);
+      }
+      S.abandon();
+    });
+    console.log('  sens           « once more / again », juste et faux ; sept exercices sur leurs champs, l’intrus, le texte à trou');
+  }
+
   console.log('\n' + checks + ' contrôles, ' + fails + ' en échec');
   process.exit(fails ? 1 : 0);
 }).catch(e => { console.log('FAIL: ' + (e && e.stack || e)); process.exit(1); });

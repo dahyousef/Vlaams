@@ -437,6 +437,11 @@ NL.screens.sessie = (function () {
     const asked = ok && L.other ? '<p>' + NL.t.askedFor + ' <b' + ansLang + '>' + esc(ans) + '</b></p>' : '';
     const also = it && it.also && it.also.length
       ? '<p class="v-also">' + NL.t.alsoSaid + ' <span' + NL.gloss.attr('nl') + '>' + esc(it.also.join(', ')) + '</span></p>' : '';
+    /* Quand l'exercice pose et répond en néerlandais, la réponse ne dit pas ce que l'élément veut dire :
+       le pied le dit, dans la langue où il se lit, juste ou faux. L'intrus répond par un autre mot que
+       l'élément : c'est le sens de ce mot-là. */
+    const meant = ex.asks === 'nl' && ex.answers === 'nl' ? c.task.odd || it : null;
+    const mean = meant ? '<p class="v-mean"' + NL.gloss.langAttr(meant) + '>' + esc(NL.gloss.of(meant)) + '</p>' : '';
     return '<div class="foot ' + (ok ? 'ok' : 'no') + '"><div class="foot-in">' +
       '<div class="verdict ' + (ok ? 'ok' : 'no') + '">' +
       '<span class="v-icon">' + (ok
@@ -444,8 +449,8 @@ NL.screens.sessie = (function () {
         : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>') + '</span>' +
       '<div><h5>' + note + '</h5>' +
       (vl || repeat ? '' : asked || (ans ? '<p><b' + ansLang + '>' + esc(ans) + '</b></p>' : '')) +
-      be + also +
-      NL.ui.ifProse(it && it.note, 'p', 'v-note') +
+      be + also + mean +
+      NL.ui.ifProse(EX.explanation(it), 'p', 'v-note') +
       '</div></div>' +
       '<button class="btn ' + (ok ? 'btn-good' : 'btn-bad') + ' push" data-next="1">' + NL.t.next + '</button>' +
       '</div></div>';

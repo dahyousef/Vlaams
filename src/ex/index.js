@@ -465,7 +465,8 @@ NL.ex = (function () {
       const opts = U.shuffle(
         [item].concat(same).map(x => ({ label: U.bare(x.nl), ok: false }))
           .concat([{ label: U.bare(other.nl), ok: true, art: other.art }]));
-      return { type: 'intrus', item, opts, art: item.art };
+      /* Le mot qui n'est pas à sa place reste dans l'exercice : c'est son sens que donne le pied. */
+      return { type: 'intrus', item, odd: other, opts, art: item.art };
     },
     view(t, L, phase) {
       return '<p class="sentence prompt">' + NL.t.intrusAsk(t.art) + '</p>' +
@@ -670,5 +671,9 @@ NL.ex = (function () {
     return '<p class="v-be">' + NL.t.hereThey + ' ' + forms.map(f => '<span' + NL.gloss.attr('nl') + '>' + boldForm(item, f) + '</span>').join(', ') + '</p>';
   }
 
-  return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, recordPanel, selfRate, wordScore, hereLine, rubric };
+  /* L'explication d'un élément, que le pied montre sous son sens : sa note. On la lit ici et nulle
+     part ailleurs ; le pied la rend par NL.ui.ifProse, qui déclare nl-BE ce qu'elle cite. */
+  const explanation = item => (item && item.note) || null;
+
+  return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, recordPanel, selfRate, wordScore, hereLine, rubric, explanation };
 })();

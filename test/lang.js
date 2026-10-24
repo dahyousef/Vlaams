@@ -710,6 +710,15 @@ function displayChecks() {
         ok(html().indexOf(v[1] + b) >= 0, '#75.3 : answers à ' + v[0] + ', le pied d’un recall passé ne montre pas ' + v[1] + b);
       });
       E.answers = was; NL.ui.render();
+      /* #12, deuxième remarque. Le sens dans le pied suit les champs lui aussi : il n'est là que quand
+         l'exercice pose et répond en néerlandais, marqué de la langue où il se lit (ici le français,
+         l'anglais manquant). Un exercice ajouté avec ces deux champs l'a d'office. */
+      const mean = '<p class="v-mean" lang="fr">' + NL.util.esc(NL.gloss.of(brood)) + '</p>', asks = E.asks;
+      [['nl', 'nl', true], ['nl', 'gloss', false], ['gloss', 'nl', false], [null, null, false]].forEach(v => {
+        E.asks = v[0]; E.answers = v[1]; NL.ui.render();
+        ok((html().indexOf(mean) >= 0) === v[2], '69.1 : asks à ' + v[0] + ', answers à ' + v[1] + ', le pied d’un recall passé ' + (v[2] ? 'ne montre pas ' : 'montre ') + mean);
+      });
+      E.asks = asks; E.answers = was; NL.ui.render();
     }
   });
 
