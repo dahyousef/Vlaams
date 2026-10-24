@@ -644,6 +644,148 @@ async function main() {
     console.log('  flemish        ' + batches.length + ' lots, ' + rows + ' lignes ; six règles ; Check, Merge et flemish.tsv');
   }
 
+  /* ==================================================== le genre examples */
+  {
+    /* tools/content/kinds/examples.js dans un dépôt à lui, sous la copie : test/data en plus
+       (OpenTaal et flemish.tsv) et docs/attribution (le crédit des phrases), src/content/sourced.js
+       vidé, pour que l'essai ne dépende pas des phrases que le cours tient déjà, et un extrait de
+       Tatoeba fait ici, de quatre phrases, sous les vraies épingles. check.js lit le dépôt qui le
+       contient : les outils se lancent donc depuis celui-ci. */
+    const EX = path.join(TMP, 'exemples');
+    ['build.sh', 'src', 'test/lib', 'test/data', 'tools', 'docs/attribution'].forEach(p => fs.cpSync(path.join(ROOT, p), path.join(EX, p), { recursive: true }));
+    const runEx = (script, args) => {
+      const r = spawnSync(process.execPath, [path.join(EX, 'tools', 'content', script)].concat(args), { encoding: 'utf8' });
+      return { code: r.status, lines: (r.stdout || '').split(/\r?\n/).filter(Boolean) };
+    };
+    const SOURCED = path.join(EX, 'src', 'content', 'sourced.js');
+    const emptied = {};
+    Object.keys(table.load(SOURCED).entries).forEach(nl => { emptied[nl] = null; });
+    table.update(SOURCED, emptied);
+    const tatoeba = require(path.join(EX, 'tools', 'content', 'tatoeba'));
+    const EXTRACT = path.join(EX, '.cache', 'tatoeba', 'extract.tsv');
+    fs.mkdirSync(path.dirname(EXTRACT), { recursive: true });
+    fs.writeFileSync(EXTRACT, ['# ' + tatoeba.KEYS.map(k => k + ' ' + cache.PINS[k].sha256).join(' '),
+      'nld\t101\tanna\t1\tSorry, spreekt u Engels?\t201\t301',
+      'nld\t102\t\t0\tZe spreekt goed Engels.\t202,203\t302',
+      'nld\t104\tanna\t1\tMisschien is het waar.\t204\t304',
+      'nld\t105\tbob\t0\tHet is drie uur.\t205\t305',
+      'eng\t201\tbob\tSorry, do you speak English?',
+      'eng\t202\tbob\tShe speaks good English.',
+      'eng\t203\tcarl\tShe speaks English well.',
+      'eng\t204\tbob\tMaybe it\'s true.',
+      'eng\t205\tcarl\tIt\'s three o\'clock.',
+      'fra\t301\t\tPardon, parlez-vous anglais ?',
+      'fra\t302\tdora\tElle parle bien anglais.',
+      'fra\t304\tdora\tC\'est peut-être vrai.',
+      'fra\t305\tdora\tIl est trois heures.'].join('\n') + '\n');
+    const K = require(path.join(EX, 'tools', 'content', 'kinds', 'examples'));
+    const kind = kit.loadKind(EX, 'examples');
+    const CE = course(EX);
+
+    /* Les lots : des unités entières, dans l'ordre du cours, autant qu'il en faut pour 40 lignes
+       par lot, le plus gros le plus petit possible. Les comptes sont ceux du cours mesuré. */
+    const g = (unit, n) => ({ unit, rows: Array.from({ length: n }, (x, k) => unit + k) });
+    const measured = [['overleven', 9], ['ikengij', 16], ['tijd', 24], ['bakker', 4], ['thuis', 7], ['familie', 7], ['onderweg', 1],
+      ['dedag', 1], ['winkel', 2], ['dokter', 4], ['weekend', 1]].map(([u, n]) => g(u, n));
+    const cut = K.cut(measured, 40);
+    same(cut.map(b => b.batch + ' ' + b.rows.length), ['overleven-tijd 49', 'bakker-weekend 27'],
+      'les 76 mots mesurés font deux lots d\'unités entières, nommés par leur première et leur dernière unité');
+    same([cut[0].rows[0], cut[0].rows[9], cut[1].rows[26]], ['overleven0', 'ikengij0', 'weekend0'], 'un lot garde ses lignes dans l\'ordre du cours');
+    same(K.cut([g('tijd', 50), g('bakker', 5)], 40).map(b => b.batch + ' ' + b.rows.length), ['tijd 50', 'bakker 5'], 'une unité n\'est jamais coupée');
+    same(K.cut([], 40), [], 'rien à couper, aucun lot');
+
+    /* Split : les mots sans phrase qui ont une candidate. « sorry » n'en a pas : la seule phrase
+       qui l'écrit, 101, emprunte « engels » à ikengij. « het uur » a ses phrases écrites à la
+       main, et 105 ne lui est pas proposée. */
+    const KD = path.join(EX, 'drafts', 'examples');
+    same(runEx('split.js', [EX, KD]), { code: 0, lines: ['overleven-tijd 3'] }, 'Split coupe un lot des mots qui ont une candidate');
+    const BATCH = path.join(KD, 'overleven-tijd');
+    const input = JSON.parse(text(path.join(BATCH, 'input.json')));
+    same(input.map(r => r.id), ['overleven:w9', 'ikengij:w24', 'tijd:w3'], 'misschien, het Engels et drie ; ni sorry ni het uur');
+    const engels = input[1];
+    same(Object.keys(engels), ['id', 'stamp', 'copies', 'nl', 'unit', 'art', 'meaning', 'candidates'], 'une ligne d\'entrée');
+    same([engels.nl, engels.unit, engels.art, engels.meaning, input[0].art], ['het Engels', 'ikengij', 'het', { fr: 'l’anglais', en: 'English' }, null],
+      'le néerlandais, l\'unité, l\'article (null sans article) et le sens');
+    same(engels.candidates.map(c => c.id), [101, 102], 'l\'auteur de langue maternelle d\'abord');
+    same(engels.candidates[1], { id: 102, nl: 'Ze spreekt goed Engels.', owner: '',
+      en: [{ id: 202, text: 'She speaks good English.', owner: 'bob' }, { id: 203, text: 'She speaks English well.', owner: 'carl' }],
+      fr: [{ id: 302, text: 'Elle parle bien anglais.', owner: 'dora' }], tiles: 4 },
+    'une candidate, avec ses traductions et leurs auteurs');
+
+    /* L'empreinte : le sens, l'article, et les phrases écrites à la main seules. */
+    const src = CE.byId('ikengij:w24');
+    const st = s => kit.stamp(kind, s, CE.NL);
+    same(engels.stamp, st(src), 'Split pose l\'empreinte de la source');
+    same(st(Object.assign({}, src, { drills: [{ nl: 'Ze spreekt goed Engels.', src: 102 }] })), st(src),
+      'une phrase sourcée ne la change pas : une seconde Merge ne trouve pas ses propres lignes périmées');
+    ok(st(Object.assign({}, src, { drills: [{ nl: 'Ze spreekt goed Engels.' }] })) !== st(src), 'une phrase écrite à la main la change');
+    ok(st(Object.assign({}, src, { art: 'de' })) !== st(src), 'l\'article la change');
+
+    /* Check, raison par raison, sur la ligne de « het Engels ». */
+    const ctx = { repo: EX, course: () => CE };
+    const good = { src: 102, nl: 'Ze spreekt goed Engels.', gap: 'Engels', en: 'She speaks English well.', enSrc: 203, fr: 'Elle parle bien anglais.', frSrc: 302 };
+    const other = { src: 101, nl: 'Sorry, spreekt u Engels?', gap: 'Engels', en: 'Sorry, do you speak English?', enSrc: 201, fr: 'Pardon, parlez-vous anglais ?', frSrc: 301 };
+    const as = more => Object.assign({}, good, more);
+    const without = k => { const d = Object.assign({}, good); delete d[k]; return d; };
+    const why = (sentences, more) => K.check(Object.assign({ id: engels.id, stamp: engels.stamp, sentences }, more), engels, ctx);
+    same(why([good]), [], 'une phrase prise telle que Tatoeba l\'écrit passe');
+    same(why([good, other]), [], 'deux phrases passent');
+    same(why([good, as({ enSrc: 202, en: 'She speaks good English.' })]), ['the two sentences are one sentence'], 'deux fois la même phrase, non');
+    same(why([good, other, good]), ['sentences is a list of 0 to 2 sentences'], 'trois phrases, non');
+    same(why([]), ['a row with no sentence says why in skip, on one line'], 'aucune phrase : skip dit pourquoi');
+    same(why([], { skip: 'neither candidate is how a Fleming says it' }), [], 'aucune phrase, et skip');
+    same(why([good], { skip: 'no' }), ['skip is for a row with no sentence'], 'skip avec une phrase, non');
+    same(why([without('frSrc')]), ['sentence 1 has the fields src, nl, gap, en, enSrc, fr, frSrc (and edited when a translation is not Tatoeba\'s), not src, nl, gap, en, enSrc, fr'],
+      'les champs d\'une phrase');
+    same(why([as({ src: 104 })]), ['sentence 1: src 104 is not one of the row\'s candidates'], 'une phrase de l\'extrait qui n\'est pas une candidate de la ligne, non');
+    same(why([as({ nl: 'Ze spreekt heel goed Engels.' })]), ['sentence 1: nl is not Tatoeba\'s sentence 102, « Ze spreekt goed Engels. »: a sentence is taken as Tatoeba writes it'],
+      'la phrase telle que Tatoeba l\'écrit');
+    same(why([as({ enSrc: 201 })]), ['sentence 1: enSrc 201 is not a translation Tatoeba links to 102'], 'une traduction que Tatoeba lie à la phrase');
+    same(why([as({ en: 'She speaks English very well.' })]),
+      ['sentence 1: en « She speaks English very well. » is not Tatoeba\'s 203, « She speaks English well. »: take it as written, or say why in edited'],
+      'une traduction changée sans raison, non');
+    same(why([as({ en: 'She speaks English very well.', edited: 'the learner hears the adverb' })]), [], 'une traduction changée, et sa raison');
+    same(why([as({ edited: 'nothing' })]), ['sentence 1: edited is for a translation that is not Tatoeba\'s, and both are'], 'edited sans traduction changée, non');
+
+    /* Les règles d'une phrase, à l'unité du mot : ce que test/content.js tient, et le classement. */
+    const rules = (d, id) => K.RULES(Object.assign({ en: 'English.', fr: 'Anglais.' }, d), 's', CE.byId(id || 'ikengij:w24'), CE, EX);
+    same(rules({ nl: 'Ze spreekt goed Engels.', gap: 'Engels' }), [], 'une phrase qui suit les règles');
+    same(rules({ nl: 'Ik spreek Engels.', gap: 'Engels' }), ['s has 3 tiles: 4 to 8'], 'de 4 à 8 tuiles');
+    ['engels', 'spreekt', 'goed Engels'].forEach(gap => same(rules({ nl: 'Ze spreekt goed Engels.', gap }),
+      ['s: gap « ' + gap + ' » is not the word, one tile as nl writes it, that the cloze can hide'], 'le trou « ' + gap + ' », non'));
+    same(rules({ nl: 'Misschien spreekt ze Engels.', gap: 'Misschien' }, 'overleven:w9'), ['s borrows from a later unit: spreekt, engels'], 'rien d\'une unité ultérieure');
+    same(rules({ nl: 'Ze leest vloeiend Engels.', gap: 'Engels' }), ['s uses forms the course never teaches: leest, vloeiend'], 'aucune forme que le cours n\'enseigne jamais');
+    same(rules({ nl: 'Ze spreekt vloeiend Engels.', gap: 'Engels' }), ['s uses forms the course never teaches: vloeiend'], 'pas même une (#12, récit 39)');
+    same(rules({ nl: 'Hij leert al twee jaar Engels.', gap: 'Engels' }), ['s uses forms the course never teaches: leert'],
+      'pas même une forme fléchie d\'un mot vu : leert, de leren (test/lib/sequence.js dit pourquoi)');
+    same(rules({ nl: 'Ze spreekt goedd Engels.', gap: 'Engels' }), ['s uses forms the course never teaches: goedd', 's: « goedd » not a form OpenTaal knows'],
+      'l\'orthographe, et une forme mal écrite que le cours n\'enseigne donc pas');
+    same(rules({ nl: 'Ze spreekt goed Engels met {naam}.', gap: 'Engels' }), ['s names no one by default and holds no {…} token'], 'ni nom ni jeton');
+    same(rules({ nl: 'Ze spreekt goed Engels.', gap: 'Engels', en: 'She speaks 2 languages.' }), ['s: en and fr do not hold the same digits'], 'les mêmes chiffres');
+
+    /* Check sur le lot, comme un agent le lance. */
+    const row = (id, more) => Object.assign({ id, stamp: input.find(r => r.id === id).stamp }, more);
+    const draft = [
+      row('overleven:w9', { sentences: [{ src: 104, nl: 'Misschien is het waar.', gap: 'Misschien', en: 'Maybe it\'s true.', enSrc: 204, fr: 'C\'est peut-être vrai.', frSrc: 304 }] }),
+      row('ikengij:w24', { sentences: [good, other] }),
+      row('tijd:w3', { sentences: [], skip: 'the one candidate teaches the clock, not the number' })
+    ];
+    put(BATCH, 'draft.json', draft);
+    same(runEx('check.js', [BATCH]), { code: 0, lines: ['ok input.json 3 rows', 'ok draft.json 3 rows'] }, 'le lot passe Check');
+    draft[0].sentences[0].gap = 'misschien';
+    put(BATCH, 'draft.json', draft);
+    same(runEx('check.js', [BATCH]), { code: 1, lines: ['ok input.json 3 rows',
+      'fail draft.json overleven:w9: sentence 1: gap « misschien » is not the word, one tile as nl writes it, that the cloze can hide'] }, 'Check nomme la ligne et sa raison');
+
+    /* Sans l'extrait : Check et Split disent la commande à lancer. */
+    fs.renameSync(EXTRACT, EXTRACT + '.ôté');
+    const missing = '.cache/tatoeba/extract.tsv is missing: run node tools/content/tatoeba.js .';
+    same(K.check(row('ikengij:w24', { sentences: [good] }), engels, { repo: EX, course: () => course(EX) }), [missing], 'Check sans l\'extrait');
+    same(runEx('split.js', [EX, path.join(EX, 'sans-extrait', 'examples')]), { code: 1, lines: ['fail examples -: the kind\'s split threw: ' + missing] }, 'Split sans l\'extrait');
+    fs.renameSync(EXTRACT + '.ôté', EXTRACT);
+    console.log('  examples       ' + cut.length + ' lots sur le cours mesuré ; Split, Check et ses règles sur un extrait de 4 phrases');
+  }
+
   console.log('\n' + checks + ' contrôles, ' + (fails === 0 ? 'KIT CONFORME' : fails + ' ÉCHEC(S)'));
 }
 
