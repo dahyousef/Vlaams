@@ -162,7 +162,7 @@ vocabulaire à une unité ultérieure, 3 échelons n'ont aucun exercice possible
 (`DECOY_BUDGET`) et des éléments n'ont pas d'explication dans les deux langues
 (`EXPLAIN_BUDGET`, qui lit la note d'un mot ou d'une phrase et la règle d'un
 motif).
-`lang.js` en porte un troisième, `QUOTE_BUDGET` : les passages que la prose du
+`lang.js` en porte un cinquième, `QUOTE_BUDGET` : les passages que la prose du
 cours met entre guillemets sans qu'ils soient du néerlandais (une traduction, qui
 va entre parenthèses) ; il n'en reste que dans les notes des mots et des
 phrases. Un budget ne peut que baisser, et chacun échoue aussi quand le compte
