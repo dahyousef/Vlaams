@@ -6,6 +6,7 @@ const browser = require('./lib/browser');
 const { PROSE } = require('./lib/prose');
 const tree = require('./lib/tree');
 const { dutchWords, words } = require('./lib/dutch');
+const spelling = require('./lib/spelling');
 const { text, joined, runs, count, argsOf } = require('./lib/langs');
 const { fakeSupabase } = require('./lib/supabase');
 const { dueReviews } = require('./lib/seed');
@@ -895,15 +896,11 @@ const HTML_FIELDS = ['explain', 'say', 'title', 'h'];
 /* Les tables de référence (src/content/reference.js) lues avec le cours : les emprunts, les sons et les
    deux tables de faux amis. C.TABLES, lui, donne les tables par le néerlandais (byDutch). */
 const REFERENCE_TABLES = ['loans', 'sounds', 'faux', 'fauxEn'];
-/* Les mots cités hors du néerlandais du cours qui sont pourtant du néerlandais, avec la raison. */
+/* Les mots cités hors du néerlandais du cours qui sont pourtant du néerlandais, avec la raison. Une note
+   de mot ou de phrase n'en a pas besoin pour un mot que l'orthographe connaît et qu'elle cite dans ses
+   deux langues (6d.3). */
 const QUOTE_OK = {
-  goedendag: 'le bonjour du nord, dans la note de goeiedag',
-  zoet: '« zoet broodje », la viennoiserie du nord, dans la note de de koffiekoek',
-  bier: '« een bier », ce qu’on ne commande pas, dans la note de de pint',
-  patat: 'le nord pour de frieten, dans sa note',
-  ermee: '« Ik ben ermee bezig », dans la note de bezig',
   developer: 'l’anglais qu’on dit aussi en néerlandais, dans la note de « Ik ben Java-ontwikkelaar. »',
-  zal: 'le futur dont on se passe, dans la note de « Ik stuur u een mail. »',
   pardon: 'le nord pour excuseer, dans la note d’un choix de la conversation du train',
   lijn: '« De Lijn », les bus flamands, dans la présentation de l’unité du trajet',
   jam: 'le nord pour de confituur, dans sa note d’emprunt',
@@ -924,7 +921,7 @@ const QUOTE_OK = {
    une traduction va entre parenthèses, sans guillemets. Hors d'explain, NL.gloss.quoted les déclare
    nl-BE à tort. Il n'en reste que dans les notes des mots et des phrases ; ce compte ne fait que
    baisser, jusqu'à 0. */
-const QUOTE_BUDGET = 25;
+const QUOTE_BUDGET = 19;
 /* Les mots que le français et l'anglais écrivent tous deux et que le cours a aussi en néerlandais :
    l'anglais du bureau, une marque, un article. 6d.4 ne les prend pas pour du néerlandais laissé nu. */
 const SHARED_OK = {
@@ -1019,14 +1016,25 @@ function quoteChecks() {
      chiffre ou une exception de QUOTE_OK, et le reste se compte contre QUOTE_BUDGET ; explain aussi,
      balises ôtées. Un affixe cité avec son tiret (« -tje », « ge- ») est du néerlandais par sa forme ;
      « soixante-dix » n'en est pas un. Chaque guillemet ouvert est fermé (sinon rien n'est marqué), et
-     name, title, h et place ne citent rien. Les tables de référence se lisent avec le cours. */
+     name, title, h et place ne citent rien. Les tables de référence se lisent avec le cours. Une note
+     de mot ou de phrase (byDutch.notes) se relit comme le kit l'a vérifiée (tools/content/lib/explain.js) :
+     une citation que l'autre langue de la note cite aussi, et dont l'orthographe (OpenTaal,
+     flemish.tsv) connaît chaque forme, est du néerlandais, même hors du cours. Il faut les deux :
+     l'orthographe connaît « on », « has » et « la ». */
   const q3 = () => {
     const B = boot();
     return B.NL.state.open().then(() => {
-      const NL = B.NL, Q = NL.gloss.quoted, dutch = dutchWords(NL);
+      const NL = B.NL, Q = NL.gloss.quoted, dutch = dutchWords(NL), S = spelling.open(ROOT, NL);
       if (typeof Q !== 'function') { ok(false, '6d : NL.gloss.quoted manque'); return; }
       const unescape = s => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&amp;/g, '&');
       const foreign = [], excused = new Set();
+      /* Deux notes plantées, sous des clés qu'aucun élément n'a : l'une cite en français et en anglais un
+         mot que l'orthographe connaît et que le cours n'enseigne pas, l'autre en français seulement. Le
+         mot se prend dans une liste : une phrase d'exemple fusionnée plus tard peut en enseigner un. */
+      const notes = NL.content.byDutch.notes;
+      const plant = ['regenjas', 'kurkentrekker', 'wasknijper'].find(w => S.known(w) && !dutch.has(w));
+      notes.zq1 = { fr: 'Le nord dit « ' + plant + ' ».', en: 'The north says “' + plant + '”.' };
+      notes.zq2 = { fr: 'Le nord dit « ' + plant + ' ».', en: 'The north says it.' };
       eachText(NL.content, (s, f, where) => {
         if (PROSE.indexOf(f) < 0 && QUOTED_FIELDS.indexOf(f) < 0 && HTML_FIELDS.indexOf(f) < 0) return;
         const t = HTML_FIELDS.indexOf(f) >= 0 ? joined(s) : s;
@@ -1034,13 +1042,21 @@ function quoteChecks() {
         if (QUOTED_FIELDS.indexOf(f) < 0 && f !== 'explain' && f !== 'say') { ok(opened + closed === 0, '6d : ' + where + ' cite, mais ' + f + ' ne passe pas par NL.gloss.quoted : « ' + s + ' »'); return; }
         const segs = Array.from(Q(t).matchAll(/<span lang="nl-BE">([^<]*)<\/span>/g), m => unescape(m[1]));
         ok(segs.length === opened && opened === closed, '6d : ' + where + ' a un guillemet sans son pendant, ou une citation vide : « ' + s + ' »');
+        const note = /^byDutch\.notes(\[.*\])\.(fr|en)$/.exec(where);
+        const side = note && (notes[JSON.parse(note[1])[0]] || {})[note[2] === 'fr' ? 'en' : 'fr'];
+        const other = typeof side === 'string' ? Array.from(Q(side).matchAll(/<span lang="nl-BE">([^<]*)<\/span>/g), m => NL.util.norm(unescape(m[1]))) : [];
         segs.forEach(q => {
+          if (other.indexOf(NL.util.norm(q)) >= 0 && spelling.tokens(q).every(w => S.known(w) || dutch.has(w))) return;
           const affixes = q.split(/[\s,\/…]+|\.{2,}/).filter(t => /^-\p{L}+$|^\p{L}+-$/u.test(t)).map(t => t.replace('-', '').toLowerCase());
           const miss = words(q).filter(w => !dutch.has(w) && affixes.indexOf(w) < 0 && !/^\d+$/.test(w));
           miss.forEach(w => { if (QUOTE_OK[w]) excused.add(w); });
           if (miss.some(w => !QUOTE_OK[w])) foreign.push(where + ' « ' + q + ' »');
         });
       });
+      const plants = foreign.filter(x => /^byDutch\.notes\["zq\d"\]/.test(x));
+      ok(plants.join(' ; ') === 'byDutch.notes["zq2"].fr « ' + plant + ' »', '6d : une note cite « ' + plant + ' », que l’orthographe connaît, ' +
+        'dans ses deux langues : c’est du néerlandais ; dans une seule, non. Comptées hors du néerlandais : ' + plants.join(' ; '));
+      foreign.splice(0, foreign.length, ...foreign.filter(x => plants.indexOf(x) < 0));
       Object.keys(QUOTE_OK).forEach(w => {
         ok(!dutch.has(w), '6d : « ' + w + ' » est du néerlandais du cours, son exception est de trop');
         ok(excused.has(w), '6d : « ' + w + ' » n’est plus cité nulle part, son exception est de trop');

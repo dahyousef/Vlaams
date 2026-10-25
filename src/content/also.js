@@ -11,6 +11,8 @@ NL.content.byDutch = NL.content.byDutch || {};
 NL.content.byDutch['also'] = {
   'dag': ['hallo', 'goeiedag'],
   'dank u wel': ['dank u', 'bedankt'],
+  'de dokter': ['de huisdokter'],
   'goeiedag': ['dag'],
   'hallo': ['dag'],
+  'nog eens': ['nog een keer'],
 };

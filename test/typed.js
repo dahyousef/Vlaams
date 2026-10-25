@@ -257,8 +257,11 @@ NL.state.open().then(() => {
      La bonne option est la première forme de sa liste : « hey » pour hallo, dont la liste est
      « hey, salut ». Sans leurres écrits, les deux autres sont la première forme d'autres mots,
      et aucune n'est juste pour hallo : ni une forme qu'il accepte (« salut » ouvre la liste de
-     tot ziens), ni celle d'un mot au même sens (goeiedag). Choisie, la bonne compte juste. */
+     tot ziens), ni celle d'un mot au même sens (goeiedag). Choisie, la bonne compte juste. hallo a
+     ses leurres écrits : on les ôte le temps de l'essai. */
   {
+    const written = NL.content.byDutch.decoys.hallo;
+    delete NL.content.byDutch.decoys.hallo;
     fresh();
     const it = find('hallo');
     const first = x => x.be.split(',')[0].trim();
@@ -277,6 +280,8 @@ NL.state.open().then(() => {
       ok(v.right && v.answer === null, say('hallo') + ', answered « hey », gives ' + v.text);
     }
     S.abandon();
+    if (written) NL.content.byDutch.decoys.hallo = written;
+    fresh();
     console.log('  vlaams         « hallo » à l’échelon 1 : « hey » parmi deux formes d’autres mots, et juste');
   }
 

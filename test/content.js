@@ -142,19 +142,17 @@ NL.state.open().then(() => {
   console.log('  leurres         ' + decoyed.length + ' élément(s) avec leurs leurres, ' + wrongDecoys.length + ' faute(s)');
 
   /* Un élément de « Comment le dit-on ici ? » sans leurres écrits tire ses options au hasard, et la
-     bonne se devine. Toléré, mais compté : le compte ne peut que baisser. */
-  const undecoyed = items.filter(x => NL.srs.supports(x, 'vlaams') && !x.decoys).length;
-  const DECOY_BUDGET = 66;
-  ok(undecoyed <= DECOY_BUDGET, undecoyed + ' élément(s) de « Comment le dit-on ici ? » sans leurres écrits, budget ' + DECOY_BUDGET + ' — baisser le budget, jamais le lever');
-  ok(undecoyed >= DECOY_BUDGET, 'seulement ' + undecoyed + ' élément(s) sans leurres écrits : baisser DECOY_BUDGET à ' + undecoyed + ' pour verrouiller le gain');
-  console.log('  sans leurres    ' + undecoyed + ' élément(s) de « Comment le dit-on ici ? » (budget ' + DECOY_BUDGET + ')');
+     bonne se devine. Chacun a les siens, que le genre explanations-be écrit dans src/content/decoys.js. */
+  const undecoyed = items.filter(x => NL.srs.supports(x, 'vlaams') && !x.decoys).map(x => x.id);
+  ok(undecoyed.length === 0, undecoyed.length + ' élément(s) de « Comment le dit-on ici ? » sans leurres écrits : ' + undecoyed.slice(0, 6).join(', '));
+  console.log('  sans leurres    ' + undecoyed.length + ' élément(s) de « Comment le dit-on ici ? » (exigé : 0)');
 
   /* L'explication d'un élément (NL.ex.explanation : la note d'un mot ou d'une phrase, la règle d'un
      motif) se lit dans les deux langues d'affichage. Celui qui n'en a pas, ou qu'une moitié, est
      toléré, mais compté : le compte ne peut que baisser. */
   const bilingual = x => !!x && has(x.fr) && has(x.en);
   const unexplained = items.filter(x => !bilingual(NL.ex.explanation(x))).length;
-  const EXPLAIN_BUDGET = 333;
+  const EXPLAIN_BUDGET = 275;
   ok(unexplained <= EXPLAIN_BUDGET, unexplained + ' élément(s) sans explication en français et en anglais, budget ' + EXPLAIN_BUDGET + ' — baisser le budget, jamais le lever');
   ok(unexplained >= EXPLAIN_BUDGET, 'seulement ' + unexplained + ' élément(s) sans explication : baisser EXPLAIN_BUDGET à ' + unexplained + ' pour verrouiller le gain');
   console.log('  explications    ' + unexplained + ' / ' + items.length + ' élément(s) sans explication dans les deux langues (budget ' + EXPLAIN_BUDGET + ')');
