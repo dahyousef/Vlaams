@@ -134,6 +134,27 @@ Ils tournent sans navigateur. Trois choses ne se vérifient qu'en vrai :
 - **deux séances, deux jours de suite**, sur un vrai appareil : la simulation
   avance son horloge, mais elle ne remplace pas ça.
 
+Le faux micro de `test/lib/browser.js` imite ce que Safari sur iPhone a fait en
+octobre 2026 : un résultat jamais marqué final, une écoute qui ne finit pas seule
+(`journey.js`, section 16). Il imite ce qu'on a vu, pas Safari lui-même.
+
+`B.tap` passe par les sélecteurs du shell, comme un vrai clic : un `data-*` que le
+shell oublie n'y mène nulle part. `test/lib/answer.js` touche « Je ne peux pas
+parler » de la même façon, mais répond aux exercices en appelant l'écran
+directement : une option, une tuile ou le micro qu'un sélecteur oublierait ne se
+voit qu'à un `B.tap`.
+
+La **passe d'apprenant** (`tools/learner-pass/`, voir son README) joue la page
+construite dans un vrai Chrome habillé en Safari sur iPhone, en touchant l'écran :
+des jours d'étude jusqu'aux cartes parlées et chaque façon de s'en servir, l'écoute,
+une conversation, le défi, puis chaque bouton de seize écrans. Elle a besoin de
+Chrome et d'un `npm install` : elle n'est ni dans `run-all.sh` ni dans la CI. On la
+lance avant de demander au mainteneur de vérifier en apprenant. La phase 3 est
+partie en production avec « Je ne peux pas parler » sans effet et le micro de Safari
+qui ne notait rien, la suite au vert ; la passe trouve les deux sur ce code-là.
+Son micro est faux lui aussi : la vraie voix et le vrai micro restent à essayer sur
+un téléphone.
+
 La **branche IndexedDB**, celle que prend tout vrai navigateur, n'est atteinte
 que par `test/sync.js`, à travers un faux IndexedDB minimal (`idb` dans
 `test/lib/browser.js`) qui survit à un rechargement : la restauration d'une

@@ -70,7 +70,7 @@ NL.tables.fr = {
   defiOut: 'Plus de vies.',
   defiOver: 'Plus de vies.',
   defiSurvived: 'Défi tenu.',
-  defiFlawless: 'Sans faute. Vingt sur vingt.',
+  defiFlawless: n => 'Sans faute. ' + n + ' sur ' + n + '.',
   defiScoreLine: (n, of) => n + ' bonnes réponses sur ' + of + '. Chacune compte comme une vraie révision.',
   defiRecord: (n, prev) => prev ? 'Nouveau record : ' + n + ', contre ' + prev + ' avant.' : 'Premier record posé : ' + n + '.',
   defiToBeat: n => 'Record à battre : ' + n + '.',

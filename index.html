@@ -400,7 +400,8 @@ h1,h2,h3,h4,h5{font-family:var(--display);font-weight:700;letter-spacing:-.02em;
 .ex-row b{font-size:15px} .ex-row i{font-style:normal;font-size:12.5px;color:var(--ink-3)}
 
 .toast{position:fixed;left:50%;bottom:88px;transform:translateX(-50%);z-index:70;background:var(--ink);color:var(--stone);
-  padding:11px 18px;border-radius:99px;font-size:14px;box-shadow:var(--shadow);max-width:90vw}
+  padding:11px 18px;border-radius:99px;font-size:14px;box-shadow:var(--shadow);max-width:90vw;
+  pointer-events:none}
 
 /* ---------- woordenboek ---------- */
 .filters{display:flex;gap:7px;flex-wrap:wrap;margin:16px 0 6px}
@@ -971,7 +972,7 @@ NL.tables.fr = {
   defiOut: 'Plus de vies.',
   defiOver: 'Plus de vies.',
   defiSurvived: 'Défi tenu.',
-  defiFlawless: 'Sans faute. Vingt sur vingt.',
+  defiFlawless: n => 'Sans faute. ' + n + ' sur ' + n + '.',
   defiScoreLine: (n, of) => n + ' bonnes réponses sur ' + of + '. Chacune compte comme une vraie révision.',
   defiRecord: (n, prev) => prev ? 'Nouveau record : ' + n + ', contre ' + prev + ' avant.' : 'Premier record posé : ' + n + '.',
   defiToBeat: n => 'Record à battre : ' + n + '.',
@@ -1373,7 +1374,7 @@ NL.tables.en = {
   defiOut: 'No lives left.',
   defiOver: 'No lives left.',
   defiSurvived: 'Challenge survived.',
-  defiFlawless: 'Flawless. Twenty out of twenty.',
+  defiFlawless: n => 'Flawless. ' + n + ' out of ' + n + '.',
   defiScoreLine: (n, of) => n + ' right answers out of ' + of + '. Each one counts as a real review.',
   defiRecord: (n, prev) => prev ? 'New record: ' + n + ', up from ' + prev + '.' : 'First record set: ' + n + '.',
   defiToBeat: n => 'Record to beat: ' + n + '.',
@@ -2691,7 +2692,7 @@ NL.speech = (function () {
   let refused = false;
   const micRefused = () => refused;
 
-  let active = null;
+  let active = null, finishActive = null;
   function listen(opts) {
     opts = opts || {};
     if (!SR) { opts.onerror && opts.onerror('browser'); return null; }
@@ -2703,17 +2704,21 @@ NL.speech = (function () {
     r.maxAlternatives = 5;
     r.continuous = false;
 
-    let finalText = '', alts = [];
+    /* Safari sur iPhone ne marque jamais un résultat final : ce qu'il a entendu n'arrive
+       qu'en provisoire. Le dernier provisoire est gardé, et noté si rien de final ne vient. */
+    let finalText = '', alts = [], partial = '', ended = false;
     r.onresult = e => {
+      let interim = '';
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const res = e.results[i];
         if (res.isFinal) {
           finalText += res[0].transcript + ' ';
           for (let k = 0; k < res.length; k++) alts.push(res[k].transcript);
         } else {
-          opts.onpartial && opts.onpartial(res[0].transcript);
+          interim += res[0].transcript + ' ';
         }
       }
+      if (interim.trim()) { partial = interim.trim(); opts.onpartial && opts.onpartial(partial); }
     };
     r.onerror = e => {
       const kind = e.error === 'not-allowed' || e.error === 'service-not-allowed' ? 'denied'
@@ -2723,16 +2728,31 @@ NL.speech = (function () {
       if (kind === 'denied') refused = true;
       opts.onerror && opts.onerror(kind);
     };
-    r.onend = () => {
-      active = null;
-      if (finalText.trim()) refused = false;
-      opts.onend && opts.onend(finalText.trim(), alts);
+    const end = () => {
+      if (ended) return;
+      ended = true;
+      if (active === r) { active = null; finishActive = null; }
+      const text = finalText.trim() || partial;
+      if (text) refused = false;
+      opts.onend && opts.onend(text, finalText.trim() ? alts : partial ? [partial] : alts);
     };
+    r.onend = end;
 
-    try { r.start(); active = r; } catch (e) { opts.onerror && opts.onerror('error'); return null; }
+    try { r.start(); active = r; finishActive = end; } catch (e) { opts.onerror && opts.onerror('error'); return null; }
     return r;
   }
-  function abort() { if (active) { try { active.abort(); } catch (e) {} active = null; } }
+  function abort() { if (active) { try { active.abort(); } catch (e) {} active = null; finishActive = null; } }
+  /* Toucher le micro pendant l'écoute : on finit, et ce qui a été entendu est noté. stop() le
+     rend, abort() le jetait. Safari sur iPhone n'arrête souvent pas de lui-même : c'est ce
+     toucher qui finit l'écoute. S'il ne répond pas à stop(), la fin arrive quand même. Faux
+     s'il n'y avait rien à finir. */
+  function finish() {
+    const r = active, end = finishActive;
+    if (!r) return false;
+    try { r.stop(); } catch (e) {}
+    if (active === r) setTimeout(() => { if (active === r) { abort(); end(); } }, 1500);
+    return true;
+  }
 
   /* ---------------- record and compare ----------------
      Opera has no recognition service, so scoring is impossible there. Recording
@@ -2830,7 +2850,7 @@ NL.speech = (function () {
 
   return {
     canSpeak, say, stop, voiceInfo, rescanVoices: scan, voices: () => voices,
-    canListen, listenBlocked, noService, listen, abort, score, ratio, micRefused,
+    canListen, listenBlocked, noService, listen, abort, finish, score, ratio, micRefused,
     canRecord, hasRecording, record, stopRecord, playRecording, playBoth, clearRecording, capability, browserName
   };
 })();
@@ -7224,10 +7244,17 @@ NL.ui = (function () {
   function openSheet(s) { sheet = s; render(); }
   function closeSheet() { sheet = null; render(); }
 
+  /* Le toast se pose et s'en va sans redessiner la page : un rendu remettait en haut la feuille
+     qu'on faisait défiler, à son arrivée puis à son départ. render() le garde tant qu'il dure. */
   function toast(msg) {
-    toastMsg = msg; render();
+    toastMsg = msg; placeToast();
     clearTimeout(toastT);
-    toastT = setTimeout(() => { toastMsg = null; render(); }, 2400);
+    toastT = setTimeout(() => { toastMsg = null; placeToast(); }, 2400);
+  }
+  function placeToast() {
+    const was = root.querySelector('.toast');
+    if (was) was.remove();
+    root.insertAdjacentHTML('beforeend', ifText(toastMsg, 'div', 'toast'));
   }
 
   function applyTheme() {
@@ -7373,7 +7400,7 @@ NL.ui = (function () {
       if (S && S.click) {
         const target = e.target.closest('[data-act],[data-opt],[data-pick],[data-unpick],[data-match],[data-ins],' +
           '[data-mic],[data-self],[data-check],[data-next],[data-skip],[data-start],[data-unit],[data-scn],' +
-          '[data-clip],[data-sheetid],[data-choice],[data-step],[data-del],[data-add],[data-rec]');
+          '[data-clip],[data-sheetid],[data-choice],[data-step],[data-del],[data-add],[data-rec],[data-quiet]');
         if (target) S.click(target, target.dataset, e);
       }
     });
@@ -7919,8 +7946,8 @@ NL.screens.sessie = (function () {
     const out = L.lives <= 0, flawless = L.wrong === 0;
     return '<div class="lesson"><div class="lesson-body"><div class="stage done-stage">' +
       '<div class="done-mark">' + (flawless ? '\u{1F3C6}' : out ? '\u{1F494}' : '⚡') + '</div>' +
-      '<h2>' + (flawless ? NL.t.defiFlawless : out ? NL.t.defiOver : NL.t.defiSurvived) + '</h2>' +
-      '<p class="done-sub">' + NL.t.defiScoreLine(L.right, L.queue.length) + '</p>' +
+      '<h2>' + (flawless ? NL.t.defiFlawless(L.right) : out ? NL.t.defiOver : NL.t.defiSurvived) + '</h2>' +
+      '<p class="done-sub">' + NL.t.defiScoreLine(L.right, L.right + L.wrong) + '</p>' +
       '<div class="tally">' +
       box(L.right, NL.t.tallyScore, L.defiRecord ? 'gold' : 'blue') +
       box(Math.max(L.right, L.prevDefiBest), NL.t.tallyRecord, '') +
@@ -8011,7 +8038,7 @@ NL.screens.sessie = (function () {
 
   function mic(action, task) {
     const sp = L.speech;
-    if (action === 'stop') { NL.speech.abort(); sp.phase = 'idle'; NL.ui.render(); return; }
+    if (action === 'stop') { if (!NL.speech.finish()) { sp.phase = 'idle'; NL.ui.render(); } return; }
     sp.phase = 'listening'; sp.partial = ''; sp.error = null;
     NL.audio.mic();
     NL.ui.render();
@@ -8486,7 +8513,7 @@ NL.screens.sessie = (function () {
     const sp = P.speech;
     const step = P.scn.steps[P.at];
     const target = step.you.choices[P.choice].nl;
-    if (action === 'stop') { NL.speech.abort(); sp.phase = 'idle'; NL.ui.render(); return; }
+    if (action === 'stop') { if (!NL.speech.finish()) { sp.phase = 'idle'; NL.ui.render(); } return; }
     sp.phase = 'listening'; sp.partial = ''; sp.error = null;
     NL.audio.mic(); NL.ui.render();
     NL.speech.listen({
@@ -8697,7 +8724,7 @@ NL.screens.luisteren = (function () {
 
   function mic(action) {
     const c = S.clips[S.at];
-    if (action === 'stop') { NL.speech.abort(); S.speech.phase = 'idle'; NL.ui.render(); return; }
+    if (action === 'stop') { if (!NL.speech.finish()) { S.speech.phase = 'idle'; NL.ui.render(); } return; }
     S.speech = { phase: 'listening', tries: S.speech.tries, partial: '' };
     NL.audio.mic(); NL.ui.render();
     NL.speech.listen({
@@ -8705,7 +8732,10 @@ NL.screens.luisteren = (function () {
       onerror: k => { if (S) { S.speech.phase = 'idle'; S.speech.error = k; NL.ui.render(); } },
       onend: (text, alts) => {
         if (!S || S.speech.phase !== 'listening') return;
-        const r = NL.speech.score(alts && alts.length ? alts : [text], c.nl);
+        /* On entend et on voit la forme flamande : la redire est juste, la forme standard aussi. */
+        const heard = alts && alts.length ? alts : [text];
+        const r = [c.be, c.nl].filter(Boolean).map(t => NL.speech.score(heard, t))
+          .sort((a, b) => (b.pass - a.pass) || (b.pct - a.pct))[0];
         Object.assign(S.speech, { phase: 'done', tries: S.speech.tries + 1, pct: r.pct, parts: r.parts, heard: r.heard, ok: r.pass });
         if (r.pass) NL.audio.ok();
         NL.ui.render();

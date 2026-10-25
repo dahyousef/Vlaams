@@ -113,7 +113,7 @@ NL.speech = (function () {
   let refused = false;
   const micRefused = () => refused;
 
-  let active = null;
+  let active = null, finishActive = null;
   function listen(opts) {
     opts = opts || {};
     if (!SR) { opts.onerror && opts.onerror('browser'); return null; }
@@ -125,17 +125,21 @@ NL.speech = (function () {
     r.maxAlternatives = 5;
     r.continuous = false;
 
-    let finalText = '', alts = [];
+    /* Safari sur iPhone ne marque jamais un résultat final : ce qu'il a entendu n'arrive
+       qu'en provisoire. Le dernier provisoire est gardé, et noté si rien de final ne vient. */
+    let finalText = '', alts = [], partial = '', ended = false;
     r.onresult = e => {
+      let interim = '';
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const res = e.results[i];
         if (res.isFinal) {
           finalText += res[0].transcript + ' ';
           for (let k = 0; k < res.length; k++) alts.push(res[k].transcript);
         } else {
-          opts.onpartial && opts.onpartial(res[0].transcript);
+          interim += res[0].transcript + ' ';
         }
       }
+      if (interim.trim()) { partial = interim.trim(); opts.onpartial && opts.onpartial(partial); }
     };
     r.onerror = e => {
       const kind = e.error === 'not-allowed' || e.error === 'service-not-allowed' ? 'denied'
@@ -145,16 +149,31 @@ NL.speech = (function () {
       if (kind === 'denied') refused = true;
       opts.onerror && opts.onerror(kind);
     };
-    r.onend = () => {
-      active = null;
-      if (finalText.trim()) refused = false;
-      opts.onend && opts.onend(finalText.trim(), alts);
+    const end = () => {
+      if (ended) return;
+      ended = true;
+      if (active === r) { active = null; finishActive = null; }
+      const text = finalText.trim() || partial;
+      if (text) refused = false;
+      opts.onend && opts.onend(text, finalText.trim() ? alts : partial ? [partial] : alts);
     };
+    r.onend = end;
 
-    try { r.start(); active = r; } catch (e) { opts.onerror && opts.onerror('error'); return null; }
+    try { r.start(); active = r; finishActive = end; } catch (e) { opts.onerror && opts.onerror('error'); return null; }
     return r;
   }
-  function abort() { if (active) { try { active.abort(); } catch (e) {} active = null; } }
+  function abort() { if (active) { try { active.abort(); } catch (e) {} active = null; finishActive = null; } }
+  /* Toucher le micro pendant l'écoute : on finit, et ce qui a été entendu est noté. stop() le
+     rend, abort() le jetait. Safari sur iPhone n'arrête souvent pas de lui-même : c'est ce
+     toucher qui finit l'écoute. S'il ne répond pas à stop(), la fin arrive quand même. Faux
+     s'il n'y avait rien à finir. */
+  function finish() {
+    const r = active, end = finishActive;
+    if (!r) return false;
+    try { r.stop(); } catch (e) {}
+    if (active === r) setTimeout(() => { if (active === r) { abort(); end(); } }, 1500);
+    return true;
+  }
 
   /* ---------------- record and compare ----------------
      Opera has no recognition service, so scoring is impossible there. Recording
@@ -252,7 +271,7 @@ NL.speech = (function () {
 
   return {
     canSpeak, say, stop, voiceInfo, rescanVoices: scan, voices: () => voices,
-    canListen, listenBlocked, noService, listen, abort, score, ratio, micRefused,
+    canListen, listenBlocked, noService, listen, abort, finish, score, ratio, micRefused,
     canRecord, hasRecording, record, stopRecord, playRecording, playBoth, clearRecording, capability, browserName
   };
 })();

@@ -221,10 +221,17 @@ NL.ui = (function () {
   function openSheet(s) { sheet = s; render(); }
   function closeSheet() { sheet = null; render(); }
 
+  /* Le toast se pose et s'en va sans redessiner la page : un rendu remettait en haut la feuille
+     qu'on faisait défiler, à son arrivée puis à son départ. render() le garde tant qu'il dure. */
   function toast(msg) {
-    toastMsg = msg; render();
+    toastMsg = msg; placeToast();
     clearTimeout(toastT);
-    toastT = setTimeout(() => { toastMsg = null; render(); }, 2400);
+    toastT = setTimeout(() => { toastMsg = null; placeToast(); }, 2400);
+  }
+  function placeToast() {
+    const was = root.querySelector('.toast');
+    if (was) was.remove();
+    root.insertAdjacentHTML('beforeend', ifText(toastMsg, 'div', 'toast'));
   }
 
   function applyTheme() {
@@ -370,7 +377,7 @@ NL.ui = (function () {
       if (S && S.click) {
         const target = e.target.closest('[data-act],[data-opt],[data-pick],[data-unpick],[data-match],[data-ins],' +
           '[data-mic],[data-self],[data-check],[data-next],[data-skip],[data-start],[data-unit],[data-scn],' +
-          '[data-clip],[data-sheetid],[data-choice],[data-step],[data-del],[data-add],[data-rec]');
+          '[data-clip],[data-sheetid],[data-choice],[data-step],[data-del],[data-add],[data-rec],[data-quiet]');
         if (target) S.click(target, target.dataset, e);
       }
     });

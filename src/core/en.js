@@ -69,7 +69,7 @@ NL.tables.en = {
   defiOut: 'No lives left.',
   defiOver: 'No lives left.',
   defiSurvived: 'Challenge survived.',
-  defiFlawless: 'Flawless. Twenty out of twenty.',
+  defiFlawless: n => 'Flawless. ' + n + ' out of ' + n + '.',
   defiScoreLine: (n, of) => n + ' right answers out of ' + of + '. Each one counts as a real review.',
   defiRecord: (n, prev) => prev ? 'New record: ' + n + ', up from ' + prev + '.' : 'First record set: ' + n + '.',
   defiToBeat: n => 'Record to beat: ' + n + '.',

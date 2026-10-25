@@ -384,6 +384,33 @@ NL.state.open().then(async () => {
   }
 
   /* ------------------------------------------------------------------ */
+  console.log('\nLE TOAST — posé sur la page, sans la redessiner');
+  {
+    /* Chaque toast redessinait la page, à son arrivée puis 2,4 s plus tard à son départ : la
+       feuille des réglages qu'on faisait défiler revenait en haut, deux fois par toast. Le toast
+       se pose et s'en va seul. La page lue est marquée d'un commentaire, qu'un rendu effacerait.
+       Aux minuteurs retenus, le départ du toast attend P.tick(). */
+    const P = browser.open({ root: ROOT, seed: browser.SEED, byId: 'stub', timers: 'held' });
+    await new Promise(r => setImmediate(r));
+    while (P.waiting()) P.tick();
+    P.NL.ui.go('vandaag'); P.NL.ui.openSheet('instellingen');
+    const page = P.app.innerHTML + '<!--lue-->', t = P.NL.t;
+    const shown = m => P.NL.ui.ifText(m, 'div', 'toast');
+    P.app.innerHTML = page;
+    P.NL.ui.toast(t.exported);
+    ok(P.app.innerHTML === page + shown(t.exported), 'a toast redrew the page under it: the open settings sheet goes back to the top');
+    P.NL.ui.toast(t.imported);
+    ok(P.app.innerHTML === page + shown(t.imported), 'a second toast did not take the place of the first');
+    P.tick();
+    ok(P.app.innerHTML === page, 'the toast going away redrew the page, or stayed: « ' + P.app.innerHTML.slice(page.length) + ' »');
+    /* Un rendu pendant qu'il dure le garde. */
+    P.NL.ui.toast(t.exported); P.NL.ui.render();
+    ok(P.app.innerHTML.indexOf(shown(t.exported)) >= 0, 'a render during a toast dropped it');
+    P.tick();
+    console.log('  le toast arrive, cède sa place et s’en va sans redessiner la feuille des réglages ; un rendu le garde');
+  }
+
+  /* ------------------------------------------------------------------ */
   console.log('\nCOPIER — la sauvegarde et le journal d’erreurs');
   {
     /* Les deux copies vont de la même façon : par le presse-papiers s'il existe, sinon par
@@ -439,6 +466,17 @@ NL.state.open().then(async () => {
       ok(P.events.join(' | ') === '', 'NL.ui.copy(\'x\', null) with only the old command did « ' + P.events.join(' | ') + ' »; wanted nothing');
     }
     console.log('  sauvegarde et journal : le presse-papiers, sinon l’ancienne commande ; « ' + t.backupCopied + ' » si l’un a copié, sinon « ' + t.backupCopyByHand + ' »');
+  }
+
+  /* ------------------------------------------------------------------ */
+  console.log('\nLE TOAST — à lire, pas à toucher');
+  {
+    /* Le toast reste 2,4 s au-dessus de tout, et la feuille des réglages a son « Fermer » juste
+       dessous : « Sauvegarde téléchargée », et le toucher suivant tombait sur le toast. Il ne
+       contient que du texte : les touchers le traversent. */
+    const css = (/(^|[}\s])\.toast\s*\{([^}]*)\}/.exec(require('fs').readFileSync(require('path').join(ROOT, 'styles.css'), 'utf8')) || [])[2] || '';
+    ok(/pointer-events:\s*none/.test(css), 'styles.css lets the toast take taps: .toast has no pointer-events:none');
+    console.log('  .toast laisse passer les touchers');
   }
 
   /* ------------------------------------------------------------------ */
