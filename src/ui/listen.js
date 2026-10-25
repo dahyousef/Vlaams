@@ -171,7 +171,10 @@ NL.screens.luisteren = (function () {
       onerror: k => { if (S) { S.speech.phase = 'idle'; S.speech.error = k; NL.ui.render(); } },
       onend: (text, alts) => {
         if (!S || S.speech.phase !== 'listening') return;
-        const r = NL.speech.score(alts && alts.length ? alts : [text], c.nl);
+        /* On entend et on voit la forme flamande : la redire est juste, la forme standard aussi. */
+        const heard = alts && alts.length ? alts : [text];
+        const r = [c.be, c.nl].filter(Boolean).map(t => NL.speech.score(heard, t))
+          .sort((a, b) => (b.pass - a.pass) || (b.pct - a.pct))[0];
         Object.assign(S.speech, { phase: 'done', tries: S.speech.tries + 1, pct: r.pct, parts: r.parts, heard: r.heard, ok: r.pass });
         if (r.pass) NL.audio.ok();
         NL.ui.render();

@@ -398,12 +398,12 @@ function view(screen, arg) {
     NL.speech.score = (heard, target) => { graded.push(heard); return realScore(heard, target); };
     const scored = (where, view, start, stop, said) => {
       graded.length = 0; ctx.__interimNext = said; start();
-      ok(view().indexOf('score-row') >= 0 && graded.length === 1 && graded[0].indexOf(said) >= 0,
+      ok(view().indexOf('score-row') >= 0 && graded.length > 0 && graded.every(g => g.indexOf(said) >= 0),
         where + ': it ended on a result never marked final, and scored ' + JSON.stringify(graded) + ' instead of what it heard');
       graded.length = 0; ctx.__partialNext = said; start();
       ok(view().indexOf('data-mic="stop"') >= 0 || view().indexOf('data-act="micstop"') >= 0, where + ': the fixture is wrong, it is not listening');
       stop();
-      ok(view().indexOf('score-row') >= 0 && graded.length === 1 && graded[0].indexOf(said) >= 0,
+      ok(view().indexOf('score-row') >= 0 && graded.length > 0 && graded.every(g => g.indexOf(said) >= 0),
         where + ': tapping the microphone while it listened threw away what it heard (scored ' + JSON.stringify(graded) + ')');
     };
     NL.state.clearAll(); NL.content.refresh();
@@ -434,6 +434,32 @@ function view(screen, arg) {
     NL.speech.score = realScore;
     NL.ui.go('vandaag');
     console.log('   a result never marked final is scored, whether it ends by itself or is stopped');
+  }
+
+  /* ---------------------------------------------------------- 17. repeat after me, as heard */
+  /* Répéter montre et fait entendre la réplique flamande : la redire telle quelle est juste.
+     Elle était notée contre la forme standard, et « Da’s vier euro tachtig. » faisait 3 mots sur 5. */
+  head('17. Repeat after me: saying the line as shown and heard is right');
+  if (noRecogniser) {
+    console.log('   skipped: no recogniser here');
+  } else {
+    const U = NL.util, realClips = NL.content.listenClips;
+    const flemish = realClips().filter(c => c.be && U.norm(c.be) !== U.norm(c.nl)).slice(0, 8);
+    ok(flemish.length > 0, 'the fixture is wrong: no listening line has a Flemish form');
+    NL.content.listenClips = () => flemish;
+    NL.ui.go('luisteren'); tap('luisteren', { act: 'nazeggen' });
+    const lost = [];
+    for (let k = 0; k < flemish.length; k++) {
+      const shown = (NL.screens.luisteren.render().match(/class="rev-nl"[^>]*>([^<]*)</) || [])[1];
+      ctx.__saidNext = shown; B.tap({ act: 'mic' });
+      if (NL.screens.luisteren.render().indexOf('mic-panel good') < 0) lost.push(shown);
+      tap('luisteren', { act: 'next' });
+    }
+    ctx.__saidNext = '';
+    NL.content.listenClips = realClips;
+    ok(lost.length === 0, lost.length + ' Flemish line(s), said exactly as shown, marked wrong: ' + JSON.stringify(lost));
+    NL.ui.go('vandaag');
+    console.log('   ' + flemish.length + ' Flemish lines, each said as shown, each counted right');
   }
 
   console.log('\n' + checks + ' checks, ' + (fails === 0 ? 'NO PROBLEMS' : fails + ' PROBLEM(S)'));
