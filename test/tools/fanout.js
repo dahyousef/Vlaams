@@ -1045,6 +1045,146 @@ async function main() {
     console.log('  genre open     36 phrases en 2 lots, ' + Object.keys(back).length + ' tâches écrites, rx en expression régulière');
   }
 
+  /* ==================================================== les genres d'explications */
+  {
+    /* tools/content/kinds/explanations-be.js et explanations.js, dans un dépôt à eux sous la
+       copie, avec test/data (l'orthographe) et un extrait du Wiktionnaire d'une ligne. Trois
+       sources de l'essai y sont fixées, quoi que le cours leur donne plus tard : « Ik ben
+       Nederlands aan het leren. » et hallo gardent leur forme flamande, et « het gemeentehuis »
+       n'en a pas. */
+    const EX = path.join(TMP, 'explications');
+    ['build.sh', 'src', 'test/lib', 'test/data', 'tools'].forEach(p => fs.cpSync(path.join(ROOT, p), path.join(EX, p), { recursive: true }));
+    const X = require(path.join(EX, 'tools', 'content', 'lib', 'explain'));
+    const runEx = (script, args) => {
+      const r = spawnSync(process.execPath, [path.join(EX, 'tools', 'content', script)].concat(args), { encoding: 'utf8' });
+      return { code: r.status, lines: (r.stdout || '').split(/\r?\n/).filter(Boolean) };
+    };
+    const LEREN = C.byId('overleven:p0').nl, HALLO = C.byId('overleven:w0').nl, HUIS = C.byId('thuis:w12').nl;
+    const BE = path.join(EX, 'src', 'content', 'be.js'), fixed = {};
+    fixed[LEREN] = 'Ik ben Nederlands aan het leren, hè.';
+    fixed[HALLO] = 'hey, salut';
+    fixed[HUIS] = null;
+    table.update(BE, fixed);
+    const EXTRACT = path.join(EX, '.cache', 'kaikki', 'belgian.tsv');
+    fs.mkdirSync(path.dirname(EXTRACT), { recursive: true });
+    fs.writeFileSync(EXTRACT, '# kaikki/nl.jsonl sha256 ' + cache.PINS['kaikki/nl.jsonl'].sha256 + '\ngemeentehuis\tnoun\tBelgium\t(essai)\n');
+    const CE = course(EX), NLE = CE.NL;
+
+    /* Les lots : les mots, puis les phrases, de explanations-be, par unités entières ; un lot par
+       unité pour explanations. */
+    const mk = (u, n) => Array.from({ length: n }, (x, i) => ({ id: u + i, unit: u }));
+    const sizes = r => r.map(b => b.batch + ' ' + b.rows.length);
+    same([sizes(X.chunks('be-words', mk('a', 30).concat(mk('b', 15)))), sizes(X.chunks('be-words', mk('a', 20).concat(mk('b', 20), mk('c', 5)))),
+      sizes(X.chunks('be-words', mk('a', 50).concat(mk('b', 3)))), sizes(X.chunks('be-phrases', mk('a', 3)))],
+    [['be-words-1 30', 'be-words-2 15'], ['be-words-1 40', 'be-words-2 5'], ['be-words-1 50', 'be-words-2 3'], ['be-phrases 3']],
+    'un lot tient 40 lignes au plus, sans couper une unité');
+    const BED = path.join(EX, 'drafts', 'explanations-be'), RD = path.join(EX, 'drafts', 'explanations');
+    const be = CE.sources.filter(s => X.flemish(s, NLE)), rest = CE.sources.filter(s => !X.flemish(s, NLE));
+    same([be.length + rest.length, be.every(s => s.be && NLE.util.norm(s.be) !== NLE.util.norm(s.nl))], [CE.sources.length, true],
+      'chaque source est d\'un genre, et explanations-be a celles dont la forme flamande n\'est pas le néerlandais');
+    const beSplit = runEx('split.js', [EX, BED]);
+    const perKind = k => beSplit.lines.filter(l => l.indexOf('be-' + k + 's') === 0);
+    const total = ls => ls.reduce((n, l) => n + Number(l.split(' ')[1]), 0);
+    ok(beSplit.code === 0 && beSplit.lines.every(l => /^be-(words|phrases)(-\d+)? \d+$/.test(l)) && perKind('word').length + perKind('phrase').length === beSplit.lines.length,
+      'Split de explanations-be coupe des lots be-words et be-phrases : ' + JSON.stringify(beSplit));
+    same([total(perKind('word')), total(perKind('phrase'))], [be.filter(s => s.kind === 'word').length, be.filter(s => s.kind === 'phrase').length],
+      'les mots et les phrases de explanations-be, chacun une fois');
+    const want = CE.RAW.units.map(u => [u.id, rest.filter(s => s.unit === u.id).length]).filter(x => x[1]).map(x => x.join(' '));
+    same(runEx('split.js', [EX, RD]), { code: 0, lines: want }, 'Split de explanations coupe un lot par unité');
+    const rowIn = (dir, id) => {
+      const b = text(path.join(dir, 'split.txt')).split('\n').filter(Boolean).map(l => l.split(' ')[0])
+        .find(x => JSON.parse(text(path.join(dir, x, 'input.json'))).some(r => r.id === id));
+      return JSON.parse(text(path.join(dir, b, 'input.json'))).find(r => r.id === id);
+    };
+    const leren = CE.byId('overleven:p0'), huis = CE.byId('thuis:w12');
+    same(rowIn(BED, 'overleven:p0'), {
+      id: 'overleven:p0', stamp: kit.stamp(kit.loadKind(EX, 'explanations-be'), leren, NLE), copies: [],
+      nl: LEREN, kind: 'phrase', unit: 'overleven', be: 'Ik ben Nederlands aan het leren, hè.', meaning: NLE.gloss.meaning(leren),
+      note: leren.note || null, also: [], siblings: [], vlaams: true, right: 'Ik ben Nederlands aan het leren, hè.', labelled: null
+    }, 'une ligne de explanations-be : la source, son sens, sa note, ses « on dit aussi », et la réponse de « Comment le dit-on ici ? »');
+    same(rowIn(RD, 'thuis:w12'), {
+      id: 'thuis:w12', stamp: kit.stamp(kit.loadKind(EX, 'explanations'), huis, NLE), copies: [],
+      nl: HUIS, kind: 'word', unit: 'thuis', be: null, meaning: NLE.gloss.meaning(huis),
+      note: huis.note || null, also: [], siblings: [], vlaams: false, right: null, labelled: ['noun (Belgium): (essai)']
+    }, 'une ligne de explanations : sans forme flamande ni exercice, et les sens belges que l\'extrait donne au mot');
+    same(rowIn(RD, 'overleven:w2').siblings.map(s => s.nl), ['de dag'], 'les frères de sens d\'une source sont dans sa ligne');
+
+    /* Check : la note, ses langues et ses citations. */
+    const KB = require(path.join(EX, 'tools', 'content', 'kinds', 'explanations-be'));
+    const KR = require(path.join(EX, 'tools', 'content', 'kinds', 'explanations'));
+    const ctxB = { repo: EX, course: () => CE }, ctxR = { repo: EX, course: () => CE };
+    /* Une ligne écrite : sa note. */
+    const line = (id, note) => ({ id, note });
+    const why = (fr, en) => KB.check(line('overleven:p0', { fr, en }), rowIn(BED, 'overleven:p0'), ctxB);
+    const GOOD = ['Le « hè » final cherche ton accord, comme « toch ».', 'The final “hè” asks you to agree, like “toch”.'];
+    same(why(GOOD[0], GOOD[1]), [], 'une note juste passe');
+    same(KR.check(line('thuis:w12', { fr: 'Où tu vas pour tout ce qui est administratif à {stad}.', en: 'Where you go for anything administrative in {stad}.' }),
+      rowIn(RD, 'thuis:w12'), ctxR), [], 'un jeton {stad} n\'est pas du néerlandais nu');
+    const shape = ['note is { "fr": …, "en": … }, each a text with no space at either end'];
+    same([KB.check(line('overleven:p0', { fr: GOOD[0] }), rowIn(BED, 'overleven:p0'), ctxB), why(GOOD[0], null), why(' ' + GOOD[0], GOOD[1]),
+      KB.check(line('overleven:p0', GOOD[0]), rowIn(BED, 'overleven:p0'), ctxB)], [shape, shape, shape, shape],
+    'une note est une paire fr, en, deux textes sans blanc autour');
+    const LONG = GOOD[0] + ' ' + 'x'.repeat(120);
+    same(why(LONG, GOOD[1]), ['note.fr is ' + Array.from(LONG).length + ' characters: at most 160'], '160 caractères au plus');
+    same(why('Le <b>final</b>.', 'The "final".'), ['note.fr holds <, a newline or a straight quote "', 'note.en holds <, a newline or a straight quote "'],
+      'ni balise, ni retour à la ligne, ni guillemet droit');
+    same(why(GOOD[0], 'The final « hè » asks you to agree, like “toch”.'), ['note.en quotes with “ ” only'], 'chaque langue a ses guillemets');
+    same(why('Le « hè final cherche ton accord.', GOOD[1]), ['note.fr has a quote mark without its pair, a quote inside a quote, or an empty quote'],
+      'un guillemet a sa paire');
+    same(why('Un. Deux. Trois.', 'One. Two. Three.'), ['note.fr has 3 sentences: at most 2', 'note.en has 3 sentences: at most 2'], 'deux phrases au plus');
+    same(why('Comme « hè. Toch. Ja. ».', 'Like “hè. Toch. Ja.”.'), [], 'la ponctuation d\'une citation ne fait pas de phrase');
+    const NAAM = NLE.content.DEFAULTS.naam;
+    same(why('Dis-le à ' + NAAM + '.', 'Say it to ' + NAAM + '.'), ['fr', 'en'].map(l => 'note.' + l + ' names « ' + NAAM + ' »: write {naam}'),
+      'un nom par défaut s\'écrit en jeton');
+    same(why(NLE.gloss.meaning(leren).fr, NLE.gloss.meaning(leren).en), ['note.fr only repeats the meaning', 'note.en only repeats the meaning'], 'une note ne redit pas le sens');
+    same(why(GOOD[0], 'The final “hè” asks avec you to agree, like “toch”.'), ['note.en uses French words outside quotes: « avec »'], 'pas de français dans l\'anglais');
+    same(why('Le « hè » final cherche ton accord, with « toch ».', GOOD[1]), ['note.fr uses English words outside quotes: « with »'], 'pas d\'anglais dans le français');
+    same(why('Le « hè » final, 2 fois.', 'The final “hè”, three times.'), ['note.fr and note.en hold different digits or {…} tokens'], 'les mêmes chiffres et les mêmes jetons');
+    same(why('Le « hè » final cherche ton accord.', 'The final “toch” asks you to agree.'),
+      ['note.fr and note.en quote different Dutch: only en « toch »; only fr « hè »'], 'les deux langues citent le même néerlandais');
+    same(why('Le « hè » final, comme « voilà ».', 'The final “hè”, like “voilà”.'),
+      ['« voilà » is quoted, but « voilà » is not Dutch that OpenTaal, flemish.tsv or this row knows: quotes hold Dutch only, a translation goes in parentheses'],
+      'une citation ne tient que du néerlandais');
+    same(why('Ajoute hè à la fin.', 'Add hè at the end.'), ['« hè » is Dutch of the course, outside quotes in fr and in en: quote it, or say it another way'],
+      'le néerlandais du cours se cite');
+    same(why('Ajoute « hè » à la fin, comme hè.', 'Add “hè” at the end.'), [], 'un mot nu dans une seule langue passe : 6d.4 ne le voit pas');
+
+    /* De bout en bout, sur deux sources : be.js ne garde que les deux formes flamandes fixées,
+       puis Split, chaque lot rédigé et relu, check.js, Merge, et Merge relancée. */
+    const gone = {};
+    Object.keys(table.load(BE).entries).forEach(k => { if (k !== LEREN && k !== HALLO) gone[k] = null; });
+    table.update(BE, gone);
+    const E2E = path.join(EX, 'bout-en-bout', 'explanations-be');
+    same(runEx('split.js', [EX, E2E]), { code: 0, lines: ['be-words 1', 'be-phrases 1'] }, 'Split de explanations-be ne coupe que les deux sources gardées');
+    const NOTE = { fr: 'Une note d’essai sur cette source.', en: 'A trial note on this source.' };
+    const batches = ['be-words', 'be-phrases'];
+    batches.forEach(b => {
+      const dir = path.join(E2E, b), inp = JSON.parse(text(path.join(dir, 'input.json')));
+      put(dir, 'draft.json', inp.map(r => ({ id: r.id, stamp: r.stamp, note: r.id === 'overleven:p0' ? { fr: GOOD[0], en: GOOD[1] } : NOTE })));
+      put(dir, 'review.json', inp.map(r => ({ id: r.id, verdict: 'keep' })));
+    });
+    const PHR = path.join(E2E, 'be-phrases');
+    const draft = text(path.join(PHR, 'draft.json'));
+    put(PHR, 'draft.json', draft.replace('“toch”', '“hein”'));
+    same(runEx('check.js', [PHR]).lines.filter(l => /^fail /.test(l)), [
+      'fail draft.json overleven:p0: note.fr and note.en quote different Dutch: only en « hein »; only fr « toch »',
+      'fail review.json -: draft.json missing or failing'
+    ], 'check.js dit les raisons du genre');
+    put(PHR, 'draft.json', draft);
+    same(runEx('check.js', [PHR]).code, 0, 'le lot rédigé et relu passe');
+    const NOTES = path.join(EX, 'src', 'content', 'notes.js');
+    same(runEx('merge.js', [EX, E2E]), { code: 0, lines: ['ok explanations-be 2 taken, 0 dropped', 'ok notes.js 2 set, 0 removed'] },
+      'Merge écrit chaque note dans notes.js');
+    const notes = table.load(NOTES).entries;
+    same([notes[LEREN], notes[HALLO]], [{ fr: GOOD[0], en: GOOD[1] }, NOTE], 'notes.js tient chaque note sous le néerlandais de sa source');
+    const notesAfter = text(NOTES), again = runEx('merge.js', [EX, E2E]), CA = course(EX);
+    same(again, { code: 1, lines: ['overleven:w0', 'overleven:p0'].map(id => 'fail explanations-be ' + id + ': stale, stamped ' + rowIn(E2E, id).stamp +
+      ' at Split, the source now stamps ' + kit.stamp(kit.loadKind(EX, 'explanations-be'), CA.byId(id), CA.NL)) },
+    'le tampon couvre la note : relancée après un succès, Merge refuse comme périmée chaque ligne dont elle a écrit la note');
+    ok(text(NOTES) === notesAfter, 'refusée, Merge n\'écrit rien');
+    console.log('  explanations   ' + beSplit.lines.length + ' + ' + want.length + ' lots, ' + be.length + ' + ' + rest.length + ' lignes ; la note et ses citations ; Merge');
+  }
+
   console.log('\n' + checks + ' contrôles, ' + (fails === 0 ? 'KIT CONFORME' : fails + ' ÉCHEC(S)'));
 }
 

@@ -5,6 +5,7 @@ const fs = require('fs'), path = require('path');
 const browser = require('./lib/browser');
 const { PROSE } = require('./lib/prose');
 const tree = require('./lib/tree');
+const { dutchWords } = require('./lib/dutch');
 const { text, joined, runs, count, argsOf } = require('./lib/langs');
 const { fakeSupabase } = require('./lib/supabase');
 const { dueReviews } = require('./lib/seed');
@@ -180,21 +181,6 @@ function marked(NL) {
     const tb = NL.tables[l];
     if (tb !== T) Object.keys(tb).forEach(k => { tb[k] = markLeaves(tb[k], l + '.' + k, k === 'nav'); });
   });
-}
-
-/* Les mots néerlandais du cours : nl, be, les phrases, les colonnes du registre
-   (std), les exemples des règles (ex), les modèles de réponse (model) et les
-   identifiants d'unité, qui sont des mots néerlandais. */
-const DUTCH_KEYS = ['nl', 'be', 'std', 'ex', 'model', 'id', 'nlName'];
-function dutchWords(NL) {
-  const set = new Set();
-  const add = s => String(s).toLowerCase().split(/[^\p{L}\p{N}]+/u).forEach(w => { if (w) set.add(w); });
-  const dutchKey = (v, key) => { if (DUTCH_KEYS.indexOf(key) >= 0 && typeof v === 'string') add(v); };
-  tree.visit(NL.content, dutchKey);
-  tree.visitTables(NL.content, dutchKey);
-  NL.t.nav.forEach(n => add(n.nl));
-  Object.keys(NL.content.DEFAULTS).forEach(k => add(NL.content.DEFAULTS[k]));
-  return set;
 }
 
 function srcFiles(dir) {
