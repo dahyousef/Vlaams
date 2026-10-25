@@ -75,7 +75,7 @@ NL.screens.luisteren = (function () {
         (S.phase === 'shown'
           ? '<div class="reveal"><p class="rev-nl"' + NL.gloss.attr('nl') + '>' + esc(c.be || c.nl) + '</p>' +
           (c.be && U.norm(c.be) !== U.norm(c.nl) ? '<p class="rev-std">' + NL.t.scnStd + ' <span' + NL.gloss.attr('nl') + '>' + esc(c.nl) + '</span></p>' : '') +
-          '<p class="rev-src">' + NL.t.listenFrom + ' &ldquo;' + esc(c.from) + '&rdquo;</p></div>'
+          '<p class="rev-src">' + NL.t.listenFrom + ' &ldquo;' + NL.gloss.prose(c.from) + '&rdquo;</p></div>'
           : '<p class="listen-hint">' + NL.t.listenNoText + '</p>') +
         '</div>' +
         '<div class="opts">' + S.opts.map((o, i) => {
@@ -100,7 +100,7 @@ NL.screens.luisteren = (function () {
       '<div class="rail"><div class="rail-fill" style="width:' + Math.max(pct, 3) + '%"></div></div>' +
       '<span class="pill">' + (S.at + 1) + '/' + S.clips.length + '</span></div>' +
       '<div class="lesson-body"><div class="stage">' +
-      '<div class="kicker"><span class="sub">' + (S.mode === 'begrijpen' ? NL.t.listenUnderstand : NL.t.listenRepeat) + ' &middot; ' + esc(c.from) + '</span>' +
+      '<div class="kicker"><span class="sub">' + (S.mode === 'begrijpen' ? NL.t.listenUnderstand : NL.t.listenRepeat) + ' &middot; ' + NL.gloss.prose(c.from) + '</span>' +
       (S.mode === 'begrijpen' ? NL.t.listenWhatSaid : NL.t.listenRepeatTitle) + '</div>' +
       body + '</div></div>' +
       '<div class="foot"><div class="foot-in">' +

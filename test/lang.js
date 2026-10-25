@@ -201,7 +201,7 @@ function interfaceCheck() {
          Deux autres données ne sont pas l'interface non plus : les faux amis des anglophones, écrits en anglais
          dans les deux affichages (les cellules reg-cell std de register), et les mots qu'une personne a tapés
          elle-même (leur ligne du dictionnaire, repérée par data-del). */
-      textAndLabels(String(h).replace(/<textarea[\s\S]*?<\/textarea>/g, ' ').replace(/<span class="reg-cell std" lang="en-GB">[\s\S]*?<\/span>/g, ' ').replace(/<div class="vrow">[\s\S]*?<\/div>/g, row => (row.indexOf('data-del=') >= 0 ? ' ' : row)).replace(/&[a-z]+;/g, ' ')).replace(/⟦[^⟧]*⟧|⟪[^⟫]*⟫/g, ' ').split(/[^\p{L}\p{N}]+/u).forEach(w => {
+      textAndLabels(String(h).replace(/<textarea[\s\S]*?<\/textarea>/g, ' ').replace(/<span class="reg-cell std" lang="en-GB">[\s\S]*?<\/em><\/span>/g, ' ').replace(/<div class="vrow">[\s\S]*?<\/div>/g, row => (row.indexOf('data-del=') >= 0 ? ' ' : row)).replace(/&[a-z]+;/g, ' ')).replace(/⟦[^⟧]*⟧|⟪[^⟫]*⟫/g, ' ').split(/[^\p{L}\p{N}]+/u).forEach(w => {
         w = w.toLowerCase();
         if (w.length > 1 && !/\p{N}/u.test(w) && !dutch.has(w) && !Object.prototype.hasOwnProperty.call(ALLOW, w) && !seen.has(w)) seen.set(w, n);
       });
@@ -884,8 +884,17 @@ function displayChecks() {
    néerlandais, et NL.gloss.quoted le déclare nl-BE à l'écran. Les champs qui peuvent citer passent
    par NL.gloss.quoted ; les autres (name, title, h, place) ne citent rien. explain est du HTML, où
    le néerlandais porte class="ex" ou class="nl" (NL.gloss.prose) : ses citations suivent la même
-   règle et se comptent ici, mais l'écran ne les déclare pas. */
-const QUOTED_FIELDS = ['note', 'blurb', 'rule', 'ask', 'what', 'outro', 'hint'];
+   règle et se comptent ici, mais l'écran ne les déclare pas. title et h sont du HTML aussi : leur
+   néerlandais porte class="nl", sans guillemets. place, où entre le texte de l'apprenant ({stad},
+   {bedrijf}), reste du texte échappé (6d.7). Les tables de référence, écrites dans une
+   seule langue (NL.content.anchors), se lisent de même : say, la prose des sons, comme explain ;
+   trap, le piège d'un faux ami, comme une note. */
+const QUOTED_FIELDS = ['note', 'blurb', 'rule', 'ask', 'what', 'outro', 'hint', 'trap'];
+/* Les champs écrits en HTML, montrés par NL.gloss.prose. */
+const HTML_FIELDS = ['explain', 'say', 'title', 'h'];
+/* Les tables de référence (src/content/reference.js) lues avec le cours : les emprunts, les sons et les
+   deux tables de faux amis. C.TABLES, lui, donne les tables par le néerlandais (byDutch). */
+const REFERENCE_TABLES = ['loans', 'sounds', 'faux', 'fauxEn'];
 /* Les mots cités hors du néerlandais du cours qui sont pourtant du néerlandais, avec la raison. */
 const QUOTE_OK = {
   goedendag: 'le bonjour du nord, dans la note de goeiedag',
@@ -900,7 +909,16 @@ const QUOTE_OK = {
   jam: 'le nord pour de confituur, dans sa note d’emprunt',
   vrachtwagen: 'l’écrit pour de camion, dans sa note d’emprunt',
   vork: 'le standard pour de fourchet, dans sa note d’emprunt',
-  bijgevoegd: 'le nord pour « in bijlage », dans une note de la fiche des mails'
+  bijgevoegd: 'le nord pour « in bijlage », dans une note de la fiche des mails',
+  werke: 'werken tel qu’il se dit, n final tombé, dans la table des sons',
+  lope: 'lopen tel qu’il se dit, n final tombé, dans la table des sons',
+  uiteindelijk: 'ce que veut dire eventually, dans le piège de eventueel',
+  eigenlijk: 'ce que veut dire actually, dans le piège de actueel',
+  dun: 'ce que veut dire slim (mince), dans le piège de slim',
+  slank: 'ce que veut dire slim (svelte), dans le piège de slim',
+  zeldzaam: 'ce que veut dire rare, dans le piège de raar',
+  merk: '« het merk », ce que veut dire brand (une marque), dans le piège de de brand',
+  plattegrond: '« de plattegrond », ce que veut dire map (un plan), dans le piège de de map'
 };
 /* Les passages cités qui ne sont pas du néerlandais (« voilà », “here you are”) enfreignent la règle :
    une traduction va entre parenthèses, sans guillemets. Hors d'explain, NL.gloss.quoted les déclare
@@ -928,14 +946,15 @@ function fieldOf(key, where, C) {
   if (t) return ((C.TABLES || []).find(x => x.table === t[1]) || {}).field;
   return (/\.(\w+)\.(?:fr|en)$/.exec(where) || [])[1];
 }
-/* Chaque texte du cours, les notes des mots comprises, et des emprunts, dont la note passe aussi par
-   NL.gloss.quoted : fn(texte, champ, chemin). */
+/* Chaque texte du cours, les notes des mots comprises, et des tables de référence : fn(texte, champ, chemin). */
 function eachText(C, fn) {
   const read = (v, key, where) => { if (typeof v === 'string') fn(v, fieldOf(key, where, C), where); };
   tree.visitCourse(C, read);
-  tree.visit(C.loans, read, 'loans', 'loans');
+  REFERENCE_TABLES.forEach(k => tree.visit(C[k], read, k, k));
 }
 function quoteChecks() {
+  /* Les mots des noms que {naam}, {stad} et {bedrijf} prennent par défaut, que l'en-tête montre. */
+  const names = NL => new Set([].concat(...Object.keys(NL.content.DEFAULTS).map(k => words(String(NL.content.DEFAULTS[k])))));
   /* 6d.1. La note de trager cite « trager » et « langzamer » : dans le pied d'une réponse fausse,
      chacun est déclaré nl-BE, guillemets dehors, en français comme en anglais. */
   const footNote = (l, to, want) => {
@@ -963,39 +982,44 @@ function quoteChecks() {
   const q1 = () => footNote('fr', French, '« <span lang="nl-BE">trager</span> »')
     .then(() => footNote('en', English, '“<span lang="nl-BE">trager</span>”'));
 
-  /* 6d.2. Chaque champ cité, planté d'une citation inventée (« zqN »), puis relu sur chaque écran :
-     chaque zqN montré est déclaré nl-BE, et chaque sorte de champ (collection.champ, ou byDutch.champ pour
-     une table : byDutch.note) se montre. Un écran qui échappe un de ces champs sans NL.gloss.quoted échoue ici. */
-  const q2 = () => {
+  /* Chaque champ de `fields`, côté français, planté d'un néerlandais inventé (zqN) écrit par
+     wrap(N), puis relu sur chaque écran : chaque zqN montré est déclaré nl-BE (`shown` le trouve),
+     et chaque sorte de champ (collection.champ, ou byDutch.champ pour une table : byDutch.note) se
+     montre. */
+  const planted = (fields, wrap, shown) => {
     const groups = [];
     const plant = C => (s, key, where) => {
       const f = fieldOf(key, where, C);
-      if (typeof s !== 'string' || key === 'en' || QUOTED_FIELDS.indexOf(f) < 0) return s;
+      if (typeof s !== 'string' || key === 'en' || fields.indexOf(f) < 0) return s;
       groups.push(where.split(/[.[]/)[0] + '.' + f);
-      return s + ' « zq' + (groups.length - 1) + ' »';
+      return s + ' ' + wrap(groups.length - 1);
     };
     const B = boot({ prepare: NL => {
       tree.rewriteCourse(NL.content, plant(NL.content));
-      NL.content.loans = tree.rewrite(NL.content.loans, plant(NL.content), 'loans', 'loans');
+      REFERENCE_TABLES.forEach(k => { NL.content[k] = tree.rewrite(NL.content[k], plant(NL.content), k, k); });
     } });
     return B.NL.state.open().then(() => {
       French(B);
       const marked = new Set(), bare = new Map();
       views(B, (n, h) => {
-        const left = String(h).replace(/<span lang="nl-BE">zq(\d+)<\/span>/g, (m, i) => { marked.add(groups[+i]); return ''; });
+        const left = String(h).replace(shown, (m, i) => { marked.add(groups[+i]); return ''; });
         (left.match(/zq\d+/g) || []).forEach(z => { const g = groups[+z.slice(2)]; if (!bare.has(g)) bare.set(g, n); });
       });
-      bare.forEach((n, g) => ok(false, '6d : ' + g + ' montré sans déclarer nl-BE ce qu’il cite (vue ' + n + ')'));
+      bare.forEach((n, g) => ok(false, '6d : ' + g + ' montré sans déclarer nl-BE son néerlandais (vue ' + n + ')'));
       const unseen = Array.from(new Set(groups)).filter(g => !marked.has(g) && !bare.has(g));
       ok(groups.length > 0 && unseen.length === 0, '6d : ' + unseen.join(', ') + ' jamais montré(s), le contrôle est creux');
     });
   };
 
+  /* 6d.2. Chaque champ cité, planté d'une citation inventée (« zqN »). Un écran qui échappe un de
+     ces champs sans NL.gloss.quoted échoue ici. */
+  const q2 = () => planted(QUOTED_FIELDS, n => '« zq' + n + ' »', /<span lang="nl-BE">zq(\d+)<\/span>/g);
+
   /* 6d.3. Ce que NL.gloss.quoted marque, relu sur le cours : chaque mot est du néerlandais du cours, un
      chiffre ou une exception de QUOTE_OK, et le reste se compte contre QUOTE_BUDGET ; explain aussi,
      balises ôtées. Un affixe cité avec son tiret (« -tje », « ge- ») est du néerlandais par sa forme ;
      « soixante-dix » n'en est pas un. Chaque guillemet ouvert est fermé (sinon rien n'est marqué), et
-     name, title, h et place ne citent rien. */
+     name, title, h et place ne citent rien. Les tables de référence se lisent avec le cours. */
   const q3 = () => {
     const B = boot();
     return B.NL.state.open().then(() => {
@@ -1004,10 +1028,10 @@ function quoteChecks() {
       const unescape = s => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&amp;/g, '&');
       const foreign = [], excused = new Set();
       eachText(NL.content, (s, f, where) => {
-        if (PROSE.indexOf(f) < 0) return;
-        const t = f === 'explain' ? joined(s) : s;
+        if (PROSE.indexOf(f) < 0 && QUOTED_FIELDS.indexOf(f) < 0 && HTML_FIELDS.indexOf(f) < 0) return;
+        const t = HTML_FIELDS.indexOf(f) >= 0 ? joined(s) : s;
         const opened = t.split(/[«“]/).length - 1, closed = t.split(/[»”]/).length - 1;
-        if (QUOTED_FIELDS.indexOf(f) < 0 && f !== 'explain') { ok(opened + closed === 0, '6d : ' + where + ' cite, mais ' + f + ' ne passe pas par NL.gloss.quoted : « ' + s + ' »'); return; }
+        if (QUOTED_FIELDS.indexOf(f) < 0 && f !== 'explain' && f !== 'say') { ok(opened + closed === 0, '6d : ' + where + ' cite, mais ' + f + ' ne passe pas par NL.gloss.quoted : « ' + s + ' »'); return; }
         const segs = Array.from(Q(t).matchAll(/<span lang="nl-BE">([^<]*)<\/span>/g), m => unescape(m[1]));
         ok(segs.length === opened && opened === closed, '6d : ' + where + ' a un guillemet sans son pendant, ou une citation vide : « ' + s + ' »');
         segs.forEach(q => {
@@ -1030,36 +1054,84 @@ function quoteChecks() {
 
   /* 6d.4. Le néerlandais qu'une prose laisse nu : un mot du néerlandais du cours que les côtés fr et
      en d'un même texte écrivent tous deux hors de tout passage nl-BE (« ik werk », un <b>het</b>). Il se
-     cite, ou dans explain porte class="nl". Un mot que le français et l'anglais ont vraiment en commun
+     cite, ou dans un champ HTML (HTML_FIELDS) porte class="nl" ; un titre (title, h) ne cite
+     pas, il porte class="nl". Un mot que le français et l'anglais ont vraiment en commun
      va dans SHARED_OK ; les noms de {naam}, {stad} et {bedrijf} sont les mêmes partout. Les notes des
      mots et des phrases (byDutch.notes) attendent leur réécriture et restent hors du compte. Ce contrôle
      ne voit pas le néerlandais qu'un seul côté écrit, ni celui que le cours n'enseigne pas. */
   const q4 = () => {
     const B = boot();
     return B.NL.state.open().then(() => {
-      const NL = B.NL, dutch = dutchWords(NL), names = new Set(), shared = new Set(), nu = [];
-      const words = s => s.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
-      Object.keys(NL.content.DEFAULTS).forEach(k => words(String(NL.content.DEFAULTS[k])).forEach(w => names.add(w)));
-      const bare = (f, s, l) => new Set([].concat(...runs(f === 'explain' ? NL.gloss.prose(s) : NL.gloss.quoted(s), l)
+      const NL = B.NL, dutch = dutchWords(NL), named = names(NL), shared = new Set(), nu = [];
+      const bare = (f, s, l) => new Set([].concat(...runs(HTML_FIELDS.indexOf(f) >= 0 ? NL.gloss.prose(s) : NL.gloss.quoted(s), l)
         .filter(r => r.lang !== 'nl-BE').map(r => words(r.text))));
       let fields = 0;
       tree.visitCourse(NL.content, (v, key, where) => {
         if (!v || typeof v !== 'object' || typeof v.fr !== 'string' || typeof v.en !== 'string') return;
-        if ((QUOTED_FIELDS.indexOf(key) < 0 && key !== 'explain') || /^byDutch\.notes\[/.test(where)) return;
+        if ((QUOTED_FIELDS.indexOf(key) < 0 && HTML_FIELDS.indexOf(key) < 0) || /^byDutch\.notes\[/.test(where)) return;
         fields++;
         const en = bare(key, v.en, 'en');
-        const both = Array.from(bare(key, v.fr, 'fr')).filter(w => en.has(w) && dutch.has(w) && !names.has(w));
+        const both = Array.from(bare(key, v.fr, 'fr')).filter(w => en.has(w) && dutch.has(w) && !named.has(w));
         both.forEach(w => { if (SHARED_OK[w]) shared.add(w); });
         if (both.some(w => !SHARED_OK[w])) nu.push(where + ' [' + both.filter(w => !SHARED_OK[w]).join(', ') + ']');
       });
-      nu.forEach(n => ok(false, '6d : ' + n + ' : du néerlandais du cours, écrit pareil en français et en anglais hors de nl-BE — le citer, ou dans explain lui donner class="nl"'));
+      nu.forEach(n => ok(false, '6d : ' + n + ' : du néerlandais du cours, écrit pareil en français et en anglais hors de nl-BE — le citer, ou dans un champ HTML (' + HTML_FIELDS.join(', ') + ') lui donner class="nl"'));
       Object.keys(SHARED_OK).forEach(w => ok(shared.has(w), '6d : « ' + w + ' » n’est plus écrit pareil dans les deux langues, ou plus du néerlandais du cours : son exception est de trop'));
       ok(fields > 0, '6d : aucun texte lu en deux langues, le contrôle est creux');
       console.log('  néerlandais nu  ' + fields + ' champs lus en deux langues, ' + Object.keys(SHARED_OK).length + ' exceptions');
     });
   };
 
-  return [q1, q2, q3, q4].reduce((p, c) => p.then(c), Promise.resolve());
+  /* 6d.5. Chaque titre (title, h), planté d'un néerlandais inventé (<span class="nl">zqN</span>).
+     Un écran qui échappe un titre au lieu de le montrer par NL.gloss.prose échoue ici. */
+  const q5 = () => planted(['title', 'h'], n => '<span class="nl">zq' + n + '</span>', /<span class="nl" lang="nl-BE">zq(\d+)<\/span>/g);
+
+  /* 6d.6. La page de / het et sa tuile, écrites par les tables fr et en : un mot du néerlandais du
+     cours que les deux langues y montrent hors de nl-BE (« het », « de / het ») porte class="nl". Les
+     noms de {naam}, {stad} et {bedrijf}, que l'en-tête montre, sont les mêmes partout. */
+  const q6 = () => {
+    const B = boot();
+    return B.NL.state.open().then(() => {
+      const NL = B.NL, dutch = dutchWords(NL), named = names(NL);
+      const page = (l, to) => {
+        to(B);
+        NL.ui.go('meer');
+        const tile = (/<button class="tile-card" data-go="dehet">[\s\S]*?<\/button>/.exec(B.app.innerHTML) || [''])[0];
+        ok(tile !== '', '6d (' + l + ') : la tuile de / het manque, le contrôle est creux');
+        NL.ui.go('dehet');
+        return new Set([].concat(...runs(tile + B.app.innerHTML, l).filter(r => r.lang !== 'nl-BE').map(r => words(r.text))));
+      };
+      const fr = page('fr', French), en = page('en', English);
+      const both = Array.from(fr).filter(w => en.has(w) && dutch.has(w) && !named.has(w) && !SHARED_OK[w]);
+      ok(both.length === 0, '6d : la page de / het montre nu, en français comme en anglais, ' + both.join(', ') + ' — lui donner class="nl"');
+    });
+  };
+
+  /* 6d.7. Le texte de l'apprenant ({naam}, {stad}, {bedrijf}) entre dans le cours tel quel, sans
+     échappement : un champ montré en HTML (HTML_FIELDS) ne doit pas le porter, et place, qui le
+     porte, reste échappé. Planté d'une balise (<u>zqmine</u>), il ne paraît comme balise sur aucun
+     écran, et il paraît échappé dans les conversations. views() remet l'état à zéro, réglages
+     compris : ceux de l'apprenant passent donc par NL.state.meta, que fill() lit. */
+  const q7 = () => {
+    const mine = '<u>zqmine</u>';
+    const B = boot({ prepare: NL => {
+      const meta = NL.state.meta;
+      NL.state.meta = () => Object.assign({}, meta(), { learnerName: mine, town: mine, company: mine });
+    } });
+    return B.NL.state.open().then(() => {
+      French(B);
+      const raw = new Set();
+      let escaped = 0;
+      views(B, (n, h) => {
+        if (String(h).indexOf(mine) >= 0) raw.add(n);
+        if (n.indexOf('scenario/') === 0 && String(h).indexOf('&lt;u&gt;zqmine&lt;/u&gt;') >= 0) escaped++;
+      });
+      ok(raw.size === 0, '6d : le texte de l’apprenant montré comme du HTML, sans échappement (vue ' + Array.from(raw).join(', ') + ')');
+      ok(escaped > 0, '6d : le texte de l’apprenant ne paraît dans aucune conversation, le contrôle est creux');
+    });
+  };
+
+  return [q1, q2, q3, q4, q5, q6, q7].reduce((p, c) => p.then(c), Promise.resolve());
 }
 
 const plain = boot(), paired = boot({ prepare: NL => pairUp(NL.content) });

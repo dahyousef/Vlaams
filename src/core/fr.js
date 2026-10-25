@@ -232,9 +232,9 @@ NL.tables.fr = {
   soundsBody: 'La Flandre prononce plusieurs de ces sons autrement que le nord. Bonne nouvelle : trois voyelles néerlandaises existent déjà en français, ce qu’un anglophone n’a pas.',
   soundsEasy: 'tu l’as déjà',
   soundsWatch: 'attention',
-  dehetTitle: 'Les familles de het',
-  dehetBody: 'Environ sept mots het sur dix suivent une règle. Apprends les familles au lieu des 425 articles un par un — et ne traduis jamais depuis le français : het huis est neutre, la maison est féminine.',
-  dehetHet: 'Prennent het', dehetDe: 'Prennent de',
+  dehetTitle: 'Les familles de <span class="nl">het</span>',
+  dehetBody: 'Environ sept mots <span class="nl">het</span> sur dix suivent une règle. Apprends les familles au lieu des 425 articles un par un — et ne traduis jamais depuis le français : <span class="nl">het huis</span> est neutre, la maison est féminine.',
+  dehetHet: 'Prennent <span class="nl">het</span>', dehetDe: 'Prennent <span class="nl">de</span>',
   dehetSure: 'sans exception',
 
   /* --- réglages --- */

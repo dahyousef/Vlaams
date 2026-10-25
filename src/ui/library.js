@@ -108,8 +108,8 @@
           return '<div class="wrap">' +
             '<button class="backlink" data-go="spiek">' + NL.ui.I.back + ' ' + NL.t.sheetsAll + '</button>' +
             '<section class="card lead slim"><span class="eyebrow">' + NL.t.sheetsEyebrow + '</span> ' + anchor('sheets') +
-            '<h1>' + s.icon + ' ' + esc(NL.gloss.of(s.title)) + '</h1><p>' + NL.gloss.quoted(s.blurb) + '</p></section>' +
-            s.groups.map(g => '<div class="sheet-group"><h4>' + esc(NL.gloss.of(g.h)) + '</h4>' +
+            '<h1>' + s.icon + ' ' + NL.gloss.prose(NL.gloss.of(s.title)) + '</h1><p>' + NL.gloss.quoted(s.blurb) + '</p></section>' +
+            s.groups.map(g => '<div class="sheet-group"><h4>' + NL.gloss.prose(NL.gloss.of(g.h)) + '</h4>' +
               g.rows.map(r => '<button class="sheet-row" data-say="' + esc(r.nl) + '">' +
                 '<span class="sr-say">' + ICON.speaker(16) + '</span>' +
                 '<span class="sr-body"><b' + NL.gloss.attr('nl') + '>' + esc(r.nl) + '</b><i' + NL.gloss.langAttr(r) + '>' + esc(NL.gloss.of(r)) + '</i>' +
@@ -125,7 +125,7 @@
         '<div class="cards">' + sheets.map(s =>
           '<button class="tile-card" data-sheetid="' + s.id + '">' +
           '<span class="tc-icon">' + s.icon + '</span>' +
-          '<span class="tc-body"><b>' + esc(NL.gloss.of(s.title)) + '</b><i>' + NL.gloss.quoted(s.blurb) + '</i></span>' +
+          '<span class="tc-body"><b>' + NL.gloss.prose(NL.gloss.of(s.title)) + '</b><i>' + NL.gloss.quoted(s.blurb) + '</i></span>' +
           '<span class="tc-cta">' + NL.t.open + '</span></button>').join('') + '</div></div>';
     },
     click(el, d) { if (d.sheetid) NL.ui.go('spiek', d.sheetid); }
@@ -164,7 +164,7 @@
         NL.content.faux.map(r =>
           '<div class="reg-row">' +
           '<button class="reg-cell be"' + NL.gloss.attr('nl') + ' data-say="' + esc(r.nl) + '">' + esc(r.nl) + '</button>' +
-          '<span class="reg-cell std"' + NL.gloss.attr('fr') + '>' + esc(NL.gloss.of(r)) + '<em>' + esc(r.trap) + '</em></span>' +
+          '<span class="reg-cell std"' + NL.gloss.attr('fr') + '>' + esc(NL.gloss.of(r)) + '<em>' + NL.gloss.quoted(r.trap) + '</em></span>' +
           '</div>').join('') +
         '</div>' +
 
@@ -176,7 +176,7 @@
         NL.content.fauxEn.map(r =>
           '<div class="reg-row">' +
           '<button class="reg-cell be"' + NL.gloss.attr('nl') + ' data-say="' + esc(r.nl) + '">' + esc(r.nl) + '</button>' +
-          '<span class="reg-cell std"' + NL.gloss.attr('en') + '>' + esc(r.en) + '<em>' + esc(r.trap) + '</em></span>' +
+          '<span class="reg-cell std"' + NL.gloss.attr('en') + '>' + esc(r.en) + '<em>' + NL.gloss.quoted(r.trap) + '</em></span>' +
           '</div>').join('') +
         '</div></div>';
     }
@@ -186,13 +186,13 @@
   NL.screens.dehet = {
     render() {
       const col = (title, rules, cls, a) =>
-        '<h3 class="sec">' + title + ' ' + anchor(a) + '</h3>' +
+        '<h3 class="sec">' + NL.gloss.prose(title) + ' ' + anchor(a) + '</h3>' +
         rules.map(r => '<div class="rule-row ' + cls + '">' +
           '<b>' + NL.gloss.quoted(r.rule) + (r.sure ? '<span class="sure-tag">' + NL.t.dehetSure + '</span>' : '') + '</b>' +
           '<button class="rule-ex"' + NL.gloss.attr('nl') + ' data-say="' + esc(r.ex) + '">' + esc(r.ex) + '</button></div>').join('');
       return '<div class="wrap">' +
-        '<section class="card lead slim"><span class="eyebrow">' + 'de / het' + '</span>' +
-        '<h1>' + NL.t.dehetTitle + '</h1><p>' + NL.t.dehetBody + '</p></section>' +
+        '<section class="card lead slim"><span class="eyebrow"' + NL.gloss.attr('nl') + '>' + 'de / het' + '</span>' +
+        '<h1>' + NL.gloss.prose(NL.t.dehetTitle) + '</h1><p>' + NL.gloss.prose(NL.t.dehetBody) + '</p></section>' +
         col(NL.t.dehetHet, NL.content.hetRules, 'het', 'hetRules') +
         col(NL.t.dehetDe, NL.content.deRules, 'de', 'deRules') +
         '</div>';

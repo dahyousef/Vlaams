@@ -27,7 +27,7 @@ NL.content.patterns = (function () {
     },
     {
       id: 'g-present', unit: 'ikengij', level: 'A1',
-      title: { fr: 'Le présent : radical, radical+t, radical+en', en: 'The present tense: stem, stem+t, stem+en' },
+      title: { fr: 'Le présent : radical, radical+<span class="nl">t</span>, radical+<span class="nl">en</span>', en: 'The present tense: stem, stem+<span class="nl">t</span>, stem+<span class="nl">en</span>' },
       rule: { fr: '« ik werk / jij werkt / hij werkt / wij werken ».', en: '“ik werk / jij werkt / hij werkt / wij werken”.' },
       nl: 'Ik werk bij {bedrijf}.', fr: 'Je travaille chez {bedrijf}.', en: 'I work at {bedrijf}.',
       explain: {
@@ -44,7 +44,7 @@ NL.content.patterns = (function () {
     },
     {
       id: 'g-gegij', unit: 'ikengij', level: 'A1',
-      title: { fr: 'Ge et gij : ce que tu entends vraiment', en: 'Ge and gij: what you really hear' },
+      title: { fr: '<span class="nl">Ge</span> et <span class="nl">gij</span> : ce que tu entends vraiment', en: '<span class="nl">Ge</span> and <span class="nl">gij</span>: what you really hear' },
       rule: { fr: 'Dis « je ». Attends-toi à « ge ». C’est la même chose.', en: 'Say “je”. Expect “ge”. It is the same thing.' },
       nl: 'Hebt ge dat verstaan?', fr: 'Tu as compris ?', en: 'Did you understand that? (informal)',
       explain: {
@@ -76,7 +76,7 @@ NL.content.patterns = (function () {
     },
     {
       id: 'g-halfuur', unit: 'tijd', level: 'A1',
-      title: { fr: 'Half drie, c’est 2h30', en: 'Half drie means 2:30' },
+      title: { fr: '<span class="nl">Half drie</span>, c’est 2h30', en: '<span class="nl">Half drie</span> means 2:30' },
       rule: { fr: '« half » + heure = trente minutes AVANT cette heure.', en: '“half” + hour = thirty minutes BEFORE that hour.' },
       nl: 'De vergadering begint om half drie.', fr: 'La réunion commence à deux heures et demie.', en: 'The meeting starts at half past two.',
       explain: {
@@ -91,7 +91,7 @@ NL.content.patterns = (function () {
     },
     {
       id: 'g-dehet', unit: 'bakker', level: 'A1',
-      title: { fr: 'De ou het, et le -e en plus', en: 'De or het, and the extra -e' },
+      title: { fr: '<span class="nl">De</span> ou <span class="nl">het</span>, et le <span class="nl">-e</span> en plus', en: '<span class="nl">De</span> or <span class="nl">het</span>, and the extra <span class="nl">-e</span>' },
       rule: { fr: '« een groot huis », mais « het grote huis ».', en: '“een groot huis”, but “het grote huis”.' },
       nl: 'Het grote huis staat in de straat.', fr: 'La grande maison est dans la rue.', en: 'The big house is in the street.',
       explain: {
@@ -107,7 +107,7 @@ NL.content.patterns = (function () {
     },
     {
       id: 'g-bezit', unit: 'familie', level: 'A1',
-      title: { fr: 'Mijn, uw, ons et onze', en: 'Mijn, uw, ons and onze' },
+      title: { fr: '<span class="nl">Mijn</span>, <span class="nl">uw</span>, <span class="nl">ons</span> et <span class="nl">onze</span>', en: '<span class="nl">Mijn</span>, <span class="nl">uw</span>, <span class="nl">ons</span> and <span class="nl">onze</span>' },
       rule: { fr: '« ons » devant un mot « het », « onze » devant tout le reste.', en: '“ons” before a “het” word, “onze” before everything else.' },
       nl: 'Ons huis staat naast onze tuin.', fr: 'Notre maison est à côté de notre jardin.', en: 'Our house is next to our garden.',
       explain: {
@@ -139,7 +139,7 @@ NL.content.patterns = (function () {
     },
     {
       id: 'g-perfect-intro', unit: 'weekend', level: 'A1',
-      title: { fr: 'Le passé composé avec hebben', en: 'The perfect tense with hebben' },
+      title: { fr: 'Le passé composé avec <span class="nl">hebben</span>', en: 'The perfect tense with <span class="nl">hebben</span>' },
       rule: { fr: '« hebben » + « ge-...-t/-d », participe à la fin.', en: '“hebben” + “ge-...-t/-d”, participle at the end.' },
       nl: 'Ik heb dit weekend gewandeld.', fr: 'Je me suis promené ce week-end.', en: 'I went for a walk this weekend.',
       explain: {

@@ -26,7 +26,7 @@
             '<span class="scn-icon">' + s.icon + '</span>' +
             '<span class="scn-body">' +
             '<span class="eyebrow">' + esc(NL.gloss.of(s.place)) + '</span>' +
-            '<b>' + esc(NL.gloss.of(s.title)) + '</b>' +
+            '<b>' + NL.gloss.prose(NL.gloss.of(s.title)) + '</b>' +
             '<i>' + NL.gloss.quoted(s.blurb) + '</i></span>' +
             '<span class="scn-go">' + (isDone ? NL.t.talkDone : NL.t.start) + '</span></button>';
         });
@@ -121,7 +121,7 @@
       return '<div class="lesson">' +
         '<div class="lesson-head">' +
         '<button class="iconbtn" data-step="back" aria-label="' + NL.t.back + '">' + NL.ui.I.back + '</button>' +
-        '<div class="head-title"><b>' + esc(NL.gloss.of(s.title)) + '</b><i>' + esc(NL.gloss.of(s.place)) + '</i></div>' +
+        '<div class="head-title"><b>' + NL.gloss.prose(NL.gloss.of(s.title)) + '</b><i>' + esc(NL.gloss.of(s.place)) + '</i></div>' +
         '<span class="pill">' + Math.min(P.at + 1, s.steps.length) + '/' + s.steps.length + '</span>' +
         '</div>' +
         '<div class="lesson-body"><div class="stage chat">' + transcript + '</div></div>' +
