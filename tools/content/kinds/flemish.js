@@ -85,7 +85,7 @@ const kunde = inversions((verb, pron) => CONTRACT[verb + ' ' + pron]);
    « heet »…), « je » peut aussi être « ton » : « Hoe heet je zus? ». La règle ge ne l'y change
    que si le mot suivant ne peut pas suivre « ton » : la fin de la phrase, une majuscule, ou un
    mot de FREE. « u » seul ou « je » seul devient « ge ». */
-const FREE = new Set([ASKS, PREPS, 'wie via me mij hem haar ze ons hen hun het \'t ’t dat dit die deze of iets niets niks ' +
+const FREE = new Set([ASKS, PREPS, 'wie via me mij hem ze ons hen hun het \'t ’t dat dit die deze of iets niets niks ' +
   'iemand niemand alles er daar hier nog niet echt ook al wel toch eens even graag zeker misschien eigenlijk nu dan ' +
   'zo heel erg meer liever beter goed altijd nooit ooit soms vaak morgen vandaag vanavond straks later eerst weer ' +
   'nou anders precies toevallig alsjeblieft ergens veel een de geen zo\'n zo’n mijn zijn onze mee weg terug thuis ' +

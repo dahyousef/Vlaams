@@ -560,7 +560,7 @@ async function main() {
     const IDLE = [['Ik stuur u een mail.', 'ge'], ['Niks speciaals, en bij u?', 'ge'], ['dank u wel', 'ge'], ['Ik zie je morgen.', 'ge'],
       ['Fiets je naar het werk?', 'ge'], ['Dat doet je goed.', 'ge'], ['De dokter ziet je nu.', 'ge'], ['Morgen bent u vrij.', 'ge'],
       ['Doe je best!', 'ge'], ['Je moet je haasten.', 'ge'], ['Wie heeft je geholpen?', 'ge'], ['Wie heeft u geholpen?', 'ge'],
-      ['Wat heeft je zo boos gemaakt?', 'ge'], ['Wat doet je vader?', 'ge'], ['Hoe heet je zus?', 'ge'], ['Heb je je fiets?', 'ge'],
+      ['Wat heeft je zo boos gemaakt?', 'ge'], ['Wat doet je vader?', 'ge'], ['Hoe heet je zus?', 'ge'], ['Hoe heet je haar?', 'ge'], ['Heb je je fiets?', 'ge'],
       ['Weet u welke maat u hebt?', 'ge'], ['Ik heb je vriend ontmoet.', 'kunde'], ['Ik ben je broer.', 'kunde'], ['Daar ben je niet veilig.', 'kunde'],
       ['Heb je je zus gevonden?', 'kunde'], ['Kunt u zich even omdraaien?', 'kunde']];
     same(IDLE.map(([nl, rule]) => K.compose(nl, [rule]).text), IDLE.map(([nl]) => nl),
