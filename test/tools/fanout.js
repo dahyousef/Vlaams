@@ -544,17 +544,31 @@ async function main() {
     same([Object.keys(all).length, all['rule:kunde+da+nie+is'], 'rule:kunde+ge' in all], [23, 'Kunde da nie is?', false],
       'outputs donne chaque combinaison où chaque règle change quelque chose');
     same(K.outputs('Goedemorgen.'), {}, 'sans règle qui s\'applique, rien');
-    /* La règle ge : derrière un verbe inversé de sa liste, « ge » et le verbe à sa forme en t ; derrière
-       un autre mot, ou un verbe que son sujet précède, rien plutôt qu'une forme fausse (#92). */
-    same(['Wat doe je meestal?', 'Heeft u dat?', 'Hoe oud ben je?', 'Hoe zeg je dat in het Nederlands?', 'Kunt u mij helpen?', 'u'].map(nl => K.compose(nl, ['ge']).text),
-      ['Wat doet ge meestal?', 'Hebt ge dat?', 'Hoe oud zijt ge?', 'Hoe zegt ge dat in het Nederlands?', 'Kunt ge mij helpen?', 'ge'],
-      'derrière un verbe inversé, la règle ge met le verbe à sa forme en t');
-    same(['Ik stuur u een mail.', 'Niks speciaals, en bij u?', 'dank u wel', 'Ik zie je morgen.', 'Fiets je naar het werk?'].map(nl => K.compose(nl, ['ge']).idle),
-      [['ge'], ['ge'], ['ge'], ['ge'], ['ge']], 'derrière un mot que sa liste ne tient pas, ou un verbe précédé de son sujet, la règle ge n\'écrit rien');
+    /* Les règles kunde et ge : dans une question, derrière un verbe inversé en tête ou derrière le mot qui
+       la pose, « ge » et le verbe à sa forme en t, ou la forme contractée ; ailleurs, derrière un verbe qui
+       n'a pas la forme de son sujet, devant ce qui peut suivre « ton », ou quand un « je », un « u » ou un
+       « zich » reste, rien plutôt qu'une forme fausse (#92). */
+    const FIRES = [['Wat doe je meestal?', 'ge'], ['Heeft u dat?', 'ge'], ['Hoe oud ben je?', 'ge'], ['Hoe zeg je dat in het Nederlands?', 'ge'],
+      ['Kunt u mij helpen?', 'ge'], ['u', 'ge'], ['U', 'ge'], ['Sorry, kan je dat herhalen?', 'ge'], ['Om hoe laat kom je?', 'ge'],
+      ['Met wie ga je?', 'ge'], ['Hoe heet je?', 'ge'], ['Kan je Engels?', 'ge'], ['Kunt u dat spellen, a.u.b.?', 'ge'], ['En waar woon je?', 'ge'],
+      ['Heb je tijd?', 'kunde']];
+    same(FIRES.map(([nl, rule]) => K.compose(nl, [rule]).text),
+      ['Wat doet ge meestal?', 'Hebt ge dat?', 'Hoe oud zijt ge?', 'Hoe zegt ge dat in het Nederlands?', 'Kunt ge mij helpen?', 'ge', 'Ge',
+        'Sorry, kunt ge dat herhalen?', 'Om hoe laat komt ge?', 'Met wie gaat ge?', 'Hoe heet ge?', 'Kunt ge Engels?', 'Kunt ge dat spellen, a.u.b.?',
+        'En waar woont ge?', 'Hebde tijd?'],
+      'dans une question, derrière un verbe inversé, la règle ge met le verbe à sa forme en t, et la règle kunde le contracte');
+    const IDLE = [['Ik stuur u een mail.', 'ge'], ['Niks speciaals, en bij u?', 'ge'], ['dank u wel', 'ge'], ['Ik zie je morgen.', 'ge'],
+      ['Fiets je naar het werk?', 'ge'], ['Dat doet je goed.', 'ge'], ['De dokter ziet je nu.', 'ge'], ['Morgen bent u vrij.', 'ge'],
+      ['Doe je best!', 'ge'], ['Je moet je haasten.', 'ge'], ['Wie heeft je geholpen?', 'ge'], ['Wie heeft u geholpen?', 'ge'],
+      ['Wat heeft je zo boos gemaakt?', 'ge'], ['Wat doet je vader?', 'ge'], ['Hoe heet je zus?', 'ge'], ['Heb je je fiets?', 'ge'],
+      ['Weet u welke maat u hebt?', 'ge'], ['Ik heb je vriend ontmoet.', 'kunde'], ['Ik ben je broer.', 'kunde'], ['Daar ben je niet veilig.', 'kunde'],
+      ['Heb je je zus gevonden?', 'kunde'], ['Kunt u zich even omdraaien?', 'kunde']];
+    same(IDLE.map(([nl, rule]) => K.compose(nl, [rule]).text), IDLE.map(([nl]) => nl),
+      'hors d\'une question, derrière « wie » ou un verbe qui n\'a pas la forme de son sujet, devant ce qui peut suivre « ton », ou quand un « je », un « u » ou un « zich » reste, les règles kunde et ge n\'écrivent rien');
     /* Chaque forme qu'une règle écrit a sa raison dans `why`, et `why` ne garde rien qu'elle n'écrive pas :
        sinon Merge lèverait, et Check refuserait une forme juste, le jour où flemish.tsv ne la tient plus.
        Les formes en t que la règle ge donne au verbe n'en ont pas : ce sont des formes qu'OpenTaal tient. */
-    const SAMPLE = { kunde: 'Kunt u, kun je, hebt u, heeft u, heb je, bent u, ben je', ge: 'Doe je, heeft u, ben je', da: 'Dat is wat dat', nie: 'niet', t: 'het', is: 'eens' };
+    const SAMPLE = { kunde: 'Kunt u? Kun je? Hebt u? Heeft u? Heb je? Bent u? Ben je?', ge: 'Doe je dat? Heeft u dat? Ben je dat?', da: 'Dat is wat dat', nie: 'niet', t: 'het', is: 'eens' };
     const SP = spelling.open(FR, CF.NL);
     K.RULES.forEach(r => {
       const verbs = new Set(Object.values(r.verbs || {}));

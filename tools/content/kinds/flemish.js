@@ -32,35 +32,81 @@ function swapper(swaps) {
     .replace(new RegExp(CAP + '(\\s*)(\\S)', 'g'), (m, sp, c) => sp + c.toUpperCase()).split(CAP).join('');
 }
 
-/* La règle « ge » : « u » et « je » derrière un verbe inversé deviennent « ge », et le verbe prend
-   la forme en t qu'il a avec lui (« doe je » → « doet ge », « heeft u » → « hebt ge », « ben je »
-   → « zijt ge »). La liste des verbes est fermée : derrière un mot qu'elle ne tient pas (« bij u »,
-   « fiets je »), ou un verbe que son sujet précède (« ik zie je »), la règle n'écrit rien plutôt
-   qu'une forme fausse, et le rédacteur écrit la ligne. « u » ou « je » seul devient « ge ». */
-const T_FORM = {};
-[['doet', 'doe doet'], ['hebt', 'heb hebt heeft'], ['zijt', 'ben bent'], ['gaat', 'ga gaat'], ['komt', 'kom komt'],
-  ['kunt', 'kan kun kunt'], ['wilt', 'wil wilt'], ['zult', 'zal zult'], ['moet', 'moet'], ['weet', 'weet'],
-  ['zegt', 'zeg zegt'], ['spreekt', 'spreek spreekt'], ['heet', 'heet'], ['ziet', 'zie ziet'], ['woont', 'woon woont'],
-  ['werkt', 'werk werkt'], ['vindt', 'vind vindt'], ['neemt', 'neem neemt'], ['drinkt', 'drink drinkt'], ['eet', 'eet']]
-  .forEach(([t, forms]) => forms.split(' ').forEach(f => { T_FORM[f] = t; }));
-const INVERTED = new RegExp('(?<![' + EDGE + '])(' + Object.keys(T_FORM).join('|') + ')\\s+(?:u|je)(?![' + EDGE + '])', 'gi');
-const SUBJECT = new RegExp('(?<![' + EDGE + '])(?:ik|hij|zij|ze|we|wij|jullie|men)\\s+$', 'i');
-function ge(s) {
-  if (/^(u|je)$/i.test(s)) return s[0] === s[0].toLowerCase() ? 'ge' : 'Ge';
-  return s.replace(INVERTED, (m, verb, at) => {
-    if (SUBJECT.test(s.slice(0, at))) return m;
-    const t = T_FORM[verb.toLowerCase()];
-    return (verb[0] === verb[0].toLowerCase() ? t : t[0].toUpperCase() + t.slice(1)) + ' ge';
-  });
+/* Les règles « kunde » et « ge » : un verbe inversé et son sujet, « u » ou « je ». Elles n'écrivent
+   que là où l'inversion est sûre, dans une question (la phrase finit par « ? ») dont le verbe vient
+   en tête, ou derrière le mot qui la pose, tout de suite ou plus loin (« Hoe zeg je dat? », « Welke
+   maat heeft u? »), au besoin après « en », « maar » ou une préposition (« Om hoe laat kom je? ») ;
+   « wie » ne compte que derrière une préposition (« Met wie ga je? »). Ailleurs, « je » peut être le
+   complément (« Dat doet je goed », « Wie heeft je geholpen? ») : elles n'écrivent rien plutôt qu'une
+   forme fausse, et le rédacteur écrit la ligne. De même quand un « je », un « u » ou un « zich »
+   reste (« Weet u welke maat u hebt? », « Kunt u zich omdraaien? ») : « ge » ne va ni avec « je » ni
+   avec « zich », et elles ne savent pas écrire l'autre « u ». */
+const OPEN = '(?:^|[.?!;:,]\\s+|[„“"«(–—]\\s*)';
+const ASKS = 'hoe hoelang hoeveel hoever hoezo waar waarom waarheen waarmee waarover waarvan waarvoor vanwaar wanneer wat welk welke';
+const PREPS = 'aan achter bij door in met na naar naast om onder op over sinds tegen tot tussen uit van vanaf voor zonder';
+const oneOf = words => '(?:' + words.split(' ').join('|') + ')';
+const HEAD = new RegExp(OPEN + '$');
+const ASKED = new RegExp(OPEN + '(?:(?:en|maar)\\s+)?(?:(?:' + oneOf(PREPS) + '\\s+)?' + oneOf(ASKS) + '|' + oneOf(PREPS) + '\\s+wie)(?![' + EDGE + '])[^.?!]*$', 'i');
+const LEFTOVER = new RegExp('(?<![' + EDGE + '])' + oneOf('je jij jou jouw jouwe jezelf u uzelf zich') + '(?![' + EDGE + '])', 'i');
+function inverted(s, at) {
+  const end = /[?!]|\.(?=\s|$)/.exec(s.slice(at));
+  return Boolean(end) && end[0] === '?' && (HEAD.test(s.slice(0, at)) || ASKED.test(s.slice(0, at)));
 }
+
+/* Le verbe doit avoir la forme que son sujet lui donne : « doe je », « doet u », jamais « doet je »,
+   où « je » est le complément. La liste est fermée : derrière un verbe qu'elle ne tient pas
+   (« fiets je »), la règle ge n'écrit rien. Chaque verbe : sa forme en t avec « ge », ses formes
+   avec « je » inversé, ses formes avec « u ». */
+const T_FORM = {}, TAKES = { je: {}, u: {} };
+[['doet', 'doe', 'doet'], ['hebt', 'heb', 'hebt heeft'], ['zijt', 'ben', 'bent'], ['gaat', 'ga', 'gaat'],
+  ['komt', 'kom', 'komt'], ['kunt', 'kun kan', 'kunt kan'], ['wilt', 'wil', 'wilt wil'], ['zult', 'zul zal', 'zult zal'],
+  ['moet', 'moet', 'moet'], ['weet', 'weet', 'weet'], ['zegt', 'zeg', 'zegt'], ['spreekt', 'spreek', 'spreekt'],
+  ['heet', 'heet', 'heet'], ['ziet', 'zie', 'ziet'], ['woont', 'woon', 'woont'], ['werkt', 'werk', 'werkt'],
+  ['vindt', 'vind', 'vindt'], ['neemt', 'neem', 'neemt'], ['drinkt', 'drink', 'drinkt'], ['eet', 'eet', 'eet']]
+  .forEach(([t, je, u]) => [['je', je], ['u', u]].forEach(([p, forms]) => forms.split(' ').forEach(f => { TAKES[p][f] = t; T_FORM[f] = t; })));
+const PAIR = new RegExp('(?<![' + EDGE + '])(' + Object.keys(T_FORM).join('|') + ')\\s+(u|je)(?![' + EDGE + '])', 'gi');
+const sameCase = (like, w) => (like[0] === like[0].toLowerCase() ? w : w[0].toUpperCase() + w.slice(1));
+
+/* Une règle qui écrit, pour chaque verbe inversé et son sujet, ce que `write` en fait : write(verbe,
+   sujet, la suite du texte), null pour n'y rien changer. Le « u » de « a.u.b. » ne compte pas. */
+function inversions(write) {
+  return s => {
+    const out = s.replace(PAIR, (m, verb, pron, at) => {
+      const w = inverted(s, at) ? write(verb.toLowerCase(), pron.toLowerCase(), s.slice(at + m.length)) : null;
+      return w ? sameCase(verb, w) : m;
+    });
+    return LEFTOVER.test(out.replace(/a\.u\.b\./gi, '')) ? s : out;
+  };
+}
+const CONTRACT = { 'kunt u': 'kunde', 'kun je': 'kunde', 'hebt u': 'hebde', 'heeft u': 'hebde', 'heb je': 'hebde', 'bent u': 'zijde', 'ben je': 'zijde' };
+const kunde = inversions((verb, pron) => CONTRACT[verb + ' ' + pron]);
+
+/* Derrière une forme que « je » partage avec « u », et donc avec « hij » (« kan », « weet »,
+   « heet »…), « je » peut aussi être « ton » : « Hoe heet je zus? ». La règle ge ne l'y change
+   que si le mot suivant ne peut pas suivre « ton » : la fin de la phrase, une majuscule, ou un
+   mot de FREE. « u » seul ou « je » seul devient « ge ». */
+const FREE = new Set([ASKS, PREPS, 'wie via me mij hem haar ze ons hen hun het \'t ’t dat dit die deze of iets niets niks ' +
+  'iemand niemand alles er daar hier nog niet echt ook al wel toch eens even graag zeker misschien eigenlijk nu dan ' +
+  'zo heel erg meer liever beter goed altijd nooit ooit soms vaak morgen vandaag vanavond straks later eerst weer ' +
+  'nou anders precies toevallig alsjeblieft ergens veel een de geen zo\'n zo’n mijn zijn onze mee weg terug thuis ' +
+  'samen alleen zelf'].join(' ').split(' '));
+function free(rest) {
+  const next = /^\s*([^\s?!.,;:"»)]*)/.exec(rest)[1];
+  return !next || /^[A-ZÀ-Ý]/.test(next) || FREE.has(next.toLowerCase());
+}
+const geInversions = inversions((verb, pron, rest) => {
+  const t = TAKES[pron][verb];
+  if (!t) return null;
+  return pron === 'je' && TAKES.u[verb] && !free(rest) ? null : t + ' ge';
+});
+const ge = s => (/^(u|je)$/i.test(s) ? sameCase(s, 'ge') : geInversions(s));
 
 /* Les six règles du flamand parlé, dans l'ordre où elles s'appliquent : « kunde » avant « ge »,
    puisque « kunt u » est un tout. `why` donne, pour chaque forme qu'une règle écrit, la raison
    que flemish.tsv inscrit quand OpenTaal ne la connaît pas ; `verbs`, les formes en t que la
    règle ge donne aux verbes, du néerlandais qu'OpenTaal tient. */
 const RULES = [
-  { name: 'kunde',
-    apply: swapper([['kunt u', 'kunde'], ['kun je', 'kunde'], ['hebt u', 'hebde'], ['heeft u', 'hebde'], ['heb je', 'hebde'], ['bent u', 'zijde'], ['ben je', 'zijde']]),
+  { name: 'kunde', apply: kunde,
     why: { kunde: '« kunt ge » contracté, flamand parlé', hebde: '« hebt ge » contracté, flamand parlé', zijde: '« zijt ge » contracté, flamand parlé' } },
   { name: 'ge', apply: ge, verbs: T_FORM, why: { ge: 'flamand parlé pour « u » et « je »' } },
   { name: 'da', apply: swapper([['dat is', 'da’s'], ['dat', 'da'], ['wat', 'wa']]), why: { da: 'flamand parlé pour « dat »', wa: 'flamand parlé pour « wat »' } },
