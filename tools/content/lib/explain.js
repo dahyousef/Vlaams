@@ -235,9 +235,12 @@ function checkAlso(row, input, ctx) {
 const PAIR = 'decoys is two wrong answers to « Comment le dit-on ici ? », each a text on one line with no space at either end';
 /* Les raisons que les leurres ne passent pas : deux mauvaises réponses à « Comment le dit-on
    ici ? », qu'aucun élément n'accepte, qui finissent comme la réponse, en ont la longueur à 40 %
-   près, et ne s'éloignent pas du néerlandais plus que la réponse (0,15 de rapport au plus). Les
-   « on dit aussi » de la ligne comptent pour sa source ; ceux qu'une autre ligne du lot écrit ne
-   comptent qu'après Merge, où test/content.js les voit. */
+   près ou à deux lettres près si c'est plus, et ne s'éloignent pas du néerlandais plus que la
+   réponse, à 0,15 de rapport près ou à une lettre du plus long des deux si c'est plus (six lettres
+   au plus) : pour « jij », dont la réponse est « gij », « je » passe et « kat » non. Les rapports
+   se comparent au centième, celui que la raison affiche. Les « on dit aussi » de la ligne comptent
+   pour sa source ; ceux qu'une autre ligne du lot écrit ne comptent qu'après Merge, où
+   test/content.js les voit. */
 function checkDecoys(row, input, ctx) {
   const d = row.decoys;
   if (!input.vlaams) return d === undefined ? [] : ['decoys are for a row that « Comment le dit-on ici ? » asks (vlaams), and this one is not'];
@@ -247,8 +250,10 @@ function checkDecoys(row, input, ctx) {
   const mine = NL.ex.accepted(Object.assign({}, input, { also: Array.isArray(row.also) ? row.also : input.also }));
   const end = s => (s.match(/[.!?…]+$/) || [''])[0];
   const shown = e => e ? '« ' + e + ' »' : 'no punctuation';
-  const n = Array.from(input.right).length, lo = Math.ceil(n * 0.6), hi = Math.floor(n * 1.4);
-  const least = U.ratio(input.right, input.nl) - 0.15, why = [];
+  const n = Array.from(input.right).length;
+  const lo = Math.max(1, Math.min(Math.ceil(n * 0.6), n - 2)), hi = Math.max(Math.floor(n * 1.4), n + 2);
+  const cents = v => Math.round(v * 100), longest = Math.max(U.norm(input.right).length, U.norm(input.nl).length);
+  const least = cents(U.ratio(input.right, input.nl) - Math.max(0.15, 1 / longest)), why = [];
   d.forEach(x => {
     const keys = U.uniq([U.norm(x), U.norm(U.bare(x))]), say = s => why.push('decoy « ' + x + ' » ' + s);
     const who = U.uniq((keys.some(k => mine.indexOf(k) >= 0) ? [input.id] : [])
@@ -256,9 +261,9 @@ function checkDecoys(row, input, ctx) {
     if (who.length) say('is an answer the course accepts, for ' + who.join(', '));
     if (end(x) !== end(input.right)) say('ends with ' + shown(end(x)) + ', and the answer with ' + shown(end(input.right)));
     const len = Array.from(x).length;
-    if (len < lo || len > hi) say('is ' + len + (len === 1 ? ' character: ' : ' characters: ') + lo + ' to ' + hi + ', the length of the answer « ' + input.right + ' » give or take 40%');
-    const r = U.ratio(x, input.nl);
-    if (r < least) say('is further from the Dutch than the answer: ' + r.toFixed(2) + ', at least ' + least.toFixed(2));
+    if (len < lo || len > hi) say('is ' + len + (len === 1 ? ' character: ' : ' characters: ') + lo + ' to ' + hi + ', the length of the answer « ' + input.right + ' » give or take 40% or two letters, whichever is more');
+    const r = cents(U.ratio(x, input.nl));
+    if (r < least) say('is further from the Dutch than the answer: ' + (r / 100).toFixed(2) + ', at least ' + (least / 100).toFixed(2));
   });
   return why;
 }

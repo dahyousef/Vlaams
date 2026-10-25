@@ -1238,10 +1238,15 @@ async function main() {
       'decoy « Ik zijn Nederlands aan het leren, hè » ends with no punctuation, and the answer with « . »',
       'decoy « Nederlands ben ik aan het leren, hè. » is further from the Dutch than the answer: 0.50, at least 0.76'
     ], 'un leurre finit comme la réponse, et reste une faute proche du néerlandais');
-    same(rule('overleven:w0', { decoys: ['h', 'hallootje'] }), [
-      'decoy « h » is 1 character: 2 to 4, the length of the answer « hey » give or take 40%',
-      'decoy « hallootje » is 9 characters: 2 to 4, the length of the answer « hey » give or take 40%'
-    ], 'un leurre a la longueur de la réponse, à 40 % près');
+    same([rule('overleven:w0', { decoys: ['h', 'hallootje'] }), rule('overleven:p0', { decoys: [DECOYS['overleven:p0'][0], 'Ik leer het, hè.'] })], [[
+      'decoy « hallootje » is 9 characters: 1 to 5, the length of the answer « hey » give or take 40% or two letters, whichever is more'
+    ], [
+      'decoy « Ik leer het, hè. » is 16 characters: 22 to 50, the length of the answer « Ik ben Nederlands aan het leren, hè. » give or take 40% or two letters, whichever is more',
+      'decoy « Ik leer het, hè. » is further from the Dutch than the answer: 0.35, at least 0.76'
+    ]], 'un leurre a la longueur de la réponse, à 40 % ou à deux lettres près');
+    same([rule('ikengij:w1', { decoys: ['je', 'jou'] }), rule('ikengij:w1', { decoys: ['je', 'kat'] })],
+      [[], ['decoy « kat » is further from the Dutch than the answer: 0.00, at least 0.33']],
+      'une réponse de trois lettres a ses fautes : une forme courte du même pronom passe, un mot sans rapport non');
     const N = { fr: GOOD[0], en: GOOD[1] };
     same([KB.readWhole(line('overleven:w0', N), HALLO_IN), KB.readWhole(Object.assign(line('overleven:w0', N), { also: ['dag'] }), HALLO_IN),
       KB.readWhole(Object.assign(line('overleven:w0', N), { also: ['dag', 'hoi'] }), HALLO_IN)], ['', '', 'new also'],
