@@ -46,7 +46,7 @@ n'explique pas (seule une note dont l'anglais est `null` exprès en laisse un), 
 lit « undefined ».
 
 Le balayage de `typed.js` passe par l'écran, pas par le juge : mesuré le 18
-octobre 2026, une réponse tapée coûte 11 ms, et les 439 cibles et 98 formes du
+octobre 2026, une réponse tapée coûte 11 ms, et les cibles et les formes du
 cours se tapent en quelques secondes, loin de la minute qu'il ne devait pas
 dépasser. Par l'écran, il voit aussi ce que la séance fait de la réponse :
 l'échelon, la rechute, le panneau. Il lit les formes dans le panneau lui-même

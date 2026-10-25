@@ -153,7 +153,7 @@
         NL.content.loans.map(r =>
           '<div class="reg-row">' +
           '<button class="reg-cell be"' + NL.gloss.attr('nl') + ' data-say="' + esc(r.nl) + '">' + esc(r.nl) + '</button>' +
-          '<span class="reg-cell std"' + NL.gloss.attr('fr') + '>' + esc(NL.gloss.of(r)) +
+          '<span class="reg-cell std"' + NL.gloss.langAttr(r) + '>' + esc(NL.gloss.of(r)) +
           NL.ui.ifProse(r.note, 'em') + '</span>' +
           '</div>').join('') +
         '</div>' +
@@ -164,7 +164,7 @@
         NL.content.faux.map(r =>
           '<div class="reg-row">' +
           '<button class="reg-cell be"' + NL.gloss.attr('nl') + ' data-say="' + esc(r.nl) + '">' + esc(r.nl) + '</button>' +
-          '<span class="reg-cell std"' + NL.gloss.attr('fr') + '>' + esc(NL.gloss.of(r)) + '<em>' + NL.gloss.quoted(r.trap) + '</em></span>' +
+          '<span class="reg-cell std"' + NL.gloss.langAttr(r) + '>' + esc(NL.gloss.of(r)) + '<em>' + NL.gloss.quoted(r.trap) + '</em></span>' +
           '</div>').join('') +
         '</div>' +
 
@@ -209,7 +209,7 @@
         NL.content.sounds.map(s =>
           '<div class="snd-row' + (s.good ? ' good' : s.warn ? ' warn' : '') + '"><div class="snd-head"><b' + NL.gloss.attr('nl') + '>' + esc(s.g) + '</b><code>' + esc(s.ipa) + '</code>' +
           (s.good ? '<span class="snd-tag good">' + NL.t.soundsEasy + '</span>' : s.warn ? '<span class="snd-tag warn">' + NL.t.soundsWatch + '</span>' : '') + '</div>' +
-          '<p' + NL.gloss.attr('fr') + '>' + NL.gloss.prose(s.say) + '</p></div>').join('') +
+          '<p' + NL.gloss.langAttr(s.say) + '>' + NL.gloss.prose(s.say) + '</p></div>').join('') +
         '</div>';
     }
   };

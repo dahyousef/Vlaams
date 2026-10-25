@@ -1,7 +1,8 @@
 /* Merge : écrit les lignes réglées d'un genre dans ses tables (src/content/<table>.js).
      node tools/content/merge.js <dépôt> <dossier du genre>
    Refuse sans rien écrire un genre jamais coupé, un lot qui ne passe pas Check, une ligne
-   non réglée et une ligne dont la source a changé depuis Split. */
+   non réglée, une ligne dont la source a changé depuis Split et une valeur qu'une table ne
+   sait pas écrire. */
 const path = require('path');
 const kit = require('./lib/kit');
 

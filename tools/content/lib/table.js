@@ -19,6 +19,7 @@
      table.load(file)              { head, eol, name, entries }
      table.serialize(t)            le texte du fichier
      table.update(file, changes)   { set, removed } : une valeur pose sa clé, null l'ôte
+     table.prepare(file, changes)  { text, same, set, removed } : update, sans rien écrire
      table.literal(v)              le littéral d'une valeur
 
    Le nom d'une table est celui de son fichier : src/content/open.phrases.js tient
@@ -68,7 +69,10 @@ function serialize(t) {
   return t.head + lines.map(l => l + t.eol).join('');
 }
 
-function update(file, changes) {
+/* La table récrite, sans l'écrire : son texte, s'il est déjà celui du fichier (same), et ce
+   qui a changé. Merge prépare toutes ses tables avant d'en écrire une : une valeur qu'une table
+   ne sait pas écrire lève ici, avant toute écriture. */
+function prepare(file, changes) {
   const t = load(file);
   let set = 0, removed = 0;
   Object.keys(changes).forEach(k => {
@@ -77,8 +81,13 @@ function update(file, changes) {
     } else { t.entries[k] = changes[k]; set++; }
   });
   const text = serialize(t);
-  if (text !== fs.readFileSync(file, 'utf8')) fs.writeFileSync(file, text);
-  return { set, removed };
+  return { text, same: text === fs.readFileSync(file, 'utf8'), set, removed };
 }
 
-module.exports = { MARKER, literal, load, serialize, update };
+function update(file, changes) {
+  const p = prepare(file, changes);
+  if (!p.same) fs.writeFileSync(file, p.text);
+  return { set: p.set, removed: p.removed };
+}
+
+module.exports = { MARKER, literal, load, serialize, prepare, update };

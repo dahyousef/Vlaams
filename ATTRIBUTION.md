@@ -46,8 +46,8 @@ Ce sont des textes, pas des faits : Tatoeba les publie sous
 est ici une condition de la licence. `docs/attribution/tatoeba.tsv` le donne
 phrase par phrase : le numéro et l'auteur de la phrase néerlandaise, de sa
 traduction anglaise et de sa traduction française, et la mention d'une
-traduction adaptée. `tools/content/merge.js` le réécrit en entier à chaque
-fusion. Une phrase dont le `src` vaut `gen` est écrite pour le
+traduction adaptée. La fusion du genre `examples` (`tools/content/merge.js`)
+le réécrit en entier. Une phrase dont le `src` vaut `gen` est écrite pour le
 cours, et n'y figure pas.
 
 Les fichiers de Tatoeba sont épinglés dans `tools/content/lib/cache.js` et

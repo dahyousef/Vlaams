@@ -382,6 +382,16 @@ async function main() {
   ok(broken.code === 1 && broken.lines.length === 1 && /^fail deux -: .*casse2\.js/.test(broken.lines[0]), 'Merge refuse une table illisible : ' + JSON.stringify(broken));
   same(text(TABLE), tableBefore, 'une seconde table illisible : la première n\'est pas écrite');
 
+  /* Une seconde table qui ne s'écrit pas (une valeur tient undefined) : rien n'est écrit, pas
+     même la première. */
+  const TROIS = path.join(TMP, 'drafts', 'trois');
+  fs.cpSync(KIND, TROIS, { recursive: true });
+  kindFile('trois', text(path.join(KINDS, 'essai.js')).replace('tables: [\'essai\']', 'tables: [\'essai\', \'casse3\']').replace('merge: row => ({ essai: row.mot + \'|\' + (row.raison || \'\') })', 'merge: row => ({ essai: \'autre\', casse3: { mot: undefined } })'));
+  fs.writeFileSync(path.join(TMP, 'src', 'content', 'casse3.js'), '/* casse3 */\n' + table.MARKER + '\nNL.content.byDutch[\'casse3\'] = {\n};\n');
+  const unwritable = run('merge.js', [TMP, TROIS]);
+  same(unwritable, { code: 1, lines: ['fail trois -: a table value holds undefined at « mot »: write null, or leave the key out'] }, 'Merge refuse une valeur qu\'une table ne sait pas écrire');
+  same(text(TABLE), tableBefore, 'une seconde table qui ne s\'écrit pas : la première n\'est pas écrite');
+
   kindFile('vide','module.exports = { stamp: [], fields: [\'mot\'], tables: [\'vide\'], split: () => [], check: () => [], merge: () => ({}) };\n');
   same(run('split.js', [TMP, path.join(TMP, 'drafts', 'vide')]), { code: 0, lines: [] }, 'un genre sans travail se coupe en rien');
   same(run('merge.js', [TMP, path.join(TMP, 'drafts', 'vide')]), { code: 0, lines: ['ok vide 0 taken, 0 dropped'] }, 'un genre sans travail se fond sans table');

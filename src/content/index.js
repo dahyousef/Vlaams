@@ -40,8 +40,7 @@ NL.content = NL.content || {};
      looked up, so a table never holds an alias's Dutch; patterns and the learner's own words
      get nothing. NL.content.tableReport says, per table, how many keys were put on an item
      and which keys are no item's Dutch, or null when no file set the table: test/content.js
-     fails on either. A new table adds its line just above the closing line, and its file to
-     SRC in build.sh, after the lexicons. */
+     fails on either. A new table's file also goes in SRC in build.sh, after the lexicons. */
   const TABLES = [
     { table: 'be', field: 'be' },
     { table: 'open.phrases', field: 'open' },

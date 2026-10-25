@@ -507,8 +507,8 @@ NL.ex = (function () {
   /* Les deux mauvaises réponses de « Comment le dit-on ici ? ». Elles sont écrites pour l'élément
      (src/content/decoys.js) : deux fautes qu'un apprenant ferait, aussi flamandes à l'œil que la
      bonne. Tirées parmi les formes flamandes des autres éléments, elles parlaient d'autre chose, et
-     la bonne se devinait sans rien savoir. Un élément sans leurres écrits (un mot à soi, ou une
-     table pas encore remplie) les tire encore là : la forme que l'exercice propose pour un autre
+     la bonne se devinait sans rien savoir. Un élément sans leurres écrits (un mot à soi) les tire
+     encore là : la forme que l'exercice propose pour un autre
      élément, jamais une qui serait juste ici, ni une forme que l'élément accepte (« salut », qui
      ouvre la liste de tot ziens, est aussi à hallo), ni celle d'un élément au même sens
      (goeiendag face à hallo). */

@@ -111,6 +111,8 @@ row, and the next pull brings that row. The folded record carries a new stored f
 pull brings back cannot undo a miss made after the fold. Alias records stay on the device and
 on the server, inert.
 
-One case stays open. A device that no account owns folds at boot. If it then joins an account
+Two cases stay open. A device that no account owns folds at boot. If it then joins an account
 whose server holds an alias record newer than what it folded, and no newer record of the item
-itself, its fold stands and that alias record is never folded.
+itself, its fold stands and that alias record is never folded. And a device that an account
+owns, with its session lost or offline, folds only at the next pull that succeeds: until then,
+an item learned only under a later id is neither met nor due on it.

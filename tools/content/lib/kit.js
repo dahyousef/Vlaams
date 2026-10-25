@@ -337,7 +337,8 @@ function readKind(repo, kindDir) {
 
 /* Merge : chaque ligne réglée, ses valeurs écrites dans les tables du genre, sous le
    néerlandais de sa source. Refuse sans rien écrire : un genre jamais coupé, un lot qui ne
-   passe pas Check, une ligne non réglée, une source qui a changé depuis Split. */
+   passe pas Check, une ligne non réglée, une source qui a changé depuis Split, une valeur
+   qu'une de ses tables ne sait pas écrire (table.literal). */
 function merge(repo, kindDir) {
   const { name, kind, lines: read, rows } = readKind(repo, kindDir);
   if (failed(read)) return { ok: false, lines: read.filter(l => /^fail /.test(l)) };
@@ -373,10 +374,12 @@ function merge(repo, kindDir) {
   });
   if (failed(lines)) return { ok: false, lines };
 
+  /* Toutes les tables se récrivent avant qu'une seule s'écrive. */
+  const ready = kind.tables.map((t, k) => table.prepare(files[k], changes[t]));
   lines.push('ok ' + name + ' ' + taken.length + ' taken, ' + rows.filter(r => r.drop).length + ' dropped');
-  kind.tables.forEach((t, k) => {
-    const done = table.update(files[k], changes[t]);
-    lines.push('ok ' + t + '.js ' + done.set + ' set, ' + done.removed + ' removed');
+  ready.forEach((p, k) => {
+    if (!p.same) fs.writeFileSync(files[k], p.text);
+    lines.push('ok ' + kind.tables[k] + '.js ' + p.set + ' set, ' + p.removed + ' removed');
   });
   if (kind.write) (kind.write(taken.map(r => ({ id: r.input.id, row: r.row, input: r.input, src: r.src })), ctx) || []).forEach(l => lines.push(l));
   return { ok: true, lines };
