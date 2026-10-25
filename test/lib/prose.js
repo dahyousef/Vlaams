@@ -7,8 +7,9 @@
      raw(content) une copie du cours tel qu'il est écrit, prise avant NL.state.open()
      owed(v, where, key, out)  l'anglais qui reste dû : un { where, ok } par endroit
      at(root, where)  ce qu'un `where` d'owed() désigne dans `root`
-     proseTables(C)   les tables rangées par le néerlandais (C.TABLES) dont le champ est dans PROSE
-     tablePath(table, nl)  le chemin d'une valeur de table : byDutch.notes["hallo"]
+     proseTables(C)   les tables rangées par le néerlandais (C.TABLES) qui portent de la prose : leur champ
+                      est dans PROSE, ou dans HOLDS (sa valeur range sa prose sous ses propres clés)
+     tablePath(table, nl)  le chemin d'une valeur de table : byDutch.notes["hallo"], byDutch["open.phrases"]["Dag!"]
      owedTables(C, out)    owed() sur chaque valeur de ces tables : un { where, ok, nl } par endroit */
 
 /* Les champs de texte libre du cours — ceux qui deviennent { fr, en } — et les
@@ -19,11 +20,16 @@ const COLLECTIONS = ['units', 'patterns', 'openTasks', 'register', 'hetRules', '
 /* Un anglais lu : une chaîne non vide, pas un trou. */
 const has = x => typeof x === 'string' && x.trim() !== '';
 
-/* Les tables rangées par le néerlandais (src/content/<table>.js, NL.content.TABLES) dont le champ
-   est de la prose : la note d'un mot y vit hors du lexique, et doit son anglais comme lui. */
-const proseTables = C => (C.TABLES || []).filter(t => PROSE.indexOf(t.field) >= 0);
-/* Le chemin d'une valeur de table, sa clé écrite en JSON : byDutch.notes["Ik werk bij {bedrijf}."]. */
-const tablePath = (table, nl) => 'byDutch.' + table + '[' + JSON.stringify(nl) + ']';
+/* Les tables rangées par le néerlandais (src/content/<table>.js, NL.content.TABLES) qui portent de la
+   prose. Celles dont le champ est de la prose : la note d'un mot y vit hors du lexique, et doit son
+   anglais comme lui. Et celles de HOLDS, dont la valeur range sa prose sous ses propres clés : la tâche
+   ouverte d'une phrase (src/content/open.phrases.js) montre son ask et le what de chaque besoin. */
+const HOLDS = ['open'];
+const proseTables = C => (C.TABLES || []).filter(t => PROSE.indexOf(t.field) >= 0 || HOLDS.indexOf(t.field) >= 0);
+/* Le chemin d'une valeur de table, sa clé écrite en JSON : byDutch.notes["Ik werk bij {bedrijf}."]. Un nom
+   de table qui n'est pas un identifiant s'écrit entre crochets, pour qu'at() le relise :
+   byDutch["open.phrases"]["Mag ik twee pistolets?"]. */
+const tablePath = (table, nl) => 'byDutch' + (/^\w+$/.test(table) ? '.' + table : '[' + JSON.stringify(table) + ']') + '[' + JSON.stringify(nl) + ']';
 
 /* Le cours tel qu'il est écrit : une copie des collections et des tables de prose, prise avant la
    première construction (avant NL.state.open()), quand {naam}, {stad} et {bedrijf} y sont encore.

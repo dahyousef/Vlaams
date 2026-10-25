@@ -361,6 +361,12 @@ NL.state.open().then(() => {
   const tabled = owedTables(RAW, []);
   tabled.forEach(r => batches[unitOf.get(r.nl) <= 6 ? 'lexiqueA1' : 'lexiqueA1b'].push(r));
   ok(tabled.length > 0, 'aucune note lue dans src/content/notes.js : le contrôle 6 ne la voit pas');
+  /* La tâche ouverte d'une phrase vit dans src/content/open.phrases.js : son ask et ses what doivent
+     leur anglais, et chacun se relit par son chemin. */
+  const phraseTasks = Object.keys((NL.content.byDutch || {})['open.phrases'] || {}).length;
+  const phraseProse = tabled.filter(r => r.where.indexOf('byDutch["open.phrases"]') === 0).length;
+  ok(phraseTasks === 0 || phraseProse >= 2 * phraseTasks, phraseTasks + ' tâches de phrase dans src/content/open.phrases.js, ' +
+    phraseProse + ' textes lus : il en faut au moins deux par tâche, son ask et un what');
   const left = [];
   Object.keys(batches).forEach(b => batches[b].filter(r => !r.ok).forEach(r => left.push(b + ' ' + r.where)));
   ok(left.length === 0, 'rien n’est dû : ' + left.length + ' anglais manquent   [' + left.slice(0, 3).join(', ') + ']');
