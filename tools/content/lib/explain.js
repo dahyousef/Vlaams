@@ -31,6 +31,7 @@ const path = require('path');
 const kaikki = require('../kaikki');
 const spelling = require(path.join(__dirname, '..', '..', '..', 'test', 'lib', 'spelling'));
 const { dutchWords, words } = require(path.join(__dirname, '..', '..', '..', 'test', 'lib', 'dutch'));
+const { QUOTES, oneLine, sig, untoken, quotes } = require(path.join(__dirname, '..', '..', '..', 'test', 'lib', 'text'));
 
 /* Ce que l'empreinte couvre : ce que le rédacteur lit et ce que Merge écrit. Merge écrit la
    note, donc la relancer après un succès refuse comme périmée chaque ligne dont elle a changé
@@ -39,8 +40,6 @@ const STAMP = ['be', 'meaning', 'note', 'also'];
 const MAX = 40;
 const NOTE_MAX = 160;
 const LANGS = ['fr', 'en'];
-/* Les guillemets de chaque langue. */
-const QUOTES = { en: ['“', '”'], fr: ['«', '»'] };
 /* Les mots-outils d'une langue qui n'ont rien à faire dans l'autre, hors des guillemets. « but »
    n'y est pas : « le but » est français. */
 const FR_IN_EN = 'le la les un une des du et est sont avec dans sur qui que pas ne il elle nous vous ce cette ces au aux mais ou où se sa ses leur très quand comme'.split(' ');
@@ -123,25 +122,6 @@ function tools(ctx) {
   return memo.get(ctx);
 }
 
-/* Un texte et ses citations : { quoted, outside, ok }. outside remplace chaque citation par
-   « # », pour que la ponctuation qu'elle porte ne compte pas. ok est faux quand un guillemet
-   est seul, imbriqué, ou qu'une citation est vide. */
-function quotes(s, L) {
-  const [open, close] = QUOTES[L], quoted = [];
-  let depth = 0, cur = '', outside = '', ok = true;
-  Array.from(s).forEach(ch => {
-    if (ch === open) { if (depth) ok = false; depth = 1; cur = ''; }
-    else if (ch === close) {
-      if (!depth || !cur.trim()) ok = false;
-      else { quoted.push(cur.trim()); outside += '#'; }
-      depth = 0;
-    } else if (depth) cur += ch;
-    else outside += ch;
-  });
-  if (depth) ok = false;
-  return { quoted, outside, ok };
-}
-const sig = s => (String(s).match(/\d+|\{[a-z]+\}/g) || []).sort().join('|');
 /* Les phrases d'un texte : chaque fin (. ! ? …) suivie d'un blanc ou de la fin, et une de plus
    quand le texte ne finit pas sur l'une d'elles. */
 const sentences = s => (s.match(/[.!?…]+(?=\s|$)/g) || []).length + (/[.!?…]$/.test(s.trim()) ? 0 : 1);
@@ -150,8 +130,6 @@ const list = ws => ws.map(w => '« ' + w + ' »').join(', ');
 /* Ce que la ligne rend citable, même hors des listes d'orthographe : son néerlandais, sa forme
    flamande, ses « on dit aussi », ceux qu'elle tient et ceux qu'elle écrit. */
 const ownForms = (row, input) => [input.nl, input.be || ''].concat(input.also, Array.isArray(row.also) ? row.also : []);
-/* Un texte d'une ligne, sans blanc autour. */
-const oneLine = f => typeof f === 'string' && f.trim() !== '' && f === f.trim() && !/[\r\n]/.test(f);
 
 /* Les raisons qu'une note ne passe pas. */
 function checkNote(row, input, ctx) {
@@ -169,7 +147,7 @@ function checkNote(row, input, ctx) {
     const other = QUOTES[l === 'en' ? 'fr' : 'en'];
     if (s.indexOf(other[0]) >= 0 || s.indexOf(other[1]) >= 0) { why.push('note.' + l + ' quotes with ' + QUOTES[l].join(' ') + ' only'); unread.push(l); }
     q[l] = quotes(s, l);
-    if (!q[l].ok) { why.push('note.' + l + ' has a quote mark without its pair, a quote inside a quote, or an empty quote'); unread.push(l); }
+    if (q[l].why) { why.push('note.' + l + ' has a quote mark without its pair, a quote inside a quote, or an empty quote'); unread.push(l); }
     const k = sentences(q[l].outside);
     if (k > 2) why.push('note.' + l + ' has ' + k + ' sentences: at most 2');
     Object.keys(T.NL.content.DEFAULTS).forEach(key => {
@@ -196,7 +174,7 @@ function checkNote(row, input, ctx) {
     if (bad.length) why.push('« ' + seg + ' » is quoted, but ' + list(bad) + ' is not Dutch that OpenTaal, flemish.tsv or this row knows: quotes hold Dutch only, a translation goes in parentheses');
   });
   const names = new Set([].concat(...Object.keys(T.NL.content.DEFAULTS).map(k => words(T.NL.content.DEFAULTS[k]))));
-  const bareIn = l => new Set(words(q[l].outside.replace(/\{[a-z]+\}/g, ' ')).filter(w => w.length > 1 && T.dutch.has(w) && !names.has(w)));
+  const bareIn = l => new Set(words(untoken(q[l].outside)).filter(w => w.length > 1 && T.dutch.has(w) && !names.has(w)));
   const enBare = bareIn('en'), both = Array.from(bareIn('fr')).filter(w => enBare.has(w));
   if (both.length) why.push(list(both) + ' is Dutch of the course, outside quotes in fr and in en: quote it, or say it another way');
   return why;

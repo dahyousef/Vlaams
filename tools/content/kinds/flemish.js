@@ -16,6 +16,7 @@
 const fs = require('fs'), path = require('path');
 const kaikki = require('../kaikki');
 const spelling = require(path.join(__dirname, '..', '..', '..', 'test', 'lib', 'spelling'));
+const { oneLine } = require(path.join(__dirname, '..', '..', '..', 'test', 'lib', 'text'));
 
 /* Un mot entier : ni lettre, ni apostrophe, ni trait d'union de part et d'autre. Les formes
    remplacent les mots dans l'ordre donné, et gardent la majuscule du premier ; une forme qui
@@ -224,7 +225,7 @@ function split(C) {
 function check(row, input, ctx) {
   const be = row.be, evidence = row.evidence;
   if (be === null) return evidence === null ? [] : ['evidence is null when be is null'];
-  if (typeof be !== 'string' || !be.trim() || be !== be.trim() || /\n/.test(be)) return ['be is a form on one line, or null'];
+  if (!oneLine(be)) return ['be is a form on one line, or null'];
   if (typeof evidence !== 'string' || !EVIDENCE.test(evidence)) return ['evidence is rule:<rule>[+<rule>…], wiktionary:<lemma> or none'];
   const T = tools(ctx), U = T.NL.util, why = [];
 

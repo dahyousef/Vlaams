@@ -206,6 +206,9 @@ async function main() {
     'fail draft.json overleven:w2: unsure is a reason on one line',
     'fail draft.json bakker:w22: mot is not MEENEMEN'
   ], 'une ligne : son empreinte, ses champs, « unsure » sur une ligne, puis les règles du genre');
+  put(EEN, 'draft.json', [draftEen[0], Object.assign({}, draftEen[1], { unsure: 'dag,\ror de dag?' }), Object.assign({}, draftEen[2], { unsure: 'maître ' })]);
+  same(only(EEN, 'draft.json'), ['fail draft.json overleven:w2: unsure is a reason on one line', 'fail draft.json bakker:w22: unsure is a reason on one line'],
+    '« unsure » tient sur une ligne comme tout texte du kit : ni \\r, ni blanc autour');
   put(EEN, 'draft.json', '[{');
   ok(/^fail draft\.json -: not JSON \(/.test(only(EEN, 'draft.json')[0]), 'un fichier qui n\'est pas du JSON est nommé');
   put(EEN, 'draft.json', {});
@@ -609,7 +612,8 @@ async function main() {
     Object.keys(PICK).forEach(id => same(why(id, PICK[id].be, PICK[id].evidence), [], 'une ligne juste passe : ' + id + ', ' + PICK[id].evidence));
     same(why('overleven:w12', null, null), [], 'be null, sans preuve : le néerlandais suffit');
     same(why('overleven:w12', null, 'none'), ['evidence is null when be is null'], 'be null n\'a pas de preuve');
-    same(why('overleven:w12', ' nie', 'rule:nie'), ['be is a form on one line, or null'], 'be est une forme sur une ligne');
+    same([why('overleven:w12', ' nie', 'rule:nie'), why('overleven:w12', 'ni\re', 'rule:nie')], [['be is a form on one line, or null'], ['be is a form on one line, or null']],
+      'be est une forme sur une ligne : ni blanc autour, ni \\r');
     same(why('overleven:w12', 'nie', 'rule'), ['evidence is rule:<rule>[+<rule>…], wiktionary:<lemma> or none'], 'une preuve a sa forme');
     same(why('overleven:w12', 'Niet', 'none'), ['be is the Dutch itself: with nothing Flemish to teach, be is null'], 'be n\'est pas le néerlandais');
     same(why('onderweg:w0', 'de fiets, de velo', 'wiktionary:velo'), ['a word\'s first form is the Flemish one, and here it is the Dutch itself'],
@@ -801,6 +805,12 @@ async function main() {
 
     same(why([as({ en: 'two\nlines' })]), ['sentence 1: nl, gap, en and fr are each a string on one line'], 'une traduction sur plusieurs lignes, non');
     same(why([as({ gap: '' })]), ['sentence 1: nl, gap, en and fr are each a string on one line'], 'un trou vide, non');
+    same(why([as({ en: 'She speaks English well. ', edited: 'the learner hears the space' })]), ['sentence 1: nl, gap, en and fr are each a string on one line'],
+      'une traduction avec un blanc autour, non, même avec sa raison');
+    same(why([], { skip: ' no candidate fits' }), ['a row with no sentence says why in skip, on one line'], 'skip sans blanc autour');
+    same(why([as({ en: 'She speaks English very well.', edited: 'the learner hears the adverb ' })]),
+      ['sentence 1: en « She speaks English very well. » is not Tatoeba\'s 203, « She speaks English well. »: take it as written, or say why in edited'],
+      'edited sans blanc autour');
     same(why([as({ frSrc: 301 })]), ['sentence 1: frSrc 301 is not a translation Tatoeba links to 102'], 'une traduction française que Tatoeba ne lie pas à la phrase');
     same(why([as({ fr: 'Elle parle très bien anglais.' })]),
       ['sentence 1: fr « Elle parle très bien anglais. » is not Tatoeba\'s 302, « Elle parle bien anglais. »: take it as written, or say why in edited'],
@@ -908,6 +918,9 @@ async function main() {
     same(gwhy({ nl: 'Heb jij ook dorst?', gap: 'dorst', en: 'Are you thirsty too?', fr: 'Tu as soif aussi ?' }), ['sentence: « jij » is not how the course says you: ge or gij'], 'ge ou gij, jamais jij');
     same(gwhy({ nl: 'Ik heb dorst.', gap: 'dorst', en: 'I am thirsty.', fr: 'J’ai soif.' }), ['sentence has 3 tiles: 4 to 8'], 'les règles des phrases sourcées');
     same(gwhy({ nl: 'Ik heb dorst, gij ook?', gap: 'dorst', en: 'I am thirsty, are you?' }), ['sentence has the fields nl, gap, en, fr'], 'ses quatre champs');
+    same(gwhy(Object.assign({}, gdraft[1].sentence, { fr: 'J’ai soif, et toi ? ' })), ['sentence: nl, gap, en and fr are each a string on one line'], 'chaque champ sans blanc autour');
+    same(G.checkVerdict({ id: 'tijd:w3', verdict: 'keep', en: ' It is three o\'clock.', fr: 'Il est trois heures.' }),
+      ['a verdict carries the reader\'s own en and fr of nl, each on one line'], 'la traduction du lecteur sans blanc autour');
     put(GB, 'draft.json', gdraft);
     put(GB, 'review.json', gdraft.map(r => ({ id: r.id, verdict: 'keep' })));
     same(runEx('check.js', [GB]), { code: 1, lines: ['ok input.json 2 rows', 'ok draft.json 2 rows',
@@ -980,6 +993,10 @@ async function main() {
       [r => { r.need[0].flags = 'i'; }, ['need 1: unknown field flags'], 'un besoin n\'a pas de champ inconnu'],
       [r => { r.need[0].min = 4; }, ['need 1: exactly one of rx, any and min'], 'un besoin se note d\'une seule façon'],
       [r => { r.need[0].miss = ''; }, ['need 1: miss is one line of Dutch'], 'chaque besoin a sa réponse manquée'],
+      [r => { r.ask.en = 'At the bakery,\rask for what you want, and how many. Start with “Mag ik”.'; }, ['ask is { "fr": …, "en": … }, each one line'], 'une paire tient sur une ligne : pas de \\r'],
+      [r => { r.model = 'Mag ik drie\rpistolets, alstublieft?'; }, ['model is one line of Dutch'], 'l\'exemple tient sur une ligne : pas de \\r'],
+      [r => { r.need[0].miss = ' Ik wil twee pistolets, alstublieft.'; }, ['need 1: miss is one line of Dutch'], 'une réponse manquée sans blanc autour'],
+      [r => { r.need[1].any[1] = 'twee '; }, ['need 2: any is a list of words or runs of words'], 'un mot de any sans blanc autour'],
       [r => { r.need[2].min = 2; r.need[2].what = { fr: 'au moins 2 mots', en: 'at least 2 words' }; }, ['need 3: min is a whole number from 3 to 12'], 'min va de 3 à 12'],
       [r => { r.need[2].what.en = 'at least four words'; }, ['need 3: its what names its number, 4, in fr and in en'], 'le what d\'un min dit son nombre'],
       [r => { r.need.pop(); }, ['one need is a min, and only one: 0 are'], 'un besoin est un min'],
@@ -1028,6 +1045,7 @@ async function main() {
     same([verdict('keep', RIGHT), verdict('dispute: trop vague')], [[], []], 'un keep porte right, une contestation non');
     same([verdict('keep'), verdict('keep', RIGHT.slice(1)), verdict('dispute: trop vague', RIGHT)], [[TWO], [TWO], ['only a keep carries right']],
       'un keep sans ses deux réponses est refusé, une contestation qui en porte aussi');
+    same(verdict('keep', [RIGHT[0], RIGHT[1] + ' ']), [TWO], 'une bonne réponse sans blanc autour');
     same(verdict('keep', [BAKKER.model, RIGHT[1]]), ['right answer 1 « Mag ik drie pistolets, alstublieft? » is the model: write one of your own'], 'une bonne réponse n\'est pas l\'exemple');
     same(verdict('keep', [RIGHT[1], 'mag ik vier pistolets hebben']), ['the two right answers are the same answer'], 'les deux réponses diffèrent');
     ok(verdict('keep', [RIGHT[1], 'Ja ja']).indexOf('right answer 2 « Ja ja » has fewer than 3 words: the session judges no shorter answer') >= 0, 'une bonne réponse a au moins 3 mots');
