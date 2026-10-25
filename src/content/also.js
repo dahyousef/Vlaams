@@ -9,10 +9,25 @@
    explanations récrit ce fichier. */
 NL.content.byDutch = NL.content.byDutch || {};
 NL.content.byDutch['also'] = {
+  'Aangenaam.': ['Aangenaam kennis te maken.'],
+  'De testen draaien nog.': ['De tests draaien nog.'],
+  'Hij is een collega van mij.': ['Dat is een collega van mij.', 'Het is een collega van mij.'],
+  'Ik heb koorts sinds gisteren.': ['Ik heb sinds gisteren koorts.'],
+  'Ik heb pijn aan mijn rug.': ['Mijn rug doet pijn.', 'Ik heb pijn in mijn rug.'],
+  'Ik heet {naam}.': ['Mijn naam is {naam}.'],
+  'Ik werk vandaag van thuis.': ['Ik werk vandaag thuis.'],
+  'Onze zoon is zes jaar.': ['Onze zoon is zes jaar oud.'],
+  'Wij hebben twee kinderen.': ['We hebben twee kinderen.'],
   'dag': ['hallo', 'goeiedag'],
   'dank u wel': ['dank u', 'bedankt'],
   'de dokter': ['de huisdokter'],
+  'de living': ['de woonkamer'],
+  'de wachtzaal': ['de wachtkamer'],
+  'de zus': ['de zuster'],
+  'een': ['één'],
   'goeiedag': ['dag'],
   'hallo': ['dag'],
+  'het pakje': ['het pakket'],
   'nog eens': ['nog een keer'],
+  'trager': ['langzamer'],
 };

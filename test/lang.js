@@ -900,7 +900,6 @@ const REFERENCE_TABLES = ['loans', 'sounds', 'faux', 'fauxEn'];
    de mot ou de phrase n'en a pas besoin pour un mot que l'orthographe connaît et qu'elle cite dans ses
    deux langues (6d.3). */
 const QUOTE_OK = {
-  developer: 'l’anglais qu’on dit aussi en néerlandais, dans la note de « Ik ben Java-ontwikkelaar. »',
   pardon: 'le nord pour excuseer, dans la note d’un choix de la conversation du train',
   lijn: '« De Lijn », les bus flamands, dans la présentation de l’unité du trajet',
   jam: 'le nord pour de confituur, dans sa note d’emprunt',
@@ -917,11 +916,6 @@ const QUOTE_OK = {
   merk: '« het merk », ce que veut dire brand (une marque), dans le piège de de brand',
   plattegrond: '« de plattegrond », ce que veut dire map (un plan), dans le piège de de map'
 };
-/* Les passages cités qui ne sont pas du néerlandais (« voilà », “here you are”) enfreignent la règle :
-   une traduction va entre parenthèses, sans guillemets. Hors d'explain, NL.gloss.quoted les déclare
-   nl-BE à tort. Il n'en reste que dans les notes des mots et des phrases ; ce compte ne fait que
-   baisser, jusqu'à 0. */
-const QUOTE_BUDGET = 19;
 /* Les mots que le français et l'anglais écrivent tous deux et que le cours a aussi en néerlandais :
    l'anglais du bureau, une marque, un article. 6d.4 ne les prend pas pour du néerlandais laissé nu. */
 const SHARED_OK = {
@@ -933,7 +927,10 @@ const SHARED_OK = {
   stand: '« stand-up », la réunion du matin, en français comme en anglais',
   up: '« stand-up », la réunion du matin, en français comme en anglais',
   contact: '« premier contact », “first contact”, dans une note de la fiche des mails',
-  direct: '« Être direct », “Being direct”, dans une note de la conversation sur les délais'
+  direct: '« Être direct », “Being direct”, dans une note de la conversation sur les délais',
+  t: 'la lettre t, nommée de même en français et en anglais, dans les notes de « Dat was plezant. », « Wat betekent dat? », « acht » et « komen »',
+  s: 'la lettre s, nommée de même en français et en anglais, dans la note de « Niks speciaals, en bij u? »',
+  o: 'la lettre o, nommée de même en français et en anglais, dans la note de « goedkoop »'
 };
 /* Le champ de prose d'un texte du cours : sa clé, ou celle de son parent pour un côté fr ou en. Une valeur
    de table (byDutch.notes["hallo"].fr) a pour parent le champ que sa table pose, que C.TABLES donne. */
@@ -976,8 +973,8 @@ function quoteChecks() {
         (/<p class="v-note">[\s\S]*?<\/p>/.exec(foot) || ['(aucune note)'])[0]);
     });
   };
-  const q1 = () => footNote('fr', French, '« <span lang="nl-BE">trager</span> »')
-    .then(() => footNote('en', English, '“<span lang="nl-BE">trager</span>”'));
+  const q1 = () => footNote('fr', French, '« <span lang="nl-BE">Trager</span> »')
+    .then(() => footNote('en', English, '“<span lang="nl-BE">Trager</span>”'));
 
   /* Chaque champ de `fields`, côté français, planté d'un néerlandais inventé (zqN) écrit par
      wrap(N), puis relu sur chaque écran : chaque zqN montré est déclaré nl-BE (`shown` le trouve),
@@ -1013,7 +1010,9 @@ function quoteChecks() {
   const q2 = () => planted(QUOTED_FIELDS, n => '« zq' + n + ' »', /<span lang="nl-BE">zq(\d+)<\/span>/g);
 
   /* 6d.3. Ce que NL.gloss.quoted marque, relu sur le cours : chaque mot est du néerlandais du cours, un
-     chiffre ou une exception de QUOTE_OK, et le reste se compte contre QUOTE_BUDGET ; explain aussi,
+     chiffre ou une exception de QUOTE_OK, et rien d'autre : un passage cité qui n'est pas du
+     néerlandais (« voilà », “here you are”) est une traduction, qui va entre parenthèses sans
+     guillemets, et que NL.gloss.quoted déclarerait nl-BE à tort. explain aussi,
      balises ôtées. Un affixe cité avec son tiret (« -tje », « ge- ») est du néerlandais par sa forme ;
      « soixante-dix » n'en est pas un. Chaque guillemet ouvert est fermé (sinon rien n'est marqué), et
      name, title, h et place ne citent rien. Les tables de référence se lisent avec le cours. Une note
@@ -1061,10 +1060,8 @@ function quoteChecks() {
         ok(!dutch.has(w), '6d : « ' + w + ' » est du néerlandais du cours, son exception est de trop');
         ok(excused.has(w), '6d : « ' + w + ' » n’est plus cité nulle part, son exception est de trop');
       });
-      ok(foreign.length <= QUOTE_BUDGET, '6d : ' + foreign.length + ' citations hors du néerlandais du cours, budget ' + QUOTE_BUDGET +
-        ' — une traduction va entre parenthèses, sans guillemets ; baisser le budget, jamais le lever : ' + foreign.slice(0, 6).join(' ; '));
-      ok(foreign.length >= QUOTE_BUDGET, '6d : seulement ' + foreign.length + ' citations hors du néerlandais du cours : baisser QUOTE_BUDGET à ' + foreign.length + ' pour verrouiller le gain');
-      console.log('  guillemets      ' + foreign.length + ' citations hors du néerlandais du cours (budget ' + QUOTE_BUDGET + '), ' + Object.keys(QUOTE_OK).length + ' exceptions');
+      ok(foreign.length === 0, '6d : ' + foreign.length + ' citations hors du néerlandais du cours — une traduction va entre parenthèses, sans guillemets : ' + foreign.slice(0, 6).join(' ; '));
+      console.log('  guillemets      ' + foreign.length + ' citations hors du néerlandais du cours (exigé : 0), ' + Object.keys(QUOTE_OK).length + ' exceptions');
     });
   };
 
@@ -1073,8 +1070,8 @@ function quoteChecks() {
      cite, ou dans un champ HTML (HTML_FIELDS) porte class="nl" ; un titre (title, h) ne cite
      pas, il porte class="nl". Un mot que le français et l'anglais ont vraiment en commun
      va dans SHARED_OK ; les noms de {naam}, {stad} et {bedrijf} sont les mêmes partout. Les notes des
-     mots et des phrases (byDutch.notes) attendent leur réécriture et restent hors du compte. Ce contrôle
-     ne voit pas le néerlandais qu'un seul côté écrit, ni celui que le cours n'enseigne pas. */
+     mots et des phrases (byDutch.notes) se lisent comme le reste, jetons remplis. Ce contrôle ne
+     voit pas le néerlandais qu'un seul côté écrit, ni celui que le cours n'enseigne pas. */
   const q4 = () => {
     const B = boot();
     return B.NL.state.open().then(() => {
@@ -1084,10 +1081,10 @@ function quoteChecks() {
       let fields = 0;
       tree.visitCourse(NL.content, (v, key, where) => {
         if (!v || typeof v !== 'object' || typeof v.fr !== 'string' || typeof v.en !== 'string') return;
-        if ((QUOTED_FIELDS.indexOf(key) < 0 && HTML_FIELDS.indexOf(key) < 0) || /^byDutch\.notes\[/.test(where)) return;
+        if (QUOTED_FIELDS.indexOf(key) < 0 && HTML_FIELDS.indexOf(key) < 0) return;
         fields++;
-        const en = bare(key, v.en, 'en');
-        const both = Array.from(bare(key, v.fr, 'fr')).filter(w => en.has(w) && dutch.has(w) && !named.has(w));
+        const en = bare(key, NL.content.fill(v.en), 'en');
+        const both = Array.from(bare(key, NL.content.fill(v.fr), 'fr')).filter(w => en.has(w) && dutch.has(w) && !named.has(w));
         both.forEach(w => { if (SHARED_OK[w]) shared.add(w); });
         if (both.some(w => !SHARED_OK[w])) nu.push(where + ' [' + both.filter(w => !SHARED_OK[w]).join(', ') + ']');
       });

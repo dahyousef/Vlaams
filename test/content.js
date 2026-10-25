@@ -148,14 +148,12 @@ NL.state.open().then(() => {
   console.log('  sans leurres    ' + undecoyed.length + ' élément(s) de « Comment le dit-on ici ? » (exigé : 0)');
 
   /* L'explication d'un élément (NL.ex.explanation : la note d'un mot ou d'une phrase, la règle d'un
-     motif) se lit dans les deux langues d'affichage. Celui qui n'en a pas, ou qu'une moitié, est
-     toléré, mais compté : le compte ne peut que baisser. */
+     motif) se lit dans les deux langues d'affichage. Chacun a la sienne : les genres explanations-be
+     et explanations écrivent celles des mots et des phrases dans src/content/notes.js. */
   const bilingual = x => !!x && has(x.fr) && has(x.en);
-  const unexplained = items.filter(x => !bilingual(NL.ex.explanation(x))).length;
-  const EXPLAIN_BUDGET = 275;
-  ok(unexplained <= EXPLAIN_BUDGET, unexplained + ' élément(s) sans explication en français et en anglais, budget ' + EXPLAIN_BUDGET + ' — baisser le budget, jamais le lever');
-  ok(unexplained >= EXPLAIN_BUDGET, 'seulement ' + unexplained + ' élément(s) sans explication : baisser EXPLAIN_BUDGET à ' + unexplained + ' pour verrouiller le gain');
-  console.log('  explications    ' + unexplained + ' / ' + items.length + ' élément(s) sans explication dans les deux langues (budget ' + EXPLAIN_BUDGET + ')');
+  const unexplained = items.filter(x => !bilingual(NL.ex.explanation(x))).map(x => x.id);
+  ok(unexplained.length === 0, unexplained.length + ' élément(s) sans explication en français et en anglais : ' + unexplained.slice(0, 6).join(', '));
+  console.log('  explications    ' + unexplained.length + ' / ' + items.length + ' élément(s) sans explication dans les deux langues (exigé : 0)');
 
   /* Une réponse libre se note sur ce qu'elle contient, par le barème de la séance
      (NL.ex.rubric). L'exemple, montré après « Vérifier », coche chaque besoin. Et chaque
