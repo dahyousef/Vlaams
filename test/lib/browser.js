@@ -160,6 +160,14 @@ function open(opts) {
     };
   }
   const app = mkEl('div');
+  /* #app pose du HTML à sa fin, et retire par sa classe un élément qui ne contient que du
+     texte : c'est ce que fait le toast (shell.js), qui ne redessine pas la page. */
+  app.insertAdjacentHTML = (where, h) => { if (where === 'beforeend') app.innerHTML += h; };
+  app.querySelector = sel => {
+    const m = /^\.([\w-]+)$/.exec(sel);
+    const re = m && new RegExp('<(\\w+) class="' + m[1] + '">[^<]*</\\1>');
+    return re && re.test(app.innerHTML) ? { remove() { app.innerHTML = app.innerHTML.replace(re, ''); } } : null;
+  };
   const fields = {};
   const events = [];
 

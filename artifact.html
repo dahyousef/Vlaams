@@ -7230,10 +7230,17 @@ NL.ui = (function () {
   function openSheet(s) { sheet = s; render(); }
   function closeSheet() { sheet = null; render(); }
 
+  /* Le toast se pose et s'en va sans redessiner la page : un rendu remettait en haut la feuille
+     qu'on faisait défiler, à son arrivée puis à son départ. render() le garde tant qu'il dure. */
   function toast(msg) {
-    toastMsg = msg; render();
+    toastMsg = msg; placeToast();
     clearTimeout(toastT);
-    toastT = setTimeout(() => { toastMsg = null; render(); }, 2400);
+    toastT = setTimeout(() => { toastMsg = null; placeToast(); }, 2400);
+  }
+  function placeToast() {
+    const was = root.querySelector('.toast');
+    if (was) was.remove();
+    root.insertAdjacentHTML('beforeend', ifText(toastMsg, 'div', 'toast'));
   }
 
   function applyTheme() {
