@@ -47,7 +47,14 @@ module.exports = function (B) {
   const wrong = () => { if (!S.peek()) return false; click({ skip: '1' }); return true; };
   /* Après les paires, la séance a déjà avancé : il n'y a pas de verdict à quitter. */
   const next = wasMatch => { if (!wasMatch) click({ next: '1' }); };
-  const cantSpeak = () => { const c = S.peek(); if (!c || c.ex !== 'speak') return false; click({ quiet: '1' }); return true; };
+  /* Le bouton se touche à travers le shell, comme sur l'appareil : appelé dans le dos du shell,
+     il marchait dans la suite et ne faisait rien sur l'iPhone. Vrai si l'exercice parlé est parti. */
+  const cantSpeak = () => {
+    const c = S.peek(); if (!c || c.ex !== 'speak') return false;
+    if (NL.ui.route !== 'sessie') NL.ui.go('sessie');
+    B.tap({ quiet: '1' });
+    return S.peek() !== c;
+  };
 
   return { right, wrong, next, cantSpeak, click, type };
 };

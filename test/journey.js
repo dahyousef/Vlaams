@@ -385,6 +385,83 @@ function view(screen, arg) {
     console.log('   three refusals, then « ' + NL.t.micSaidIt + ' » is offered and counts');
   }
 
+  /* ---------------------------------------------------------- 16. a result never marked final */
+  /* Safari sur iPhone entend, montre ce qu'il entend, et ne marque jamais le résultat final ; souvent
+     il n'arrête pas non plus de lui-même. Ce qu'il a entendu doit être noté, qu'il finisse seul ou
+     qu'on touche le micro pour finir. */
+  head('16. A recogniser that never marks its result final, as Safari on iPhone');
+  if (noRecogniser) {
+    console.log('   skipped: no recogniser here');
+  } else {
+    /* Ce que l'écran a noté : un score sur une chaîne vide s'affiche aussi, à zéro. */
+    const realScore = NL.speech.score, graded = [];
+    NL.speech.score = (heard, target) => { graded.push(heard); return realScore(heard, target); };
+    const scored = (where, view, start, stop, said) => {
+      graded.length = 0; ctx.__interimNext = said; start();
+      ok(view().indexOf('score-row') >= 0 && graded.length > 0 && graded.every(g => g.indexOf(said) >= 0),
+        where + ': it ended on a result never marked final, and scored ' + JSON.stringify(graded) + ' instead of what it heard');
+      graded.length = 0; ctx.__partialNext = said; start();
+      ok(view().indexOf('data-mic="stop"') >= 0 || view().indexOf('data-act="micstop"') >= 0, where + ': the fixture is wrong, it is not listening');
+      stop();
+      ok(view().indexOf('score-row') >= 0 && graded.length > 0 && graded.every(g => g.indexOf(said) >= 0),
+        where + ': tapping the microphone while it listened threw away what it heard (scored ' + JSON.stringify(graded) + ')');
+    };
+    NL.state.clearAll(); NL.content.refresh();
+    NL.content.allItems().forEach(it => NL.srs.seed(it, 2));
+    const word = NL.content.allItems().find(it => it.kind === 'word' && !it.cognate);
+    NL.srs.seed(word, 3);
+    const due = NL.state.rec(word.id); due.due = 0; NL.state.setRec(due);
+    NL.content.allItems().filter(it => it !== word && it.kind === 'word' && !it.cognate).slice(0, 3)
+      .forEach(it => { const r = NL.state.rec(it.id); r.due = 0; NL.state.setRec(r); });
+    ok(S.begin('vandaag') && S.peek().ex === 'speak', 'a never-said item on rung 3 is not asked aloud');
+    NL.ui.go('sessie');
+    const target = NL.ex.get('speak').answer(S.peek().task);
+    scored('session', () => S.render(), () => B.tap({ mic: 'start' }), () => B.tap({ mic: 'stop' }), target);
+    ok(S.render().indexOf('mic-panel good') >= 0, 'session: « ' + target + ' », said right and never marked final, is not counted right');
+    /* Et s'il ne répond pas à stop(), l'écoute finit quand même, sur ce qu'il a entendu. */
+    graded.length = 0; ctx.__partialNext = target; B.tap({ mic: 'start' }); ctx.__stopIgnored = true; B.tap({ mic: 'stop' });
+    ok(S.render().indexOf('mic-panel good') >= 0 && graded.length === 1, 'session: a recogniser that ignores stop() leaves the learner listening forever');
+    S.abandon();
+    NL.ui.go('luisteren'); tap('luisteren', { act: 'nazeggen' });
+    scored('repeat after me', () => NL.screens.luisteren.render(), () => B.tap({ act: 'mic' }), () => B.tap({ act: 'micstop' }), 'iets');
+    const scn = NL.content.scenarios[0];
+    NL.ui.go('scenario', scn.id);
+    for (let g = 0; NL.screens.scenario.render(scn.id).indexOf('data-mic="start"') < 0 && g < 20; g++) {
+      const html = NL.screens.scenario.render(scn.id);
+      if (html.indexOf('data-step="next"') >= 0) tap('scenario', { step: 'next' }); else tap('scenario', { choice: '0' });
+    }
+    scored('conversation', () => NL.screens.scenario.render(scn.id), () => B.tap({ mic: 'start' }), () => B.tap({ mic: 'stop' }), 'iets');
+    NL.speech.score = realScore;
+    NL.ui.go('vandaag');
+    console.log('   a result never marked final is scored, whether it ends by itself or is stopped');
+  }
+
+  /* ---------------------------------------------------------- 17. repeat after me, as heard */
+  /* Répéter montre et fait entendre la réplique flamande : la redire telle quelle est juste.
+     Elle était notée contre la forme standard, et « Da’s vier euro tachtig. » faisait 3 mots sur 5. */
+  head('17. Repeat after me: saying the line as shown and heard is right');
+  if (noRecogniser) {
+    console.log('   skipped: no recogniser here');
+  } else {
+    const U = NL.util, realClips = NL.content.listenClips;
+    const flemish = realClips().filter(c => c.be && U.norm(c.be) !== U.norm(c.nl)).slice(0, 8);
+    ok(flemish.length > 0, 'the fixture is wrong: no listening line has a Flemish form');
+    NL.content.listenClips = () => flemish;
+    NL.ui.go('luisteren'); tap('luisteren', { act: 'nazeggen' });
+    const lost = [];
+    for (let k = 0; k < flemish.length; k++) {
+      const shown = (NL.screens.luisteren.render().match(/class="rev-nl"[^>]*>([^<]*)</) || [])[1];
+      ctx.__saidNext = shown; B.tap({ act: 'mic' });
+      if (NL.screens.luisteren.render().indexOf('mic-panel good') < 0) lost.push(shown);
+      tap('luisteren', { act: 'next' });
+    }
+    ctx.__saidNext = '';
+    NL.content.listenClips = realClips;
+    ok(lost.length === 0, lost.length + ' Flemish line(s), said exactly as shown, marked wrong: ' + JSON.stringify(lost));
+    NL.ui.go('vandaag');
+    console.log('   ' + flemish.length + ' Flemish lines, each said as shown, each counted right');
+  }
+
   console.log('\n' + checks + ' checks, ' + (fails === 0 ? 'NO PROBLEMS' : fails + ' PROBLEM(S)'));
   process.exit(fails ? 1 : 0);
 })().catch(e => { console.log('BOOT FAIL: ' + e.stack); process.exit(1); });

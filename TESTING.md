@@ -134,6 +134,16 @@ Ils tournent sans navigateur. Trois choses ne se vérifient qu'en vrai :
 - **deux séances, deux jours de suite**, sur un vrai appareil : la simulation
   avance son horloge, mais elle ne remplace pas ça.
 
+Le faux micro de `test/lib/browser.js` imite ce que Safari sur iPhone a fait en
+octobre 2026 : un résultat jamais marqué final, une écoute qui ne finit pas seule
+(`journey.js`, section 16). Il imite ce qu'on a vu, pas Safari lui-même.
+
+`B.tap` passe par les sélecteurs du shell, comme un vrai clic : un `data-*` que le
+shell oublie n'y mène nulle part. `test/lib/answer.js` touche « Je ne peux pas
+parler » de la même façon, mais répond aux exercices en appelant l'écran
+directement : une option, une tuile ou le micro qu'un sélecteur oublierait ne se
+voit qu'à un `B.tap`.
+
 La **branche IndexedDB**, celle que prend tout vrai navigateur, n'est atteinte
 que par `test/sync.js`, à travers un faux IndexedDB minimal (`idb` dans
 `test/lib/browser.js`) qui survit à un rechargement : la restauration d'une

@@ -590,7 +590,7 @@ NL.screens.sessie = (function () {
 
   function mic(action, task) {
     const sp = L.speech;
-    if (action === 'stop') { NL.speech.abort(); sp.phase = 'idle'; NL.ui.render(); return; }
+    if (action === 'stop') { if (!NL.speech.finish()) { sp.phase = 'idle'; NL.ui.render(); } return; }
     sp.phase = 'listening'; sp.partial = ''; sp.error = null;
     NL.audio.mic();
     NL.ui.render();
