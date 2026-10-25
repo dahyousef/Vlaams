@@ -731,27 +731,36 @@ NL.state.open().then(() => {
     NL.gloss.use(was);
 
     /* « Comment le dit-on ici ? » : une phrase face à deux mots isolés se devine, un mot face à deux
-       phrases aussi, et un leurre peut être juste : une forme que l'élément accepte (« salut », qui
-       ouvre la liste de tot ziens, est aussi à hallo), ou celle d'un élément au même sens (goeiendag
-       face à hallo). Seuls les leurres tirés au hasard le peuvent : ceux qu'on écrit
-       (src/content/decoys.js), test/content.js les lit. Un leurre tiré est la forme que l'exercice
-       propose pour un autre élément, la première de sa liste. Soixante tirages par élément : hallo
-       a une chance sur sept de tirer « salut » à chacun. */
-    let mixed = 0, right = 0, vl = 0;
+       phrases aussi, une bonne option seule à porter un article, ou seule à n'en pas porter, aussi
+       (« een pintje » face à « hey » et « toe »), et un leurre peut être juste : une forme que
+       l'élément accepte (« salut », qui ouvre la liste de tot ziens, est aussi à hallo), ou celle
+       d'un élément au même sens (goeiendag face à hallo). Seuls les leurres tirés au hasard le
+       peuvent : ceux qu'on écrit (src/content/decoys.js), test/content.js les lit. Chaque élément
+       est donc tiré sans les siens, comme un mot à soi, qui n'en a jamais : le contrôle ne se vide
+       pas quand la table se remplit. Un leurre tiré est la forme que l'exercice propose pour un
+       autre élément qui le porte (NL.srs.supports), la première de sa liste. Soixante tirages par
+       élément : hallo a une chance sur sept de tirer « salut » à chacun. */
+    let stray = 0, right = 0, alone = 0, vl = 0;
     const firstBe = x => NL.content.beVariants(x)[0];
-    all.filter(i => !i.decoys && NL.srs.supports(i, 'vlaams')).forEach(it => {
+    const art = f => UU.norm(UU.bare(f)) !== UU.norm(f);
+    all.filter(i => NL.srs.supports(i, 'vlaams')).forEach(it => {
       const mine = NL.ex.accepted(it), key = it.kind === 'word' ? f => UU.norm(UU.bare(f)) : UU.norm;
+      const asOwn = Object.assign({}, it, { decoys: null });
       for (let k = 0; k < 60; k++) {
-        const t = NL.ex.get('vlaams').build(it); vl++;
-        t.opts.filter(o => !o.ok).forEach(o => {
+        const t = NL.ex.get('vlaams').build(asOwn); vl++;
+        const good = t.opts.find(o => o.ok), bad = t.opts.filter(o => !o.ok);
+        if (bad.every(o => art(o.label) !== art(good.label))) alone++;
+        bad.forEach(o => {
           const from = all.filter(x => x.id !== it.id && firstBe(x) === o.label);
-          if (!from.length || from.some(x => x.kind !== it.kind)) mixed++;
+          const offered = from.filter(x => NL.srs.supports(x, 'vlaams'));
+          if (!offered.length || offered.some(x => x.kind !== it.kind)) stray++;
           if (mine.indexOf(key(o.label)) >= 0 || from.some(x => NL.gloss.sameMeaning(x, it))) right++;
         });
       }
     });
-    ok(mixed === 0, 'standaard/Vlaams paired an item with a distractor of another kind ' + mixed + ' times in ' + vl);
+    ok(stray === 0, 'standaard/Vlaams gave an item a distractor that is not the form the exercise offers another item of its kind, ' + stray + ' times in ' + vl);
     ok(right === 0, 'standaard/Vlaams offered a right answer as a wrong one ' + right + ' times in ' + vl + ': a form the item accepts, or the form of an item with the same meaning');
+    ok(alone === 0, 'standaard/Vlaams offered the right answer as the only option with an article, or the only one without, ' + alone + ' times in ' + vl);
     console.log('  ' + built + ' QCM construits, deuxième bonne réponse parmi les leurres : ' + second);
     ok(second === 0, 'a distractor was another correct answer, ' + second + ' times (e.g. ' + example + ')');
   }

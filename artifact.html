@@ -6248,7 +6248,10 @@ NL.ex = (function () {
        leurres viennent d'abord du même genre d'élément. */
     const labels = xs => U.uniq(xs.map(first));
     const same = labels(any.filter(x => x.kind === item.kind));
-    return U.sample(same.length >= 2 ? same : labels(any), 2);
+    /* Une bonne option seule à porter un article (« een pintje » face à « hey » et « toe »), ou
+       seule à n'en pas porter, se devine aussi : les leurres en ont d'abord un, ou aucun, comme elle. */
+    const art = f => U.norm(U.bare(f)) !== U.norm(f), like = same.filter(f => art(f) === art(first(item)));
+    return U.sample([like, same].find(xs => xs.length >= 2) || labels(any), 2);
   }
 
   /* La phrase standard est donnée : comment la dit-on ici ? Unique à cette app,
@@ -7259,16 +7262,17 @@ NL.screens.sessie = (function () {
         : L.source === 'defi' && L.lives <= 0 ? NL.t.defiOut
           : NL.t.wrongTitle;
     /* Juste, ce que la personne a donné (`given`) est déjà à l'écran : la ligne de
-       réponse qui le répète disparaît, et « Ici on dit » ne le redit pas. Dans
-       « Comment le dit-on ici ? » la variante est la réponse : choisie, rien ne la
-       redit ; manquée, elle remplace la ligne de réponse, que la ligne flamande soit
-       réglée ou non. Ailleurs la ligne flamande ne répète ni le standard ni la réponse. */
+       réponse qui le répète disparaît. « Ici on dit » ne répète ni le standard ni la
+       réponse, sauf dans « Comment le dit-on ici ? » manqué : la variante y est la
+       réponse, et toute la liste remplace la ligne de réponse. Choisie, ses autres
+       formes restent (« salut » après « hey »). Dans cet exercice, la ligne flamande
+       se montre qu'elle soit réglée ou non : c'est son sujet. */
     const given = ok ? ex.given(c.task, L) : null;
     /* Un mot tapé avec son article est juste (`U.typedOk`) : sa forme nue compte aussi, comme dans `hereLine`. */
     const same = s => U.norm(s) === U.norm(ans);
     const repeat = given != null && (same(given) || (it && it.kind === 'word' && same(U.bare(String(given).trim()))));
     const vl = c.ex === 'vlaams' && !repeat ? EX.hereLine(it, '', true) : '';
-    const be = c.ex === 'vlaams' ? vl : NL.state.meta().showFlemish !== false ? EX.hereLine(it, [ans, given], false) : '';
+    const be = vl || (c.ex === 'vlaams' || NL.state.meta().showFlemish !== false ? EX.hereLine(it, [ans, given], false) : '');
     /* La langue de la réponse est un champ de l'exercice : du néerlandais, un sens dans sa langue,
        ou rien quand les deux se mêlent (les paires de « match »). */
     const ansLang = ex.answers === 'nl' ? NL.gloss.attr('nl') : ex.answers === 'gloss' ? NL.gloss.langAttr(it) : '';

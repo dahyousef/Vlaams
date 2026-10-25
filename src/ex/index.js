@@ -522,7 +522,10 @@ NL.ex = (function () {
        leurres viennent d'abord du même genre d'élément. */
     const labels = xs => U.uniq(xs.map(first));
     const same = labels(any.filter(x => x.kind === item.kind));
-    return U.sample(same.length >= 2 ? same : labels(any), 2);
+    /* Une bonne option seule à porter un article (« een pintje » face à « hey » et « toe »), ou
+       seule à n'en pas porter, se devine aussi : les leurres en ont d'abord un, ou aucun, comme elle. */
+    const art = f => U.norm(U.bare(f)) !== U.norm(f), like = same.filter(f => art(f) === art(first(item)));
+    return U.sample([like, same].find(xs => xs.length >= 2) || labels(any), 2);
   }
 
   /* La phrase standard est donnée : comment la dit-on ici ? Unique à cette app,

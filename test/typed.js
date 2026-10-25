@@ -274,7 +274,7 @@ NL.state.open().then(() => {
         say('hallo') + ' offers a right answer as a wrong one: ' + JSON.stringify(others));
       answer.right();
       const v = verdict(it);
-      ok(v.right && v.be === null && v.answer === null, say('hallo') + ', answered « hey », gives ' + v.text);
+      ok(v.right && v.answer === null, say('hallo') + ', answered « hey », gives ' + v.text);
     }
     S.abandon();
     console.log('  vlaams         « hallo » à l’échelon 1 : « hey » parmi deux formes d’autres mots, et juste');
@@ -304,6 +304,24 @@ NL.state.open().then(() => {
   }));
   NL.state.setMeta({ showFlemish: true });
   console.log('  vlaams         choisie, rien de redit ; passée, la variante une fois, « hè » en gras');
+
+  /* Un mot de plusieurs formes : choisie, la première n'est pas redite, et les autres restent
+     dans « Ici on dit », comme après une faute. Même sans la ligne flamande dans les réglages :
+     c'est le sujet de l'exercice. Une forme qui est le néerlandais de l'élément ne s'y redit pas,
+     la question le montre déjà (« de meeting, de vergadering » pour de vergadering). */
+  [true, false].forEach(showFlemish => [['hallo', 'salut'], ['tot ziens', 'de groeten'], ['alstublieft', 'alsjeblieft'], ['jij', 'ge'], ['de vergadering', null]].forEach(([nl, rest]) => {
+    fresh();
+    NL.state.setMeta({ showFlemish });
+    const it = find(nl);
+    if (!it || !ask(it, 'vlaams', 1, 'dictation')) { ok(false, 'setup: ' + say(nl) + ' is never asked in « Comment le dit-on ici ? »'); return; }
+    answer.right();
+    const v = verdict(it), want = rest && t.hereThey + ' ' + rest;
+    ok(v.right && v.answer === null && v.be === want,
+      say(nl) + ' (showFlemish ' + showFlemish + '), answered right, shows ' + JSON.stringify(v.be) + ', not ' + JSON.stringify(want) + ': ' + v.text);
+    S.abandon();
+  }));
+  NL.state.setMeta({ showFlemish: true });
+  console.log('  vlaams         choisi, « hey » laisse « salut », même sans la ligne flamande ; de vergadering, rien');
 
   {
     const spoor = typed('Op welk spoor?', 'Op welk spoor?');
