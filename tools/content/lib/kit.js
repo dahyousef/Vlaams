@@ -9,6 +9,8 @@
      kit.split(repo, kindDir)       { ok, lines } — écrit <lot>/input.json et split.txt
      kit.check(repo, batchDir)      { ok, lines } — n'écrit rien
      kit.merge(repo, kindDir)       { ok, lines } — écrit les tables du genre, ou rien
+     kit.readKind(repo, kindDir)    { name, kind, lines, rows } — chaque ligne d'entrée du genre et ce
+                                    que Merge en prend ; n'écrit rien (l'outil de lecture le lit)
 
    Les lignes imprimées sont en anglais : ce sont les agents du kit, qui travaillent sur des
    pages anglaises, qui les lisent. */
@@ -25,9 +27,9 @@ const VERDICT = /^(keep|dispute: .*\S.*|for maintainer: .*\S.*)$/;
 function loadKind(repo, name) {
   const file = path.join(path.resolve(repo), 'tools', 'content', 'kinds', name + '.js');
   if (!fs.existsSync(file)) throw new Error('no kind module tools/content/kinds/' + name + '.js');
-  const kind = Object.assign({ optional: [], verdictFields: [], forMaintainer: () => '', checkVerdict: () => [] }, require(file));
+  const kind = Object.assign({ optional: [], verdictFields: [], forMaintainer: () => '', checkVerdict: () => [], readWhole: () => '' }, require(file));
   const arrays = ['stamp', 'fields', 'optional', 'verdictFields', 'tables'];
-  const fns = ['split', 'check', 'merge', 'forMaintainer', 'checkVerdict'];
+  const fns = ['split', 'check', 'merge', 'forMaintainer', 'checkVerdict', 'readWhole'];
   arrays.forEach(k => { if (!Array.isArray(kind[k])) throw new Error('kind ' + name + ': ' + k + ' is not an array'); });
   fns.forEach(k => { if (typeof kind[k] !== 'function') throw new Error('kind ' + name + ': ' + k + ' is not a function'); });
   if (kind.write !== undefined && typeof kind.write !== 'function') throw new Error('kind ' + name + ': write is not a function');
@@ -311,29 +313,37 @@ function settle(id, got) {
   return { why: 'no ruling' };
 }
 
-/* Merge : chaque ligne réglée, ses valeurs écrites dans les tables du genre, sous le
-   néerlandais de sa source. Refuse sans rien écrire : un genre jamais coupé, un lot qui ne
-   passe pas Check, une ligne non réglée, une source qui a changé depuis Split. */
-function merge(repo, kindDir) {
+/* Un genre lu lot par lot, sans rien écrire : { name, kind, lines, rows }. lines sont les
+   lignes de Check de chaque lot, puis, pour un lot qui ne passe pas, « batch <lot> does not
+   pass Check » ; rows ne tient alors rien de ce lot. Une ligne de rows : { input, batch,
+   ruling } (la décision du mainteneur, ou null) et ce que settle() en prend. kind est null
+   quand aucun lot n'a été lu. */
+function readKind(repo, kindDir) {
   const name = path.basename(kindDir), list = path.join(kindDir, 'split.txt');
-  if (!fs.existsSync(list)) return { ok: false, lines: ['fail ' + name + ' -: never split: run Split first'] };
+  if (!fs.existsSync(list)) return { name, kind: null, lines: ['fail ' + name + ' -: never split: run Split first'], rows: [] };
   const batches = fs.readFileSync(list, 'utf8').split('\n').filter(Boolean).map(l => l.split(' ')[0]);
   const lines = [], rows = [];
   let kind = null;
   batches.forEach(b => {
     const r = readBatch(repo, path.join(kindDir, b));
     kind = r.kind || kind;
-    if (failed(r.lines)) {
-      r.lines.filter(l => /^fail /.test(l)).forEach(l => lines.push(l));
-      lines.push('fail ' + name + ' -: batch ' + b + ' does not pass Check');
-      return;
-    }
-    r.input.forEach(input => rows.push(Object.assign({ input, batch: b }, settle(input.id, r.got))));
+    r.lines.forEach(l => lines.push(l));
+    if (failed(r.lines)) { lines.push('fail ' + name + ' -: batch ' + b + ' does not pass Check'); return; }
+    const ruling = id => (r.got['rulings.json'] || []).find(x => x.id === id) || null;
+    r.input.forEach(input => rows.push(Object.assign({ input, batch: b, ruling: ruling(input.id) }, settle(input.id, r.got))));
   });
-  if (failed(lines)) return { ok: false, lines };
+  return { name, kind, lines, rows };
+}
+
+/* Merge : chaque ligne réglée, ses valeurs écrites dans les tables du genre, sous le
+   néerlandais de sa source. Refuse sans rien écrire : un genre jamais coupé, un lot qui ne
+   passe pas Check, une ligne non réglée, une source qui a changé depuis Split. */
+function merge(repo, kindDir) {
+  const { name, kind, lines: read, rows } = readKind(repo, kindDir);
+  if (failed(read)) return { ok: false, lines: read.filter(l => /^fail /.test(l)) };
   if (!rows.length) return { ok: true, lines: ['ok ' + name + ' 0 taken, 0 dropped'] };
 
-  const C = course(repo);
+  const C = course(repo), lines = [];
   const ctx = { repo: path.resolve(repo), kind, kindDir, course: () => C };
   rows.forEach(r => {
     if (r.why) { lines.push('fail ' + name + ' ' + r.input.id + ': unsettled, ' + r.why); return; }
@@ -372,4 +382,4 @@ function merge(repo, kindDir) {
   return { ok: true, lines };
 }
 
-module.exports = { FILES, loadKind, stamp, split, check, merge, settle };
+module.exports = { FILES, loadKind, stamp, split, check, merge, settle, readKind };

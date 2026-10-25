@@ -27,8 +27,8 @@ node test/hooks.js    "$ROOT"
 # Les contrôles de l'outil de la séance de contrôle de l'anglais, sans écrire ses fichiers :
 # une glose que owed() ne compte pas, ou un côté vide que le contenu n'explique pas.
 node test/tools/check-files.js "$ROOT"
-# Le kit de répartition (tools/content/) : Split, Check et Merge, les tables et le cache
-# épinglé, dans une copie du dépôt et sans réseau.
+# Le kit de répartition (tools/content/) : Split, Check et Merge, les tables, le cache
+# épinglé et l'outil de lecture, dans une copie du dépôt et sans réseau.
 node test/tools/fanout.js "$ROOT"
 # Les sources externes du kit (tools/content/kaikki.js, tools/content/tatoeba.js), sur des
 # fichiers faits par la suite.

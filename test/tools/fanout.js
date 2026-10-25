@@ -1,7 +1,8 @@
 /* Le kit de répartition, tools/content/ : le cours tel que les outils le lisent, l'empreinte
-   d'une source, Split, Check et Merge, le rédacteur des tables et le cache des données
-   épinglées. Le contrat est celui de docs/agents/plan-runs/design-sitting.md (« The fan-out
-   form ») et du tableau des fichiers de batch-controller.md.
+   d'une source, Split, Check et Merge, le rédacteur des tables, le cache des données
+   épinglées et l'outil de lecture. Le contrat est celui de
+   docs/agents/plan-runs/design-sitting.md (« The fan-out form ») et du tableau des fichiers de
+   batch-controller.md.
      node test/tools/fanout.js .
    Tout se joue dans une copie du dépôt (build.sh, src/, test/lib/, tools/), dans un dossier
    temporaire, avec un genre d'essai écrit ici : le dépôt n'est jamais écrit, et rien n'est
@@ -1266,6 +1267,169 @@ async function main() {
     CA.NL.content.byDutch.also[HALLO] = ['dag', 'hoezee'];
     same(['hai', 'helo', 'an', 'hoezee'].filter(w => !dutchWords(CA.NL).has(w)), [], 'les mots des leurres et des « on dit aussi » sont du néerlandais du cours');
     console.log('  explanations   ' + beSplit.lines.length + ' + ' + want.length + ' lots, ' + be.length + ' + ' + rest.length + ' lignes ; la note et ses citations, les « on dit aussi », les leurres ; Merge');
+  }
+
+  /* ==================================================== 9. l'outil de lecture
+     Un bloc : ses noms ne croisent pas ceux des sections que d'autres tâches ajoutent. */
+  {
+    const reading = require(path.join(LIB, 'reading'));
+    const G = C.NL.gloss, WS = path.join(TMP, 'lecture-ws');
+    const head = id => '- `' + C.byId(id).nl + '` (' + id + ') — ' + G.LANGS.map(l => G.of(C.byId(id), l)).join(' · ');
+    const part = (lines, name) => {
+      const a = lines.indexOf('## ' + name);
+      let b = a + 1;
+      while (b < lines.length && !/^## /.test(lines[b])) b++;
+      return lines.slice(a, b);
+    };
+
+    /* L'espace de travail : le genre d'essai tel que la section 6 l'a fondu, le genre vide, et
+       deux genres écrits ici. « lecture » prend les 25 premiers mots en deux lots, tous gardés,
+       et un mot de plus d'un mot s'y lit en entier ; « exemples » donne des phrases, ou une
+       raison de n'en pas donner (« skip »), et « skip: ask » va au mainteneur. */
+    fs.cpSync(KIND, path.join(WS, 'drafts', 'essai'), { recursive: true });
+    same(run('split.js', [TMP, path.join(WS, 'drafts', 'vide')]), { code: 0, lines: [] }, 'le genre vide se coupe dans l\'espace de lecture');
+    kindFile('lecture', `module.exports = {
+  stamp: ['meaning'],
+  fields: ['mot'],
+  tables: ['lecture'],
+  split: C => {
+    const ids = C.sources.filter(s => s.kind === 'word').slice(0, 25).map(s => s.id);
+    const rows = list => list.map(id => ({ id, nl: C.byId(id).nl }));
+    return [{ batch: 'a', rows: rows(ids.slice(0, 12)) }, { batch: 'b', rows: rows(ids.slice(12)) }];
+  },
+  check: (row, input) => row.mot === input.nl.toUpperCase() ? [] : ['mot is not ' + input.nl.toUpperCase()],
+  readWhole: row => row.mot.indexOf(' ') >= 0 ? 'two words' : '',
+  merge: row => ({ lecture: row.mot })
+};
+`);
+    const LDIR = path.join(WS, 'drafts', 'lecture');
+    same(run('split.js', [TMP, LDIR]), { code: 0, lines: ['a 12', 'b 13'] }, 'le genre « lecture » se coupe');
+    ['a', 'b'].forEach(b => {
+      const input = JSON.parse(text(path.join(LDIR, b, 'input.json')));
+      put(path.join(LDIR, b), 'draft.json', input.map(r => Object.assign({ id: r.id, stamp: r.stamp, mot: r.nl.toUpperCase() },
+        r.nl === 'tot ziens' ? { unsure: 'tot ziens, or tot straks?' } : {})));
+      put(path.join(LDIR, b), 'review.json', input.map(r => ({ id: r.id, verdict: 'keep' })));
+    });
+    const LT = path.join(TMP, 'src', 'content', 'lecture.js');
+    fs.writeFileSync(LT, '/* La table de lecture de test/tools/fanout.js. */\n' + table.MARKER + '\nNL.content.byDutch[\'lecture\'] = {\n};\n');
+    same(run('merge.js', [TMP, LDIR]), { code: 0, lines: ['ok lecture 25 taken, 0 dropped', 'ok lecture.js 25 set, 0 removed'] }, 'le genre « lecture » se fond');
+    /* Les mots sans phrase à HEAD, et un mot qui a la sienne, lus dans le cours et pas écrits ici :
+       le Merge des phrases (tâches 34 et 41) en donne à des mots qui n'en avaient pas. */
+    const bare = C.sources.filter(s => s.kind === 'word' && !(s.drills && s.drills.length)).map(s => s.id);
+    const sentenced = C.sources.find(s => s.kind === 'word' && s.drills && s.drills.length).id;
+    kindFile('exemples', `module.exports = {
+  stamp: ['meaning'],
+  fields: ['phrases'],
+  optional: ['skip'],
+  tables: [],
+  split: () => [{ batch: 'een', rows: [{ id: '${bare[0]}' }, { id: '${bare[2]}' }, { id: '${sentenced}' }] }],
+  check: () => [],
+  forMaintainer: row => row.skip === 'ask' ? 'skip is ask' : '',
+  merge: () => ({})
+};
+`);
+    const XDIR = path.join(WS, 'drafts', 'exemples'), XEEN = path.join(XDIR, 'een');
+    same(run('split.js', [TMP, XDIR]), { code: 0, lines: ['een 3'] }, 'le genre « exemples » se coupe');
+    const xs = JSON.parse(text(path.join(XEEN, 'input.json')));
+    put(XEEN, 'draft.json', [
+      { id: bare[0], stamp: xs[0].stamp, phrases: [], skip: 'no candidate fits' },
+      { id: bare[2], stamp: xs[1].stamp, phrases: [], skip: 'ask' },
+      { id: sentenced, stamp: xs[2].stamp, phrases: ['Ik versta u.'] }
+    ]);
+    put(XEEN, 'review.json', [{ id: bare[0], verdict: 'keep' }, { id: bare[2], verdict: 'for maintainer: skip is ask' }, { id: sentenced, verdict: 'keep' }]);
+    put(XEEN, 'disputes.md', '## ' + bare[2] + '\nSource: ' + C.byId(bare[2]).nl + '\nRow: skip ask\nFirst reader: for maintainer: skip is ask\n');
+    put(XEEN, 'rulings.json', [{ id: bare[2], ruling: 'drop', words: 'leave it', confirmed: true, date: '2026-10-22' }]);
+    ok(kit.check(TMP, XEEN).ok, 'le lot « exemples » passe Check');
+
+    /* Ce que le kit donne à l'outil : readKind, et readWhole dans le module d'un genre. */
+    const rk = kit.readKind(TMP, KIND);
+    same(rk.name, 'essai', 'readKind nomme le genre par son dossier');
+    same(rk.lines, GOOD_EEN.concat(check(TWEE)), 'readKind dit les lignes de Check de chaque lot');
+    same(rk.rows.map(x => [x.input.id, x.batch, x.from || (x.drop ? 'drop' : x.why), x.ruling ? x.ruling.ruling : null]), [
+      ['overleven:w1', 'een', 'draft', null],
+      ['overleven:w2', 'een', 'retry', null],
+      ['bakker:w22', 'een', 'change', 'change'],
+      ['thuis:w24', 'twee', 'drop', 'drop'],
+      ['thuis:w1', 'twee', 'retry', 'keep']
+    ], 'readKind rend chaque ligne d\'entrée, son lot, ce que Merge en prend et la décision du mainteneur');
+    same(kit.loadKind(TMP, 'essai').readWhole(), '', 'un genre qui ne dit rien ne fait rien lire en entier');
+    kindFile('entier', 'module.exports = { stamp: [], fields: [\'mot\'], tables: [], split: () => [], check: () => [], merge: () => ({}), readWhole: \'oui\' };\n');
+    throws(() => kit.loadKind(TMP, 'entier'), /^kind entier: readWhole is not a function$/, 'readWhole est une fonction');
+
+    /* L'échantillon : 1 sur 10, au moins 10, et le même à chaque lecture. */
+    same([0, 5, 10, 11, 100, 101, 360].map(reading.size), [0, 5, 10, 10, 10, 11, 36], 'la taille de l\'échantillon : 1 sur 10, au moins 10, au plus tout');
+    const words = C.sources.filter(s => s.kind === 'word').slice(0, 25).map(s => s.id);
+    const whole = words.filter(id => C.byId(id).nl.indexOf(' ') >= 0), others = words.filter(id => whole.indexOf(id) < 0);
+    const sha1 = s => crypto.createHash('sha1').update(s).digest('hex');
+    const ranked = others.slice().sort((a, b) => sha1('lecture ' + a) < sha1('lecture ' + b) ? -1 : 1).slice(0, 10);
+    const sample = others.filter(id => ranked.indexOf(id) >= 0);
+    same(reading.pick('lecture', others), sample, 'l\'échantillon : les plus petits sha1 de « <genre> <id> », dans l\'ordre de l\'entrée');
+
+    /* La liste du contrôle du contenu. */
+    const L = reading.list(TMP, WS);
+    ok(L.ok, 'la liste se lit : ' + L.lines.filter(l => /^fail /.test(l)).join(' | '));
+    same(L.lines.slice(0, 3), ['# Reading list', '', 'Read for the content check, at HEAD: every row its kind marks to read whole (a new Flemish form, a generated sentence), every row the maintainer ruled, and a sample of the other taken rows, 1 in 10 and at least 10 per kind, the same on every run. Under each row, what each of its kind\'s tables holds for it.'],
+      'la liste dit ce qu\'elle tient');
+    same(L.lines.filter(l => /^## /.test(l)), ['## essai', '## exemples', '## lecture', '## vide'], 'un titre par genre coupé, dans l\'ordre des noms');
+    const ESSAI = [
+      head('overleven:w1'), '  - kept by the first reader; sampled', '  - essai.js: \'GOEIEDAG|\'',
+      head('overleven:w2'), '  - kept by the second reader; sampled', '  - essai.js: \'DAG|reprise\'',
+      head('bakker:w22'), '  - ruled change on 2026-10-22: keep it, and say why', '  - essai.js: \'MEENEMEN|changé\'',
+      head('thuis:w24'), '  - ruled drop on 2026-10-22', '  - essai.js: \'avant\'',
+      head('thuis:w1'), '  - ruled keep on 2026-10-22: the retry is right', '  - essai.js: \'DE STRAAT|reprise\''
+    ];
+    same(part(L.lines, 'essai'), ['## essai', '', '5 rows: 4 taken, 1 dropped. Listed: 3 ruled, 0 read whole, 2 sampled of 2 others.', ''].concat(ESSAI, ['']),
+      'un genre : ses comptes, puis chaque ligne listée, sa source, pourquoi elle est là, et ce que ses tables tiennent à HEAD');
+    same(part(L.lines, 'exemples').slice(0, 3), ['## exemples', '', '3 rows: 2 taken, 1 dropped. Listed: 1 ruled, 0 read whole, 2 sampled of 2 others.'], 'une ligne écartée par le mainteneur est listée');
+    const lecture = part(L.lines, 'lecture');
+    same(lecture.slice(0, 3), ['## lecture', '', '25 rows: 25 taken, 0 dropped. Listed: 0 ruled, 4 read whole, 10 sampled of 21 others.'], 'un genre de 21 autres lignes en lit 10');
+    same(lecture.filter(l => /^- /.test(l)), words.filter(id => whole.indexOf(id) >= 0 || sample.indexOf(id) >= 0).map(head),
+      'les lignes à lire en entier et l\'échantillon, dans l\'ordre de l\'entrée');
+    const w3 = lecture.indexOf(head('overleven:w3'));
+    same(lecture.slice(w3 + 1, w3 + 4), ['  - two words; kept by the first reader', '  - lecture.js: \'TOT ZIENS\'', '  - unsure: tot ziens, or tot straks?'],
+      'une ligne lue en entier dit la raison de son genre, et son doute');
+    same(part(L.lines, 'vide'), ['## vide', '', '0 rows: 0 taken, 0 dropped. Listed: 0 ruled, 0 read whole, 0 sampled of 0 others.'], 'un genre sans ligne n\'a que ses comptes');
+    same(reading.list(TMP, WS), L, 'la liste est la même à chaque lecture');
+    same(run('reading.js', [TMP, WS]), { code: 0, lines: L.lines.filter(Boolean) }, 'reading.js imprime la liste');
+
+    /* --kind : chaque ligne d'un genre. */
+    const EVERY = ['# essai: every row', '', '5 rows: 4 taken, 1 dropped.', ''].concat(ESSAI.map(l => l.replace('; sampled', '')));
+    same(reading.every(TMP, WS, 'essai'), { ok: true, lines: EVERY }, '--kind liste chaque ligne du genre, sans échantillon');
+    same(run('reading.js', [TMP, WS, '--kind', 'essai']), { code: 0, lines: EVERY.filter(Boolean) }, 'reading.js --kind imprime chaque ligne');
+    same(run('reading.js', [TMP, WS, '--kind', 'inconnu']), { code: 1, lines: ['fail inconnu -: never split: run Split first'] }, '--kind refuse un genre jamais coupé');
+
+    /* --unsentenced : les mots sans phrase à HEAD, et la ligne de chacun dans le genre des exemples. */
+    const U = reading.unsentenced(TMP, WS, { sentences: 'exemples' });
+    ok(U.ok, '--unsentenced se lit : ' + U.lines.filter(l => /^fail /.test(l)).join(' | '));
+    same(U.lines.slice(0, 10), ['# Words without a sentence', '', bare.length + ' words have no example sentence. Under each, its row in drafts/exemples.', '',
+      head(bare[0]), '  - exemples: {"phrases":[],"skip":"no candidate fits"}; kept by the first reader',
+      head(bare[1]), '  - exemples: no row',
+      head(bare[2]), '  - exemples: ruled drop on 2026-10-22: leave it'
+    ], 'chaque mot sans phrase : sa ligne gardée et sa raison, pas de ligne, ou la décision qui l\'écarte');
+    same(U.lines.filter(l => /^- /.test(l)), bare.map(head), 'les mots sans phrase, dans l\'ordre du cours, et eux seuls (' + C.byId(sentenced).nl + ' a la sienne)');
+    same(run('reading.js', [TMP, WS, '--unsentenced']), { code: 1, lines: ['fail examples -: never split: run Split first'] }, 'reading.js --unsentenced lit le genre examples');
+
+    /* Les refus. */
+    same(reading.list(TMP, path.join(TMP, 'nulle')), { ok: false, lines: ['fail reading -: no split kind in ' + path.join(TMP, 'nulle', 'drafts')] }, 'un espace sans genre coupé est refusé');
+    const LA = path.join(LDIR, 'a'), lrev = text(path.join(LA, 'review.json'));
+    put(LA, 'review.json', lrev.replace('"keep"', '"kept"'));
+    const bad = reading.every(TMP, WS, 'lecture');
+    ok(!bad.ok && bad.lines[bad.lines.length - 1] === 'fail lecture -: batch a does not pass Check', 'un lot qui ne passe pas Check est refusé : ' + JSON.stringify(bad.lines.slice(-1)));
+    put(LA, 'review.json', lrev);
+    fs.renameSync(path.join(LDIR, 'b', 'review.json'), path.join(LDIR, 'b', 'review.json.old'));
+    const open = reading.list(TMP, WS);
+    same([open.ok, open.lines.length, open.lines[0]], [false, 13, 'fail lecture ' + words[12] + ': unsettled, no review'], 'une ligne non réglée est refusée, et la liste avec');
+    fs.renameSync(path.join(LDIR, 'b', 'review.json.old'), path.join(LDIR, 'b', 'review.json'));
+    fs.renameSync(LT, LT + '.old');
+    same(reading.every(TMP, WS, 'lecture'), { ok: false, lines: ['fail lecture -: no table file src/content/lecture.js'] }, 'une table sans fichier est refusée');
+    fs.renameSync(LT + '.old', LT);
+    edit('W(\'goeiedag\'', 'W(\'hallo\'');
+    same(reading.every(TMP, WS, 'essai'), { ok: false, lines: ['fail essai overleven:w1: no longer an item'] }, 'une ligne dont l\'élément n\'est plus est refusée');
+    fs.writeFileSync(LEX, lexicon);
+    const USAGE = ['usage: node tools/content/reading.js <repo> <WS> [--kind <kind> | --unsentenced]'];
+    [[TMP], [TMP, WS, '--kind'], [TMP, WS, '--unsentenced', 'essai'], [TMP, WS, '--tout']].forEach(a =>
+      same(run('reading.js', a), { code: 1, lines: USAGE }, 'reading.js ' + a.slice(1).join(' ') + ' dit son usage'));
+    console.log('  lecture        liste, --kind, --unsentenced, échantillon ' + sample.length + ' sur ' + others.length + ', refus');
   }
 
   console.log('\n' + checks + ' contrôles, ' + (fails === 0 ? 'KIT CONFORME' : fails + ' ÉCHEC(S)'));
