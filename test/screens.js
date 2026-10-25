@@ -442,6 +442,17 @@ NL.state.open().then(async () => {
   }
 
   /* ------------------------------------------------------------------ */
+  console.log('\nLE TOAST — à lire, pas à toucher');
+  {
+    /* Le toast reste 2,4 s au-dessus de tout, et la feuille des réglages a son « Fermer » juste
+       dessous : « Sauvegarde téléchargée », et le toucher suivant tombait sur le toast. Il ne
+       contient que du texte : les touchers le traversent. */
+    const css = (/(^|[}\s])\.toast\s*\{([^}]*)\}/.exec(require('fs').readFileSync(require('path').join(ROOT, 'styles.css'), 'utf8')) || [])[2] || '';
+    ok(/pointer-events:\s*none/.test(css), 'styles.css lets the toast take taps: .toast has no pointer-events:none');
+    console.log('  .toast laisse passer les touchers');
+  }
+
+  /* ------------------------------------------------------------------ */
   console.log('\nUN MOT LISTÉ DANS DEUX UNITÉS — compté une fois');
   {
     /* Neuf mots et phrases sont listés dans deux unités : le second listage est un alias du
