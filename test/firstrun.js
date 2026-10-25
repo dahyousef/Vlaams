@@ -118,6 +118,9 @@ NL.state.open().then(() => {
       S.click({ dataset: {} }, { next: '1' });
     }
     ok(app.innerHTML.includes('done-stage'), 'a flawless challenge never reached its summary');
+    /* Un défi tient vingt exercices, ou moins quand moins d'éléments sont rencontrés : le titre dit ce qui a été joué. */
+    const head = (app.innerHTML.match(/<h2>([^<]*)</) || [])[1] || '';
+    ok(head.indexOf(String(total)) >= 0, 'a flawless challenge of ' + total + ' says « ' + head + ' »');
     ok(NL.state.meta().defiBest === total, 'the challenge record was not saved (' + NL.state.meta().defiBest + ')');
     ok(NL.state.meta().bestCombo >= total, 'the combo record was not saved (' + NL.state.meta().bestCombo + ')');
     const gained = NL.state.meta().xp - xp0;
@@ -133,6 +136,9 @@ NL.state.open().then(() => {
       S.click({ dataset: {} }, { next: '1' });
     }
     ok(app.innerHTML.includes('done-stage'), 'three mistakes did not end the challenge');
+    /* Fini sur trois fautes : trois réponses, pas la longueur du défi. */
+    ok(app.innerHTML.includes(NL.t.defiScoreLine(0, 3)), 'after three answers, all wrong, the summary says « ' +
+      ((app.innerHTML.match(/<p class="done-sub">([^<]*)</) || [])[1] || '') + ' »');
     ok(NL.state.meta().defiBest === total, 'a worse run overwrote the record');
     console.log('  three mistakes end it at once, no retries, record kept');
     S.abandon();
