@@ -1167,18 +1167,24 @@ async function main() {
     const listOf = ['also is a list of Dutch forms, [] for none, each a text on one line with no space at either end'];
     same([rule('thuis:w12', { also: 'het stadhuis' }), rule('thuis:w12', { also: [' het stadhuis'] }), rule('thuis:w12', { also: [''] }), rule('thuis:w12', { also: [3] })],
       [listOf, listOf, listOf, listOf], 'also est une liste de formes');
-    same(rule('overleven:w7', { also: ['ja', 'jaja', 'jawel, jazeker', 'oké / goed'] }), [
+    same(rule('overleven:w7', { also: ['ja', 'jaja', 'jawel, jazeker', 'oké / goed', 'oké; goed'] }), [
       'also « ja » is the Dutch itself',
       'also « jaja » is a Flemish form in be.js',
       'also « jawel, jazeker » holds more than one form: one form per entry',
-      'also « oké / goed » holds more than one form: one form per entry'
+      'also « oké / goed » holds more than one form: one form per entry',
+      'also « oké; goed » holds more than one form: one form per entry'
     ], 'ni le néerlandais, ni une forme flamande, et une forme par entrée');
     same(rule('thuis:w12', { also: ['het stadhuis', 'het Stadhuis', 'raadhuis', 'het stadhuus'] }), [
       'also lists « het Stadhuis » twice',
       'also « raadhuis » drops the article of « het gemeentehuis »',
       'also « het stadhuus »: « stadhuus » is not Dutch that OpenTaal or flemish.tsv knows: leave it out, and say why in unsure if it is Flemish'
     ], 'une forme une fois, un nom garde son article, et l\'orthographe de test/content.js');
-    same([rule('overleven:w0', { also: ['dag', 'goeiedag'] }), rule('overleven:w7', { also: ['dag'] })],
+    same(rule('overleven:p0', { also: ['Ik leer Nederlands, hè.'] }).filter(r => /more than one form/.test(r)), [], 'une virgule est permise dans une phrase');
+    const stad = { fr: 'Dit « stadhuus » is een vorm.', en: 'Say “stadhuus” here.' };
+    const quoted = r => r.filter(x => /is quoted/.test(x));
+    same([quoted(rule('thuis:w12', { also: ['het stadhuus'], note: stad })), quoted(rule('thuis:w12', { note: stad })).length],
+      [[], 1], 'une note peut citer une forme que seul le « on dit aussi » de la ligne porte');
+    same([rule('overleven:w0', { also: ['dag', 'goeiedag'] }),rule('overleven:w7', { also: ['dag'] })],
       [[], ['also « dag » is the Dutch of overleven:w2, which is not of the same sense: an answer to one is not right for the other']],
       'le néerlandais d\'un autre élément, seulement s\'il est du même sens ou si la source le tient déjà');
     const pair = ['decoys is two wrong answers to « Comment le dit-on ici ? », each a text on one line with no space at either end'];
