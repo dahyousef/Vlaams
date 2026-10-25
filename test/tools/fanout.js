@@ -1184,7 +1184,7 @@ async function main() {
     const quoted = r => r.filter(x => /is quoted/.test(x));
     same([quoted(rule('thuis:w12', { also: ['het stadhuus'], note: stad })), quoted(rule('thuis:w12', { note: stad })).length],
       [[], 1], 'une note peut citer une forme que seul le « on dit aussi » de la ligne porte');
-    same([rule('overleven:w0', { also: ['dag', 'goeiedag'] }),rule('overleven:w7', { also: ['dag'] })],
+    same([rule('overleven:w0', { also: ['dag', 'goeiedag'] }), rule('overleven:w7', { also: ['dag'] })],
       [[], ['also « dag » is the Dutch of overleven:w2, which is not of the same sense: an answer to one is not right for the other']],
       'le néerlandais d\'un autre élément, seulement s\'il est du même sens ou si la source le tient déjà');
     const pair = ['decoys is two wrong answers to « Comment le dit-on ici ? », each a text on one line with no space at either end'];
