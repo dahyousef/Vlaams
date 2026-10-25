@@ -71,7 +71,7 @@ NL.ui = (function () {
       const on = route === n.id || (n.id === 'meer' && UNDER_MEER.indexOf(route) >= 0);
       return '<button class="nav-btn' + (on ? ' on' : '') + '" data-go="' + n.id + '">' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + NAV_ICON[n.id] + '</svg>' +
-        '<span class="nav-fr">' + n.label + '</span><span class="nav-nl" lang="nl-BE">' + n.nl + '</span></button>';
+        '<span class="nav-fr">' + n.label + '</span><span class="nav-nl"' + NL.gloss.attr('nl') + '>' + n.nl + '</span></button>';
     }).join('') + '</div></nav>';
   }
 
@@ -104,11 +104,16 @@ NL.ui = (function () {
     return t.unitOne(span.from) + (u ? ' · ' + NL.gloss.of(u.name) : '');
   }
 
-  /* Le texte `x` (lu par NL.gloss) dans une balise, s'il y en a un ; sinon rien. */
-  const ifText = (x, tag, cls) => {
+  /* Le texte `x` (lu par NL.gloss) dans une balise, s'il y en a un, montré par `show` ; sinon rien.
+     `lang`, s'il est donné, déclare la langue du texte (NL.gloss.attr). */
+  const inTag = (show, x, tag, cls, lang) => {
     const s = NL.gloss.of(x);
-    return s ? '<' + tag + (cls ? ' class="' + cls + '"' : '') + '>' + esc(s) + '</' + tag + '>' : '';
+    return s ? '<' + tag + (cls ? ' class="' + cls + '"' : '') + (lang ? NL.gloss.attr(lang) : '') + '>' + show(s) + '</' + tag + '>' : '';
   };
+  /* Un texte de l'app ou de la personne : échappé. Ce que le micro entend est du néerlandais : 'nl'. */
+  const ifText = (x, tag, cls, lang) => inTag(esc, x, tag, cls, lang);
+  /* Une prose du cours : échappée, et ce qu'elle cite déclaré nl-BE (NL.gloss.quoted). */
+  const ifProse = (x, tag, cls) => inTag(NL.gloss.quoted, x, tag, cls);
 
   function sheetHtml() {
     const m = NL.state.meta();
@@ -291,7 +296,7 @@ NL.ui = (function () {
     try { data = JSON.parse(raw); } catch (e) { /* reported below */ }
     const old = NL.state.isOldBackup(data);
     if (NL.state.importAll(data)) {
-      NL.content.refresh(); sheet = null;
+      NL.content.refresh(); NL.srs.fold(); sheet = null;
       if (NL.sync.user) { NL.sync.queueAll(); NL.sync.flush(); }
       render(); toast(old ? t.importedOld : t.imported);
     }
@@ -403,7 +408,7 @@ NL.ui = (function () {
   function onAuth() { if (route === 'compte') go('vandaag'); else render(); }
 
   return {
-    bind, render, go, toast, openSheet, closeSheet, I, card, unitLabel, ifText, copy, onAuth,
+    bind, render, go, toast, openSheet, closeSheet, I, card, unitLabel, ifText, ifProse, copy, onAuth,
     get route() { return route; },
     boot() { const h = fromHash(); if (h) { route = h.r; arg = h.a; } render(); }
   };

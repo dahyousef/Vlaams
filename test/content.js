@@ -5,9 +5,11 @@
    Ce que ces contrôles NE voient PAS : l'idiome, le registre, l'ordre des mots,
    si une phrase vaut la peine d'être apprise, et l'article devant un autre nom
    que le mot drillé. Voir TESTING.md. */
-const fs = require('fs'), path = require('path'), zlib = require('zlib');
+const fs = require('fs'), path = require('path');
 const browser = require('./lib/browser');
-const { raw, owed, at } = require('./lib/prose');
+const spelling = require('./lib/spelling');
+const sequence = require('./lib/sequence');
+const { raw, owed, at, owedTables, has } = require('./lib/prose');
 const tree = require('./lib/tree');
 const ROOT = process.argv[2] || path.join(__dirname, '..');
 
@@ -19,8 +21,7 @@ const NL = B.NL, U = NL.util;
 /* Le cours tel qu'il est écrit, avant la première construction : {naam}, {stad} et
    {bedrijf} y sont encore, et le contrôle 6 compare les jetons. */
 const RAW = raw(NL.content);
-const tokens = s => String(s || '').toLowerCase().replace(/\{[a-z]+\}/g, ' ').split(/[^a-zà-ÿ'’-]+/)
-  .map(t => t.replace(/^[-'’]+|[-'’]+$/g, '')).filter(t => t.length > 1);
+const tokens = spelling.tokens;
 
 NL.state.open().then(() => {
   NL.content.refresh();
@@ -28,59 +29,66 @@ NL.state.open().then(() => {
   console.log('CONTENU — ' + items.length + ' éléments');
 
   /* ======================================================== 1. orthographe */
-  /* Les formes flamandes voulues, une par une, chacune avec sa raison. Sans la
-     raison, cette liste devient l'endroit où l'on enterre les fautes. */
-  const FLEMISH = {
-    asteblieft:    'contraction parlée de « alstublieft »',
-    bancontact:    'le système de paiement belge : un nom propre',
-    da:            'flamand parlé pour « dat », dans « da’s »',
-    hey:           'salutation flamande, pour bonjour comme pour au revoir',
-    jaja:          'redoublement parlé de « ja »',
-    neenee:        'redoublement parlé de « nee »',
-    nie:           'flamand parlé pour « niet »',
-    recyclagepark: 'belgicisme ; le nord dit « milieupark »',
-    spreekte:      'forme dialectale de « spreekt ge », assumée dans la variante flamande'
-  };
-  const TSV = path.join(__dirname, 'data', 'nl-words.txt.gz');
-  if (!fs.existsSync(TSV)) { console.log('FAIL: ' + TSV + ' est absent. Régénérer : node test/tools/build-wordlist.js'); process.exit(1); }
-  const forms = new Set(zlib.gunzipSync(fs.readFileSync(TSV)).toString('utf8').split('\n'));
+  /* Les formes flamandes voulues sont dans test/data/flemish.tsv, une par une, chacune avec
+     sa raison. Sans la raison, cette liste devient l'endroit où l'on enterre les fautes.
+     test/lib/spelling.js lit OpenTaal, les noms par défaut et cette liste. */
+  const S = spelling.open(ROOT, NL);
 
+  /* La variante flamande vient de src/content/be.js, les « on dit aussi » de src/content/also.js :
+     les deux se lisent sur l'élément, que seul le premier listage forme. */
+  const beOf = id => { const it = NL.content.byId(id); return it && it.id === id ? it.be : null; };
+  const alsoOf = id => { const it = NL.content.byId(id); return it && it.id === id ? it.also || [] : []; };
   const texts = [];
   units.forEach(u => {
     (u.words || []).forEach((w, i) => {
       texts.push([w.nl, u.id + ':w' + i]);
-      if (w.be) texts.push([w.be, u.id + ':w' + i + ' (variante)']);
-      (w.also || []).forEach(a => texts.push([a, u.id + ':w' + i + ' (on dit aussi)']));
+      if (beOf(u.id + ':w' + i)) texts.push([beOf(u.id + ':w' + i), u.id + ':w' + i + ' (variante)']);
+      alsoOf(u.id + ':w' + i).forEach(a => texts.push([a, u.id + ':w' + i + ' (on dit aussi)']));
       (w.drills || []).forEach((d, j) => texts.push([d.nl, u.id + ':w' + i + ' phrase ' + (j + 1)]));
     });
     (u.phrases || []).forEach((p, i) => {
       texts.push([p.nl, u.id + ':p' + i]);
-      if (p.be) texts.push([p.be, u.id + ':p' + i + ' (variante)']);
-      (p.also || []).forEach(a => texts.push([a, u.id + ':p' + i + ' (on dit aussi)']));
+      if (beOf(u.id + ':p' + i)) texts.push([beOf(u.id + ':p' + i), u.id + ':p' + i + ' (variante)']);
+      alsoOf(u.id + ':p' + i).forEach(a => texts.push([a, u.id + ':p' + i + ' (on dit aussi)']));
     });
   });
   (NL.content.patterns || []).forEach(g => (g.drills || []).forEach((d, j) => texts.push([d.nl, g.id + ' phrase ' + (j + 1)])));
 
-  /* Le prénom, la commune et l'employeur par défaut ne sont pas du néerlandais. */
-  const NAMES = new Set(Object.keys(NL.content.DEFAULTS).map(k => NL.content.DEFAULTS[k].toLowerCase()));
-  const stem = t => t.replace(/[’']s$/, '');                                // collega’s, auto’s, da’s
-  const known = t => forms.has(t) || NAMES.has(t) || forms.has(stem(t)) || !!FLEMISH[stem(t)] ||
-    (t.indexOf('-') >= 0 && t.split('-').every(p => p.length < 2 || forms.has(p)));   // java-ontwikkelaar
   const unknown = new Map(), used = new Set();
   let count = 0;
   texts.forEach(([text, where]) => tokens(text).forEach(t => {
     count++;
-    if (FLEMISH[stem(t)]) used.add(stem(t));
-    if (!known(t) && !unknown.has(t)) unknown.set(t, where);
+    if (S.flemishOf(t)) used.add(S.flemishOf(t));
+    if (!S.known(t) && !unknown.has(t)) unknown.set(t, where);
   }));
   unknown.forEach((where, t) => ok(false, '« ' + t + ' » n’est pas une forme néerlandaise connue   [' + where +
-    '] — corriger, ou l’inscrire dans FLEMISH avec sa raison'));
+    '] — corriger, ou l’inscrire dans test/data/flemish.tsv avec sa raison'));
   /* Une exception qui ne sert plus ne protège plus rien. */
-  Object.keys(FLEMISH).forEach(t => ok(used.has(t), '« ' + t + ' » est dans FLEMISH mais plus dans le cours : retirer l’exception'));
+  S.flemish.forEach((why, t) => ok(used.has(t), '« ' + t + ' » est dans test/data/flemish.tsv mais plus dans le cours : retirer l’exception'));
   ok(count > 3000, 'only ' + count + ' tokens were checked: the content did not load');
-  ok(NL.content.alsoReport && NL.content.alsoReport.missing.length === 0, 'src/content/also.js : ' + ((NL.content.alsoReport || { missing: ['(table non chargée)'] }).missing.join(', ')) + ' ne correspond à aucun élément du lexique');
-  console.log('  orthographe     ' + count + ' formes vérifiées contre ' + forms.size + ', ' + unknown.size + ' inconnue(s), ' +
-    Object.keys(FLEMISH).length + ' flamandes assumées');
+  console.log('  orthographe     ' + count + ' formes vérifiées contre ' + S.forms.size + ', ' + unknown.size + ' inconnue(s), ' +
+    S.flemish.size + ' flamandes assumées');
+
+  /* Les tables indexées par le néerlandais (TABLES, src/content/index.js) : chacune est chargée,
+     et chacune de ses clés est le néerlandais d'un mot ou d'une phrase du cours, tel que son
+     premier listage l'écrit. Sinon la valeur ne se pose sur rien, et rien ne le dit. */
+  const report = NL.content.tableReport || {};
+  (NL.content.TABLES || []).forEach(t => {
+    const r = report[t.table];
+    ok(!!r, 'src/content/' + t.table + '.js n’est pas chargé : l’inscrire dans SRC (build.sh), après les lexiques');
+    ok(!r || r.missing.length === 0, 'src/content/' + t.table + '.js : ' + (r ? r.missing.join(', ') : '') + ' ne correspond à aucun mot ni aucune phrase du cours');
+  });
+  ok((NL.content.TABLES || []).length > 0, 'NL.content.TABLES est vide ou absent : aucune table n’est contrôlée');
+  /* Ce qu'une table pose, le lexique ne l'écrit plus : écrit aux deux endroits, la table
+     masquerait le lexique sans rien dire. */
+  const MOVED = ['be', 'note', 'also'];
+  const written = [];
+  RAW.units.forEach(u => ['word', 'phrase'].forEach(kind => (u[kind + 's'] || []).forEach((x, i) =>
+    MOVED.forEach(f => { if (x[f] !== undefined && x[f] !== null) written.push(u.id + ':' + kind[0] + i + ' ' + f); }))));
+  ok(written.length === 0, written.length + ' champ(s) écrit(s) au lexique (' + written.slice(0, 4).join(', ') + (written.length > 4 ? ', …' : '') +
+    ') : leur place est la table de src/content qui pose ce champ');
+  console.log('  tables          ' + (NL.content.TABLES || []).map(t => t.table + ' ' + (report[t.table] ? report[t.table].attached : 'absente')).join(', ') +
+    ' ; ' + MOVED.join(', ') + ' hors du lexique');
 
   /* ============================== 2. tout exercice promis se construit */
   /* La séance saute en silence un élément dont l'exercice échoue : un mot peut
@@ -107,27 +115,82 @@ NL.state.open().then(() => {
   });
   /* Un échelon où rien n'est possible retombe sur un exercice de secours : toléré,
      mais compté, et le compte ne peut que baisser. */
-  const HOLLOW_BUDGET = 4;
+  const HOLLOW_BUDGET = 3;
   ok(hollow <= HOLLOW_BUDGET, hollow + ' échelons sans aucun exercice possible, budget ' + HOLLOW_BUDGET + ' — baisser le budget, jamais le lever');
   ok(hollow >= HOLLOW_BUDGET, 'seulement ' + hollow + ' échelons de secours : baisser HOLLOW_BUDGET à ' + hollow + ' pour verrouiller le gain');
   ok(pairs > 5000, 'only ' + pairs + ' exercises were built: the content did not load');
   console.log('  exercices       ' + pairs + ' construits, ' + broken + ' échec(s), ' + hollow + ' échelon(s) de secours');
 
+  /* Les leurres de « Comment le dit-on ici ? » (src/content/decoys.js) : deux formes distinctes par
+     élément, dont aucune n'est une réponse que le cours accepte, pour cet élément ou pour un autre :
+     son néerlandais, ses formes flamandes, ses « on dit aussi » (NL.ex.accepted). Sinon l'exercice
+     compte faux ce qui est juste. Un leurre est faux exprès : l'orthographe ne le lit pas. */
+  ok(typeof NL.ex.accepted === 'function', 'NL.ex.accepted n’est pas exporté : les leurres ne se comparent à rien');
+  const acceptedForms = new Set([].concat(...items.map(x => (NL.ex.accepted || (() => []))(x))));
+  /* Les fautes d'une liste de [id, leurres] : la forme de la valeur, puis chaque leurre accepté. */
+  const decoyFaults = list => [].concat(...list.map(([id, d]) => {
+    const forms = Array.isArray(d) ? d : [];
+    const shape = forms.length === 2 && U.norm(forms[0]) !== U.norm(forms[1]) ? [] : [id + ' : ' + JSON.stringify(d) + ' n’est pas deux formes distinctes'];
+    return shape.concat(forms.filter(f => acceptedForms.has(U.norm(f)) || acceptedForms.has(U.norm(U.bare(f))))
+      .map(f => id + ' : « ' + f + ' » est une réponse que le cours accepte'));
+  }));
+  const planted = decoyFaults([['plant:p0', ['Is da alles?', 'hallo']], ['plant:p1', ['Is dat alle?']]]);
+  ok(planted.length === 3, 'les leurres plantés donnent ' + planted.length + ' faute(s), pas 3 : ' + planted.join(' ; '));
+  const decoyed = items.filter(x => x.decoys);
+  const wrongDecoys = decoyFaults(decoyed.map(x => [x.id, x.decoys]));
+  ok(wrongDecoys.length === 0, wrongDecoys.length + ' leurre(s) fautif(s) : ' + wrongDecoys.slice(0, 3).join(' ; '));
+  console.log('  leurres         ' + decoyed.length + ' élément(s) avec leurs leurres, ' + wrongDecoys.length + ' faute(s)');
+
+  /* Un élément de « Comment le dit-on ici ? » sans leurres écrits tire ses options au hasard, et la
+     bonne se devine. Chacun a les siens, que le genre explanations-be écrit dans src/content/decoys.js. */
+  const undecoyed = items.filter(x => NL.srs.supports(x, 'vlaams') && !x.decoys).map(x => x.id);
+  ok(undecoyed.length === 0, undecoyed.length + ' élément(s) de « Comment le dit-on ici ? » sans leurres écrits : ' + undecoyed.slice(0, 6).join(', '));
+  console.log('  sans leurres    ' + undecoyed.length + ' élément(s) de « Comment le dit-on ici ? » (exigé : 0)');
+
+  /* L'explication d'un élément (NL.ex.explanation : la note d'un mot ou d'une phrase, la règle d'un
+     motif) se lit dans les deux langues d'affichage. Chacun a la sienne : les genres explanations-be
+     et explanations écrivent celles des mots et des phrases dans src/content/notes.js. */
+  const bilingual = x => !!x && has(x.fr) && has(x.en);
+  const unexplained = items.filter(x => !bilingual(NL.ex.explanation(x))).map(x => x.id);
+  ok(unexplained.length === 0, unexplained.length + ' élément(s) sans explication en français et en anglais : ' + unexplained.slice(0, 6).join(', '));
+  console.log('  explications    ' + unexplained.length + ' / ' + items.length + ' élément(s) sans explication dans les deux langues (exigé : 0)');
+
+  /* Une réponse libre se note sur ce qu'elle contient, par le barème de la séance
+     (NL.ex.rubric). L'exemple, montré après « Vérifier », coche chaque besoin. Et chaque
+     besoin a sa réponse manquée (`miss`), qui le manque, lui seul : un besoin que rien ne
+     manque ne note rien, et un besoin que sa réponse manquée coche ne se distingue pas. */
+  ok(typeof NL.ex.rubric === 'function', 'NL.ex.rubric n’est pas exporté : la réponse libre ne se note pas hors de la séance');
+  const rubric = NL.ex.rubric || (() => []);
+  const needName = n => '« ' + NL.gloss.of(n.what, 'fr') + ' »';
+  const openItems = items.filter(it => it.open);
+  let whole = 0, alone = 0;
+  openItems.forEach(it => {
+    const task = it.open, need = task.need || [];
+    const byModel = rubric(task, task.model), lacks = need.filter(n => byModel.indexOf(n.what) < 0);
+    ok(lacks.length === 0, it.id + ' : l’exemple « ' + task.model + ' » ne coche pas ' + lacks.map(needName).join(', '));
+    if (!lacks.length) whole++;
+    need.forEach(n => {
+      if (typeof n.miss !== 'string' || !n.miss) { ok(false, it.id + ' : le besoin ' + needName(n) + ' n’a pas de réponse manquée (`miss`)'); return; }
+      const met = rubric(task, n.miss), hit = met.indexOf(n.what) >= 0, also = need.filter(m => m !== n && met.indexOf(m.what) < 0);
+      ok(!hit, it.id + ' : « ' + n.miss + ' » coche ' + needName(n) + ', le besoin qu’il doit manquer');
+      ok(also.length === 0, it.id + ' : « ' + n.miss + ' » manque aussi ' + also.map(needName).join(', ') + ' : il ne doit manquer que ' + needName(n));
+      if (!hit && !also.length) alone++;
+    });
+  });
+  ok(openItems.length > 0, 'aucune réponse libre dans le cours : le contrôle est creux');
+  console.log('  réponse libre   ' + openItems.length + ' tâches, ' + whole + ' exemples qui cochent tout, ' + alone + ' besoins manqués un à un');
+
   /* ================= 3. une phrase d'exemple n'emprunte pas en avant */
   /* src/content/examples.js s'impose « du vocabulaire déjà rencontré ». Non
      vérifiée, la règle était tenue six fois sur sept. Les mots-outils ne
-     comptent pas : on ne peut pas écrire une phrase sans eux. */
-  const GRAMMAR = new Set(('ik ge gij je jij u hij ze zij we wij het de een is ben bent zijn was heb hebt ' +
-    'heeft had kan kunt kun wil wilt moet mag ga gaat gaan doe doet niet nie geen en of maar want dat dit ' +
-    'die deze er hier daar ook nog al wel te in op van met voor aan bij naar uit om over door tot me mijn ' +
-    'uw zo heel veel wat wie waar hoe nu dan als zich eens even graag ja nee').split(' '));
-  const firstUnit = new Map();
-  units.forEach((u, ui) => (u.words || []).concat(u.phrases || []).forEach(it =>
-    tokens(it.nl).forEach(t => { if (!firstUnit.has(t)) firstUnit.set(t, ui); })));
+     comptent pas : on ne peut pas écrire une phrase sans eux. L'ordre du cours
+     et les mots-outils sont dans test/lib/sequence.js, que les outils de contenu
+     lisent aussi. */
+  const first = sequence.firstUnits(units);
   let ahead = 0, sentences = 0;
   units.forEach((u, ui) => (u.words || []).forEach(w => (w.drills || []).forEach(d => {
     sentences++;
-    if (tokens(d.nl).some(t => !GRAMMAR.has(t) && firstUnit.has(t) && firstUnit.get(t) > ui)) ahead++;
+    if (sequence.ahead(d.nl, ui, first).length) ahead++;
   })));
   const AHEAD_BUDGET = 62;
   ok(ahead <= AHEAD_BUDGET, ahead + ' phrases d’exemple empruntent du vocabulaire à une unité ultérieure, budget ' + AHEAD_BUDGET +
@@ -135,22 +198,132 @@ NL.state.open().then(() => {
   ok(ahead >= AHEAD_BUDGET, 'seulement ' + ahead + ' phrases empruntent en avant : baisser AHEAD_BUDGET à ' + ahead + ' pour verrouiller le gain');
   console.log('  séquence        ' + ahead + ' / ' + sentences + ' phrases empruntent en avant (budget ' + AHEAD_BUDGET + ')');
 
-  /* ======================================================= 4. doublons */
-  /* Un élément enseigné dans deux unités est drillé deux fois en parallèle, et
-     compte deux fois pour le seuil qui ouvre l'unité suivante. La phase 3 en
-     fera des alias ; d'ici là, leur nombre ne peut que baisser. On compare le
-     néerlandais sans casse ni ponctuation, dans un même genre d'élément —
-     jamais l'identifiant, qui change dès qu'on insère un mot. */
-  const seen = new Map();
-  let dupes = 0;
-  items.filter(it => it.unit !== 'eigen' && it.kind !== 'pattern').forEach(it => {
-    const key = it.kind + '|' + U.norm(it.nl);
-    if (seen.has(key)) dupes++; else seen.set(key, it.id);
+  /* Les phrases sourcées, src/content/sourced.js : tirées de Tatoeba (src, le numéro de la
+     phrase) ou écrites pour le cours (src 'gen'), rangées sous le néerlandais du mot tel que son
+     premier listage l'écrit. src/content/examples.js, chargé juste après, les pose sur le mot
+     comme les siennes : les contrôles 1, 3 et 6 et test/dehet.js les lisent donc comme les
+     autres. Ici : chaque clé est un mot du cours qui n'a pas aussi des phrases écrites à la
+     main ; chaque phrase a ses cinq champs, un trou que le texte à trous sait cacher, et aucun
+     des noms par défaut ; chaque phrase de Tatoeba est créditée dans
+     docs/attribution/tatoeba.tsv, et le fichier ne crédite qu'elles ; aucune n'emploie une forme
+     que le cours n'a pas encore enseignée. */
+  const sourced = (NL.content.byDutch || {}).sourced, sr = NL.content.sourcedReport;
+  ok(!!sourced && !!sr, 'src/content/sourced.js n’est pas chargé : l’inscrire dans SRC (build.sh), juste avant src/content/examples.js');
+  ok(!sr || sr.missing.length === 0, 'src/content/sourced.js : ' + (sr ? sr.missing.join(', ') : '') + ' ne correspond à aucun mot du cours');
+  const FIELDS = ['en', 'fr', 'gap', 'nl', 'src'];
+  const line = s => typeof s === 'string' && s.trim() !== '' && !/[\r\n]/.test(s);
+  const credited = [], keys = new Set(), neverTaught = [];
+  let fromSource = 0;
+  RAW.units.forEach((u, ui) => (u.words || []).forEach((w, i) => {
+    if (!sourced || !Object.prototype.hasOwnProperty.call(sourced, w.nl) || keys.has(w.nl)) return;
+    keys.add(w.nl);
+    const where = u.id + ':w' + i + ' « ' + w.nl + ' »';
+    ok(Array.isArray(sourced[w.nl]) && sourced[w.nl].length >= 1 && sourced[w.nl].length <= 2, where + ' : une ou deux phrases dans src/content/sourced.js, pas ' + JSON.stringify(sourced[w.nl]));
+    if (!Array.isArray(sourced[w.nl])) return;
+    ok(JSON.stringify(w.drills || []) === JSON.stringify(sourced[w.nl]), where + ' a des phrases dans src/content/examples.js et dans src/content/sourced.js : les garder à un seul endroit');
+    const own = sequence.forms(w, NL);
+    sourced[w.nl].forEach((d, j) => {
+      fromSource++;
+      const at = where + ' phrase ' + (j + 1);
+      ok(Object.keys(d).sort().join() === FIELDS.join(), at + ' : ses champs sont ' + Object.keys(d).sort().join(', ') + ', pas ' + FIELDS.join(', '));
+      ok((Number.isInteger(d.src) && d.src > 0) || d.src === 'gen', at + ' : src vaut le numéro d’une phrase de Tatoeba ou « gen », pas ' + JSON.stringify(d.src));
+      ok(['nl', 'fr', 'en', 'gap'].every(k => line(d[k])), at + ' : nl, fr, en et gap tiennent chacun sur une ligne, non vide');
+      if (!line(d.nl) || !line(d.gap)) return;
+      const cloze = NL.ex.get('cloze').build(Object.assign({}, NL.content.byId(u.id + ':w' + i), { drills: [d] }));
+      ok(cloze.gap === d.gap && cloze.shown !== d.nl, at + ' : le texte à trous ne sait pas cacher « ' + d.gap + ' » dans « ' + d.nl + ' »');
+      ok(![d.nl, d.fr, d.en].some(s => spelling.named(s, NL)), at + ' : une phrase sourcée n’a ni jeton ni nom par défaut (NL.content.DEFAULTS)');
+      const never = sequence.unmet(d.nl, ui, first, new Set([...own, ...tokens(d.gap)]));
+      if (never.length) neverTaught.push(at + ' : ' + never.join(', '));
+      if (Number.isInteger(d.src)) credited.push(w.nl + '\t' + d.src);
+    });
+  }));
+  const CREDITS = 'word\tnld\tnld_owner\teng\teng_owner\tfra\tfra_owner\tadapted';
+  const creditFile = path.join(ROOT, 'docs', 'attribution', 'tatoeba.tsv');
+  const rows = fs.existsSync(creditFile) ? fs.readFileSync(creditFile, 'utf8').split(/\r?\n/).filter(l => l && l[0] !== '#') : [];
+  ok(rows[0] === CREDITS, 'docs/attribution/tatoeba.tsv manque, ou sa première ligne n’est pas « ' + CREDITS.replace(/\t/g, ' ') + ' »');
+  const cells = rows.slice(1).map(l => l.split('\t'));
+  cells.forEach(c => ok(c.length === 8 && c.every(x => x !== ''), 'docs/attribution/tatoeba.tsv : « ' + c.join(' ') + ' » n’a pas ses huit colonnes remplies'));
+  const inFile = cells.map(c => c[0] + '\t' + c[1]);
+  credited.filter(p => inFile.indexOf(p) < 0).forEach(p => ok(false, 'la phrase Tatoeba ' + p.split('\t')[1] + ' de « ' + p.split('\t')[0] +
+    ' » n’est pas créditée dans docs/attribution/tatoeba.tsv : relancer Merge'));
+  inFile.filter(p => credited.indexOf(p) < 0).forEach(p => ok(false, 'docs/attribution/tatoeba.tsv crédite la phrase ' + p.split('\t')[1] + ' de « ' +
+    p.split('\t')[0] + ' », qui n’est pas dans src/content/sourced.js : relancer Merge'));
+  /* Une phrase sourcée n'emploie, hors des formes de son mot et de son trou, que ce que le cours
+     a enseigné jusqu'à l'unité du mot (#12, récit 39) : pas une forme jamais enseignée, pas même
+     fléchie d'un mot vu (test/lib/sequence.js dit pourquoi). Check le tient phrase par phrase ;
+     ce contrôle le tient ensuite, quand le cours change autour d'elles. Zéro, pas un budget. */
+  ok(neverTaught.length === 0, neverTaught.length + ' phrase(s) sourcée(s) emploient ce que le cours n’a pas encore enseigné à l’unité de leur mot : ' +
+    neverTaught.join(' ; ') + ' — enseigner la forme plus tôt, ou retirer la phrase');
+  /* Une phrase posée dans sourced.js donne au mot les exercices de phrase : une page chargée avec,
+     à la place de sourced.js dans SRC, une table d'une seule phrase pour un mot qui n'en a pas
+     d'écrite à la main, le montre. */
+  const lone = items.find(it => it.kind === 'word' && it.art && it.nl.indexOf('{') < 0 && U.tiles(it.nl).length < 3 && (it.drills || []).every(d => 'src' in d));
+  const seeded = { [lone.nl]: [{ nl: 'Waar is ' + lone.nl + ' nu?', fr: '-', en: '-', gap: U.bare(lone.nl), src: 1 }] };
+  fs.mkdirSync(path.join(ROOT, '.cache'), { recursive: true });
+  const TMP = fs.mkdtempSync(path.join(ROOT, '.cache', 'sourced-'));
+  fs.writeFileSync(path.join(TMP, 'sourced.js'), 'NL.content.byDutch = NL.content.byDutch || {};\nNL.content.byDutch[\'sourced\'] = ' + JSON.stringify(seeded) + ';\n');
+  const seededAt = path.relative(ROOT, path.join(TMP, 'sourced.js')).split(path.sep).join('/');
+  const P = browser.open({ root: ROOT, seed: browser.SEED, skip: [browser.APP],
+    files: browser.sources(ROOT).map(f => (f === 'src/content/sourced.js' ? seededAt : f)) }).NL;
+  const pit = P.content.byId(lone.id);
+  ok(JSON.stringify(pit.drills) === JSON.stringify(seeded[lone.nl]) && P.srs.supports(pit, 'cloze') && P.ex.get('cloze').build(pit).gap === U.bare(lone.nl),
+    'une phrase de src/content/sourced.js ne donne pas à ' + lone.id + ' « ' + lone.nl + ' » son texte à trous');
+  fs.rmSync(TMP, { recursive: true, force: true });
+  console.log('  sourcées        ' + fromSource + ' phrase(s) sur ' + keys.size + ' mot(s), ' + credited.length + ' de Tatoeba créditée(s)');
+
+  /* ========================================================== 4. alias */
+  /* Un mot ou une phrase listé dans deux unités est un seul élément : build() garde le
+     premier listage, dans l'ordre du cours, et fait des suivants ses alias. Sinon il serait
+     drillé deux fois en parallèle, et compterait deux fois pour le seuil qui ouvre l'unité
+     suivante. On compare le néerlandais, jamais l'identifiant, qui change dès qu'on insère
+     un mot. */
+
+  /* Les listages d'un même mot ou d'une même phrase disent la même chose : les mêmes sens
+     dans chaque langue, le même article. Une fois les suivants devenus des alias, seul le
+     premier se montre : ce qu'un alias dirait seul serait perdu sans bruit. Un groupe, c'est
+     le genre d'élément et le néerlandais tel qu'il est écrit, jetons compris, sans casse ni
+     ponctuation. La variante flamande et la remarque ne sont plus au lexique (MOVED, plus
+     haut) : src/content/be.js et src/content/notes.js en tiennent une par élément. */
+  const listings = new Map();
+  RAW.units.forEach(u => ['word', 'phrase'].forEach(kind => (u[kind + 's'] || []).forEach((x, i) => {
+    const key = kind + '|' + U.norm(x.nl);
+    if (!listings.has(key)) listings.set(key, []);
+    listings.get(key).push(Object.assign({}, x, { id: u.id + ':' + kind[0] + i }));
+  })));
+  const senseSet = (x, l) => [...new Set(NL.gloss.senses(x, l))].sort().join(' / ');
+  const orNull = v => (v === undefined ? null : v);
+  let twice = 0, disagree = 0;
+  listings.forEach(group => {
+    if (group.length < 2) return;
+    twice++;
+    const first = group[0];
+    group.slice(1).forEach(x => {
+      const differ = NL.gloss.LANGS.filter(l => senseSet(x, l) !== senseSet(first, l))
+        .map(l => l + ' « ' + NL.gloss.of(x, l) + ' » / « ' + NL.gloss.of(first, l) + ' »')
+        .concat(['art'].filter(k => orNull(x[k]) !== orNull(first[k])));
+      if (differ.length) disagree++;
+      ok(!differ.length, x.id + ' « ' + x.nl + ' » est un alias de ' + first.id + ' et ne dit pas la même chose : ' + differ.join(', '));
+    });
   });
-  const DUPE_BUDGET = 9;
-  ok(dupes <= DUPE_BUDGET, dupes + ' éléments enseignés deux fois, budget ' + DUPE_BUDGET + ' — baisser le budget quand on en retire, jamais le lever');
-  ok(dupes >= DUPE_BUDGET, 'seulement ' + dupes + ' doublons : baisser DUPE_BUDGET à ' + dupes + ' pour verrouiller le gain');
-  console.log('  doublons        ' + dupes + ' (budget ' + DUPE_BUDGET + ')');
+  ok(twice > 0, 'aucun élément listé deux fois : le contrôle des alias ne compare rien');
+  console.log('  alias           ' + twice + ' élément(s) listé(s) deux fois, ' + disagree + ' en désaccord');
+
+  /* Une seule fiche par groupe : le premier listage est l'élément et porte les ids des
+     suivants dans `aliases` ; l'id d'un alias trouve l'élément, pour que ses fiches et ses
+     réponses déjà écrites se lisent comme les siennes. Seul le premier est construit : il
+     n'est servi, compté et ouvert qu'une fois, dans l'unité qui l'enseigne d'abord. */
+  let listed = 0;
+  listings.forEach(group => {
+    listed += group.length;
+    const first = group[0], it = NL.content.byId(first.id), others = group.slice(1).map(x => x.id);
+    ok(!!it && JSON.stringify(it.aliases || []) === JSON.stringify(others),
+      first.id + ' « ' + first.nl + ' » a pour alias ' + JSON.stringify(it && it.aliases) + ', pas ' + JSON.stringify(others));
+    others.forEach(id => ok(NL.content.byId(id) === it,
+      id + ' se lit comme ' + (NL.content.byId(id) || {}).id + ', pas comme son premier listage ' + first.id));
+  });
+  const built = items.filter(it => it.unit !== 'eigen' && it.kind !== 'pattern').length;
+  ok(built === listings.size, built + ' mots et phrases construits pour ' + listings.size + ' distincts : un alias est construit à part');
+  console.log('  une fiche       ' + listed + ' listages, ' + built + ' mots et phrases construits, ' + listings.size + ' distincts');
 
   /* ====================================== 5. chaque id garde son néerlandais */
   /* Les ids sont des positions (« overleven:w3 ») : insérer, retirer ou déplacer un
@@ -177,6 +350,19 @@ NL.state.open().then(() => {
   ['patterns', 'openTasks'].forEach(k => owed(RAW[k], k, '', []).forEach(r => batches.grammaire.push(r)));
   ['register', 'hetRules', 'deRules', 'sheets'].forEach(k => owed(RAW[k], k, '', []).forEach(r => batches.references.push(r)));
   owed(RAW.scenarios, 'scenarios', '', []).forEach(r => batches.scenarios.push(r));
+  /* La note d'un mot vit dans src/content/notes.js, sous le néerlandais de son premier listage :
+     elle va au lot de l'unité qui l'enseigne d'abord. */
+  const unitOf = new Map();
+  RAW.units.forEach(u => ['words', 'phrases'].forEach(k => (u[k] || []).forEach(x => { if (!unitOf.has(x.nl)) unitOf.set(x.nl, u.n); })));
+  const tabled = owedTables(RAW, []);
+  tabled.forEach(r => batches[unitOf.get(r.nl) <= 6 ? 'lexiqueA1' : 'lexiqueA1b'].push(r));
+  ok(tabled.length > 0, 'aucune note lue dans src/content/notes.js : le contrôle 6 ne la voit pas');
+  /* La tâche ouverte d'une phrase vit dans src/content/open.phrases.js : son ask et ses what doivent
+     leur anglais, et chacun se relit par son chemin. */
+  const phraseTasks = Object.keys((NL.content.byDutch || {})['open.phrases'] || {}).length;
+  const phraseProse = tabled.filter(r => r.where.indexOf('byDutch["open.phrases"]') === 0).length;
+  ok(phraseTasks === 0 || phraseProse >= 2 * phraseTasks, phraseTasks + ' tâches de phrase dans src/content/open.phrases.js, ' +
+    phraseProse + ' textes lus : il en faut au moins deux par tâche, son ask et un what');
   const left = [];
   Object.keys(batches).forEach(b => batches[b].filter(r => !r.ok).forEach(r => left.push(b + ' ' + r.where)));
   ok(left.length === 0, 'rien n’est dû : ' + left.length + ' anglais manquent   [' + left.slice(0, 3).join(', ') + ']');
@@ -244,8 +430,27 @@ NL.state.open().then(() => {
     const t = uTag(v.fr);
     ok(v.en.indexOf(t) >= 0, where + ' « ' + v.nl + ' » : « ' + v.en + ' » doit porter « ' + t + ' »');
   });
+  /* Une note qui cite « kunde » à côté d'un « u » (« kunt u ») cite aussi « kunt ge » : « kunde » est « kunt ge »
+     contracté, et c'est le « ge » flamand qui vaut pour u comme pour je. « Kunde » qui remplacerait « kunt u » est
+     l'erreur que #12 corrige (issuecomment-6338329078). */
+  { const cited = s => Array.from(String(s).matchAll(/[«“]([^«»“”]*)[»”]/g), m => m[1]);
+    const says = (q, w) => new RegExp('(^|[^a-zà-ÿ])' + w + '(?![a-zà-ÿ])', 'i').test(q);
+    const wrongKunde = s => { const q = cited(s); return q.some(x => says(x, 'kunde')) && q.some(hasU) && !q.some(x => says(x, 'kunt ge')); };
+    ok(wrongKunde('À l’oral, « kunde » remplace « kunt u ».') && wrongKunde('“Kunde” covers “kunt u”.') &&
+      !wrongKunde('« Kunde » est « kunt ge » contracté, pas « kunt u ».') && !wrongKunde('« Kunde » se dit à l’oral.'),
+      'kunde : la garde doit voir « kunde » cité avec « kunt u » sans « kunt ge », et cela seul');
+    const notes = (NL.content.byDutch || {}).notes || {};
+    let kunde = 0;
+    Object.keys(notes).forEach(nl => ['fr', 'en'].forEach(l => {
+      const s = (notes[nl] || {})[l];
+      if (typeof s !== 'string' || !cited(s).some(x => says(x, 'kunde'))) return;
+      kunde++;
+      ok(!wrongKunde(s), 'la note (' + l + ') de « ' + nl + ' » cite « kunde » et un « u » sans « kunt ge » : « kunde » est « kunt ge » contracté, pas « kunt u » : « ' + s + ' »');
+    }));
+    ok(kunde > 0, 'aucune note ne cite « kunde » : la garde est creuse'); }
   /* Dans l'explication d'un point de grammaire, un <i> dont le texte est le même en français et en anglais est du
-     néerlandais (<i>Morgen ik ga</i>) ; <i>element</i> / <i>élément</i> diffèrent, c'est de la prose. Il porte lang="nl-BE". */
+     néerlandais (<i>Morgen ik ga</i>) ; <i>element</i> / <i>élément</i> diffèrent, c'est de la prose. Il porte class="nl",
+     que NL.gloss.prose déclare nl-BE : le cours n'écrit aucun lang="…". */
   { let seenI = 0;
     /* Chaque <i> sans balise dedans : la balise entière, et son texte, lu dans la balise même. */
     const iTags = s => Array.from(String(s).matchAll(/<i(?:\s[^>]*)?>([^<]*)<\/i>/g), m => ({ tag: m[0], text: m[1] }));
@@ -255,7 +460,7 @@ NL.state.open().then(() => {
       const en = iTags(ex.en).map(i => i.text);
       iTags(ex.fr).forEach(i => {
         seenI++;
-        if (en.indexOf(i.text) >= 0) ok(/^<i\s[^>]*lang="nl-BE"/.test(i.tag), g.id + ' : « ' + i.text + ' » est du néerlandais dans <i> : lui donner lang="nl-BE"');
+        if (en.indexOf(i.text) >= 0) ok(/^<i\s[^>]*class="nl"/.test(i.tag), g.id + ' : « ' + i.text + ' » est du néerlandais dans <i> : lui donner class="nl"');
       });
     });
     ok(seenI > 0, 'aucun <i> dans les explications de grammaire : le contrôle est creux'); }

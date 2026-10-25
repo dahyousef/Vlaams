@@ -8,6 +8,11 @@
       const wiped = NL.state.migrate();
       NL.lang.apply();
       NL.content.refresh();
+      /* Le repli des alias. Un appareil qu'un compte possède le fait à la fin du tirage qui
+         suit (sync.js), sur les fiches de tous les appareils du compte : fait ici, sur ses
+         seules copies, il marquerait le mot replié, et une fiche d'alias plus récente
+         qu'apporte le tirage ne passerait plus. */
+      if (!NL.sync.owned()) NL.srs.fold();
       NL.state.touchDay();
       NL.ui.bind(root);
       NL.ui.boot();

@@ -288,7 +288,7 @@ qu'elle ne voit pas et le dernier passage complet sont dans
 
 ```sh
 node test/smoke.js    "$(pwd)"              # contenu, échelle, exercices, notation, balayage français
-node test/content.js  "$(pwd)"              # orthographe, exercices constructibles, vocabulaire d'une unité ultérieure, doublons
+node test/content.js  "$(pwd)"              # orthographe, exercices constructibles, vocabulaire d'une unité ultérieure, alias
 node test/engine.js   "$(pwd)"              # contenu d'une séance et retour des éléments, horloge en marche
 node test/screens.js  "$(pwd)"              # chaque écran dans quatre états, relu comme du texte
 node test/sim.js      "$(pwd)"              # chaque écran, une séance, un scénario, une série d'écoute
@@ -312,7 +312,7 @@ survit dans le build.
 
 ## État
 
-**Livré** : interface et contenu en français de Belgique (12 unités, 439
+**Livré** : interface et contenu en français de Belgique (12 unités, 430
 éléments, 6 scénarios, 8 antisèches, 9 règles) ; docteur audio et
 enregistre-et-compare pour Opera ; sauvegarde export/import ; personnalisation
 prénom/commune/employeur.
@@ -323,7 +323,7 @@ déverrouillage par frontière contiguë, deux comptes, rencontrés et produits,
 quatre nouveaux types d'exercice — l'intrus, corrige l'erreur, standaard of
 Vlaams, réponse libre notée sur rubrique.
 
-**À venir** : le contenu est encore le plafond. 439 éléments s'épuisent vers le
+**À venir** : le contenu est encore le plafond. 430 éléments s'épuisent vers le
 jour 40. La suite, dans l'ordre : noyau de 1 200 mots par fréquence avec les
 situations intégrées, 400 expressions figées, écrans *Lezen* et *Missions*,
 textes gradués et écoute longue, puis A2 → B2.

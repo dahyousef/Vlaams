@@ -34,7 +34,19 @@ NL.gloss = (function () {
     return typeof v === 'string' ? v : '';
   }
 
-  const pair = g => typeof g === 'string' ? { fr: g } : { fr: g.fr, en: g.en };
+  /* Les langues lues, dans un ordre fixe. Un sens se copie langue par langue d'ici,
+     et une troisième langue est une ligne de plus. */
+  const LANGS = ['fr', 'en'];
+
+  /* Le sens de `x`, dans chaque langue lue qu'il porte : un objet neuf. Un `null`
+     reste (« rien à dire », voir `of`) ; une langue absente ne devient pas une clé. */
+  function meaning(x) {
+    const m = {};
+    LANGS.forEach(l => { if (x && x[l] !== undefined) m[l] = x[l]; });
+    return m;
+  }
+
+  const pair = g => typeof g === 'string' ? { fr: g } : meaning(g);
 
   /* Le sens sans son article : « le pain » → « pain », « the bread » → « bread ».
      Une phrase garde son premier mot, comme U.bareFr. */
@@ -90,14 +102,26 @@ NL.gloss = (function () {
     return U.ratio(U.bare(item.nl), g) > 0.62;
   }
 
-  /* Une prose du cours qui porte des exemples en néerlandais : <span class="ex"> est du néerlandais,
-     et le dit à un lecteur d'écran. C'est ici, et nulle part ailleurs, que cette règle s'applique. */
-  const prose = html => String(html == null ? '' : html).replace(/<span class="ex">/g, '<span class="ex" lang="nl-BE">');
+  /* Une prose du cours qui porte des exemples en néerlandais : <span class="ex">, et toute balise
+     class="nl" (<i class="nl">Morgen ik ga</i>), est du néerlandais, et le dit à un lecteur d'écran.
+     C'est ici, et nulle part ailleurs, que cette règle s'applique : le cours n'écrit aucun lang="…". */
+  const prose = html => String(html == null ? '' : html).replace(/<(\w+) class="(ex|nl)">/g, '<$1 class="$2"' + attr('nl') + '>');
 
-  /* La balise d'une langue lue, pour un lecteur d'écran : la page (NL.lang) comme chaque sens. */
-  const tag = l => l === 'en' ? 'en-GB' : 'fr';
-  /* L'attribut lang d'un sens ou d'un texte montré, espace compris : la langue où il se lit. */
-  const langAttr = x => ' lang="' + tag(langOf(x)) + '"';
+  /* La balise de chaque langue, pour un lecteur d'écran : les langues lues et le néerlandais
+     du cours. C'est la seule table : aucun autre fichier n'écrit lang="…". */
+  const TAGS = { fr: 'fr', en: 'en-GB', nl: 'nl-BE' };
+  /* La balise d'une langue : celle de la page (NL.lang), d'un sens, d'un passage néerlandais. */
+  const tag = l => TAGS[l];
+  /* L'attribut lang d'une langue, espace compris : attr('nl') pour du néerlandais. */
+  const attr = l => ' lang="' + tag(l) + '"';
+  /* L'attribut lang d'un sens ou d'un texte montré : la langue où il se lit. */
+  const langAttr = x => attr(langOf(x));
+  /* Une prose du cours en texte simple (une note, une règle, une consigne), lue par of() et
+     échappée : ce qu'elle cite entre « » ou “ ” est du néerlandais, déclaré nl-BE. Les guillemets
+     et les espaces qui les bordent restent dehors ; une citation vide ne déclare rien. */
+  const QUOTES = /(«\s*)([^«»]*?[^\s«»])(\s*»)|(“\s*)([^“”]*?[^\s“”])(\s*”)/g;
+  const mark = (open, inner, close) => open + '<span' + attr('nl') + '>' + inner + '</span>' + close;
+  const quoted = x => U.esc(of(x)).replace(QUOTES, (m, a, q, b, c, r, d) => a !== undefined ? mark(a, q, b) : mark(c, r, d));
 
-  return { prose, use, current, other, has, langOf, tag, langAttr, of, pair, bare, senses, sameSense, sameMeaning, wordClass, cognate };
+  return { LANGS, TAGS, prose, quoted, use, current, other, has, langOf, tag, attr, langAttr, of, meaning, pair, bare, senses, sameSense, sameMeaning, wordClass, cognate };
 })();

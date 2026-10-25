@@ -7,17 +7,17 @@ NL.content = NL.content || {};
    néerlandaises existent déjà en français, ce qui est un avantage réel. */
 NL.content.sounds = [
   { g: 'eu', ipa: '/ø/', good: true, say: 'Tu l’as déjà : c’est le <b>eu</b> de <i>peu</i>, identique. <span class="ex">deur</span>, <span class="ex">leuk</span>, <span class="ex">beenhouwer</span>. Un anglophone galère des mois là-dessus ; toi, non.' },
-  { g: 'oe', ipa: '/u/', good: true, say: 'C’est le <b>ou</b> français, rien d’autre. <span class="ex">boek</span>, <span class="ex">goed</span>, <span class="ex">zoeken</span>. Ne le lis jamais comme un « oe » français.' },
-  { g: 'u', ipa: '/y/', good: true, say: 'Le <b lang="nl-BE">u</b> de <i>tu</i>, exactement. <span class="ex">nu</span>, <span class="ex">minuut</span>, <span class="ex">uur</span>. Encore un cadeau du français.' },
+  { g: 'oe', ipa: '/u/', good: true, say: 'C’est le <b>ou</b> français, rien d’autre. <span class="ex">boek</span>, <span class="ex">goed</span>, <span class="ex">zoeken</span>. Ne le lis jamais comme un <b>oe</b> français.' },
+  { g: 'u', ipa: '/y/', good: true, say: 'Le <b class="nl">u</b> de <i>tu</i>, exactement. <span class="ex">nu</span>, <span class="ex">minuut</span>, <span class="ex">uur</span>. Encore un cadeau du français.' },
   { g: 'g / ch', ipa: '/ɣ/ doux', say: 'En Flandre c’est le <b>g doux</b> : un souffle au milieu de la bouche, proche de la <i>jota</i> espagnole adoucie — et bien plus près de ton <b>r</b> français que du raclement d’Amsterdam. <span class="ex">goeiedag</span>, <span class="ex">gracht</span>. Si tu as copié des enregistrements du nord, c’est la première chose à désapprendre.' },
-  { g: 'ui', ipa: '/œy/', say: 'Pars du <b>eu</b> de <i>peur</i>, lèvres arrondies, puis glisse vers « i ». <span class="ex">huis</span>, <span class="ex">buiten</span>, <span class="ex">uit</span>. Le français te donne le point de départ ; il ne reste que le glissement.' },
-  { g: 'ij / ei', ipa: '/ɛi/', say: 'Même son, deux orthographes. Proche du <b>è</b> de <i>père</i> qui glisse vers « i ». En Flandre il est plus plat qu’au nord. <span class="ex">wij</span>, <span class="ex">klein</span>, <span class="ex">vrijdag</span>.' },
-  { g: 'h', ipa: '/h/', warn: true, say: 'Le piège francophone numéro un : en néerlandais le <b>h</b> se prononce vraiment, avec un souffle. <span class="ex">huis</span>, <span class="ex">hebben</span>, <span class="ex">honger</span>. Le laisser tomber comme en français rend <i lang="nl-BE">hout</i> (bois) identique à <i lang="nl-BE">oud</i> (vieux).' },
+  { g: 'ui', ipa: '/œy/', say: 'Pars du <b>eu</b> de <i>peur</i>, lèvres arrondies, puis glisse vers un <b>i</b>. <span class="ex">huis</span>, <span class="ex">buiten</span>, <span class="ex">uit</span>. Le français te donne le point de départ ; il ne reste que le glissement.' },
+  { g: 'ij / ei', ipa: '/ɛi/', say: 'Même son, deux orthographes. Proche du <b>è</b> de <i>père</i> qui glisse vers un <b>i</b>. En Flandre il est plus plat qu’au nord. <span class="ex">wij</span>, <span class="ex">klein</span>, <span class="ex">vrijdag</span>.' },
+  { g: 'h', ipa: '/h/', warn: true, say: 'Le piège francophone numéro un : en néerlandais le <b>h</b> se prononce vraiment, avec un souffle. <span class="ex">huis</span>, <span class="ex">hebben</span>, <span class="ex">honger</span>. Le laisser tomber comme en français rend <i class="nl">hout</i> (bois) identique à <i class="nl">oud</i> (vieux).' },
   { g: 'sch', ipa: '/sx/', say: 's suivi du g doux. <span class="ex">school</span>, <span class="ex">schrijven</span>. À la <i>fin</i> d’un mot, c’est juste /s/ : <span class="ex">Belgisch</span>.' },
-  { g: 'w', ipa: '/ʋ/', say: 'Entre le <b>v</b> et le <b>ou</b> français : les lèvres frôlent à peine les dents. <span class="ex">water</span>, <span class="ex">werk</span>. Jamais le « w » anglais.' },
+  { g: 'w', ipa: '/ʋ/', say: 'Entre le <b>v</b> et le <b>ou</b> français : les lèvres frôlent à peine les dents. <span class="ex">water</span>, <span class="ex">werk</span>. Jamais le <b>w</b> anglais.' },
   { g: 'accent tonique', ipa: '—', warn: true, say: 'Le français accentue la <b>dernière</b> syllabe ; le néerlandais accentue presque toujours la <b>première</b>. <span class="ex"><b>va</b>der</span>, <span class="ex"><b>wer</b>ken</span>, <span class="ex"><b>bak</b>ker</span>. Accentuer à la française est ce qui trahit le plus vite un francophone.' },
-  { g: '-en final', ipa: '/ə/', say: 'Le <b>n</b> tombe presque toujours à l’oral : <span class="ex">werken</span> sonne « werke », <span class="ex">lopen</span> sonne « lope ». Écris le n, ne le dis pas.' },
-  { g: 'suppression du t', ipa: '—', say: 'Le flamand rapide mange les t finaux : <span class="ex">niet</span> → « nie », <span class="ex">dat</span> → « da », <span class="ex">het</span> → « ’t ». C’est pour ça que ça semble plus rapide que ça ne l’est.' }
+  { g: '-en final', ipa: '/ə/', say: 'Le <b>n</b> tombe presque toujours à l’oral : <span class="ex">werken</span> sonne « <span class="nl">werke</span> », <span class="ex">lopen</span> sonne « <span class="nl">lope</span> ». Écris le n, ne le dis pas.' },
+  { g: 'suppression du t', ipa: '—', say: 'Le flamand rapide mange les t finaux : <span class="ex">niet</span> → « <span class="nl">nie</span> », <span class="ex">dat</span> → « <span class="nl">da</span> », <span class="ex">het</span> → « <span class="nl">’t</span> ». C’est pour ça que ça semble plus rapide que ça ne l’est.' }
 ];
 
 /* Produis la colonne de gauche. Comprends celle de droite. */
@@ -50,45 +50,45 @@ NL.content.register = [
 NL.content.loans = [
   { nl: 'merci', fr: 'merci', note: 'Le mot normal pour dire merci en Flandre' },
   { nl: 'allez', fr: 'allez', note: 'Ouvre ou ferme une phrase sur deux à l’oral' },
-  { nl: 'plezant', fr: 'plaisant', note: 'Là où le nord dit leuk' },
+  { nl: 'plezant', fr: 'plaisant', note: 'Là où le nord dit « leuk »' },
   { nl: 'ambetant', fr: 'embêtant' },
   { nl: 'sjiek', fr: 'chic' },
   { nl: 'sjans', fr: 'chance' },
   { nl: 'een tas koffie', fr: 'une tasse' },
-  { nl: 'de confituur', fr: 'confiture', note: 'Le nord dit jam' },
+  { nl: 'de confituur', fr: 'confiture', note: 'Le nord dit « jam »' },
   { nl: 'het trottoir', fr: 'trottoir' },
   { nl: 'de paraplu', fr: 'parapluie' },
   { nl: 'de portefeuille', fr: 'portefeuille' },
   { nl: 'de pistolet', fr: 'pistolet', note: 'Le petit pain, gardé du français' },
-  { nl: 'de camion', fr: 'camion', note: 'Flamand parlé ; l’écrit dit vrachtwagen' },
+  { nl: 'de camion', fr: 'camion', note: 'Flamand parlé ; l’écrit dit « vrachtwagen »' },
   { nl: 'het perron', fr: 'perron' },
-  { nl: 'de fourchet', fr: 'fourchette', note: 'Dialecte ; le standard dit vork' },
-  { nl: 'direct', fr: 'direct', note: 'Se dit pour « tout de suite »' }
+  { nl: 'de fourchet', fr: 'fourchette', note: 'Dialecte ; le standard dit « vork »' },
+  { nl: 'direct', fr: 'direct', note: 'Veut dire tout de suite' }
 ];
 
 /* Les faux amis, qui coûtent plus cher que les emprunts ne rapportent. */
 NL.content.faux = [
-  { nl: 'de bril', fr: 'les lunettes', trap: 'pas « brillant »' },
+  { nl: 'de bril', fr: 'les lunettes', trap: 'ne veut pas dire brillant' },
   { nl: 'het kot', fr: 'la piaule / le studio', trap: 'en Belgique, un logement d’étudiant' },
   { nl: 'de tas', fr: 'la tasse OU le sac', trap: 'selon le contexte' },
-  { nl: 'blaffen', fr: 'aboyer', trap: 'rien à voir avec « bluffer »' },
+  { nl: 'blaffen', fr: 'aboyer', trap: 'rien à voir avec bluffer' },
   { nl: 'de wagen', fr: 'la voiture', trap: 'pas un wagon' },
   { nl: 'lopen', fr: 'courir (en Flandre)', trap: 'au nord, ça veut dire marcher' },
-  { nl: 'het bureau', fr: 'le bureau (le meuble)', trap: 'la pièce, c’est het kantoor' },
-  { nl: 'de fabriek', fr: 'l’usine', trap: 'pas « fabrique » au sens large' }
+  { nl: 'het bureau', fr: 'le bureau (le meuble)', trap: 'la pièce, c’est « het kantoor »' },
+  { nl: 'de fabriek', fr: 'l’usine', trap: 'pas une fabrique au sens large' }
 ];
 
 /* Les faux amis d'un anglophone : un néerlandais qui ressemble à de l'anglais et n'en est pas.
    Entièrement en anglais, dans les deux affichages. */
 NL.content.fauxEn = [
-  { nl: 'eventueel', en: 'possibly / if need be', trap: 'looks like “eventually”, which is uiteindelijk' },
-  { nl: 'actueel', en: 'current / topical', trap: 'looks like “actually”, which is eigenlijk' },
-  { nl: 'slim', en: 'clever / smart', trap: 'looks like “slim” (thin), which is dun or slank' },
-  { nl: 'raar', en: 'strange / odd', trap: 'looks like “rare” (uncommon), which is zeldzaam' },
-  { nl: 'de brand', en: 'fire', trap: 'looks like “brand” (a make), which is het merk' },
-  { nl: 'door', en: 'through / by', trap: 'looks like “door”, which is de deur' },
-  { nl: 'bellen', en: 'to ring / to phone', trap: 'looks like “bells”, but it is a verb: to ring someone up' },
-  { nl: 'de map', en: 'folder / file', trap: 'looks like “map”, which is de kaart or de plattegrond' }
+  { nl: 'eventueel', en: 'possibly / if need be', trap: 'looks like eventually, which is “uiteindelijk”' },
+  { nl: 'actueel', en: 'current / topical', trap: 'looks like actually, which is “eigenlijk”' },
+  { nl: 'slim', en: 'clever / smart', trap: 'looks like slim (thin), which is “dun” or “slank”' },
+  { nl: 'raar', en: 'strange / odd', trap: 'looks like rare (uncommon), which is “zeldzaam”' },
+  { nl: 'de brand', en: 'fire', trap: 'looks like brand (a make), which is “het merk”' },
+  { nl: 'door', en: 'through / by', trap: 'looks like door, which is “de deur”' },
+  { nl: 'bellen', en: 'to ring / to phone', trap: 'looks like bells, but it is a verb: to ring someone up' },
+  { nl: 'de map', en: 'folder / file', trap: 'looks like map, which is “de kaart” or “de plattegrond”' }
 ];
 
 /* Pour qui chaque page est écrite : 'fr' pour les francophones, 'en' pour les anglophones, 'all' pour tous. */
@@ -96,22 +96,22 @@ NL.content.anchors = { sounds: 'fr', loans: 'fr', faux: 'fr', fauxEn: 'en', regi
 
 /* Environ 70% des mots het sont prévisibles. Voici les familles. */
 NL.content.hetRules = [
-  { rule: { fr: 'Tous les diminutifs en -je, -tje, -pje', en: 'All diminutives in -je, -tje, -pje' }, ex: 'het meisje, het broodje, het pakje, het zakje', sure: true },
+  { rule: { fr: 'Tous les diminutifs en « -je », « -tje », « -pje »', en: 'All diminutives in “-je”, “-tje”, “-pje”' }, ex: 'het meisje, het broodje, het pakje, het zakje', sure: true },
   { rule: { fr: 'Toutes les langues', en: 'All languages' }, ex: 'het Nederlands, het Frans, het Engels', sure: true },
-  { rule: { fr: 'Les noms en ge-, be-, ver-, ont- sans suffixe', en: 'Nouns in ge-, be-, ver-, ont- without a suffix' }, ex: 'het gebouw, het begin, het verhaal, het ontbijt' },
+  { rule: { fr: 'Les noms en « ge- », « be- », « ver- », « ont- » sans suffixe', en: 'Nouns in “ge-”, “be-”, “ver-”, “ont-” without a suffix' }, ex: 'het gebouw, het begin, het verhaal, het ontbijt' },
   { rule: { fr: 'Les verbes employés comme noms', en: 'Verbs used as nouns' }, ex: 'het eten, het werken, het wandelen', sure: true },
   { rule: { fr: 'Les métaux', en: 'Metals' }, ex: 'het goud, het zilver, het ijzer' },
   { rule: { fr: 'Les points cardinaux', en: 'Points of the compass' }, ex: 'het noorden, het zuiden, het westen', sure: true },
   { rule: { fr: 'Les sports et les jeux', en: 'Sports and games' }, ex: 'het voetbal, het schaken, het tennis' },
   { rule: { fr: 'Les couleurs', en: 'Colours' }, ex: 'het rood, het groen, het blauw', sure: true },
-  { rule: { fr: 'Les noms en -um, -aat, -sel, -isme', en: 'Nouns in -um, -aat, -sel, -isme' }, ex: 'het museum, het resultaat, het deksel' },
+  { rule: { fr: 'Les noms en « -um », « -aat », « -sel », « -isme »', en: 'Nouns in “-um”, “-aat”, “-sel”, “-isme”' }, ex: 'het museum, het resultaat, het deksel' },
   { rule: { fr: 'Les pays, villes et lettres', en: 'Countries, towns and letters' }, ex: 'het mooie {stad}, het grote Brussel' }
 ];
 NL.content.deRules = [
   { rule: { fr: 'TOUS les pluriels, sans exception', en: 'ALL plurals, without exception' }, ex: 'de huizen, de kinderen, de boeken', sure: true },
   { rule: { fr: 'Les personnes et les métiers', en: 'People and professions' }, ex: 'de bakker, de collega, de dokter' },
-  { rule: { fr: 'Les noms en -ing, -heid, -tie, -teit, -schap', en: 'Nouns in -ing, -heid, -tie, -teit, -schap' }, ex: 'de regering, de waarheid, de politie' },
-  { rule: { fr: 'Les noms en -de, -te, -ij', en: 'Nouns in -de, -te, -ij' }, ex: 'de liefde, de hoogte, de bakkerij' },
+  { rule: { fr: 'Les noms en « -ing », « -heid », « -tie », « -teit », « -schap »', en: 'Nouns in “-ing”, “-heid”, “-tie”, “-teit”, “-schap”' }, ex: 'de regering, de waarheid, de politie' },
+  { rule: { fr: 'Les noms en « -de », « -te », « -ij »', en: 'Nouns in “-de”, “-te”, “-ij”' }, ex: 'de liefde, de hoogte, de bakkerij' },
   { rule: { fr: 'Fruits, arbres, fleurs, montagnes, rivières', en: 'Fruit, trees, flowers, mountains, rivers' }, ex: 'de appel, de eik, de roos' },
   { rule: { fr: 'Les chiffres et les lettres employés comme noms', en: 'Numbers and letters used as nouns' }, ex: 'de drie, de a' }
 ];
@@ -207,7 +207,7 @@ NL.content.sheets = [
           S('Ik denk er een beetje anders over.', { fr: 'Je le vois un peu autrement.', en: 'I see it a little differently.' }, { fr: 'La façon flamande de contredire : sous-entendre', en: 'The Flemish way to disagree: understate' }),
           S('Dat klopt, maar...', { fr: 'C’est exact, mais...', en: 'That is right, but...' }),
           S('Ik zou eerder zeggen dat...', { fr: 'Je dirais plutôt que...', en: 'I would rather say that...' }),
-          S('Laten we dat nog eens bekijken.', { fr: 'On va revoir ça.', en: 'Let us look at that again.' }, { fr: 'Poli pour « pas maintenant »', en: 'Polite for “not now”' })
+          S('Laten we dat nog eens bekijken.', { fr: 'On va revoir ça.', en: 'Let us look at that again.' }, { fr: 'Une façon polie de dire pas maintenant', en: 'A polite way to say not now' })
         ]
       },
       {
@@ -275,7 +275,7 @@ NL.content.sheets = [
       {
         h: { fr: 'Le corps', en: 'The body' }, rows: [
           S('Ik kom even terug op uw mail van gisteren.', { fr: 'Je reviens sur votre mail d’hier.', en: 'I am following up on your email from yesterday. (formal)' }),
-          S('In bijlage vindt u het verslag.', { fr: 'Vous trouverez le compte rendu en annexe.', en: 'You will find the report attached. (formal)' }, { fr: 'Tournure flamande ; le nord dit bijgevoegd', en: 'Flemish phrasing; the north says bijgevoegd' }),
+          S('In bijlage vindt u het verslag.', { fr: 'Vous trouverez le compte rendu en annexe.', en: 'You will find the report attached. (formal)' }, { fr: 'Tournure flamande ; le nord dit « bijgevoegd »', en: 'Flemish phrasing; the north says “bijgevoegd”' }),
           S('Kunt u mij laten weten of dat lukt?', { fr: 'Pouvez-vous me dire si ça marche ?', en: 'Could you let me know if that works? (formal)' }),
           S('Alvast bedankt.', { fr: 'Merci d’avance.', en: 'Thanks in advance.' }),
           S('Laat maar weten.', { fr: 'Tiens-moi au courant.', en: 'Let me know.' }, { fr: 'Informel, Teams', en: 'Informal, Teams' })
@@ -290,7 +290,7 @@ NL.content.sheets = [
         ]
       },
       {
-        h: { fr: 'u ou je ?', en: 'u or je?' }, rows: [
+        h: { fr: '<span class="nl">u</span> ou <span class="nl">je</span> ?', en: '<span class="nl">u</span> or <span class="nl">je</span>?' }, rows: [
           S('u — klanten, onbekenden, eerste mail', { fr: 'clients, inconnus, premier mail', en: 'customers, strangers, first email' }),
           S('je — collega’s, na de eerste keer', { fr: 'collègues, après le premier échange', en: 'colleagues, after the first exchange' }),
           S('Zeg gerust je.', { fr: 'Tu peux me tutoyer.', en: 'Feel free to use “je” with me.' }, { fr: 'Quelqu’un te le proposera ; accepte', en: 'Someone will offer it; accept' })
@@ -343,7 +343,7 @@ NL.content.sheets = [
       },
       {
         h: { fr: 'Ce qu’on te demande', en: 'What they ask you' }, rows: [
-          S('Is dat alles?', { fr: 'Ce sera tout ?', en: 'Will that be all?' }, { fr: 'Réponse : Ja, dat is alles, merci', en: 'Reply: Ja, dat is alles, merci' }),
+          S('Is dat alles?', { fr: 'Ce sera tout ?', en: 'Will that be all?' }, { fr: 'Réponse : « Ja, dat is alles, merci »', en: 'Reply: “Ja, dat is alles, merci”' }),
           S('Nog iets anders?', { fr: 'Autre chose ?', en: 'Anything else?' }),
           S('Voor hier of om mee te nemen?', { fr: 'Sur place ou à emporter ?', en: 'Eat in or take away?' }),
           S('Met de kaart of cash?', { fr: 'Carte ou liquide ?', en: 'Card or cash?' }),
@@ -365,9 +365,9 @@ NL.content.sheets = [
     blurb: { fr: 'Les quatre tableaux qui valent la peine d’être dans ta poche.', en: 'The four tables worth keeping in your pocket.' },
     groups: [
       {
-        h: { fr: 'zijn et hebben', en: 'zijn and hebben' }, rows: [
+        h: { fr: '<span class="nl">zijn</span> et <span class="nl">hebben</span>', en: '<span class="nl">zijn</span> and <span class="nl">hebben</span>' }, rows: [
           S('ik ben / ik heb', { fr: 'je suis / j’ai', en: 'I am / I have' }),
-          S('jij bent / jij hebt', { fr: 'tu es / tu as', en: 'you are / you have (informal)' }, { fr: 'En flamand : gij zijt / gij hebt', en: 'In Flemish: gij zijt / gij hebt' }),
+          S('jij bent / jij hebt', { fr: 'tu es / tu as', en: 'you are / you have (informal)' }, { fr: 'En flamand : « gij zijt » / « gij hebt »', en: 'In Flemish: “gij zijt” / “gij hebt”' }),
           S('hij is / hij heeft', { fr: 'il est / il a', en: 'he is / he has' }),
           S('wij zijn / wij hebben', { fr: 'nous sommes / nous avons', en: 'we are / we have' })
         ]

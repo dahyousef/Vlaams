@@ -341,6 +341,31 @@ NL.state.open().then(() => {
   }
 
   /* ------------------------------------------------------------------ */
+  console.log('\n« COMMENT LE DIT-ON ICI ? » POUR UN MOT — à l’échelon 1, s’il a sa forme d’ici');
+  /* Un mot qui a sa forme flamande la rencontre à l'échelon 1, comme une phrase : l'exercice
+     montre le néerlandais standard et propose la première forme de sa liste (« hey » pour hallo,
+     dont la liste est « hey, salut »). Quand cette première forme est le néerlandais même
+     (« ja, jaja » pour ja), il n'y a rien à demander, et l'exercice ne se propose pas. */
+  {
+    fresh();
+    const word = nl => NL.content.allItems().find(i => i.kind === 'word' && i.nl === nl);
+    [['hallo', true], ['natuurlijk', true], ['de vergadering', true], ['ja', false], ['de dokter', false]].forEach(([nl, want]) => {
+      const it = word(nl);
+      if (!it) { ok(false, 'the fixture is gone: no word « ' + nl + ' »'); return; }
+      ok(NL.srs.supports(it, 'vlaams') === want, '« ' + nl + ' » (be « ' + it.be + ' ») ' + (want ? 'cannot carry' : 'carries') + ' « Comment le dit-on ici ? »');
+    });
+    const phrase = NL.content.allItems().find(i => i.nl === 'Is dat alles?');
+    ok(!!phrase && NL.srs.supports(phrase, 'vlaams'), 'the phrase « Is dat alles? » no longer carries « Comment le dit-on ici ? »');
+    ok(NL.srs.RUNGS.word[1].indexOf('vlaams') >= 0, 'word rung 1 offers ' + NL.srs.RUNGS.word[1].join(', ') + ', not « Comment le dit-on ici ? »');
+    const hallo = word('hallo'), seen = {};
+    put(hallo, 1, T0);
+    for (let k = 0; k < 40; k++) seen[NL.srs.exerciseFor(hallo)] = 1;
+    ok(seen.vlaams, 'hallo on rung 1 is asked ' + Object.keys(seen).join(', ') + ', never « Comment le dit-on ici ? »');
+    const words = NL.content.allItems().filter(i => i.kind === 'word' && NL.srs.supports(i, 'vlaams'));
+    console.log('  ' + words.length + ' mots le portent, dont hallo à l’échelon 1 (' + Object.keys(seen).sort().join(', ') + ') ; ni ja ni de dokter');
+  }
+
+  /* ------------------------------------------------------------------ */
   console.log('\nCE QUE LA SPÉCIFICATION NE DIT PAS, ET QUI ARRIVE');
   {
     /* Séance quittée en route, avant le renforcement des rencontres : rien n'est perdu,
@@ -1033,6 +1058,89 @@ NL.state.open().then(() => {
     ok(q2.after === q2.s.length, 'after « je ne peux pas parler » the session said ' + q2.after + ' exercises and served ' + q2.s.length);
     console.log('  budget de 1 à 30 : rien de trop près, annoncé = tenu = servi ; seuls : ' + lone.join(', ') + ' ; à dire + ordinaires : ' + aloud.join(', '));
     console.log('  sans échange : ' + shape(swapped) + ' ; je ne peux pas parler : ' + shape(q1.s) + ', puis ' + shape(q2.s));
+  }
+
+  /* ------------------------------------------------------------------ */
+  console.log('\nUN MOT LISTÉ DANS DEUX UNITÉS — servi une fois');
+  /* « meenemen » est listé dans l'unité 4 (bakker:w22), puis dans l'unité 9 (dedag:w4). Le
+     second listage est un alias : son id trouve le mot. Un compte qui a appris le mot sous
+     les deux ids, avant les alias, les a dus tous les deux ; la séance sert le mot une fois. */
+  {
+    fresh();
+    ['bakker:w22', 'dedag:w4'].forEach(id => put({ id, kind: 'word' }, 3, T0 - DAY));
+    const word = NL.content.byId('bakker:w22');
+    ok(!!word && word.nl === 'meenemen', 'the fixture is wrong: bakker:w22 is ' + (word && word.nl) + ', not meenemen');
+    ok(NL.content.byId('dedag:w4') === word, 'the id dedag:w4 reads as ' + (NL.content.byId('dedag:w4') || {}).id + ', not as the word it lists again, bakker:w22');
+    const c = NL.srs.compose('vandaag');
+    const served = c.due.concat(c.fresh).filter(it => it.nl === 'meenemen').map(it => it.id);
+    ok(served.join() === 'bakker:w22', 'a word due under its two listings is in the session as ' + (served.join(', ') || 'nothing') + ', not once as bakker:w22');
+    console.log('  « meenemen », dû sous bakker:w22 et dedag:w4 : dans la séance ' + served.length + ' fois');
+  }
+
+  /* ------------------------------------------------------------------ */
+  console.log('\nUN MOT LISTÉ DANS DEUX UNITÉS — sa progression passe au premier listage, une fois');
+  /* Avant les alias, « meenemen » s'apprenait sous bakker:w22 et sous dedag:w4. NL.srs.fold()
+     donne au mot la fiche la plus avancée des deux, entière, et le mot est dit si l'une des
+     deux l'a été. Le repli date de la plus récente des fiches qu'il replie, pas de l'instant
+     du repli : une écriture plus récente, faite ailleurs, passe encore devant. Il ne replie
+     qu'une fois : un raté d'après tient, même quand un tirage ramène la fiche de l'alias. */
+  {
+    const fold = () => typeof NL.srs.fold === 'function' ? NL.srs.fold() : 'no NL.srs.fold';
+    fresh();
+    const word = NL.content.byId('bakker:w22');
+    put({ id: 'dedag:w4', kind: 'word' }, 4, T0 + 3 * DAY);
+    const ahead = NL.state.rec('dedag:w4'); ahead.said = true; NL.state.setRec(ahead);
+    const was = Object.assign({}, ahead);
+    /* La fiche du mot, en retard, est la plus récente des deux : ni celle qui gagne, ni l'instant
+       du repli. */
+    B.clock.advance(MIN);
+    put(word, 1, T0 + DAY);
+    const newest = NL.state.rec('bakker:w22').updatedAt;
+    B.clock.advance(HOUR);
+    const n = fold();
+    const r = Object.assign({}, NL.state.rec('bakker:w22'));
+    ok(n === 1, 'fold() with one alias record ahead folded ' + n + ' item(s), not 1');
+    ok(r.stage === 4 && r.due === was.due && r.interval === was.interval && r.reps === was.reps,
+      'after fold() bakker:w22 is at rung ' + r.stage + ', due ' + new Date(r.due).toISOString() + ': not the alias record whole, rung 4, due ' + new Date(was.due).toISOString());
+    ok(r.said === true && r.folded === true, 'after fold() bakker:w22 has said ' + r.said + ' and folded ' + r.folded + ', not both true');
+    ok(r.folded === true && r.base === NL.state.meta().resetAt && r.updatedAt === newest,
+      'fold() wrote bakker:w22 folded ' + r.folded + ', with base ' + r.base + ' and updatedAt ' + r.updatedAt + ': not folded with base = resetAt ' + NL.state.meta().resetAt + ' and updatedAt = the newest write of its group ' + newest + ' (the alias record’s is ' + was.updatedAt + ', now is ' + B.clock.now() + ')');
+    NL.srs.grade(word, false, { ex: 'type' });
+    const lapsed = NL.state.rec('bakker:w22').stage;
+    /* Un tirage ramène la fiche de l'alias, telle que l'ancienne version l'a écrite. */
+    B.clock.advance(MIN);
+    NL.state.setRec(Object.assign({}, was, { updatedAt: B.clock.now() }), true);
+    const again = fold();
+    const r2 = NL.state.rec('bakker:w22');
+    ok(again === 0 && r2.stage === lapsed, 'a second fold() folded ' + again + ' item(s) and moved bakker:w22 from rung ' + lapsed + ' to ' + r2.stage + ': the miss after the first fold did not hold');
+
+    /* À égalité, la fiche du mot reste la sienne ; dit sous l'alias, il est dit. */
+    fresh();
+    put(word, 3, T0 + DAY);
+    put({ id: 'dedag:w4', kind: 'word' }, 3, T0 + DAY);
+    const level = NL.state.rec('dedag:w4'); level.ease = 1.3; level.said = true; NL.state.setRec(level);
+    fold();
+    const r3 = NL.state.rec('bakker:w22');
+    ok(r3.ease === 2.5 && r3.said === true && r3.folded === true,
+      'two records level at rung 3 folded to ease ' + r3.ease + ', said ' + r3.said + ', folded ' + r3.folded + ': not the word’s own record, said under its alias');
+    /* Au même échelon, l'intervalle départage avant la dernière réponse : la fiche de l'alias,
+       à l'intervalle plus long, passe devant celle du mot, plus récemment répondue. */
+    fresh();
+    put(word, 3, T0 + DAY);
+    put({ id: 'dedag:w4', kind: 'word' }, 3, T0 + DAY);
+    B.clock.advance(HOUR);
+    const longer = NL.state.rec('dedag:w4'); longer.interval = 2 * DAY; longer.due = T0 + 2 * DAY; longer.last = B.clock.now() - DAY; NL.state.setRec(longer);
+    const recent = NL.state.rec('bakker:w22'); recent.interval = DAY; recent.last = B.clock.now(); NL.state.setRec(recent);
+    fold();
+    const r4 = NL.state.rec('bakker:w22');
+    ok(r4.interval === 2 * DAY && r4.due === T0 + 2 * DAY && r4.folded === true,
+      'two records level at rung 3, the alias record with the longer interval, folded to interval ' + r4.interval + ' and due ' + new Date(r4.due).toISOString() + ': not the alias record’s, interval ' + 2 * DAY + ' and due ' + new Date(T0 + 2 * DAY).toISOString());
+    /* Sans fiche d'alias, rien à replier : le mot n'est pas marqué. */
+    fresh();
+    put(word, 2, T0 + DAY);
+    const none = fold();
+    ok(none === 0 && !NL.state.rec('bakker:w22').folded, 'fold() with no alias record folded ' + none + ' item(s) and marked bakker:w22 ' + NL.state.rec('bakker:w22').folded);
+    console.log('  « meenemen » : échelon 1, alias à l’échelon 4 → ' + r.stage + ' ; un raté → ' + lapsed + ' ; second repli → ' + r2.stage + ' ; à égalité, facilité ' + r3.ease);
   }
 
   console.log('\n' + checks + ' checks, ' + (fails ? fails + ' FAILED' : 'ENGINE OK'));

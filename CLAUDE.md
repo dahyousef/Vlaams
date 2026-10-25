@@ -37,8 +37,9 @@ behaviour, so no test can fail on the old code: the suite staying green is its c
 A plan runs with `docs/agents/plan-runs/`. Each sitting is a new session started with the
 prompt in `run-controller.md`: never `--resume` a run. The run controller hands one task at
 a time to a task controller and reads only the ledger's status table and rulings, and
-returns of at most 10 lines. Every task in a plan carries `Class: engine` or
-`Class: mechanical`, which sets the models. Design never happens inside an implementer: it
+returns of at most 10 lines. Every task in a plan carries `Class: engine`,
+`Class: mechanical` or, in a one-session run, `Class: fan-out` or `Class: gate`, which
+sets the models. Design never happens inside an implementer: it
 goes to a design sitting (`design-sitting.md`). Phase 3 alone runs as one session, with a
 drafting lane beside the code lane (`one-session.md`); the maintainer decides at its end
 whether that stays.
@@ -53,11 +54,13 @@ whether that stays.
   `vlaams/noaccount` (« continue without an account »). Renaming one orphans every
   database already on a device and every backup already written.
 - The same goes for **field names inside a stored record** — `stage`, `due`, `interval`,
-  `ease`, `reps`, `lapses`, `said`, `retired`, `base`, and `displayLang` in the stored meta.
-  Records are stored and synced whole, so a rename orphans them exactly as a key rename would
-  (a missing `displayLang` means English: renaming it puts every learner back in English
-  without a word). `GLOSSARY.md` says to call a stage a **rung** in prose and in new names;
-  it is not an instruction to rename the stored field.
+  `ease`, `reps`, `lapses`, `said`, `retired`, `base`, `folded`, and `displayLang` in the
+  stored meta. Records are stored and synced whole, so a rename orphans them exactly as a key
+  rename would (a missing `displayLang` means English: renaming it puts every learner back in
+  English without a word; a missing `folded` means a record not yet folded: renaming it folds
+  every word listed in two units again, over the misses made since, ADR 0006). `GLOSSARY.md`
+  says to call a stage a **rung** in prose and in new names; it is not an instruction to
+  rename the stored field.
 - `const`, or `let` where it changes; no optional chaining (`test/smoke.js` checks both).
   Arrows for short helpers and callbacks, `function` declarations for longer named
   functions; existing code is not converted.
@@ -75,6 +78,14 @@ whether that stays.
   exercise never moves the item's rung: a written one, later in the same session, decides.
   « Je ne peux pas parler » lives in the running session and is deliberately not a
   setting. Issue #12 says why, for all three.
+- Six tables under `src/content/` are written by a kind's Merge (`tools/content/merge.js`)
+  from accepted rows: `be.js` (kind `flemish`, whose Merge also adds a line to
+  `test/data/flemish.tsv` for each new form OpenTaal lacks), `sourced.js` (`examples`, which
+  also rewrites `docs/attribution/tatoeba.tsv`, and `examples-gen`), `open.phrases.js`
+  (`open`), `notes.js` and `also.js` (`explanations-be`, `explanations`), and `decoys.js`
+  (`explanations-be`). Each is keyed by an item's Dutch as its first listing writes it,
+  tokens unfilled. Change an entry through its kind's rows, not by hand: a hand edit leaves
+  no row behind it, and the next Merge of that item writes over it.
 
 ## Decisions already taken
 
@@ -91,6 +102,8 @@ sub-issues. `GLOSSARY.md` holds the vocabulary it uses.
 
 - `docs/superpowers/plans/2026-10-12-phase-1-moteur-ecrans-garde-fous.md` — the phase 1
   plan, implemented. Its last sections record why the engine is as it is
+- `docs/superpowers/plans/2026-10-22-phase-3-content-to-b1.md` — the phase 3 plan: the
+  content kit (`tools/content/`) and the kinds that took the course to B1
 - `docs/CONSTATS-2026-10-06.md` — what a week of real study found, and how it was found
 - `TESTING.md` — how this app is tested
 - `ATTRIBUTION.md` — where the Dutch reference data comes from, and why it imposes no licence

@@ -11,7 +11,7 @@
    d'interface.tsv a un côté vide que le contenu n'explique pas, ou lit « undefined ». */
 const fs = require('fs'), path = require('path');
 const browser = require('../lib/browser');
-const { COLLECTIONS, raw, owed, at } = require('../lib/prose');
+const { COLLECTIONS, raw, owed, at, owedTables } = require('../lib/prose');
 const { argsOf } = require('../lib/langs');
 const ROOT = process.argv[2] || path.join(__dirname, '..', '..');
 const OUT = process.argv[3];
@@ -31,10 +31,22 @@ const side = (v, l) => (v && typeof v === 'object') ? v[l] : (l === 'fr' ? v : '
 const GLOSS = /^(units\[\d+\]\.(words|phrases)\[\d+\]|patterns\[\d+\])\.fr$/;
 const SENTENCE = /(\.drills\[\d+\]|scenarios\[\d+\]\.steps\[\d+\]\.(them|you\.choices\[\d+\](\.reply)?))\.fr$/;
 
+/* Un mot ou une phrase listé dans deux unités est un seul élément, construit au premier
+   listage : la glose du second n'a pas de ligne dans glosses.tsv, et test/content.js vérifie
+   qu'elle dit ce que dit le premier. Elle se compte à part. */
+const LISTING = /^units\[(\d+)\]\.(word|phrase)s\[(\d+)\]\.fr$/;
+const isAlias = where => {
+  const m = LISTING.exec(where);
+  const id = m ? RAW.units[+m[1]].id + ':' + m[2][0] + m[3] : null;
+  return !!id && !!NL.content.byId(id) && NL.content.byId(id).id !== id;
+};
+
 NL.state.open().then(() => {
   NL.content.refresh();
   const places = [];
   COLLECTIONS.forEach(k => owed(RAW[k], k, '', places));
+  /* La note d'un mot vit dans src/content/notes.js : son chemin est byDutch.notes["hallo"]. */
+  owedTables(RAW, places);
 
   const files = { 'glosses.tsv': [], 'blind.tsv': [], 'sentences.tsv': [], 'prose.tsv': [], 'interface.tsv': [] };
   /* Les lignes dont un côté est vide sans que le contenu le veuille, ou qui lisent « undefined ». */
@@ -45,9 +57,9 @@ NL.state.open().then(() => {
     files['blind.tsv'].push(line([it.id, it.kind, it.unit, it.nl, it.be, it.fr]));
   });
 
-  let glossPlaces = 0;
+  let glossPlaces = 0, aliasPlaces = 0;
   places.forEach(r => {
-    if (GLOSS.test(r.where)) { glossPlaces++; return; }
+    if (GLOSS.test(r.where)) { if (isAlias(r.where)) aliasPlaces++; else glossPlaces++; return; }
     if (SENTENCE.test(r.where)) {
       const o = at(RAW, r.where.replace(/\.fr$/, ''));
       files['sentences.tsv'].push(line([r.where, o.nl, o.fr, o.en]));
@@ -82,7 +94,7 @@ NL.state.open().then(() => {
     console.log(f + '  ' + files[f].length + ' lignes');
   });
   const sum = files['glosses.tsv'].length + files['sentences.tsv'].length + files['prose.tsv'].length;
-  console.log('glosses + sentences + prose = ' + sum + ' ; owed() liste ' + places.length + ' endroits (' + glossPlaces + ' de gloses)');
+  console.log('glosses + sentences + prose = ' + sum + ' ; owed() liste ' + places.length + ' endroits (' + glossPlaces + ' de gloses, ' + aliasPlaces + ' d’alias)');
   /* Chaque endroit hors gloses donne sa ligne : seules les gloses se comptent de deux côtés. */
   const glosses = files['glosses.tsv'].length;
   if (glosses !== glossPlaces) console.log('ÉCART : glosses.tsv a ' + glosses + ' lignes, owed() ' + glossPlaces + ' endroits de gloses');

@@ -73,9 +73,9 @@ NL.screens.luisteren = (function () {
         '<button class="btn btn-ghost" data-act="slow">' + NL.t.slow + '</button>' +
         '</div>' +
         (S.phase === 'shown'
-          ? '<div class="reveal"><p class="rev-nl" lang="nl-BE">' + esc(c.be || c.nl) + '</p>' +
-          (c.be && U.norm(c.be) !== U.norm(c.nl) ? '<p class="rev-std">' + NL.t.scnStd + ' <span lang="nl-BE">' + esc(c.nl) + '</span></p>' : '') +
-          '<p class="rev-src">' + NL.t.listenFrom + ' &ldquo;' + esc(c.from) + '&rdquo;</p></div>'
+          ? '<div class="reveal"><p class="rev-nl"' + NL.gloss.attr('nl') + '>' + esc(c.be || c.nl) + '</p>' +
+          (c.be && U.norm(c.be) !== U.norm(c.nl) ? '<p class="rev-std">' + NL.t.scnStd + ' <span' + NL.gloss.attr('nl') + '>' + esc(c.nl) + '</span></p>' : '') +
+          '<p class="rev-src">' + NL.t.listenFrom + ' &ldquo;' + NL.gloss.prose(c.from) + '&rdquo;</p></div>'
           : '<p class="listen-hint">' + NL.t.listenNoText + '</p>') +
         '</div>' +
         '<div class="opts">' + S.opts.map((o, i) => {
@@ -88,7 +88,7 @@ NL.screens.luisteren = (function () {
       const sp = S.speech;
       body = '<div class="listen-stage">' +
         '<button class="mic big play" data-act="play" aria-label="' + NL.t.listen + '">' + ICON.speaker(36) + '</button>' +
-        '<p class="rev-nl" lang="nl-BE">' + esc(c.be || c.nl) + '</p>' +
+        '<p class="rev-nl"' + NL.gloss.attr('nl') + '>' + esc(c.be || c.nl) + '</p>' +
         '<p class="rev-en"' + NL.gloss.langAttr(c) + '>' + esc(NL.gloss.of(c)) + '</p>' +
         '<div class="listen-actions"><button class="btn btn-ghost" data-act="slow">' + NL.t.slow + '</button></div>' +
         '</div>' + shadowPanel(sp);
@@ -100,7 +100,7 @@ NL.screens.luisteren = (function () {
       '<div class="rail"><div class="rail-fill" style="width:' + Math.max(pct, 3) + '%"></div></div>' +
       '<span class="pill">' + (S.at + 1) + '/' + S.clips.length + '</span></div>' +
       '<div class="lesson-body"><div class="stage">' +
-      '<div class="kicker"><span class="sub">' + (S.mode === 'begrijpen' ? NL.t.listenUnderstand : NL.t.listenRepeat) + ' &middot; ' + esc(c.from) + '</span>' +
+      '<div class="kicker"><span class="sub">' + (S.mode === 'begrijpen' ? NL.t.listenUnderstand : NL.t.listenRepeat) + ' &middot; ' + NL.gloss.prose(c.from) + '</span>' +
       (S.mode === 'begrijpen' ? NL.t.listenWhatSaid : NL.t.listenRepeatTitle) + '</div>' +
       body + '</div></div>' +
       '<div class="foot"><div class="foot-in">' +
@@ -116,13 +116,13 @@ NL.screens.luisteren = (function () {
     }
     if (sp.phase === 'listening') {
       return '<div class="mic-panel live"><button class="mic big listening" data-act="micstop">' + ICON.mic(32) + '</button>' +
-        '<p class="mic-why">' + NL.t.micListening + '</p>' + NL.ui.ifText(sp.partial, 'p', 'heard') + '</div>';
+        '<p class="mic-why">' + NL.t.micListening + '</p>' + NL.ui.ifText(sp.partial, 'p', 'heard', 'nl') + '</div>';
     }
     if (sp.phase === 'done') {
       return '<div class="mic-panel ' + (sp.ok ? 'good' : 'bad') + '">' +
         '<div class="score-row"><span class="score">' + NL.ex.wordScore(sp.parts) + '</span>' +
         '<span class="score-bar"><span style="width:' + sp.pct + '%"></span></span></div>' +
-        '<p class="word-diff">' + sp.parts.map(p => '<span class="' + (p.ok ? (p.close ? 'w-close' : 'w-ok') : 'w-no') + '">' + esc(p.word) + '</span>').join(' ') + '</p>' +
+        '<p class="word-diff"' + NL.gloss.attr('nl') + '>' + sp.parts.map(p => '<span class="' + (p.ok ? (p.close ? 'w-close' : 'w-ok') : 'w-no') + '">' + esc(p.word) + '</span>').join(' ') + '</p>' +
         '<div class="mic-actions"><button class="btn btn-blue" data-act="mic">' + NL.t.replay + '</button></div></div>';
     }
     /* Un refus s'affiche : sans ça, toucher le micro ne faisait rien, en silence. */

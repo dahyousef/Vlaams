@@ -7,3 +7,4 @@ desktop.ini
 dist/
 .vercel/
 .superpowers/
+.cache/

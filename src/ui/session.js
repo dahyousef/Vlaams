@@ -419,27 +419,42 @@ NL.screens.sessie = (function () {
       : L.close ? NL.t.almost
         : L.source === 'defi' && L.lives <= 0 ? NL.t.defiOut
           : NL.t.wrongTitle;
-    /* Dans « Comment le dit-on ici ? » la variante est la réponse : elle remplace
-       la ligne de réponse, juste ou faux, que la ligne flamande soit réglée ou non.
-       Ailleurs la ligne flamande ne répète ni le standard ni la réponse. */
-    const vl = c.ex === 'vlaams' ? EX.hereLine(it, '', true) : '';
-    const be = vl || (NL.state.meta().showFlemish !== false ? EX.hereLine(it, ans, false) : '');
+    /* Juste, ce que la personne a donné (`given`) est déjà à l'écran : la ligne de
+       réponse qui le répète disparaît. « Ici on dit » ne répète ni le standard ni la
+       réponse, sauf dans « Comment le dit-on ici ? » manqué : la variante y est la
+       réponse, et toute la liste remplace la ligne de réponse. Choisie, ses autres
+       formes restent (« salut » après « hey »). Dans cet exercice, la ligne flamande
+       se montre qu'elle soit réglée ou non : c'est son sujet. */
+    const given = ok ? ex.given(c.task, L) : null;
+    /* Un mot tapé avec son article est juste (`U.typedOk`) : sa forme nue compte aussi, comme dans `hereLine`. */
+    const same = s => U.norm(s) === U.norm(ans);
+    const repeat = given != null && (same(given) || (it && it.kind === 'word' && same(U.bare(String(given).trim()))));
+    const vl = c.ex === 'vlaams' && !repeat ? EX.hereLine(it, '', true) : '';
+    const be = vl || (c.ex === 'vlaams' || NL.state.meta().showFlemish !== false ? EX.hereLine(it, [ans, given], false) : '');
+    /* La langue de la réponse est un champ de l'exercice : du néerlandais, un sens dans sa langue,
+       ou rien quand les deux se mêlent (les paires de « match »). */
+    const ansLang = ex.answers === 'nl' ? NL.gloss.attr('nl') : ex.answers === 'gloss' ? NL.gloss.langAttr(it) : '';
     /* Un autre élément au même sens a été tapé : on dit quel mot était demandé. */
-    /* La réponse est du néerlandais partout, sauf en « recall », un sens dans sa langue, et en « match »,
-       des paires où les deux se mêlent. */
-    const ansLang = c.ex === 'recall' ? NL.gloss.langAttr(it) : c.ex === 'match' ? '' : ' lang="nl-BE"';
     const asked = ok && L.other ? '<p>' + NL.t.askedFor + ' <b' + ansLang + '>' + esc(ans) + '</b></p>' : '';
     const also = it && it.also && it.also.length
-      ? '<p class="v-also">' + NL.t.alsoSaid + ' <span lang="nl-BE">' + esc(it.also.join(', ')) + '</span></p>' : '';
+      ? '<p class="v-also">' + NL.t.alsoSaid + ' <span' + NL.gloss.attr('nl') + '>' + esc(it.also.join(', ')) + '</span></p>' : '';
+    /* Quand l'exercice pose et répond en néerlandais, la réponse ne dit pas ce que l'élément veut dire :
+       le pied le dit, dans la langue où il se lit, juste ou faux. L'intrus répond par un autre mot que
+       l'élément : c'est le sens de ce mot-là. */
+    const meant = ex.asks === 'nl' && ex.answers === 'nl' ? c.task.odd || it : null;
+    const mean = meant ? '<p class="v-mean"' + NL.gloss.langAttr(meant) + '>' + esc(NL.gloss.of(meant)) + '</p>' : '';
+    /* L'explication, sous le sens. « Remets dans l'ordre » montre déjà la règle du motif au-dessus
+       de ses tuiles : le pied ne la redit pas. */
+    const explanation = c.ex === 'order' ? null : EX.explanation(it);
     return '<div class="foot ' + (ok ? 'ok' : 'no') + '"><div class="foot-in">' +
       '<div class="verdict ' + (ok ? 'ok' : 'no') + '">' +
       '<span class="v-icon">' + (ok
         ? '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7"/></svg>'
         : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>') + '</span>' +
       '<div><h5>' + note + '</h5>' +
-      (vl ? '' : asked || (ans ? '<p><b' + ansLang + '>' + esc(ans) + '</b></p>' : '')) +
-      be + also +
-      NL.ui.ifText(it && it.note, 'p', 'v-note') +
+      (vl || repeat ? '' : asked || (ans ? '<p><b' + ansLang + '>' + esc(ans) + '</b></p>' : '')) +
+      be + also + mean +
+      NL.ui.ifProse(explanation, 'p', 'v-note') +
       '</div></div>' +
       '<button class="btn ' + (ok ? 'btn-good' : 'btn-bad') + ' push" data-next="1">' + NL.t.next + '</button>' +
       '</div></div>';

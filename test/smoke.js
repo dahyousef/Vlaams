@@ -11,8 +11,9 @@ const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
 const B = browser.open({
   root: ROOT, seed: browser.SEED, timers: 'real', location: { protocol: 'file:' },
   files: ['src/core/util.js', 'src/core/gloss.js', 'src/core/fr.js', 'src/core/state.js', 'src/core/srs.js', 'src/core/speech.js',
-    'src/core/audio.js', 'src/content/lexicon.a1.js', 'src/content/lexicon.a1b.js', 'src/content/grammar.js',
-    'src/content/open.js', 'src/content/reference.js', 'src/content/scenarios.js', 'src/content/index.js',
+    'src/core/audio.js', 'src/content/lexicon.a1.js', 'src/content/lexicon.a1b.js', 'src/content/be.js', 'src/content/notes.js',
+    'src/content/decoys.js', 'src/content/grammar.js',
+    'src/content/open.js', 'src/content/open.phrases.js', 'src/content/reference.js', 'src/content/scenarios.js', 'src/content/index.js',
     'src/core/lang.js', 'src/ex/index.js']
 });
 const NL = B.NL;
@@ -268,13 +269,16 @@ NL.state.open().then(() => {
   console.log('  syntax          ' + sources.length + ' sources in SRC and ' + copied.length + ' copied to dist/ (' +
     copied.join(', ') + ') from build.sh: ' + (seen ? seen + ' finding(s)' : 'no var, no ?.'));
 
-  /* The language of a shown meaning has one source: NL.gloss.tag names the tag of a reading
-     language, and NL.gloss.langAttr writes the attribute. A `lang="' + …` built by hand, or an
-     en-GB written outside gloss.js, is a second source, and the two drift apart. */
+  /* The language of a shown text has one source: NL.gloss.TAGS names the tag of each language,
+     NL.gloss.attr writes the attribute of a language and NL.gloss.langAttr that of a meaning.
+     #75.2: a lang="…" written in the code, or an en-GB written outside gloss.js, is a second
+     source, and the two drift apart. data-display-lang="…" is not a lang attribute. src/content
+     marks its Dutch with class="nl", which NL.gloss.prose turns into the attribute. */
   ok(sources.indexOf('src/core/gloss.js') >= 0, 'the lang check looks for src/core/gloss.js, which build.sh no longer lists');
   sources.filter(f => f !== 'src/core/gloss.js').forEach(f => {
     const src = read(f);
-    ok(!/[^\w-]lang="'\s*\+/.test(src), f + ': a lang attribute is built by hand; use NL.gloss.langAttr');
+    const written = src.split('\n').map((l, i) => /(?<![\w-])lang="/.test(l) ? i + 1 : 0).filter(Boolean);
+    ok(written.length === 0, f + ':' + written.join(',') + ': writes a lang attribute by hand; use NL.gloss.attr or NL.gloss.langAttr');
     ok(src.indexOf('en-GB') < 0, f + ': en-GB is written outside gloss.js; use NL.gloss.tag');
   });
 
@@ -319,6 +323,25 @@ NL.state.open().then(() => {
     ifTextByHand(src).forEach(m => ok(false, f + ': ' + m + '… writes « the text, if there is any » by hand; use NL.ui.ifText'));
   });
   ok(!('sameSense' in NL.ex), 'NL.ex re-exports sameSense; read it from NL.gloss');
+  /* #75.1. A meaning in the reading languages is copied in one place, NL.gloss.meaning, which
+     reads NL.gloss.LANGS: a third language is then one edit there. `fr: x.fr, en: x.en`
+     written out is a second copy, and it forgets the next language. */
+  const meaningByHand = src => src.match(/(?<![\w$.])(fr|en)\s*:\s*([\w$.]+)\.\1\s*,\s*(?!\1)(fr|en)\s*:\s*\2\.\3(?![\w$])/g) || [];
+  selfTest('meaning by hand', meaningByHand, [
+    ['d = { nl: item.nl, fr: item.fr, en: item.en };', ['fr: item.fr, en: item.en']],
+    ["P.log.push({ who: 'them', nl: c.reply.nl, en: c.reply.en, fr: c.reply.fr });", ['en: c.reply.en, fr: c.reply.fr']],
+    ['x = { fr: t.fr,\n  en: t.en };', ['fr: t.fr,\n  en: t.en']],
+    ['x = { fr: a.fr, en: b.en };', []],
+    ['x = { fr: s, en: e };', []],
+    ['x = { fr: t.fr, nl: t.nl };', []]
+  ]);
+  ok(Array.isArray(NL.gloss.LANGS) && NL.gloss.LANGS.join() === 'fr,en', 'NL.gloss.LANGS is ' + JSON.stringify(NL.gloss.LANGS) + ', not the reading languages fr, en');
+  const meaningOf = x => typeof NL.gloss.meaning === 'function' ? JSON.stringify(NL.gloss.meaning(x)) : 'no NL.gloss.meaning';
+  ok(meaningOf({ nl: 'x', be: 'y', fr: 'a', en: null, note: 'n' }) === '{"fr":"a","en":null}', 'NL.gloss.meaning of an item gives ' + meaningOf({ nl: 'x', be: 'y', fr: 'a', en: null, note: 'n' }) + ', not its fr and en alone, a null kept');
+  ok(meaningOf({ fr: 'a' }) === '{"fr":"a"}', 'NL.gloss.meaning of a text with no en gives ' + meaningOf({ fr: 'a' }) + ', not fr alone');
+  ok(Object.keys(NL.gloss.pair({ fr: 'a' })).join() === 'fr', 'NL.gloss.pair of a text with no en gives the keys ' + Object.keys(NL.gloss.pair({ fr: 'a' })) + ': it is not built on NL.gloss.meaning');
+  sources.filter(f => f !== 'src/core/gloss.js').forEach(f =>
+    meaningByHand(read(f)).forEach(m => ok(false, f + ': ' + m + ' copies a meaning by hand; use NL.gloss.meaning')));
   /* A text is copied in one place, NL.ui.copy (shell.js): outside its block, no source names
      the clipboard or the browser's old copy command. The backup and the error log each wrote
      their own, and the two drifted apart. The block is blanked, not cut, so that every other
@@ -707,14 +730,37 @@ NL.state.open().then(() => {
     });
     NL.gloss.use(was);
 
-    /* « Comment le dit-on ici ? » : une phrase face à deux mots isolés se devine. */
-    let mixed = 0, vl = 0;
-    all.filter(i => i.kind === 'phrase' && i.be && UU.norm(i.be) !== UU.norm(i.nl)).forEach(it => {
-      const t = NL.ex.get('vlaams').build(it); vl++;
-      const kinds = t.opts.filter(o => !o.ok).map(o => (all.find(x => x.be === o.label) || {}).kind);
-      if (kinds.some(k => k !== 'phrase')) mixed++;
+    /* « Comment le dit-on ici ? » : une phrase face à deux mots isolés se devine, un mot face à deux
+       phrases aussi, une bonne option seule à porter un article, ou seule à n'en pas porter, aussi
+       (« een pintje » face à « hey » et « toe »), et un leurre peut être juste : une forme que
+       l'élément accepte (« salut », qui ouvre la liste de tot ziens, est aussi à hallo), ou celle
+       d'un élément au même sens (goeiendag face à hallo). Seuls les leurres tirés au hasard le
+       peuvent : ceux qu'on écrit (src/content/decoys.js), test/content.js les lit. Chaque élément
+       est donc tiré sans les siens, comme un mot à soi, qui n'en a jamais : le contrôle ne se vide
+       pas quand la table se remplit. Un leurre tiré est la forme que l'exercice propose pour un
+       autre élément qui le porte (NL.srs.supports), la première de sa liste. Soixante tirages par
+       élément : hallo a une chance sur sept de tirer « salut » à chacun. */
+    let stray = 0, right = 0, alone = 0, vl = 0;
+    const firstBe = x => NL.content.beVariants(x)[0];
+    const art = f => UU.norm(UU.bare(f)) !== UU.norm(f);
+    all.filter(i => NL.srs.supports(i, 'vlaams')).forEach(it => {
+      const mine = NL.ex.accepted(it), key = it.kind === 'word' ? f => UU.norm(UU.bare(f)) : UU.norm;
+      const asOwn = Object.assign({}, it, { decoys: null });
+      for (let k = 0; k < 60; k++) {
+        const t = NL.ex.get('vlaams').build(asOwn); vl++;
+        const good = t.opts.find(o => o.ok), bad = t.opts.filter(o => !o.ok);
+        if (bad.every(o => art(o.label) !== art(good.label))) alone++;
+        bad.forEach(o => {
+          const from = all.filter(x => x.id !== it.id && firstBe(x) === o.label);
+          const offered = from.filter(x => NL.srs.supports(x, 'vlaams'));
+          if (!offered.length || offered.some(x => x.kind !== it.kind)) stray++;
+          if (mine.indexOf(key(o.label)) >= 0 || from.some(x => NL.gloss.sameMeaning(x, it))) right++;
+        });
+      }
     });
-    ok(mixed === 0, 'standaard/Vlaams paired a sentence with single-word distractors ' + mixed + ' of ' + vl + ' times');
+    ok(stray === 0, 'standaard/Vlaams gave an item a distractor that is not the form the exercise offers another item of its kind, ' + stray + ' times in ' + vl);
+    ok(right === 0, 'standaard/Vlaams offered a right answer as a wrong one ' + right + ' times in ' + vl + ': a form the item accepts, or the form of an item with the same meaning');
+    ok(alone === 0, 'standaard/Vlaams offered the right answer as the only option with an article, or the only one without, ' + alone + ' times in ' + vl);
     console.log('  ' + built + ' QCM construits, deuxième bonne réponse parmi les leurres : ' + second);
     ok(second === 0, 'a distractor was another correct answer, ' + second + ' times (e.g. ' + example + ')');
   }

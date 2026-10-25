@@ -6,9 +6,10 @@
      const tree = require('./lib/tree');
      tree.visit(v, fn, key, where)    chaque nœud, avant ses enfants : fn(nœud, clé, chemin)
      tree.rewrite(v, fn, key, where)  chaque feuille remplacée par fn(feuille, clé, chemin) ; garder ce qu'il rend
-     tree.visitCourse(C, fn)          visit sur chaque collection du cours
-     tree.rewriteCourse(C, fn)        rewrite sur chaque collection, remise à sa place */
-const { COLLECTIONS } = require('./prose');
+     tree.visitCourse(C, fn)          visit sur chaque collection du cours, puis sur ses tables de prose
+     tree.rewriteCourse(C, fn)        rewrite sur chaque collection et chaque table de prose, remises à leur place
+     tree.visitTables(C, fn)          visit sur chaque valeur des tables rangées par le néerlandais */
+const { COLLECTIONS, proseTables, tablePath } = require('./prose');
 
 /* Chaque nœud, avant ses enfants : fn(nœud, clé, chemin). fn peut changer le nœud. */
 function visit(v, fn, key, where) {
@@ -27,8 +28,28 @@ function rewrite(v, fn, key, where) {
 }
 
 /* Le cours entier : visit ou rewrite sur chaque collection, sa clé pour clé et pour début
-   de chemin (units[3].words[0].fr). rewriteCourse remet chaque collection à sa place. */
-const visitCourse = (C, fn) => COLLECTIONS.forEach(k => visit(C[k], fn, k, k));
-const rewriteCourse = (C, fn) => COLLECTIONS.forEach(k => { C[k] = rewrite(C[k], fn, k, k); });
+   de chemin (units[3].words[0].fr), puis sur chaque valeur des tables de prose (proseTables,
+   test/lib/prose.js : la note d'un mot vit dans src/content/notes.js), le champ que la table
+   pose pour clé et byDutch.notes["hallo"] pour chemin. rewriteCourse remet chaque collection et
+   chaque valeur à sa place. */
+const eachValue = (C, tables, fn) => tables.forEach(t => {
+  const tb = (C.byDutch || {})[t.table] || {};
+  Object.keys(tb).forEach(k => fn(tb, k, t.field, tablePath(t.table, k)));
+});
+const visitCourse = (C, fn) => {
+  COLLECTIONS.forEach(k => visit(C[k], fn, k, k));
+  eachValue(C, proseTables(C), (tb, k, field, where) => visit(tb[k], fn, field, where));
+};
+const rewriteCourse = (C, fn) => {
+  COLLECTIONS.forEach(k => { C[k] = rewrite(C[k], fn, k, k); });
+  eachValue(C, proseTables(C), (tb, k, field, where) => { tb[k] = rewrite(tb[k], fn, field, where); });
+};
 
-module.exports = { visit, rewrite, visitCourse, rewriteCourse };
+/* Les tables rangées par le néerlandais (src/content/<table>.js, NL.content.TABLES) : visit sur
+   chaque valeur, le champ que la table pose sur l'élément pour clé (be, note…) et
+   byDutch.be["hallo"] pour chemin. visit sur NL.content passe aussi par ces valeurs, mais sous
+   le néerlandais de l'élément pour clé : une suite qui cherche un champ par son nom appelle
+   visitTables. */
+const visitTables = (C, fn) => eachValue(C, C.TABLES || [], (tb, k, field, where) => visit(tb[k], fn, field, where));
+
+module.exports = { visit, rewrite, visitCourse, rewriteCourse, visitTables };

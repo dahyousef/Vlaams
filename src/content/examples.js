@@ -13,7 +13,12 @@
    - du flamand courant, pas du néerlandais de manuel : « ge » et « gij » à leur
      place, « hesp » plutôt que « ham », « pintje » plutôt que « bier » ;
    - court (quatre à huit mots), du vocabulaire déjà rencontré ;
-   - {stad} et {bedrijf} sont remplacés par les réponses de la personne. */
+   - {stad} et {bedrijf} sont remplacés par les réponses de la personne.
+
+   Les phrases de src/content/sourced.js, tirées de Tatoeba ou écrites à la demande du
+   mainteneur, suivent leurs propres règles : la phrase telle que Tatoeba l'écrit, sans
+   « je » changé en « ge », ni jeton. Ce fichier les pose sur le mot qui n'a pas de phrase
+   ici. */
 (function () {
   'use strict';
   const S = (nl, g, gap) => ({ nl, ...NL.gloss.pair(g), gap });
@@ -445,13 +450,19 @@
   };
 
   /* Les phrases s'accrochent aux mots par leur forme exacte, article compris :
-     si un mot est renommé dans le lexique, sa phrase ne suit pas en silence. */
+     si un mot est renommé dans le lexique, sa phrase ne suit pas en silence. Celles de
+     src/content/sourced.js aussi, sous le même néerlandais ; un mot qui a les siennes ici
+     garde celles d'ici, et test/content.js le refuse. */
   let missing = [];
+  const SOURCED = (NL.content.byDutch || {}).sourced || null;
+  const has = (t, nl) => Object.prototype.hasOwnProperty.call(t, nl);
   NL.content.units.forEach(u => (u.words || []).forEach(w => {
     if (EX[w.nl]) w.drills = EX[w.nl];
+    else if (SOURCED && has(SOURCED, w.nl)) w.drills = SOURCED[w.nl];
   }));
-  Object.keys(EX).forEach(nl => {
-    if (!NL.content.units.some(u => (u.words || []).some(w => w.nl === nl))) missing.push(nl);
-  });
+  const listed = nl => NL.content.units.some(u => (u.words || []).some(w => w.nl === nl));
+  Object.keys(EX).forEach(nl => { if (!listed(nl)) missing.push(nl); });
   NL.content.exampleReport = { attached: Object.keys(EX).length - missing.length, missing };
+  const lost = SOURCED ? Object.keys(SOURCED).filter(nl => !listed(nl)) : [];
+  NL.content.sourcedReport = SOURCED ? { attached: Object.keys(SOURCED).length - lost.length, missing: lost } : null;
 })();

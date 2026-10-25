@@ -64,10 +64,13 @@ NL.srs = (function () {
      hasard (test/pace.js). Celle d'une phrase ou d'une expression se range en
      tuiles : les phrases empruntent donc « écrire » à l'échelon 4, et une
      règle de grammaire n'y garde qu'« écrire ». « Dis-le » reste où il était. */
+  /* « Comment le dit-on ici ? » vient à l'échelon 1 d'un mot comme d'une phrase : un mot qui a
+     sa forme flamande la rencontre là, quand la première forme de sa liste n'est pas son
+     néerlandais (supports). */
   const RUNGS = {
     word: [
       ['pick', 'recall'],
-      ['article', 'intrus', 'dictation'],
+      ['article', 'intrus', 'dictation', 'vlaams'],
       ['dictation', 'type'],
       ['type', 'dictation', 'speak'],
       ['type', 'cloze', 'dictation'],
@@ -163,7 +166,12 @@ NL.srs = (function () {
     const words = NL.util.tiles(carrier).length;
     switch (name) {
       case 'article': return !!item.art;
-      case 'vlaams': return !!item.be && NL.util.norm(item.be) !== NL.util.norm(item.nl);
+      /* L'exercice propose la première forme flamande de l'élément : elle doit dire autre chose
+         que le néerlandais standard. « ja, jaja » pour ja n'a rien à demander. */
+      case 'vlaams': {
+        const first = NL.content.beVariants(item)[0], bare = item.kind === 'word' ? NL.util.bare : String;
+        return !!first && NL.util.norm(bare(first)) !== NL.util.norm(bare(item.nl));
+      }
       case 'bank': case 'cloze': case 'order': case 'corrige': return words >= 3;
       case 'open': return !!item.open;
       case 'intrus': return item.kind === 'word' && !!item.art;
@@ -287,15 +295,53 @@ NL.srs = (function () {
       .map(x => x.it);
   }
 
+  /* Les comptes portent sur les éléments, comme dueItems : la fiche d'un alias reste
+     en mémoire, inerte, et celle d'un élément retiré du cours aussi ; aucune ne compte. */
   function counts() {
     const now = Date.now();
-    let due = 0, said = 0, retired = 0;
-    NL.state.allRecs().forEach(r => {
+    let due = 0, said = 0, retired = 0, seen = 0;
+    NL.content.allItems().forEach(it => {
+      const r = NL.state.rec(it.id);
+      if (!r) return;
+      seen++;
       if (r.retired) { retired++; return; }
       if (r.due <= now) due++;
       if (r.said) said++;
     });
-    return { due, said, retired, seen: NL.state.seenCount() };
+    return { due, said, retired, seen };
+  }
+
+  /* ---------------- alias ---------------- */
+  /* Un mot ou une phrase listé dans deux unités est un seul élément, celui du premier
+     listage (content/index.js). Avant, il s'apprenait aussi sous l'id du second : cette
+     progression-là passe à l'élément, une fois. La fiche la plus avancée du groupe gagne,
+     entière — échelon, puis retirée, puis intervalle, puis dernière réponse ; à égalité,
+     celle de l'élément —, car son échéance, son intervalle et sa facilité vont ensemble.
+     Dit à voix haute sous l'un des ids, l'élément est dit. La fiche écrite porte `folded` :
+     une fiche d'alias qu'un tirage ramène ensuite ne repasse plus, et un raté d'après
+     tient. Elle part au serveur et descend de la remise à zéro en vigueur (`base`,
+     ADR 0006), comme une réponse, mais elle date de la plus récente des fiches qu'elle
+     replie, pas de l'instant du repli : une écriture plus récente, faite ailleurs, passe
+     encore devant elle. Les fiches d'alias restent où elles sont, inertes. Appelé là où les
+     fiches arrivent en bloc : au chargement d'un appareil qu'aucun compte ne possède, à la
+     fin d'un tirage, après une restauration. Rend le nombre d'éléments repliés. */
+  const FOLD_RANK = ['stage', 'retired', 'interval', 'last'];
+  const ahead = (a, b) => (FOLD_RANK.map(k => (+a[k] || 0) - (+b[k] || 0)).find(d => d !== 0) || 0) > 0;
+  function fold() {
+    let n = 0;
+    NL.content.allItems().forEach(it => {
+      if (!it.aliases) return;
+      const own = NL.state.rec(it.id);
+      if (own && own.folded) return;
+      const others = it.aliases.map(id => NL.state.rec(id)).filter(Boolean);
+      if (!others.length) return;
+      const group = (own ? [own] : []).concat(others);
+      const win = group.reduce((best, r) => ahead(r, best) ? r : best);
+      const newest = Math.max(...group.map(r => r.updatedAt || 0));
+      NL.state.setRec(Object.assign({}, win, { id: it.id, kind: it.kind, said: group.some(r => !!r.said), folded: true }), false, newest);
+      n++;
+    });
+    return n;
   }
 
   /* ---------------- ce qui résiste ---------------- */
@@ -314,9 +360,11 @@ NL.srs = (function () {
       if (!item) return;
       /* Un refus de la reconnaissance vocale ne dit rien de la mémoire. */
       if (l.ex === 'speak') return;
-      const x = by.get(l.id) || { item, wrong: 0, right: 0, last: 0 };
+      /* Groupé par élément, pas par id : une réponse écrite sous l'id d'un alias compte
+         pour l'élément qu'il liste. */
+      const x = by.get(item.id) || { item, wrong: 0, right: 0, last: 0 };
       if (l.ok) x.right++; else { x.wrong++; x.last = Math.max(x.last, l.t); }
-      by.set(l.id, x);
+      by.set(item.id, x);
     });
     return [...by.values()].filter(x => x.wrong > 0).sort((a, b) => b.wrong - a.wrong || b.last - a.last);
   }
@@ -477,7 +525,7 @@ NL.srs = (function () {
   return {
     RUNGS, STEP, PACE, MAX_STAGE, MAX_TASKS, PRODUCE, NEW_SHARE, NEW_MIN, NEW_MAX, TIER_MAX, RETIRE_AT,
     maxRung, pace, exerciseFor, firstAloud, needsVoice, supports, grade, seed, isSeen, stageOf, atTop,
-    dueItems, counts, freshItems, compose, plan, unitSpan, mistakes, recOf, budgetLeft, spend,
+    dueItems, counts, fold, freshItems, compose, plan, unitSpan, mistakes, recOf, budgetLeft, spend,
     SECOND_GAP, apart, lace
   };
 })();

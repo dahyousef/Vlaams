@@ -48,10 +48,10 @@
       html += '<h3 class="sec">' + t.morepractice + '</h3><div class="cards">';
       html += defiTile(m);
       const scn = (NL.content.scenarios || []).filter(s => (m.scenariosDone || []).indexOf(s.id) < 0)[0] || NL.content.scenarios[0];
-      html += tile(scn.icon, NL.gloss.of(scn.title), NL.gloss.of(scn.place), 'scn', scn.id);
+      html += tile(scn.icon, NL.gloss.prose(NL.gloss.of(scn.title)), NL.gloss.of(scn.place), 'scn', scn.id);
       html += tile('\u{1F3A7}', t.listenTitle, t.listenUnderstandSub, 'go', 'luisteren');
       const sheet = NL.content.sheets[(m.doneToday || 0) > 0 ? 1 : 0];
-      html += tile(sheet.icon, NL.gloss.of(sheet.title), NL.gloss.of(sheet.blurb), 'sheetid', sheet.id);
+      html += tile(sheet.icon, NL.gloss.prose(NL.gloss.of(sheet.title)), NL.gloss.of(sheet.blurb), 'sheetid', sheet.id, NL.gloss.quoted);
       html += '</div></div>';
       return html;
     },
@@ -78,10 +78,13 @@
   }
 
   const stat = (n, l) => '<div class="stat-box"><div class="s-n">' + n + '</div><div class="s-l">' + esc(l) + '</div></div>';
-  const tile = (icon, title, sub, key, val) =>
+  /* Une tuile. Son titre est du HTML : un texte de NL.t, ou un titre du cours passé par NL.gloss.prose.
+     Sa seconde ligne est montrée par `show` : échappée, ou NL.gloss.quoted ou NL.gloss.prose pour une
+     prose du cours ou de NL.t. */
+  const tile = (icon, title, sub, key, val, show) =>
     '<button class="tile-card" data-' + key + '="' + esc(val) + '">' +
     '<span class="tc-icon">' + icon + '</span>' +
-    '<span class="tc-body"><b>' + esc(title) + '</b><i>' + esc(sub) + '</i></span>' +
+    '<span class="tc-body"><b>' + title + '</b><i>' + (show || esc)(sub) + '</i></span>' +
     '<span class="tc-cta">›</span></button>';
 
   /* ---------------------------------------------------- Parcours */
@@ -106,16 +109,16 @@
           '<div class="uc-head">' +
           '<span class="uc-icon">' + u.icon + '</span>' +
           '<div class="uc-title"><span class="eyebrow">' + t.unitOne(u.n) + ' · ' + u.level + ' · ' + trackName(u.track) + '</span>' +
-          '<h2>' + esc(NL.gloss.of(u.name)) + '<i class="uc-nl" lang="nl-BE">' + esc(u.nlName || '') + '</i></h2></div>' +
+          '<h2>' + esc(NL.gloss.of(u.name)) + '<i class="uc-nl"' + NL.gloss.attr('nl') + '>' + esc(u.nlName || '') + '</i></h2></div>' +
           '<span class="uc-pct">' + p.met + '/' + p.total + '</span>' +
           '</div>' +
-          '<p class="uc-blurb">' + esc(NL.gloss.of(u.blurb)) + '</p>' +
+          '<p class="uc-blurb">' + NL.gloss.quoted(u.blurb) + '</p>' +
           '<p class="muted small">' + t.unitCounts(p.met, p.produce, p.total) + '</p>' +
           /* Le seuil est un compte à rebours, pas un mystère. */
           (open && p.toOpen > 0 && u !== NL.content.units[NL.content.units.length - 1]
             ? '<p class="uc-gate">' + t.unitGate(p.toOpen) + '</p>' : '') +
           (g.length ? '<div class="uc-gram">' + g.map(x =>
-            '<button class="gram-chip" data-act="gram" data-id="' + x.id + '">' + esc(NL.gloss.of(x.title)) + '</button>').join('') + '</div>' : '') +
+            '<button class="gram-chip" data-act="gram" data-id="' + x.id + '">' + NL.gloss.prose(NL.gloss.of(x.title)) + '</button>').join('') + '</div>' : '') +
           (open
             ? '<button class="btn btn-blue" data-unit="' + u.id + '">' + (p.met ? t.unitPractise : t.unitStart) + '</button>'
             : '<p class="uc-lock">' + t.unitLocked(u.n - 1) + '</p>') +
@@ -127,10 +130,10 @@
       if (d.unit) { NL.screens.sessie.begin(d.unit); NL.ui.go('sessie'); return; }
       if (d.act === 'gram') {
         const g = (NL.content.patterns || []).find(x => x.id === el.dataset.id);
-        if (g) NL.ui.openSheet({ custom: NL.ui.card(esc(NL.gloss.of(g.title)),
-          '<p class="rule">' + esc(NL.gloss.of(g.rule)) + '</p><div class="explain">' + NL.gloss.prose(NL.gloss.of(g.explain)) + '</div>' +
+        if (g) NL.ui.openSheet({ custom: NL.ui.card(NL.gloss.prose(NL.gloss.of(g.title)),
+          '<p class="rule">' + NL.gloss.quoted(g.rule) + '</p><div class="explain">' + NL.gloss.prose(NL.gloss.of(g.explain)) + '</div>' +
           '<div class="ex-list">' + g.drills.slice(0, 3).map(d2 =>
-            '<button class="ex-row" data-say="' + esc(d2.nl) + '"><b lang="nl-BE">' + esc(d2.nl) + '</b><i>' + esc(NL.gloss.of(d2)) + '</i></button>').join('') + '</div>',
+            '<button class="ex-row" data-say="' + esc(d2.nl) + '"><b' + NL.gloss.attr('nl') + '>' + esc(d2.nl) + '</b><i' + NL.gloss.langAttr(d2) + '>' + esc(NL.gloss.of(d2)) + '</i></button>').join('') + '</div>',
           '<button class="btn btn-ghost wide" data-close="1">' + t.close + '</button>') });
       }
     }
@@ -161,7 +164,7 @@
         tile('\u{1F4CB}', t.sheetsEyebrow, t.sheetsTitle, 'go', 'spiek') +
         tile('\u{1F1E7}\u{1F1EA}', t.regEyebrow, t.regTitle, 'go', 'register') +
         tile('\u{1F444}', t.soundsEyebrow, t.soundsTitle, 'go', 'klanken') +
-        tile('\u{1F517}', 'de / het', t.dehetTitle, 'go', 'dehet') +
+        tile('\u{1F517}', '<span' + NL.gloss.attr('nl') + '>' + 'de / het' + '</span>', t.dehetTitle, 'go', 'dehet', NL.gloss.prose) +
         tile('\u{1F50A}', t.docEyebrow, t.docTitle, 'go', 'doctor') +
         '</div>' +
 

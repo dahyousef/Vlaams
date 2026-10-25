@@ -215,10 +215,12 @@ NL.state = (function () {
 
   /* ---- SRS records ---- */
   const rec = id => mem.srs.get(id) || null;
-  function setRec(r, silent) {
+  function setRec(r, silent, at) {
     /* `base` : la remise à zéro en vigueur quand la fiche est écrite ici. Une
-       fiche venue du serveur garde la sienne. */
-    if (!silent) { r.updatedAt = Date.now(); r.base = meta.resetAt; }
+       fiche venue du serveur garde la sienne. `at` : l'instant dont la fiche
+       date, quand ce n'est pas celui de l'écriture — un repli d'alias date de
+       la plus récente des fiches qu'il replie (srs.js). */
+    if (!silent) { r.updatedAt = at || Date.now(); r.base = meta.resetAt; }
     mem.srs.set(r.id, r); put('srs', r); saveLS();
     if (!silent) emit('rec', r);
   }

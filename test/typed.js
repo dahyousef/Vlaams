@@ -46,15 +46,18 @@ function ask(it, ex, rung, lastEx) {
 }
 const askTyped = it => it.kind === 'word' ? ask(it, 'type', 2, 'dictation') : ask(it, 'type', 3, 'speak');
 
-/* Le panneau qui suit « Vérifier », et ce que la réponse a laissé à l'élément. */
+/* Le panneau qui suit « Vérifier », et ce que la réponse a laissé à l'élément.
+   `answer` est la ligne de réponse en gras, null quand le panneau ne la montre pas. */
 function verdict(it) {
   const html = B.app.innerHTML, at = html.indexOf('<div class="foot');
   const foot = at >= 0 ? html.slice(at) : '';
   const be = (foot.match(/<p class="v-be">([\s\S]*?)<\/p>/) || [null, null])[1];
+  const line = (foot.match(/<p><b[^>]*>([\s\S]*?)<\/b><\/p>/) || [null, null])[1];
   const r = NL.srs.recOf(it);
   return {
     right: foot.indexOf('<div class="foot ok"') === 0, foot, text: text(foot),
     be: be === null ? null : text(be),
+    answer: line === null ? null : text(line),
     bold: be === null ? [] : (be.match(/<b>([\s\S]*?)<\/b>/g) || []).map(b => text(b)).join(' ').split(' ').filter(Boolean).map(U.norm),
     rec: { stage: NL.srs.stageOf(it), lapses: r.lapses, reps: r.reps, interval: r.interval, ease: r.ease, said: r.said, retired: !!r.retired }
   };
@@ -229,26 +232,101 @@ NL.state.open().then(() => {
     console.log('  pick et recall, six graines × 60 tirages : ni « dag » ni « hallo » face à « bonjour »');
   }
 
+  /* « Comment le dit-on ici ? » propose la forme flamande et les deux leurres écrits pour
+     l'élément (src/content/decoys.js), rien d'autre. Tirés parmi les formes flamandes des autres
+     éléments, ils parlaient d'autre chose, et la bonne réponse se devinait sans rien savoir. */
+  {
+    const nl = 'Is dat alles?', decoys = ['Is da allemaal?', 'Is dat alle?'];
+    NL.content.byDutch.decoys[nl] = decoys;
+    fresh();
+    const it = find(nl);
+    if (!ask(it, 'vlaams', 1, 'bank')) ok(false, 'setup: ' + say(nl) + ' is never asked in « Comment le dit-on ici ? »');
+    else {
+      const shown = Array.from(B.app.innerHTML.matchAll(/data-opt="\d+"[^>]*><span class="opt-key">\d+<\/span><span[^>]*>([\s\S]*?)<\/span><\/button>/g), m => decode(m[1]));
+      const want = [it.be].concat(decoys);
+      ok(JSON.stringify(shown.slice().sort()) === JSON.stringify(want.slice().sort()),
+        say(nl) + ' offers ' + JSON.stringify(shown) + ', not its Flemish form and its two written decoys ' + JSON.stringify(want));
+    }
+    S.abandon();
+    delete NL.content.byDutch.decoys[nl];
+    fresh();
+    console.log('  vlaams         « Is da alles? » et ses deux leurres écrits, rien d’autre');
+  }
+
+  /* Un mot à l'échelon 1 qui a sa forme flamande se voit demander « Comment le dit-on ici ? ».
+     La bonne option est la première forme de sa liste : « hey » pour hallo, dont la liste est
+     « hey, salut ». Sans leurres écrits, les deux autres sont la première forme d'autres mots,
+     et aucune n'est juste pour hallo : ni une forme qu'il accepte (« salut » ouvre la liste de
+     tot ziens), ni celle d'un mot au même sens (goeiedag). Choisie, la bonne compte juste. hallo a
+     ses leurres écrits : on les ôte le temps de l'essai. */
+  {
+    const written = NL.content.byDutch.decoys.hallo;
+    delete NL.content.byDutch.decoys.hallo;
+    fresh();
+    const it = find('hallo');
+    const first = x => x.be.split(',')[0].trim();
+    if (!ask(it, 'vlaams', 1, 'dictation')) ok(false, 'a learner at word rung 1 is never asked ' + say('hallo') + ' in « Comment le dit-on ici ? »');
+    else {
+      const shown = Array.from(B.app.innerHTML.matchAll(/data-opt="\d+"[^>]*><span class="opt-key">\d+<\/span><span[^>]*>([\s\S]*?)<\/span><\/button>/g), m => decode(m[1]));
+      const others = shown.filter(l => l !== 'hey');
+      const words = NL.content.allItems().filter(x => x.kind === 'word' && x.be && x.id !== it.id);
+      const twins = words.filter(x => NL.gloss.sameMeaning(x, it)).map(first);
+      ok(shown.length === 3 && others.length === 2, say('hallo') + ' offers ' + JSON.stringify(shown) + ', not « hey » and two others');
+      ok(others.every(l => words.map(first).indexOf(l) >= 0), say('hallo') + ' offers ' + JSON.stringify(others) + ' beside « hey », not the first Flemish form of two other words');
+      ok(others.every(l => NL.ex.accepted(it).indexOf(U.norm(U.bare(l))) < 0 && twins.indexOf(l) < 0),
+        say('hallo') + ' offers a right answer as a wrong one: ' + JSON.stringify(others));
+      answer.right();
+      const v = verdict(it);
+      ok(v.right && v.answer === null, say('hallo') + ', answered « hey », gives ' + v.text);
+    }
+    S.abandon();
+    if (written) NL.content.byDutch.decoys.hallo = written;
+    fresh();
+    console.log('  vlaams         « hallo » à l’échelon 1 : « hey » parmi deux formes d’autres mots, et juste');
+  }
+
   console.log('\nLE PANNEAU');
-  /* « Comment le dit-on ici ? » : la variante est la réponse, une seule fois, et
-     ce qui change par rapport à la phrase standard du sujet est en gras. Même
-     sans la ligne flamande dans les réglages : c'est la réponse. */
-  [true, false].forEach(showFlemish => {
+  /* « Comment le dit-on ici ? » : passé, la variante est la réponse, une seule
+     fois, et ce qui change par rapport à la phrase standard du sujet est en gras.
+     Même sans la ligne flamande dans les réglages : c'est la réponse. Choisie,
+     elle est déjà à l'écran : le panneau ne la redit pas. */
+  [true, false].forEach(showFlemish => ['right', 'wrong'].forEach(how => {
     fresh();
     NL.state.setMeta({ showFlemish });
     const it = find('Ik ben Nederlands aan het leren.');
     if (!ask(it, 'vlaams', 1, 'bank')) { ok(false, 'setup: the hè sentence is never asked in « Comment le dit-on ici ? »'); return; }
-    answer.right();
+    answer[how]();
     const v = verdict(it), be = U.norm(it.be);
     const times = U.norm(v.text).split(be).length - 1;
-    ok(v.right, '« Comment le dit-on ici ? » marked the right option wrong');
-    ok(times === 1, '« Comment le dit-on ici ? » (showFlemish ' + showFlemish + ') shows the be variant ' + times + ' times: ' + v.text);
-    ok(JSON.stringify(v.bold) === JSON.stringify(['hè']),
-      '« Comment le dit-on ici ? » (showFlemish ' + showFlemish + ') puts ' + JSON.stringify(v.bold) + ' in bold, not « hè » alone: ' + v.text);
+    const at = '« Comment le dit-on ici ? » (showFlemish ' + showFlemish + ', ' + how + ')';
+    ok(v.right === (how === 'right'), at + ' gives the wrong verdict');
+    if (how === 'right') ok(times === 0 && v.be === null && v.answer === null, at + ' repeats the option just chosen: ' + v.text);
+    else {
+      ok(times === 1, at + ' shows the be variant ' + times + ' times: ' + v.text);
+      ok(JSON.stringify(v.bold) === JSON.stringify(['hè']), at + ' puts ' + JSON.stringify(v.bold) + ' in bold, not « hè » alone: ' + v.text);
+    }
     S.abandon();
-  });
+  }));
   NL.state.setMeta({ showFlemish: true });
-  console.log('  vlaams         la variante une fois, « hè » en gras');
+  console.log('  vlaams         choisie, rien de redit ; passée, la variante une fois, « hè » en gras');
+
+  /* Un mot de plusieurs formes : choisie, la première n'est pas redite, et les autres restent
+     dans « Ici on dit », comme après une faute. Même sans la ligne flamande dans les réglages :
+     c'est le sujet de l'exercice. Une forme qui est le néerlandais de l'élément ne s'y redit pas,
+     la question le montre déjà (« de meeting, de vergadering » pour de vergadering). */
+  [true, false].forEach(showFlemish => [['hallo', 'salut'], ['tot ziens', 'de groeten'], ['alstublieft', 'alsjeblieft'], ['jij', 'ge'], ['de vergadering', null]].forEach(([nl, rest]) => {
+    fresh();
+    NL.state.setMeta({ showFlemish });
+    const it = find(nl);
+    if (!it || !ask(it, 'vlaams', 1, 'dictation')) { ok(false, 'setup: ' + say(nl) + ' is never asked in « Comment le dit-on ici ? »'); return; }
+    answer.right();
+    const v = verdict(it), want = rest && t.hereThey + ' ' + rest;
+    ok(v.right && v.answer === null && v.be === want,
+      say(nl) + ' (showFlemish ' + showFlemish + '), answered right, shows ' + JSON.stringify(v.be) + ', not ' + JSON.stringify(want) + ': ' + v.text);
+    S.abandon();
+  }));
+  NL.state.setMeta({ showFlemish: true });
+  console.log('  vlaams         choisi, « hey » laisse « salut », même sans la ligne flamande ; de vergadering, rien');
 
   {
     const spoor = typed('Op welk spoor?', 'Op welk spoor?');
@@ -268,6 +346,193 @@ NL.state.open().then(() => {
     const dank = typed('dank u wel', 'dank u wel');
     if (dank) ok(dank.text.indexOf(t.alsoSaid + ' dank u, bedankt') >= 0, '`dank u wel` does not show « ' + t.alsoSaid + ' dank u, bedankt »: ' + dank.text);
     console.log('  ici on dit     rien pour « Op welk spoor? », « hè », « da nie », « jaja » ; on dit aussi');
+
+    /* Une bonne réponse n'est pas redite. Tapée telle quelle, la ligne en gras
+       disparaît et « Ici on dit » garde l'autre forme. Tapée en flamand, la
+       réponse standard reste et la forme tapée ne revient pas. Fausse, tout reste. */
+    const same = typed('nog eens', 'nog eens');
+    if (same) ok(same.right && same.answer === null && same.be !== null && U.norm(same.be) === U.norm(t.hereThey + ' nog is'),
+      '`nog eens` typed right shows « ' + same.answer + ' » in bold and « ' + same.be + ' », not only « ' + t.hereThey + ' nog is »: ' + same.text);
+    const asBe = typed('nog eens', 'nog is');
+    if (asBe) ok(asBe.right && asBe.answer === 'nog eens' && asBe.be === null,
+      '`nog is` typed for `nog eens` shows « ' + asBe.answer + ' » in bold and « ' + asBe.be + ' », not « nog eens » alone: ' + asBe.text);
+    const off = typed('nog eens', 'nog');
+    if (off) ok(!off.right && off.answer === 'nog eens' && off.be !== null,
+      '`nog` typed for `nog eens` is marked right, or loses its answer line or « ' + t.hereThey + ' »: ' + off.text);
+    /* Un mot tapé avec son article est juste (`U.typedOk`) : il n'est pas redit non plus. */
+    const withArt = typed('de fiets', 'de fiets');
+    if (withArt) ok(withArt.right && withArt.answer === null,
+      '`de fiets` typed for `de fiets` is right and shows « ' + withArt.answer + ' » in bold: a word typed with its article is repeated: ' + withArt.text);
+    console.log('  pas redit      « nog eens » tapé juste, en flamand, faux');
+  }
+
+  console.log('\nRÉPONSE LIBRE');
+  /* Une réponse libre est notée sur ce qu'elle contient : sous la réponse, chaque besoin
+     est coché ou non. Un besoin `any` se lit en mots entiers, ou en suite de mots
+     entiers : « in » n'est pas dans « kind ». Un besoin `rx` lit les lettres au-delà de
+     l'ASCII : « geïnstalleerd » est un seul mot, et un participe. */
+  {
+    /* La tâche libre d'un motif, servie seule à son échelon, la réponse tapée à l'écran.
+       Les besoins cochés sont lus dans le panneau, dans la langue lue, d'un tenant : un mot cité y
+       porte sa propre balise (« om … »). */
+    const wrote = (id, input) => {
+      fresh();
+      const it = NL.content.byId(id);
+      if (!it || !it.open) { ok(false, 'setup: ' + id + ' has no open task'); return null; }
+      if (!ask(it, 'open', 6, 'speak')) { ok(false, 'setup: ' + id + ' is never asked as a free answer'); return null; }
+      answer.type(input);
+      answer.click({ check: '1' });
+      const list = (B.app.innerHTML.match(/<div class="need-list">([\s\S]*?)<\/div>/) || [null, ''])[1];
+      const ticked = list.split('<span class="need').slice(1).filter(s => s.indexOf(' ok"') === 0).map(s => joined('<span class="need' + s).trim());
+      const v = Object.assign(verdict(it), { ticked });
+      S.abandon();
+      return v;
+    };
+    const need = (id, i) => NL.gloss.of(NL.content.openTasks[id].need[i].what);
+    const meets = (id, input, i, yes, why) => {
+      const v = wrote(id, input);
+      if (!v) return;
+      ok((v.ticked.indexOf(need(id, i)) >= 0) === yes, say(input) + (yes ? ' does not tick ' : ' ticks ') + say(need(id, i)) + ' for ' + id + ': ' + why);
+      ok(v.right === yes, say(input) + ' is marked ' + (v.right ? 'right' : 'wrong') + ' for ' + id + ', with ' + JSON.stringify(v.ticked) + ' ticked');
+    };
+    meets('g-present', 'Ik ben een kind van zes jaar.', 1, false, '« in » inside « kind » is not a place');
+    meets('g-present', 'Ik werk in een ziekenhuis in Brussel.', 1, true, '« in » is a whole word there');
+    meets('g-perfect-intro', 'Gisteravond heb ik een nieuwe app op mijn gsm geïnstalleerd.', 1, true, '« geïnstalleerd » is one word, « ï » a letter');
+
+    /* Un besoin posé le temps de quelques réponses, puis remis : aucune tâche du cours
+       ne montre ces deux cas-ci. */
+    const posed = (id, i, field, value, fn) => {
+      const n = NL.content.openTasks[id].need[i], was = n[field];
+      n[field] = value;
+      fn();
+      n[field] = was;
+    };
+    /* Un `any` de plusieurs mots est une suite de mots entiers, dans l'ordre. */
+    posed('g-halfuur', 1, 'any', ['om half'], () => {
+      meets('g-halfuur', 'Ik begin om half negen en stop om tien uur.', 1, true, '« om half » is there, word for word');
+      meets('g-halfuur', 'Ik kom half negen en ik stop om tien uur.', 1, false, '« kom half » is not « om half »');
+    });
+    /* Un `rx` borde « één » de `\b` comme tout mot : ses accents sont des lettres. */
+    posed('g-getallen', 0, 'rx', /\b(één|twee|drie)\b/i, () =>
+      meets('g-getallen', 'Mijn zoon is één jaar oud.', 0, true, '« één » is a word, its accents letters'));
+    /* `\B`, `\W` et `\w` entre crochets lisent les mêmes lettres : « één » commence un mot,
+       « é » n'est pas un non-mot, et « ï » est une lettre entre crochets aussi. */
+    posed('g-getallen', 0, 'rx', /\Béén/, () =>
+      meets('g-getallen', 'Mijn zoon is één jaar oud.', 0, false, '« één » begins a word: a boundary stands before it'));
+    posed('g-getallen', 0, 'rx', /\Wén/, () =>
+      meets('g-getallen', 'Mijn zoon is één jaar oud.', 0, false, '« é » is a letter, not a non-letter'));
+    posed('g-perfect-intro', 1, 'rx', /\bge[\w]{2,}\b/i, () =>
+      meets('g-perfect-intro', 'Gisteravond heb ik een nieuwe app op mijn gsm geïnstalleerd.', 1, true, '« ï » is a letter inside brackets too'));
+    console.log('  mots entiers   « in » hors de « kind », « geïnstalleerd » et « één » entiers, « om half » mot à mot, \\B, \\W et [\\w] sur les mêmes lettres');
+    /* Une phrase reçoit sa tâche libre de src/content/open.phrases.js, rangée sous son néerlandais
+       tel qu'il est écrit, et la sert à son échelon 6. La tâche est posée ici le temps de deux
+       réponses, puis retirée : la table du cours peut n'en tenir aucune. Son `rx` reste une
+       expression régulière une fois posé sur l'élément. */
+    {
+      const table = (NL.content.byDutch || {})['open.phrases'];
+      ok(!!table, 'NL.content.byDutch[\'open.phrases\'] is not set: src/content/open.phrases.js is not loaded');
+      const nl = 'Hoeveel kost dat?', id = find(nl).id;
+      if (table) {
+        const was = table[nl];
+        table[nl] = {
+          ask: { fr: 'Demande le prix de deux choses.', en: 'Ask the price of two things.' },
+          need: [
+            { what: { fr: 'une question', en: 'a question' }, rx: /\?\s*$/, miss: 'Hoeveel kosten het brood en de koffie.' },
+            { what: { fr: 'au moins 5 mots', en: 'at least 5 words' }, min: 5, miss: 'Hoeveel kost het?' }
+          ],
+          model: 'Hoeveel kosten het brood en de koffie?'
+        };
+        fresh();
+        const task = NL.content.byId(id).open;
+        ok(!!task, 'the task of ' + say(nl) + ' is not put on ' + id + ': open.phrases is missing from TABLES in src/content/index.js');
+        const kept = !!task && Object.prototype.toString.call(task.need[0].rx) === '[object RegExp]';
+        if (task) ok(kept, 'the rx of ' + say(nl) + ' is ' + JSON.stringify(task.need[0].rx) + ' once put on ' + id + ', not a regular expression');
+        if (kept) {
+          const named = task.need.map(n => NL.gloss.of(n.what));
+          const right = wrote(id, task.model);
+          if (right) ok(right.right && right.ticked.join('|') === named.join('|'),
+            say(task.model) + ' is marked ' + (right.right ? 'right' : 'wrong') + ' for ' + id + ', with ' + JSON.stringify(right.ticked) + ' ticked, not ' + JSON.stringify(named));
+          const flat = wrote(id, task.need[0].miss);
+          if (flat) ok(!flat.right && flat.ticked.join('|') === named[1],
+            say(task.need[0].miss) + ' is marked ' + (flat.right ? 'right' : 'wrong') + ' for ' + id + ', with ' + JSON.stringify(flat.ticked) + ' ticked, not only ' + say(named[1]));
+        }
+        if (was === undefined) delete table[nl]; else table[nl] = was;
+        fresh();
+      }
+      console.log('  phrase         ' + say(nl) + ' en réponse libre à l’échelon 6 : l’exemple juste, sans « ? » faux');
+    }
+  }
+
+  console.log('\nLE SENS');
+  /* Quand l'exercice pose et répond en néerlandais, la réponse ne dit pas ce que l'élément veut dire : le
+     pied le dit, dans la langue d'affichage et marqué comme tel, juste ou faux, après « Ici on dit » et
+     « On dit aussi », avant l'explication (#12, deuxième remarque). Ce sont les champs `asks` et
+     `answers` qui désignent les sept exercices. Le texte à trou donne le sens de l'élément, pas celui
+     de sa phrase ; l'intrus, celui du mot qui n'est pas à sa place. Ni « Écris-le », qui pose un sens, ni le
+     rappel, qui y répond, n'en ajoutent un. */
+  {
+    const meanLine = v => (v.foot.match(/<p class="v-mean"[^>]*>[\s\S]*?<\/p>/) || [null])[0];
+    const meanOf = x => '<p class="v-mean"' + NL.gloss.langAttr(x) + '>' + U.esc(NL.gloss.of(x)) + '</p>';
+    ['right', 'wrong'].forEach(how => {
+      fresh();
+      const it = find('nog eens');
+      if (!ask(it, 'dictation', 2, 'type')) { ok(false, 'setup: nog eens is never dictated'); return; }
+      answer[how]();
+      const v = verdict(it);
+      ok(meanLine(v) === '<p class="v-mean" lang="en-GB">once more / again</p>',
+        'the dictation of `nog eens`, ' + how + ', shows ' + meanLine(v) + ', not « once more / again » marked lang="en-GB": ' + v.text);
+      S.abandon();
+    });
+
+    /* [exercice, élément, échelon, dernier exercice servi] : l'élément seul dans l'exercice voulu, passé. */
+    [['article', 'het perron', 1, 'intrus'], ['intrus', 'het perron', 1, 'article'], ['dictation', 'dank u wel', 2, 'type'],
+      ['speak', 'nog eens', 3, 'type'], ['cloze', 'het perron', 4, 'type'], ['corrige', 'Is dat alles?', 2, 'cloze'],
+      ['vlaams', 'Is dat alles?', 1, 'bank'], ['type', 'nog eens', 2, 'dictation'], ['recall', 'nog eens', 0, 'pick']].forEach(([ex, nl, rung, lastEx]) => {
+      fresh();
+      const it = find(nl);
+      if (!ask(it, ex, rung, lastEx)) { ok(false, 'setup: ' + say(nl) + ' is never asked in ' + ex); return; }
+      const E = NL.ex.get(ex), task = S.peek().task;
+      answer.wrong();
+      const v = verdict(it);
+      if (E.asks !== 'nl' || E.answers !== 'nl') ok(meanLine(v) === null, ex + ' (asks ' + E.asks + ', answers ' + E.answers + ') shows a meaning line: ' + meanLine(v));
+      else if (ex === 'intrus') {
+        ok(!!task.odd && task.odd.id !== it.id, 'intrus keeps no odd word in its task');
+        // le mot étranger est celui qui répond, pas un mot qui partage l’article de l’item
+        if (task.odd) ok(U.bare(task.odd.nl) === E.answer(task), 'intrus keeps ' + say(U.bare(task.odd.nl)) + ' as its odd word, not the one that answers, ' + say(E.answer(task)));
+        if (task.odd) ok(meanLine(v) === meanOf(task.odd), 'intrus shows ' + meanLine(v) + ', not the odd word’s meaning ' + meanOf(task.odd));
+      } else ok(meanLine(v) === meanOf(it), ex + ' on ' + say(nl) + ' shows ' + meanLine(v) + ', not ' + meanOf(it));
+      if (ex === 'cloze') ok(meanLine(v) !== meanOf(task.drill), 'cloze shows the meaning of its sentence, not of ' + say(nl));
+      if (ex === 'dictation') {
+        const at = ['v-be', 'v-also', 'v-mean', 'v-note'].map(k => v.foot.indexOf('<p class="' + k + '"'));
+        ok(at.every((p, k) => p >= 0 && (k === 0 || p > at[k - 1])),
+          'the panel of `dank u wel` does not read « ' + t.hereThey + ' », « ' + t.alsoSaid + ' », the meaning, then the explanation: ' + v.text);
+      }
+      S.abandon();
+    });
+    console.log('  sens           « once more / again », juste et faux ; sept exercices sur leurs champs, l’intrus, le texte à trou');
+  }
+
+  /* L'explication d'un motif est sa règle : après un exercice sur un motif, le pied la montre sous
+     la réponse, juste ou faux, dans la langue d'affichage, ce qu'elle cite déclaré nl-BE.
+     « Remets dans l'ordre » la montre déjà au-dessus de ses tuiles : le pied ne la redit pas. */
+  {
+    /* [exercice, échelon, dernier exercice servi, réponse] */
+    [['cloze', 2, 'corrige', 'right'], ['type', 3, 'speak', 'wrong'], ['order', 0, 'order', 'right']].forEach(([ex, rung, lastEx, how]) => {
+      fresh();
+      const it = NL.content.byId('g-present');
+      if (!it || !it.rule) { ok(false, 'setup: no pattern g-present with a rule'); return; }
+      if (!ask(it, ex, rung, lastEx)) { ok(false, 'setup: the pattern g-present is never asked in ' + ex); return; }
+      answer[how]();
+      const v = verdict(it), rule = NL.gloss.quoted(it.rule);
+      const note = (v.foot.match(/<p class="v-note"[^>]*>[\s\S]*?<\/p>/) || [null])[0];
+      if (ex === 'order') {
+        const times = B.app.innerHTML.split(rule).length - 1;
+        ok(times === 1 && note === null, 'order on g-present shows its rule ' + times + ' times, and the panel reads ' + note);
+      } else ok(note === '<p class="v-note">' + rule + '</p>',
+        ex + ' on g-present, ' + how + ', shows ' + note + ' under the answer, not the rule ' + rule + '; the panel reads « ' + v.text + ' »');
+      S.abandon();
+    });
+    console.log('  règle          g-present : sous la réponse du texte à trou et d’« Écris-le », pas redite après l’ordre');
   }
 
   console.log('\n' + checks + ' contrôles, ' + fails + ' en échec');

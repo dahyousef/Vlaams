@@ -40,6 +40,10 @@ NL.sync = (function () {
 
   const owner = () => { try { return localStorage.getItem(OWNER); } catch (e) { return null; } };
   const setOwner = id => { try { id ? localStorage.setItem(OWNER, id) : localStorage.removeItem(OWNER); } catch (e) {} };
+  /* Un compte possède l'appareil et la synchro est configurée : le repli des alias attend
+     le tirage qui suit le chargement — ou, la session perdue, celui de la connexion
+     suivante (app.js). */
+  const owned = () => enabled && !!owner();
 
   function notify() { subs.forEach(fn => { try { fn(status()); } catch (e) {} }); }
   const onChange = fn => subs.push(fn);
@@ -321,6 +325,7 @@ NL.sync = (function () {
       });
 
       NL.content.refresh();
+      NL.srs.fold();
       done();
     } catch (e) { fail(e); }
   }
@@ -453,7 +458,7 @@ NL.sync = (function () {
   }
 
   return {
-    enabled, init, signIn, verifyCode, signOut, pull, flush, queueAll, status, onChange, mergeMeta,
+    enabled, init, owned, signIn, verifyCode, signOut, pull, flush, queueAll, status, onChange, mergeMeta,
     get user() { return user; }
   };
 })();

@@ -231,9 +231,9 @@ NL.tables.en = {
   soundsBody: 'Flanders pronounces several of these sounds differently from the north. Good news: three Dutch vowels already exist in French, which an English speaker does not have.',
   soundsEasy: 'you already have it',
   soundsWatch: 'watch out',
-  dehetTitle: 'The het families',
-  dehetBody: 'About seven het words in ten follow a rule. Learn the families instead of the 425 articles one by one — and never guess from another language: het huis is neuter.',
-  dehetHet: 'Take het', dehetDe: 'Take de',
+  dehetTitle: 'The <span class="nl">het</span> families',
+  dehetBody: 'About seven <span class="nl">het</span> words in ten follow a rule. Learn the families instead of the 425 articles one by one — and never guess from another language: <span class="nl">het huis</span> is neuter.',
+  dehetHet: 'Take <span class="nl">het</span>', dehetDe: 'Take <span class="nl">de</span>',
   dehetSure: 'no exceptions',
 
   /* --- réglages --- */

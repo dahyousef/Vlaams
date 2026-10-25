@@ -5,7 +5,9 @@ const fs = require('fs'), path = require('path');
 const browser = require('./lib/browser');
 const { PROSE } = require('./lib/prose');
 const tree = require('./lib/tree');
-const { text, runs, count, argsOf } = require('./lib/langs');
+const { dutchWords, words } = require('./lib/dutch');
+const spelling = require('./lib/spelling');
+const { text, joined, runs, count, argsOf } = require('./lib/langs');
 const { fakeSupabase } = require('./lib/supabase');
 const { dueReviews } = require('./lib/seed');
 const ROOT = process.argv[2] || path.join(__dirname, '..');
@@ -22,11 +24,12 @@ const T0 = Date.parse('2026-10-05T08:00:00Z');
 /* prepare : ce que l'essai change dans l'app chargée, avant que src/app.js la démarre.
    store : le stockage d'un appareil, pour le recharger.
    account : un serveur neuf, et l'appareil déjà connecté.
-   timers : 'held' pour des minuteurs qui attendent B.tick() ; absent, ils partent aussitôt. */
-function boot({ prepare, store, account, timers } = {}) {
+   timers : 'held' pour des minuteurs qui attendent B.tick() ; absent, ils partent aussitôt.
+   recogniser : true pour un micro qui entend (ctx.__saidNext, ctx.__partialNext). */
+function boot({ prepare, store, account, timers, recogniser } = {}) {
   const dev = { store: store || {} };
   if (account) dev.store['sb-session'] = JSON.stringify({ user: { id: 'uid-lang', email: 'lang@example.com' } });
-  return browser.open({ root: ROOT, seed: browser.SEED, now: T0, store: dev.store, byId: 'stub', media: true, prepare, timers,
+  return browser.open({ root: ROOT, seed: browser.SEED, now: T0, store: dev.store, byId: 'stub', media: true, prepare, timers, recogniser,
     config: account ? { supabaseUrl: 'https://example.supabase.co', supabaseAnonKey: 'anon' } : undefined,
     supabase: account ? fakeSupabase().fakeLib(dev) : undefined,
     voices: [{ name: 'Microsoft Bart - Dutch (Belgium)', lang: 'nl-BE', localService: true }] });
@@ -181,19 +184,6 @@ function marked(NL) {
   });
 }
 
-/* Les mots néerlandais du cours : nl, be, les phrases, les colonnes du registre
-   (std), les exemples des règles (ex), les modèles de réponse (model) et les
-   identifiants d'unité, qui sont des mots néerlandais. */
-const DUTCH_KEYS = ['nl', 'be', 'std', 'ex', 'model', 'id', 'nlName'];
-function dutchWords(NL) {
-  const set = new Set();
-  const add = s => String(s).toLowerCase().split(/[^\p{L}\p{N}]+/u).forEach(w => { if (w) set.add(w); });
-  tree.visit(NL.content, (v, key) => { if (DUTCH_KEYS.indexOf(key) >= 0 && typeof v === 'string') add(v); });
-  NL.t.nav.forEach(n => add(n.nl));
-  Object.keys(NL.content.DEFAULTS).forEach(k => add(NL.content.DEFAULTS[k]));
-  return set;
-}
-
 function srcFiles(dir) {
   return fs.readdirSync(dir, { withFileTypes: true }).reduce((acc, e) => {
     const f = path.join(dir, e.name);
@@ -212,7 +202,7 @@ function interfaceCheck() {
          Deux autres données ne sont pas l'interface non plus : les faux amis des anglophones, écrits en anglais
          dans les deux affichages (les cellules reg-cell std de register), et les mots qu'une personne a tapés
          elle-même (leur ligne du dictionnaire, repérée par data-del). */
-      textAndLabels(String(h).replace(/<textarea[\s\S]*?<\/textarea>/g, ' ').replace(/<span class="reg-cell std" lang="en">[\s\S]*?<\/span>/g, ' ').replace(/<div class="vrow">[\s\S]*?<\/div>/g, row => (row.indexOf('data-del=') >= 0 ? ' ' : row)).replace(/&[a-z]+;/g, ' ')).replace(/⟦[^⟧]*⟧|⟪[^⟫]*⟫/g, ' ').split(/[^\p{L}\p{N}]+/u).forEach(w => {
+      textAndLabels(String(h).replace(/<textarea[\s\S]*?<\/textarea>/g, ' ').replace(/<span class="reg-cell std" lang="en-GB">[\s\S]*?<\/em><\/span>/g, ' ').replace(/<div class="vrow">[\s\S]*?<\/div>/g, row => (row.indexOf('data-del=') >= 0 ? ' ' : row)).replace(/&[a-z]+;/g, ' ')).replace(/⟦[^⟧]*⟧|⟪[^⟫]*⟫/g, ' ').split(/[^\p{L}\p{N}]+/u).forEach(w => {
         w = w.toLowerCase();
         if (w.length > 1 && !/\p{N}/u.test(w) && !dutch.has(w) && !Object.prototype.hasOwnProperty.call(ALLOW, w) && !seen.has(w)) seen.set(w, n);
       });
@@ -513,7 +503,9 @@ function langChecks() {
    lecteur d'écran ne lit pas « vandaag » à l'anglaise. Vues du cours simple, dans les deux langues. */
 function langAttrFind(B, each) {
   const NL = B.NL, U = NL.util, dutch = new Set();
-  tree.visit(NL.content, (v, key) => { if ((key === 'nl' || key === 'be') && typeof v === 'string') dutch.add(U.norm(v)); });
+  const dutchKey = (v, key) => { if ((key === 'nl' || key === 'be') && typeof v === 'string') dutch.add(U.norm(v)); };
+  tree.visit(NL.content, dutchKey);
+  tree.visitTables(NL.content, dutchKey);
   NL.t.nav.forEach(n => dutch.add(U.norm(n.nl)));
   dutch.delete('');
   /* Un mot néerlandais qui s'écrit aussi en français ou en anglais (merci, hier, open, direct) reste cherché :
@@ -535,12 +527,61 @@ function langAttrFind(B, each) {
 }
 function langAttrCheck(B) {
   langAttrFind(B, views).forEach((n, k) => ok(false, '6 : néerlandais sans lang="nl" : ' + k + ' (vue ' + n + ')'));
+  /* #75.2. Une balise vient de la table de gloss.js : fr, en-GB, nl-BE. Un « en » écrit à côté
+     déclare une autre langue que la page (<html lang="en-GB">). */
+  const TAGS = ['fr', 'en-GB', 'nl-BE'], stray = new Map();
+  views(B, (n, h) => (String(h).match(/ lang="[^"]*"/g) || []).forEach(a => {
+    if (TAGS.indexOf(a.slice(7, -1)) < 0 && !stray.has(a)) stray.set(a, n);
+  }));
+  stray.forEach((n, a) => ok(false, '6 : balise hors de la table :' + a + ' (vue ' + n + ')'));
   /* Le contrôle voit un mot néerlandais qui s'écrit aussi en français ou en anglais : sur des vues plantées, il le dit. */
   const planted = (b, visit) => { visit('plant', '<p>hier</p><p>merci</p><p lang="nl-BE">hier</p>'); };
   const found = langAttrFind(B, planted);
   ok(found.has('en « hier » (en-GB)') && found.has('en « merci » (en-GB)'), '6 : « hier » et « merci » sans lang="nl-BE" dans la vue anglaise ne sont pas signalés');
   const frFound = Array.from(found.keys()).filter(k => /^fr « (hier|merci) »/.test(k));
   ok(frFound.length === 0, '6 : « hier » dans un passage français est du français, pas signalé : ' + frFound.join(', '));
+}
+
+/* 6e. Ce que le micro entend est du néerlandais : le texte provisoire pendant l'écoute, ce qu'il a
+   entendu et les mots de la phrase comparés déclarent nl-BE, dans l'exercice parlé de la séance, au
+   nazeggen et dans la conversation. Seule l'étiquette « Heard: » reste dans la langue de la page. */
+function heardCheck() {
+  const B = boot({ recogniser: true });
+  return B.NL.state.open().then(() => {
+    const NL = B.NL, S = NL.screens.sessie, html = () => B.app.innerHTML, label = NL.tables.en.micHeard;
+    English(B);
+    /* Pendant l'écoute, « nog is » ; après, « iets heel anders », qui ne passe pas : la séance et la
+       conversation le redisent (`redit`), le nazeggen ne montre que les mots comparés. */
+    const heard = (where, start, stop, redit) => {
+      B.ctx.__partialNext = 'nog is'; start();
+      const listening = html();
+      stop(); B.ctx.__saidNext = 'iets heel anders'; start();
+      [[listening, 'pendant l’écoute', ['nog is']], [html(), 'après l’écoute', redit ? ['word-diff', 'iets heel anders'] : ['word-diff']]].forEach(([h, when, shown]) => {
+        shown.forEach(s => ok(h.indexOf(s) >= 0, '6e : ' + where + ', ' + when + ' : « ' + s + ' » n’est pas à l’écran, le contrôle est creux'));
+        (h.match(/<p class="(?:heard|word-diff)"[\s\S]*?<\/p>/g) || []).forEach(p => runs(p, pageLang(B)).filter(r => r.text !== label).forEach(r =>
+          ok(r.lang === 'nl-BE', '6e : ' + where + ', ' + when + ' : « ' + r.text + ' » sans lang="nl-BE" (' + r.lang + ')')));
+      });
+    };
+    const it = NL.content.allItems().find(x => x.nl === 'nog eens');
+    NL.srs.seed(it, 3);
+    const r = NL.state.rec(it.id); r.due = B.clock.now() - 3600 * 1000; r.lastEx = 'type'; r.said = true; NL.state.setRec(r);
+    NL.state.logReview({ id: it.id, t: B.clock.now() - 86400 * 1000, ok: false, stage: 3, kind: it.kind, ex: 'type' });
+    let asked = false;
+    for (let k = 0; k < 40 && !asked; k++) {
+      S.abandon(); NL.screens.fouten.click({ dataset: {} }, { act: 'start' });
+      const c = S.peek(); asked = !!c && c.ex === 'speak' && c.items[0].id === it.id;
+    }
+    ok(asked, '6e : nog eens n’est jamais posé à voix haute, le contrôle de la séance est creux');
+    if (asked) heard('séance', () => B.tap({ mic: 'start' }), () => B.tap({ mic: 'stop' }), true);
+    S.abandon();
+    NL.ui.go('luisteren'); NL.screens.luisteren.click({ dataset: {} }, { act: 'nazeggen' });
+    heard('nazeggen', () => B.tap({ act: 'mic' }), () => B.tap({ act: 'micstop' }), false);
+    NL.ui.go('scenario', 's-bakker');
+    for (let g = 0; html().indexOf('data-mic="start"') < 0 && g < 20; g++) {
+      NL.screens.scenario.click({ dataset: {} }, { step: 'next' }); NL.screens.scenario.click({ dataset: {} }, { choice: '0' });
+    }
+    heard('conversation', () => B.tap({ mic: 'start' }), () => B.tap({ mic: 'stop' }), true);
+  });
 }
 
 /* 6c. Le formulaire d'ajout : l'étiquette du champ enregistré sous « en » nomme l'anglais, celle du champ « fr » le français. */
@@ -594,6 +635,8 @@ function displayChecks() {
   const c1 = () => open(NL => {
     NL.content.units.forEach(u => u.words.forEach(w => { if (w.nl === 'het brood') delete w.en; }));
     delete NL.content.scenarios.find(s => s.id === 's-bakker').steps.filter(st => st.them)[3].them.en;
+    /* Les choix de la première réplique sans anglais : leur sens se montre sur le bouton, puis sous la phrase à dire. */
+    NL.content.scenarios.find(s => s.id === 's-bakker').steps.find(st => st.you).you.choices.forEach(c => { delete c.en; });
     /* Une phrase et une règle sans anglais non plus : certains exercices ne montrent qu'elles. */
     const frOnly = v => tree.visit(v, x => { if (x && typeof x === 'object' && typeof x.fr === 'string') delete x.en; });
     frOnly(NL.content.units.find(u => u.id === 'overleven').phrases[0]);
@@ -615,13 +658,15 @@ function displayChecks() {
       });
     }
     NL.ui.go('luisteren'); NL.screens.luisteren.click({ dataset: {} }, { act: 'nazeggen' }); pages.nazeggen = html();
-    const tags = Object.keys(pages).map(k => pages[k]).join('').match(/<[a-z]+ class="(v-en|bub-en|rev-en)"[^>]*>/g) || [];
+    const tags = Object.keys(pages).map(k => pages[k]).join('').match(/<[a-z]+ class="(v-en|bub-en|rev-en|say-en)"[^>]*>/g) || [];
     const bare = '<span class="v-en" lang="fr">' + NL.util.esc(NL.gloss.bare(brood)) + '</span>';
-    ok(['v-en', 'bub-en', 'rev-en'].every(c => tags.some(t => t.indexOf('"' + c + '"') >= 0)), '69.1 : les trois sortes de sens ne sont pas toutes à l’écran, le contrôle est creux');
+    ok(['v-en', 'bub-en', 'rev-en', 'say-en'].every(c => tags.some(t => t.indexOf('"' + c + '"') >= 0)), '69.1 : les quatre sortes de sens ne sont pas toutes à l’écran, le contrôle est creux');
     const bad = tags.filter(t => !/ lang="(fr|en-GB)"/.test(t));
     ok(bad.length === 0, '69.1 : ' + bad.length + ' sens sans lang="fr" ni lang="en-GB", dont ' + bad[0]);
     ok(pages.woorden.indexOf(bare) >= 0 && pages.fouten.indexOf(bare) >= 0, '69.1 : en anglais, le sens français de het brood n’est pas marqué lang="fr" (woorden, fouten)');
     ok(/class="bub-en" lang="fr"/.test(pages.scenario), '69.1 : la réplique sans anglais n’est pas marquée lang="fr"');
+    const choice = NL.content.scenarios.find(s => s.id === 's-bakker').steps.find(st => st.you).you.choices[0];
+    ok(pages.scenario.indexOf('<i lang="fr">' + NL.util.esc(NL.gloss.of(choice)) + '</i>') >= 0, '69.1 : le sens d’un choix sans anglais n’est pas marqué lang="fr" sur son bouton');
     ok(tags.some(t => t.indexOf(' lang="en-GB"') >= 0), '69.1 : aucun sens anglais marqué lang="en-GB"');
     /* L'exercice montre le même sens : il porte la même langue. Chaque exercice du registre, sur le mot,
        la phrase et la règle sans anglais, posé puis corrigé : un exercice ajouté est contrôlé d'office.
@@ -651,6 +696,30 @@ function displayChecks() {
     const silent = Object.keys(NL.ex.registry).filter(id => NO_MEANING.indexOf(id) < 0 && !showed.has(id));
     ok(silent.length === 0, '69.1 : ' + silent.join(', ') + ' ne montre(nt) aucun sens sans anglais, le contrôle est creux');
     ok(unmarked.length === 0, '69.1 : ' + unmarked.length + ' sens français sans lang="fr" dans les exercices, dont ' + unmarked.slice(0, 8).join(' ; '));
+    /* #75.3. Chaque exercice dit en quoi il pose (`asks`) et en quoi il répond (`answers`) : 'nl', 'gloss'
+       (un sens, dans sa langue) ou null (les deux mêlés). Le pied lit `answers` ; un exercice ajouté sans
+       ces champs échoue ici. Sur het brood, la réponse est un sens exactement quand `answers` vaut 'gloss'. */
+    const SIDES = ['nl', 'gloss', null], sided = [];
+    Object.keys(NL.ex.registry).forEach(id => {
+      const E = NL.ex.registry[id];
+      ['asks', 'answers'].forEach(f => ok(Object.prototype.hasOwnProperty.call(E, f) && SIDES.indexOf(E[f]) >= 0,
+        '#75.3 : ' + id + '.' + f + ' manque, ou ne vaut ni nl, ni gloss, ni null'));
+      /* Et ce que la personne a donné (`given`), que le pied ne redit pas quand c'est juste. */
+      ok(Object.prototype.hasOwnProperty.call(E, 'given') && typeof E.given === 'function',
+        id + '.given manque : le pied ne sait pas ce que la personne a donné');
+      if (E.answers !== 'nl' && E.answers !== 'gloss') return;
+      [brood, phrase, rule].some(x => {
+        let a; try { a = E.answer(E.build(x)); } catch (e) { return false; }
+        if (typeof a !== 'string' || !a) return false;
+        const meaning = x === brood && french.has(flat(a));
+        ok((E.answers === 'gloss') === meaning, '#75.3 : ' + id + '.answers vaut ' + E.answers + ', mais sa réponse « ' + a + ' » ' + (meaning ? 'est' : 'n’est pas') + ' un sens');
+        sided.push(id);
+        return true;
+      });
+    });
+    const unsided = Object.keys(NL.ex.registry).filter(id => (NL.ex.registry[id].answers === 'nl' || NL.ex.registry[id].answers === 'gloss') && sided.indexOf(id) < 0);
+    ok(unsided.length === 0, '#75.3 : ' + unsided.join(', ') + ' ne donne(nt) aucune réponse sur het brood, la phrase ou la règle, le contrôle est creux');
+    ok(sided.length > 0, '#75.3 : aucun exercice ne répond en nl ou en gloss, le contrôle est creux');
     /* Le pied d'un « recall » passé redit ce sens : même langue. */
     const S = NL.screens.sessie, answer = require('./lib/answer')(B);
     NL.srs.seed(brood, 0);
@@ -664,6 +733,22 @@ function displayChecks() {
     if (asked) {
       answer.wrong();
       ok(html().indexOf('<b lang="fr">' + NL.util.esc(NL.gloss.bare(brood)) + '</b>') >= 0, '69.1 : le pied d’un recall passé montre le sens français sans lang="fr"');
+      /* #75.3. Le pied suit le champ, pas le nom de l'exercice : la même réponse, relue sous chaque valeur. */
+      const E = NL.ex.registry.recall, was = E.answers, b = '>' + NL.util.esc(NL.gloss.bare(brood)) + '</b>';
+      [['gloss', '<b lang="fr"'], ['nl', '<b lang="nl-BE"'], [null, '<b']].forEach(v => {
+        E.answers = v[0]; NL.ui.render();
+        ok(html().indexOf(v[1] + b) >= 0, '#75.3 : answers à ' + v[0] + ', le pied d’un recall passé ne montre pas ' + v[1] + b);
+      });
+      E.answers = was; NL.ui.render();
+      /* #12, deuxième remarque. Le sens dans le pied suit les champs lui aussi : il n'est là que quand
+         l'exercice pose et répond en néerlandais, marqué de la langue où il se lit (ici le français,
+         l'anglais manquant). Un exercice ajouté avec ces deux champs l'a d'office. */
+      const mean = '<p class="v-mean" lang="fr">' + NL.util.esc(NL.gloss.of(brood)) + '</p>', asks = E.asks;
+      [['nl', 'nl', true], ['nl', 'gloss', false], ['gloss', 'nl', false], [null, null, false]].forEach(v => {
+        E.asks = v[0]; E.answers = v[1]; NL.ui.render();
+        ok((html().indexOf(mean) >= 0) === v[2], '69.1 : asks à ' + v[0] + ', answers à ' + v[1] + ', le pied d’un recall passé ' + (v[2] ? 'ne montre pas ' : 'montre ') + mean);
+      });
+      E.asks = asks; E.answers = was; NL.ui.render();
     }
   });
 
@@ -676,6 +761,25 @@ function displayChecks() {
     const item = NL.content.allItems().find(it => it.nl === 'de testkast');
     const want = '<span class="v-en" lang="en-GB">' + NL.util.esc(NL.gloss.bare(item)) + '</span>';
     ok(B.app.innerHTML.indexOf(want) >= 0, '69.1 bis : en français, le sens anglais d’un mot à soi n’est pas marqué lang="en-GB"');
+  });
+
+  /* 69.1 ter. Le sens d'un exemple, sur la carte d'une règle, et celui d'une ligne de fiche portent leur
+     langue comme tout sens : en anglais, lang="en-GB" ; sans anglais, le français se lit, lang="fr". */
+  const c1c = () => open(NL => {
+    delete NL.content.patterns.find(g => g.id === 'g-v2').drills[0].en;
+    delete NL.content.sheets[0].groups[0].rows[0].en;
+  }).then(B => {
+    const NL = B.NL, esc = NL.util.esc, g = NL.content.patterns.find(x => x.id === 'g-v2'), rows = NL.content.sheets[0].groups[0].rows;
+    const meant = (x, l) => '<i lang="' + l + '">' + esc(NL.gloss.of(x)) + '</i>';
+    English(B);
+    NL.ui.go('leerpad'); NL.screens.leerpad.click({ dataset: { id: g.id } }, { act: 'gram' });
+    const card = B.app.innerHTML;
+    NL.ui.closeSheet(); NL.ui.go('spiek', NL.content.sheets[0].id);
+    const sheet = B.app.innerHTML;
+    ok(card.indexOf(meant(g.drills[0], 'fr')) >= 0 && card.indexOf(meant(g.drills[1], 'en-GB')) >= 0,
+      '69.1 ter : sur la carte de ' + g.id + ', le sens d’un exemple n’est pas marqué de sa langue (lang="fr" sans anglais, lang="en-GB" avec)');
+    ok(sheet.indexOf(meant(rows[0], 'fr')) >= 0 && sheet.indexOf(meant(rows[1], 'en-GB')) >= 0,
+      '69.1 ter : sur la fiche ' + NL.content.sheets[0].id + ', le sens d’une ligne n’est pas marqué de sa langue (lang="fr" sans anglais, lang="en-GB" avec)');
   });
 
   /* 69.2. Un changement appliqué sur n'importe quel écran s'y annonce, une fois ;
@@ -774,7 +878,273 @@ function displayChecks() {
     });
   });
 
-  return [c1, c1b, c2, c4, c5, c6, c9, c10, c11].reduce((p, c) => p.then(c), Promise.resolve());
+  return [c1, c1b, c1c, c2, c4, c5, c6, c9, c10, c11].reduce((p, c) => p.then(c), Promise.resolve());
+}
+
+/* 6d. Les guillemets sont la marque (E1) : dans la prose du cours, ce que « … » ou “…” cite est du
+   néerlandais, et NL.gloss.quoted le déclare nl-BE à l'écran. Les champs qui peuvent citer passent
+   par NL.gloss.quoted ; les autres (name, title, h, place) ne citent rien. explain est du HTML, où
+   le néerlandais porte class="ex" ou class="nl" (NL.gloss.prose) : ses citations suivent la même
+   règle et se comptent ici, mais l'écran ne les déclare pas. title et h sont du HTML aussi : leur
+   néerlandais porte class="nl", sans guillemets. place, où entre le texte de l'apprenant ({stad},
+   {bedrijf}), reste du texte échappé (6d.7). Les tables de référence, écrites dans une
+   seule langue (NL.content.anchors), se lisent de même : say, la prose des sons, comme explain ;
+   trap, le piège d'un faux ami, comme une note. */
+const QUOTED_FIELDS = ['note', 'blurb', 'rule', 'ask', 'what', 'outro', 'hint', 'trap'];
+/* Les champs écrits en HTML, montrés par NL.gloss.prose. */
+const HTML_FIELDS = ['explain', 'say', 'title', 'h'];
+/* Les tables de référence (src/content/reference.js) lues avec le cours : les emprunts, les sons et les
+   deux tables de faux amis. C.TABLES, lui, donne les tables par le néerlandais (byDutch). */
+const REFERENCE_TABLES = ['loans', 'sounds', 'faux', 'fauxEn'];
+/* Les mots cités hors du néerlandais du cours qui sont pourtant du néerlandais, avec la raison. Une note
+   de mot ou de phrase n'en a pas besoin pour un mot que l'orthographe connaît et qu'elle cite dans ses
+   deux langues (6d.3). */
+const QUOTE_OK = {
+  pardon: 'le nord pour excuseer, dans la note d’un choix de la conversation du train',
+  lijn: '« De Lijn », les bus flamands, dans la présentation de l’unité du trajet',
+  jam: 'le nord pour de confituur, dans sa note d’emprunt',
+  vrachtwagen: 'l’écrit pour de camion, dans sa note d’emprunt',
+  vork: 'le standard pour de fourchet, dans sa note d’emprunt',
+  bijgevoegd: 'le nord pour « in bijlage », dans une note de la fiche des mails',
+  werke: 'werken tel qu’il se dit, n final tombé, dans la table des sons',
+  lope: 'lopen tel qu’il se dit, n final tombé, dans la table des sons',
+  uiteindelijk: 'ce que veut dire eventually, dans le piège de eventueel',
+  eigenlijk: 'ce que veut dire actually, dans le piège de actueel',
+  dun: 'ce que veut dire slim (mince), dans le piège de slim',
+  slank: 'ce que veut dire slim (svelte), dans le piège de slim',
+  zeldzaam: 'ce que veut dire rare, dans le piège de raar',
+  merk: '« het merk », ce que veut dire brand (une marque), dans le piège de de brand',
+  plattegrond: '« de plattegrond », ce que veut dire map (un plan), dans le piège de de map'
+};
+/* Les mots que le français et l'anglais écrivent tous deux et que le cours a aussi en néerlandais :
+   l'anglais du bureau, une marque, un article. 6d.4 ne les prend pas pour du néerlandais laissé nu. */
+const SHARED_OK = {
+  a: 'le verbe avoir et l’article anglais ; le cours ne l’a que comme lettre, « de a »',
+  ticket: 'l’anglais du bureau, le même en français et en anglais, dans la présentation de l’unité du travail',
+  build: 'l’anglais du bureau, le même en français et en anglais, dans deux présentations',
+  code: 'l’anglais du bureau, le même en français et en anglais, dans la présentation d’une fiche',
+  bancontact: 'la carte de paiement belge, une marque, dans la présentation de l’unité des courses',
+  stand: '« stand-up », la réunion du matin, en français comme en anglais',
+  up: '« stand-up », la réunion du matin, en français comme en anglais',
+  contact: '« premier contact », “first contact”, dans une note de la fiche des mails',
+  direct: '« Être direct », “Being direct”, dans une note de la conversation sur les délais',
+  t: 'la lettre t, nommée de même en français et en anglais, dans les notes de « Dat was plezant. », « Wat betekent dat? », « acht » et « komen »',
+  s: 'la lettre s, nommée de même en français et en anglais, dans la note de « Niks speciaals, en bij u? »',
+  o: 'la lettre o, nommée de même en français et en anglais, dans la note de « goedkoop »'
+};
+/* Le champ de prose d'un texte du cours : sa clé, ou celle de son parent pour un côté fr ou en. Une valeur
+   de table (byDutch.notes["hallo"].fr) a pour parent le champ que sa table pose, que C.TABLES donne. */
+function fieldOf(key, where, C) {
+  if (key !== 'fr' && key !== 'en') return key;
+  const t = /^byDutch\.([^.[]+)\[.*\]\.(?:fr|en)$/.exec(where);
+  if (t) return ((C.TABLES || []).find(x => x.table === t[1]) || {}).field;
+  return (/\.(\w+)\.(?:fr|en)$/.exec(where) || [])[1];
+}
+/* Chaque texte du cours, les notes des mots comprises, et des tables de référence : fn(texte, champ, chemin). */
+function eachText(C, fn) {
+  const read = (v, key, where) => { if (typeof v === 'string') fn(v, fieldOf(key, where, C), where); };
+  tree.visitCourse(C, read);
+  REFERENCE_TABLES.forEach(k => tree.visit(C[k], read, k, k));
+}
+function quoteChecks() {
+  /* Les mots des noms que {naam}, {stad} et {bedrijf} prennent par défaut, que l'en-tête montre. */
+  const names = NL => new Set([].concat(...Object.keys(NL.content.DEFAULTS).map(k => words(String(NL.content.DEFAULTS[k])))));
+  /* 6d.1. La note de trager cite « trager » et « langzamer » : dans le pied d'une réponse fausse,
+     chacun est déclaré nl-BE, guillemets dehors, en français comme en anglais. */
+  const footNote = (l, to, want) => {
+    const B = boot();
+    return B.NL.state.open().then(() => {
+      const NL = B.NL, S = NL.screens.sessie, answer = require('./lib/answer')(B);
+      to(B);
+      const it = NL.content.allItems().find(x => x.nl === 'trager');
+      NL.srs.seed(it, 2);
+      NL.state.logReview({ id: it.id, t: B.clock.now() - 1000, ok: false, stage: 1, kind: it.kind, ex: 'type' });
+      let asked = false;
+      for (let k = 0; k < 40 && !asked; k++) {
+        S.abandon(); NL.screens.fouten.click({ dataset: {} }, { act: 'start' });
+        const c = S.peek();
+        asked = !!c && c.ex !== 'match' && (c.items || [c.task.item])[0].id === it.id;
+      }
+      ok(asked, '6d (' + l + ') : trager n’est jamais posé seul, le contrôle du pied est creux');
+      if (!asked) return;
+      answer.wrong();
+      const html = B.app.innerHTML, foot = html.slice(html.indexOf('<div class="foot'));
+      ok(foot.indexOf(want) >= 0, '6d (' + l + ') : le pied ne déclare pas nl-BE le « trager » que cite la note : ' +
+        (/<p class="v-note">[\s\S]*?<\/p>/.exec(foot) || ['(aucune note)'])[0]);
+    });
+  };
+  const q1 = () => footNote('fr', French, '« <span lang="nl-BE">Trager</span> »')
+    .then(() => footNote('en', English, '“<span lang="nl-BE">Trager</span>”'));
+
+  /* Chaque champ de `fields`, côté français, planté d'un néerlandais inventé (zqN) écrit par
+     wrap(N), puis relu sur chaque écran : chaque zqN montré est déclaré nl-BE (`shown` le trouve),
+     et chaque sorte de champ (collection.champ, ou byDutch.champ pour une table : byDutch.note) se
+     montre. */
+  const planted = (fields, wrap, shown) => {
+    const groups = [];
+    const plant = C => (s, key, where) => {
+      const f = fieldOf(key, where, C);
+      if (typeof s !== 'string' || key === 'en' || fields.indexOf(f) < 0) return s;
+      groups.push(where.split(/[.[]/)[0] + '.' + f);
+      return s + ' ' + wrap(groups.length - 1);
+    };
+    const B = boot({ prepare: NL => {
+      tree.rewriteCourse(NL.content, plant(NL.content));
+      REFERENCE_TABLES.forEach(k => { NL.content[k] = tree.rewrite(NL.content[k], plant(NL.content), k, k); });
+    } });
+    return B.NL.state.open().then(() => {
+      French(B);
+      const marked = new Set(), bare = new Map();
+      views(B, (n, h) => {
+        const left = String(h).replace(shown, (m, i) => { marked.add(groups[+i]); return ''; });
+        (left.match(/zq\d+/g) || []).forEach(z => { const g = groups[+z.slice(2)]; if (!bare.has(g)) bare.set(g, n); });
+      });
+      bare.forEach((n, g) => ok(false, '6d : ' + g + ' montré sans déclarer nl-BE son néerlandais (vue ' + n + ')'));
+      const unseen = Array.from(new Set(groups)).filter(g => !marked.has(g) && !bare.has(g));
+      ok(groups.length > 0 && unseen.length === 0, '6d : ' + unseen.join(', ') + ' jamais montré(s), le contrôle est creux');
+    });
+  };
+
+  /* 6d.2. Chaque champ cité, planté d'une citation inventée (« zqN »). Un écran qui échappe un de
+     ces champs sans NL.gloss.quoted échoue ici. */
+  const q2 = () => planted(QUOTED_FIELDS, n => '« zq' + n + ' »', /<span lang="nl-BE">zq(\d+)<\/span>/g);
+
+  /* 6d.3. Ce que NL.gloss.quoted marque, relu sur le cours : chaque mot est du néerlandais du cours, un
+     chiffre ou une exception de QUOTE_OK, et rien d'autre : un passage cité qui n'est pas du
+     néerlandais (« voilà », “here you are”) est une traduction, qui va entre parenthèses sans
+     guillemets, et que NL.gloss.quoted déclarerait nl-BE à tort. explain aussi,
+     balises ôtées. Un affixe cité avec son tiret (« -tje », « ge- ») est du néerlandais par sa forme ;
+     « soixante-dix » n'en est pas un. Chaque guillemet ouvert est fermé (sinon rien n'est marqué), et
+     name, title, h et place ne citent rien. Les tables de référence se lisent avec le cours. Une note
+     de mot ou de phrase (byDutch.notes) se relit comme le kit l'a vérifiée (tools/content/lib/explain.js) :
+     une citation que l'autre langue de la note cite aussi, et dont l'orthographe (OpenTaal,
+     flemish.tsv) connaît chaque forme, est du néerlandais, même hors du cours. Il faut les deux :
+     l'orthographe connaît « on », « has » et « la ». */
+  const q3 = () => {
+    const B = boot();
+    return B.NL.state.open().then(() => {
+      const NL = B.NL, Q = NL.gloss.quoted, dutch = dutchWords(NL), S = spelling.open(ROOT, NL);
+      if (typeof Q !== 'function') { ok(false, '6d : NL.gloss.quoted manque'); return; }
+      const unescape = s => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+      const foreign = [], excused = new Set();
+      /* Deux notes plantées, sous des clés qu'aucun élément n'a : l'une cite en français et en anglais un
+         mot que l'orthographe connaît et que le cours n'enseigne pas, l'autre en français seulement. Le
+         mot se prend dans une liste : une phrase d'exemple fusionnée plus tard peut en enseigner un. */
+      const notes = NL.content.byDutch.notes;
+      const plant = ['regenjas', 'kurkentrekker', 'wasknijper'].find(w => S.known(w) && !dutch.has(w));
+      notes.zq1 = { fr: 'Le nord dit « ' + plant + ' ».', en: 'The north says “' + plant + '”.' };
+      notes.zq2 = { fr: 'Le nord dit « ' + plant + ' ».', en: 'The north says it.' };
+      eachText(NL.content, (s, f, where) => {
+        if (PROSE.indexOf(f) < 0 && QUOTED_FIELDS.indexOf(f) < 0 && HTML_FIELDS.indexOf(f) < 0) return;
+        const t = HTML_FIELDS.indexOf(f) >= 0 ? joined(s) : s;
+        const opened = t.split(/[«“]/).length - 1, closed = t.split(/[»”]/).length - 1;
+        if (QUOTED_FIELDS.indexOf(f) < 0 && f !== 'explain' && f !== 'say') { ok(opened + closed === 0, '6d : ' + where + ' cite, mais ' + f + ' ne passe pas par NL.gloss.quoted : « ' + s + ' »'); return; }
+        const segs = Array.from(Q(t).matchAll(/<span lang="nl-BE">([^<]*)<\/span>/g), m => unescape(m[1]));
+        ok(segs.length === opened && opened === closed, '6d : ' + where + ' a un guillemet sans son pendant, ou une citation vide : « ' + s + ' »');
+        const note = /^byDutch\.notes(\[.*\])\.(fr|en)$/.exec(where);
+        const side = note && (notes[JSON.parse(note[1])[0]] || {})[note[2] === 'fr' ? 'en' : 'fr'];
+        const other = typeof side === 'string' ? Array.from(Q(side).matchAll(/<span lang="nl-BE">([^<]*)<\/span>/g), m => NL.util.norm(unescape(m[1]))) : [];
+        segs.forEach(q => {
+          if (other.indexOf(NL.util.norm(q)) >= 0 && spelling.tokens(q).every(w => S.known(w) || dutch.has(w))) return;
+          const affixes = q.split(/[\s,\/…]+|\.{2,}/).filter(t => /^-\p{L}+$|^\p{L}+-$/u.test(t)).map(t => t.replace('-', '').toLowerCase());
+          const miss = words(q).filter(w => !dutch.has(w) && affixes.indexOf(w) < 0 && !/^\d+$/.test(w));
+          miss.forEach(w => { if (QUOTE_OK[w]) excused.add(w); });
+          if (miss.some(w => !QUOTE_OK[w])) foreign.push(where + ' « ' + q + ' »');
+        });
+      });
+      const plants = foreign.filter(x => /^byDutch\.notes\["zq\d"\]/.test(x));
+      ok(plants.join(' ; ') === 'byDutch.notes["zq2"].fr « ' + plant + ' »', '6d : une note cite « ' + plant + ' », que l’orthographe connaît, ' +
+        'dans ses deux langues : c’est du néerlandais ; dans une seule, non. Comptées hors du néerlandais : ' + plants.join(' ; '));
+      foreign.splice(0, foreign.length, ...foreign.filter(x => plants.indexOf(x) < 0));
+      Object.keys(QUOTE_OK).forEach(w => {
+        ok(!dutch.has(w), '6d : « ' + w + ' » est du néerlandais du cours, son exception est de trop');
+        ok(excused.has(w), '6d : « ' + w + ' » n’est plus cité nulle part, son exception est de trop');
+      });
+      ok(foreign.length === 0, '6d : ' + foreign.length + ' citations hors du néerlandais du cours — une traduction va entre parenthèses, sans guillemets : ' + foreign.slice(0, 6).join(' ; '));
+      console.log('  guillemets      ' + foreign.length + ' citations hors du néerlandais du cours (exigé : 0), ' + Object.keys(QUOTE_OK).length + ' exceptions');
+    });
+  };
+
+  /* 6d.4. Le néerlandais qu'une prose laisse nu : un mot du néerlandais du cours que les côtés fr et
+     en d'un même texte écrivent tous deux hors de tout passage nl-BE (« ik werk », un <b>het</b>). Il se
+     cite, ou dans un champ HTML (HTML_FIELDS) porte class="nl" ; un titre (title, h) ne cite
+     pas, il porte class="nl". Un mot que le français et l'anglais ont vraiment en commun
+     va dans SHARED_OK ; les noms de {naam}, {stad} et {bedrijf} sont les mêmes partout. Les notes des
+     mots et des phrases (byDutch.notes) se lisent comme le reste, jetons remplis. Ce contrôle ne
+     voit pas le néerlandais qu'un seul côté écrit, ni celui que le cours n'enseigne pas. */
+  const q4 = () => {
+    const B = boot();
+    return B.NL.state.open().then(() => {
+      const NL = B.NL, dutch = dutchWords(NL), named = names(NL), shared = new Set(), nu = [];
+      const bare = (f, s, l) => new Set([].concat(...runs(HTML_FIELDS.indexOf(f) >= 0 ? NL.gloss.prose(s) : NL.gloss.quoted(s), l)
+        .filter(r => r.lang !== 'nl-BE').map(r => words(r.text))));
+      let fields = 0;
+      tree.visitCourse(NL.content, (v, key, where) => {
+        if (!v || typeof v !== 'object' || typeof v.fr !== 'string' || typeof v.en !== 'string') return;
+        if (QUOTED_FIELDS.indexOf(key) < 0 && HTML_FIELDS.indexOf(key) < 0) return;
+        fields++;
+        const en = bare(key, NL.content.fill(v.en), 'en');
+        const both = Array.from(bare(key, NL.content.fill(v.fr), 'fr')).filter(w => en.has(w) && dutch.has(w) && !named.has(w));
+        both.forEach(w => { if (SHARED_OK[w]) shared.add(w); });
+        if (both.some(w => !SHARED_OK[w])) nu.push(where + ' [' + both.filter(w => !SHARED_OK[w]).join(', ') + ']');
+      });
+      nu.forEach(n => ok(false, '6d : ' + n + ' : du néerlandais du cours, écrit pareil en français et en anglais hors de nl-BE — le citer, ou dans un champ HTML (' + HTML_FIELDS.join(', ') + ') lui donner class="nl"'));
+      Object.keys(SHARED_OK).forEach(w => ok(shared.has(w), '6d : « ' + w + ' » n’est plus écrit pareil dans les deux langues, ou plus du néerlandais du cours : son exception est de trop'));
+      ok(fields > 0, '6d : aucun texte lu en deux langues, le contrôle est creux');
+      console.log('  néerlandais nu  ' + fields + ' champs lus en deux langues, ' + Object.keys(SHARED_OK).length + ' exceptions');
+    });
+  };
+
+  /* 6d.5. Chaque titre (title, h), planté d'un néerlandais inventé (<span class="nl">zqN</span>).
+     Un écran qui échappe un titre au lieu de le montrer par NL.gloss.prose échoue ici. */
+  const q5 = () => planted(['title', 'h'], n => '<span class="nl">zq' + n + '</span>', /<span class="nl" lang="nl-BE">zq(\d+)<\/span>/g);
+
+  /* 6d.6. La page de / het et sa tuile, écrites par les tables fr et en : un mot du néerlandais du
+     cours que les deux langues y montrent hors de nl-BE (« het », « de / het ») porte class="nl". Les
+     noms de {naam}, {stad} et {bedrijf}, que l'en-tête montre, sont les mêmes partout. */
+  const q6 = () => {
+    const B = boot();
+    return B.NL.state.open().then(() => {
+      const NL = B.NL, dutch = dutchWords(NL), named = names(NL);
+      const page = (l, to) => {
+        to(B);
+        NL.ui.go('meer');
+        const tile = (/<button class="tile-card" data-go="dehet">[\s\S]*?<\/button>/.exec(B.app.innerHTML) || [''])[0];
+        ok(tile !== '', '6d (' + l + ') : la tuile de / het manque, le contrôle est creux');
+        NL.ui.go('dehet');
+        return new Set([].concat(...runs(tile + B.app.innerHTML, l).filter(r => r.lang !== 'nl-BE').map(r => words(r.text))));
+      };
+      const fr = page('fr', French), en = page('en', English);
+      const both = Array.from(fr).filter(w => en.has(w) && dutch.has(w) && !named.has(w) && !SHARED_OK[w]);
+      ok(both.length === 0, '6d : la page de / het montre nu, en français comme en anglais, ' + both.join(', ') + ' — lui donner class="nl"');
+    });
+  };
+
+  /* 6d.7. Le texte de l'apprenant ({naam}, {stad}, {bedrijf}) entre dans le cours tel quel, sans
+     échappement : un champ montré en HTML (HTML_FIELDS) ne doit pas le porter, et place, qui le
+     porte, reste échappé. Planté d'une balise (<u>zqmine</u>), il ne paraît comme balise sur aucun
+     écran, et il paraît échappé dans les conversations. views() remet l'état à zéro, réglages
+     compris : ceux de l'apprenant passent donc par NL.state.meta, que fill() lit. */
+  const q7 = () => {
+    const mine = '<u>zqmine</u>';
+    const B = boot({ prepare: NL => {
+      const meta = NL.state.meta;
+      NL.state.meta = () => Object.assign({}, meta(), { learnerName: mine, town: mine, company: mine });
+    } });
+    return B.NL.state.open().then(() => {
+      French(B);
+      const raw = new Set();
+      let escaped = 0;
+      views(B, (n, h) => {
+        if (String(h).indexOf(mine) >= 0) raw.add(n);
+        if (n.indexOf('scenario/') === 0 && String(h).indexOf('&lt;u&gt;zqmine&lt;/u&gt;') >= 0) escaped++;
+      });
+      ok(raw.size === 0, '6d : le texte de l’apprenant montré comme du HTML, sans échappement (vue ' + Array.from(raw).join(', ') + ')');
+      ok(escaped > 0, '6d : le texte de l’apprenant ne paraît dans aucune conversation, le contrôle est creux');
+    });
+  };
+
+  return [q1, q2, q3, q4, q5, q6, q7].reduce((p, c) => p.then(c), Promise.resolve());
 }
 
 const plain = boot(), paired = boot({ prepare: NL => pairUp(NL.content) });
@@ -906,10 +1276,25 @@ Promise.all([plain.NL.state.open(), paired.NL.state.open()]).then(() => {
         ok(WC({ kind: 'word', nl: 'gisteren', fr: 'hier' }, 'fr') === 'other', 'wordClass : « hier » (gisteren) n’est pas un verbe');
         ok(WC({ kind: 'word', nl: 'werken', fr: 'travailler' }, 'fr') === 'verb', 'wordClass : « travailler » (werken) reste un verbe');
         ok(plain.NL.gloss.prose('a <span class="ex">hier</span>') === 'a <span class="ex" lang="nl-BE">hier</span>', 'gloss.prose : span.ex doit porter lang="nl-BE"');
+        /* E1. Le néerlandais d'une prose du cours porte aussi class="nl", sur n'importe quelle balise. */
+        ok(plain.NL.gloss.prose('<i class="nl">Morgen ik ga</i>, <b class="nl">jij</b>') === '<i class="nl" lang="nl-BE">Morgen ik ga</i>, <b class="nl" lang="nl-BE">jij</b>',
+          'gloss.prose : class="nl" doit porter lang="nl-BE", sur <i> comme sur <b>');
+        /* NL.gloss.quoted échappe un texte et déclare nl-BE chaque passage entre « » ou “ ”, guillemets et espaces dehors. */
+        [['dit « trager » ; le nord « langzamer ».', 'dit « <span lang="nl-BE">trager</span> » ; le nord « <span lang="nl-BE">langzamer</span> ».'],
+          ['says “trager”; the north', 'says “<span lang="nl-BE">trager</span>”; the north'],
+          ['«zo»', '«<span lang="nl-BE">zo</span>»'],
+          ['« a < b & "c" »', '« <span lang="nl-BE">a &lt; b &amp; &quot;c&quot;</span> »'],
+          ['« » et “ ” : rien à déclarer', '« » et “ ” : rien à déclarer'],
+          ['sans citation', 'sans citation'],
+          [null, '']
+        ].forEach(([x, want]) => {
+          const got = typeof plain.NL.gloss.quoted === 'function' ? plain.NL.gloss.quoted(x) : '(NL.gloss.quoted manque)';
+          ok(got === want, 'gloss.quoted(' + JSON.stringify(x) + ') donne « ' + got + ' », attendu « ' + want + ' »');
+        });
         [['tussen', 'entre'], ['tegen', 'contre'], ['eigen', 'propre']].forEach(([nl, fr]) =>
           ok(WC({ kind: 'word', nl: nl, fr: fr }, 'fr') === 'other', 'wordClass : « ' + fr + ' » (' + nl + ') n’est pas un verbe')); }
       const L6 = boot();
-      return L6.NL.state.open().then(() => langAttrCheck(L6)).then(() => anchorCheck(L6)).then(() => addFormCheck(L6)).then(interfaceCheck).then(displayChecks);
+      return L6.NL.state.open().then(() => langAttrCheck(L6)).then(() => anchorCheck(L6)).then(() => addFormCheck(L6)).then(heardCheck).then(interfaceCheck).then(displayChecks).then(quoteChecks);
     }).then(() => {
       console.log('\n' + checks + ' contrôles, ' + (fails === 0 ? 'LANGUE CONFORME' : fails + ' ÉCHEC(S)'));
       process.exit(fails ? 1 : 0);

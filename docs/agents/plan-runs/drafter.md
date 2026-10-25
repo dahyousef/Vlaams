@@ -15,7 +15,8 @@ the rows to change and the maintainer's words.
 Your output file is a JSON array, one row per row you were given, in the input's order:
 
 - **A first draft**: one row per input row.
-- **A retry**: one row per row `review.json` disputes, and only those. Each one answers its reason.
+- **A retry**: one row per row `review.json` disputes, and only those (a `for maintainer` verdict is not a
+  dispute). Each one answers its reason.
 - **A change**: one row per id your dispatch names, as the maintainer's words ask.
 
 Each row carries its input row's `id` and `stamp` unchanged, then the format's fields. A row you cannot

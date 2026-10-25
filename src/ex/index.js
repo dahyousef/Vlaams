@@ -16,15 +16,14 @@ NL.ex = (function () {
     return '<div class="speaker-row">' +
       '<button class="speaker" data-say="' + esc(text) + '" aria-label="' + NL.t.listen + '">' + ICON.speaker(26) + '</button>' +
       '<button class="speaker slow" data-say="' + esc(text) + '" data-slow="1" aria-label="' + NL.t.slow + '">' + ICON.turtle() + '</button>' +
-      (opts.show ? '<div class="sentence"><span lang="nl-BE">' + esc(text) + '</span>' + flemish(opts.be, text) + '</div>' : '') +
+      (opts.show ? '<div class="sentence"><span' + NL.gloss.attr('nl') + '>' + esc(text) + '</span>' + flemish(opts.be, text) + '</div>' : '') +
       '</div>';
   };
 
   const flemish = (be, std) => (be && NL.state.meta().showFlemish !== false && U.norm(be) !== U.norm(std))
-    ? '<span class="be-line"><span class="be-tag">' + NL.t.beTag + '</span><span lang="nl-BE">' + esc(be) + '</span></span>' : '';
+    ? '<span class="be-line"><span class="be-tag">' + NL.t.beTag + '</span><span' + NL.gloss.attr('nl') + '>' + esc(be) + '</span></span>' : '';
 
-  /* `lang` : l'attribut de la langue des libellés, NL_BE pour du néerlandais, NL.gloss.langAttr pour des sens. */
-  const NL_BE = ' lang="nl-BE"';
+  /* `lang` : l'attribut de la langue des libellés, NL.gloss.attr('nl') pour du néerlandais, NL.gloss.langAttr pour des sens. */
   function optList(opts, L, phase, lang) {
     return '<div class="opts">' + opts.map((o, i) => {
       let cls = '';
@@ -39,10 +38,10 @@ NL.ex = (function () {
   function tileArea(task, L, phase) {
     const src = task.bank;
     const chosen = L.picked.map(i =>
-      '<button class="tile" lang="nl-BE" data-unpick="' + i + '"' + (phase === 'ask' ? '' : ' disabled') + '>' + esc(src[i]) + '</button>').join('');
+      '<button class="tile"' + NL.gloss.attr('nl') + ' data-unpick="' + i + '"' + (phase === 'ask' ? '' : ' disabled') + '>' + esc(src[i]) + '</button>').join('');
     const bank = src.map((w, i) => {
       const used = L.picked.indexOf(i) >= 0;
-      return '<button class="tile' + (used ? ' spent' : '') + '" lang="nl-BE" data-pick="' + i + '"' +
+      return '<button class="tile' + (used ? ' spent' : '') + '"' + NL.gloss.attr('nl') + ' data-pick="' + i + '"' +
         (phase === 'ask' && !used ? '' : ' disabled') + '>' + esc(w) + '</button>';
     }).join('');
     return '<div class="answer-area' + (L.picked.length ? '' : ' hint') + '">' + chosen + '</div>' +
@@ -51,6 +50,8 @@ NL.ex = (function () {
   const tileShuffleGuard = html => html || '<span class="muted">—</span>';
 
   const said = (task, L) => L.picked.map(i => task.bank[i]).join(' ');
+  /* Le libellé de l'option choisie, null sans choix. */
+  const chosenLabel = (task, L) => L.sel && task.opts[L.sel.i] ? task.opts[L.sel.i].label : null;
 
   /* Une note de prononciation se dit en mots reconnus, pas en pourcentage. */
   const wordScore = parts => NL.t.wordsHeard((parts || []).filter(p => p.ok).length, (parts || []).length);
@@ -58,11 +59,9 @@ NL.ex = (function () {
   /* Ce que la réponse tapée accepte pour un élément : la cible, ses variantes
      flamandes (une par virgule pour un mot, la phrase entière pour une phrase) et
      sa liste « also ». Un mot se tape avec ou sans article, comme la cible. */
-  const variants = item => !item.be ? []
-    : item.kind === 'word' ? String(item.be).split(',').map(f => f.trim()).filter(Boolean) : [item.be];
   function accepted(item) {
     const word = item.kind === 'word';
-    return U.uniq([item.nl].concat(variants(item), item.also || [])
+    return U.uniq([item.nl].concat(NL.content.beVariants(item), item.also || [])
       .map(x => U.norm(word ? U.bare(x) : x)).filter(Boolean));
   }
   /* Les éléments qui disent la même chose : taper l'un est juste pour l'autre. */
@@ -142,11 +141,18 @@ NL.ex = (function () {
     return (cands.length ? cands : ts).sort((a, b) => b.length - a.length)[0];
   }
 
-  /* ---------------- the types ---------------- */
+  /* ---------------- the types ----------------
+     Chaque type dit en quoi il pose (`asks`) et en quoi il répond (`answers`) :
+     'nl' du néerlandais, 'gloss' un sens dans sa langue, null les deux mêlés. Il
+     dit aussi ce que la personne a donné (`given`) : l'option choisie, les tuiles,
+     le texte tapé ou entendu, null quand rien ne se compare à la réponse. Le pied
+     de la séance lit `answers` et `given` ; test/lang.js refuse un type sans les trois. */
   const R = {};
 
   R.pick = {
     id: 'pick', get kicker() { return NL.t.exPick; },
+    asks: 'gloss', answers: 'nl',
+    given: chosenLabel,
     build(item) {
       const right = U.bare(item.nl);
       /* Quatre options, pas trois : au hasard on tombe juste une fois sur quatre. */
@@ -155,7 +161,7 @@ NL.ex = (function () {
       return { type: 'pick', item, prompt: NL.gloss.bare(item), opts };
     },
     view(t, L, phase) {
-      return '<p class="sentence prompt"' + NL.gloss.langAttr(t.item) + '>' + esc(t.prompt) + '</p>' + optList(t.opts, L, phase, NL_BE);
+      return '<p class="sentence prompt"' + NL.gloss.langAttr(t.item) + '>' + esc(t.prompt) + '</p>' + optList(t.opts, L, phase, NL.gloss.attr('nl'));
     },
     ready: (t, L) => !!L.sel,
     judge: (t, L) => ({ ok: !!(L.sel && (t.opts[L.sel.i] || {}).ok) }),
@@ -164,6 +170,8 @@ NL.ex = (function () {
 
   R.recall = {
     id: 'recall', get kicker() { return NL.t.exRecall; },
+    asks: 'nl', answers: 'gloss',
+    given: chosenLabel,
     build(item) {
       const opts = U.shuffle([{ label: NL.gloss.bare(item), ok: true }].concat(
         others(item, 3, 'gloss').map(l => ({ label: l, ok: false }))));
@@ -180,13 +188,15 @@ NL.ex = (function () {
 
   R.article = {
     id: 'article', get kicker() { return NL.t.exArticle; },
+    asks: 'nl', answers: 'nl',
+    given: chosenLabel,
     build: item => ({ type: 'article', item, opts: [{ label: 'de', ok: item.art === 'de' }, { label: 'het', ok: item.art === 'het' }] }),
     view(t, L, phase) {
       const n = U.bare(t.item.nl);
       return '<div class="speaker-row">' +
         '<button class="speaker" data-say="' + esc(t.item.art + ' ' + n) + '" aria-label="' + NL.t.listen + '">' + ICON.speaker(26) + '</button>' +
-        '<div class="sentence">&hellip;&nbsp;<span lang="nl-BE">' + esc(n) + '</span><span class="gloss"' + NL.gloss.langAttr(t.item) + '>' + esc(NL.gloss.bare(t.item)) + '</span></div></div>' +
-        optList(t.opts, L, phase, NL_BE);
+        '<div class="sentence">&hellip;&nbsp;<span' + NL.gloss.attr('nl') + '>' + esc(n) + '</span><span class="gloss"' + NL.gloss.langAttr(t.item) + '>' + esc(NL.gloss.bare(t.item)) + '</span></div></div>' +
+        optList(t.opts, L, phase, NL.gloss.attr('nl'));
     },
     ready: (t, L) => !!L.sel,
     judge: (t, L) => ({ ok: !!(L.sel && (t.opts[L.sel.i] || {}).ok) }),
@@ -195,8 +205,10 @@ NL.ex = (function () {
 
   R.bank = {
     id: 'bank', get kicker() { return NL.t.exBank; },
+    asks: 'gloss', answers: 'nl',
+    given: said,
     build(item) {
-      const d = (item.drills && item.drills.length) ? U.one(item.drills) : { nl: item.nl, fr: item.fr, en: item.en };
+      const d = (item.drills && item.drills.length) ? U.one(item.drills) : Object.assign({ nl: item.nl }, NL.gloss.meaning(item));
       return { type: 'bank', item, drill: d, target: d.nl, bank: bankFor(d.nl, item) };
     },
     view(t, L, phase) {
@@ -209,13 +221,15 @@ NL.ex = (function () {
 
   R.order = {
     id: 'order', get kicker() { return NL.t.exOrder; },
+    asks: 'gloss', answers: 'nl',
+    given: said,
     build(item) {
-      const d = U.one(item.drills || [{ nl: item.nl, fr: item.fr, en: item.en }]);
+      const d = U.one(item.drills || [Object.assign({ nl: item.nl }, NL.gloss.meaning(item))]);
       return { type: 'order', item, drill: d, target: d.nl, bank: U.shuffle(U.tiles(d.nl)) };
     },
     view(t, L, phase) {
       return '<div class="sentence prompt"' + NL.gloss.langAttr(t.drill) + '>' + esc(NL.gloss.of(t.drill)) + '</div>' +
-        '<div class="rule-chip"' + NL.gloss.langAttr(t.item.rule) + '>' + esc(NL.gloss.of(t.item.rule)) + '</div>' + tileArea(t, L, phase);
+        '<div class="rule-chip"' + NL.gloss.langAttr(t.item.rule) + '>' + NL.gloss.quoted(t.item.rule) + '</div>' + tileArea(t, L, phase);
     },
     ready: (t, L) => L.picked.length > 0,
     judge: (t, L) => ({ ok: U.norm(said(t, L)) === U.norm(t.target) }),
@@ -224,8 +238,10 @@ NL.ex = (function () {
 
   R.cloze = {
     id: 'cloze', get kicker() { return NL.t.exCloze; },
+    asks: 'nl', answers: 'nl',
+    given: chosenLabel,
     build(item) {
-      const d = item.drills ? U.one(item.drills) : { nl: item.nl, fr: item.fr, en: item.en };
+      const d = item.drills ? U.one(item.drills) : Object.assign({ nl: item.nl }, NL.gloss.meaning(item));
       /* Pour un mot, le trou tombe sur le mot enseigné, pas sur le plus long de
          la phrase : sinon on drille « gemeentehuis » en cachant « morgen ». */
       const forced = d.gap ||
@@ -249,8 +265,8 @@ NL.ex = (function () {
       return { type: 'cloze', item, drill: d, gap, opts, shown: d.nl.replace(new RegExp('(^|\\s)' + gap.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?=\\s|$|[.,!?])'), '$1     ') };
     },
     view(t, L, phase) {
-      return '<div class="sentence cloze-line" lang="nl-BE">' + esc(t.shown).replace(/ +/, '<span class="gap">' + (phase === 'ask' ? '' : esc(t.gap)) + '</span>') + '</div>' +
-        '<div class="gloss-line"' + NL.gloss.langAttr(t.drill) + '>' + esc(NL.gloss.of(t.drill)) + '</div>' + optList(t.opts, L, phase, NL_BE);
+      return '<div class="sentence cloze-line"' + NL.gloss.attr('nl') + '>' + esc(t.shown).replace(/ +/, '<span class="gap">' + (phase === 'ask' ? '' : esc(t.gap)) + '</span>') + '</div>' +
+        '<div class="gloss-line"' + NL.gloss.langAttr(t.drill) + '>' + esc(NL.gloss.of(t.drill)) + '</div>' + optList(t.opts, L, phase, NL.gloss.attr('nl'));
     },
     ready: (t, L) => !!L.sel,
     judge: (t, L) => ({ ok: !!(L.sel && (t.opts[L.sel.i] || {}).ok) }),
@@ -259,6 +275,8 @@ NL.ex = (function () {
 
   R.dictation = {
     id: 'dictation', get kicker() { return NL.t.exDictation; },
+    asks: 'nl', answers: 'nl',
+    given: (t, L) => t.bank ? said(t, L) : L.input,
     build(item) {
       const target = item.kind === 'word' ? U.bare(item.nl) : item.nl;
       return { type: 'dictation', item, target, bank: item.kind === 'word' ? null : bankFor(target, item, 3) };
@@ -282,6 +300,8 @@ NL.ex = (function () {
 
   R.type = {
     id: 'type', get kicker() { return NL.t.exType; },
+    asks: 'gloss', answers: 'nl',
+    given: (t, L) => L.input,
     build(item) {
       return { type: 'type', item, target: item.kind === 'word' ? U.bare(item.nl) : (item.drills ? item.nl : item.nl), prompt: item.kind === 'word' ? NL.gloss.bare(item) : NL.gloss.of(item) };
     },
@@ -310,6 +330,8 @@ NL.ex = (function () {
 
   R.speak = {
     id: 'speak', get kicker() { return NL.t.exSpeak; },
+    asks: 'nl', answers: 'nl',
+    given: (t, L) => L.speech.heard || null,
     build(item) {
       return { type: 'speak', item, target: item.kind === 'word' ? U.bare(item.nl) : item.nl, prompt: item.kind === 'word' ? NL.gloss.bare(item) : NL.gloss.of(item) };
     },
@@ -323,14 +345,14 @@ NL.ex = (function () {
       } else if (sp.phase === 'listening') {
         panel = '<div class="mic-panel live"><button class="mic big listening" data-mic="stop" aria-label="' + NL.t.stop + '">' + ICON.mic(34) + '</button>' +
           '<p class="mic-why">' + NL.t.micListening + '</p>' +
-          NL.ui.ifText(sp.partial, 'p', 'heard') + '</div>';
+          NL.ui.ifText(sp.partial, 'p', 'heard', 'nl') + '</div>';
       } else if (sp.phase === 'done') {
         panel = '<div class="mic-panel ' + (sp.ok ? 'good' : 'bad') + '">' +
           '<div class="score-row"><span class="score">' + wordScore(sp.parts) + '</span>' +
           '<span class="score-bar"><span style="width:' + sp.pct + '%"></span></span></div>' +
-          '<p class="word-diff">' + sp.parts.map(p =>
+          '<p class="word-diff"' + NL.gloss.attr('nl') + '>' + sp.parts.map(p =>
             '<span class="' + (p.ok ? (p.close ? 'w-close' : 'w-ok') : 'w-no') + '">' + esc(p.word) + '</span>').join(' ') + '</p>' +
-          (sp.heard ? '<p class="heard">' + NL.t.micHeard + ' &ldquo;' + esc(sp.heard) + '&rdquo;</p>' : '') +
+          (sp.heard ? '<p class="heard">' + NL.t.micHeard + ' &ldquo;<span' + NL.gloss.attr('nl') + '>' + esc(sp.heard) + '</span>&rdquo;</p>' : '') +
           (!sp.ok && sp.tries < 3 ? '<div class="mic-actions"><button class="btn btn-blue" data-mic="start">' + NL.t.micRetry(3 - sp.tries) + '</button></div>' : '') +
           /* Trois refus : le micro n'entend peut-être simplement pas ce mot-là.
              Sans cette issue, l'élément serait redemandé chaque jour sans jamais monter. */
@@ -348,7 +370,7 @@ NL.ex = (function () {
         sp.recState !== 'rec' && sp.recState !== 'done';
       const hush = untried ? '<div class="mic-actions"><button class="btn btn-ghost" data-quiet="1">' + NL.t.cantSpeak + '</button></div>' : '';
 
-      return '<div class="sentence prompt"><span lang="nl-BE">' + esc(t.target) + '</span>' + flemish(t.item.be, t.target) + '</div>' +
+      return '<div class="sentence prompt"><span' + NL.gloss.attr('nl') + '>' + esc(t.target) + '</span>' + flemish(t.item.be, t.target) + '</div>' +
         '<div class="gloss-line"' + NL.gloss.langAttr(t.item) + '>' + esc(t.prompt) + '</div>' +
         speakerRow(t.target, {}) + panel + hush;
     },
@@ -432,6 +454,8 @@ NL.ex = (function () {
      au lieu d'un pile ou face. */
   R.intrus = {
     id: 'intrus', get kicker() { return NL.t.exIntrus; },
+    asks: 'nl', answers: 'nl',
+    given: chosenLabel,
     build(item) {
       const pool = NL.content.allItems().filter(x => x.kind === 'word' && x.art && x.id !== item.id);
       const same = U.sample(pool.filter(x => x.art === item.art), 2);
@@ -439,11 +463,12 @@ NL.ex = (function () {
       const opts = U.shuffle(
         [item].concat(same).map(x => ({ label: U.bare(x.nl), ok: false }))
           .concat([{ label: U.bare(other.nl), ok: true, art: other.art }]));
-      return { type: 'intrus', item, opts, art: item.art };
+      /* Le mot qui n'est pas à sa place reste dans l'exercice : c'est son sens que donne le pied. */
+      return { type: 'intrus', item, odd: other, opts, art: item.art };
     },
     view(t, L, phase) {
       return '<p class="sentence prompt">' + NL.t.intrusAsk(t.art) + '</p>' +
-        optList(t.opts, L, phase, NL_BE);
+        optList(t.opts, L, phase, NL.gloss.attr('nl'));
     },
     ready: (t, L) => !!L.sel,
     judge: (t, L) => ({ ok: !!(L.sel && (t.opts[L.sel.i] || {}).ok) }),
@@ -454,6 +479,8 @@ NL.ex = (function () {
      relecture de tes propres mails est direct. */
   R.corrige = {
     id: 'corrige', get kicker() { return NL.t.exCorrige; },
+    asks: 'nl', answers: 'nl',
+    given: () => null,
     build(item) {
       const toks = U.tiles(item.nl);
       const i = 1 + ((Math.random() * Math.max(1, toks.length - 2)) | 0);
@@ -468,64 +495,120 @@ NL.ex = (function () {
           let cls = '';
           if (phase !== 'ask') { if (i === t.faulty || i === t.other) cls = ' bad'; }
           else if (L.sel && L.sel.i === i) cls = ' sel';
-          return '<button class="ctok' + cls + '" lang="nl-BE" data-opt="' + i + '"' + (phase === 'ask' ? '' : ' disabled') + '>' + esc(w) + '</button>';
+          return '<button class="ctok' + cls + '"' + NL.gloss.attr('nl') + ' data-opt="' + i + '"' + (phase === 'ask' ? '' : ' disabled') + '>' + esc(w) + '</button>';
         }).join('') + '</div>' +
-        (phase !== 'ask' ? '<p class="corrige-fix" lang="nl-BE">' + esc(t.target) + '</p>' : '');
+        (phase !== 'ask' ? '<p class="corrige-fix"' + NL.gloss.attr('nl') + '>' + esc(t.target) + '</p>' : '');
     },
     ready: (t, L) => !!L.sel,
     judge: (t, L) => ({ ok: !!L.sel && (L.sel.i === t.faulty || L.sel.i === t.other) }),
     answer: t => t.target
   };
 
+  /* Les deux mauvaises réponses de « Comment le dit-on ici ? ». Elles sont écrites pour l'élément
+     (src/content/decoys.js) : deux fautes qu'un apprenant ferait, aussi flamandes à l'œil que la
+     bonne. Tirées parmi les formes flamandes des autres éléments, elles parlaient d'autre chose, et
+     la bonne se devinait sans rien savoir. Un élément sans leurres écrits (un mot à soi) les tire
+     encore là : la forme que l'exercice propose pour un autre
+     élément, jamais une qui serait juste ici, ni une forme que l'élément accepte (« salut », qui
+     ouvre la liste de tot ziens, est aussi à hallo), ni celle d'un élément au même sens
+     (goeiendag face à hallo). */
+  function vlaamsDecoys(item) {
+    if (item.decoys) return item.decoys;
+    const mine = accepted(item), first = x => NL.content.beVariants(x)[0];
+    const key = item.kind === 'word' ? f => U.norm(U.bare(f)) : U.norm;
+    const any = NL.content.allItems().filter(x => x.be && x.id !== item.id && NL.srs.supports(x, 'vlaams') &&
+      !NL.gloss.sameMeaning(x, item) && mine.indexOf(key(first(x))) < 0);
+    /* Une phrase contre deux mots isolés se devine sans rien savoir : les
+       leurres viennent d'abord du même genre d'élément. */
+    const labels = xs => U.uniq(xs.map(first));
+    const same = labels(any.filter(x => x.kind === item.kind));
+    /* Une bonne option seule à porter un article (« een pintje » face à « hey » et « toe »), ou
+       seule à n'en pas porter, se devine aussi : les leurres en ont d'abord un, ou aucun, comme elle. */
+    const art = f => U.norm(U.bare(f)) !== U.norm(f), like = same.filter(f => art(f) === art(first(item)));
+    return U.sample([like, same].find(xs => xs.length >= 2) || labels(any), 2);
+  }
+
   /* La phrase standard est donnée : comment la dit-on ici ? Unique à cette app,
-     et la donnée existe déjà sur chaque élément. */
+     et la donnée existe déjà sur chaque élément. Un mot y propose la première forme
+     de sa liste (« hey » pour hallo, dont la liste est « hey, salut »). */
   R.vlaams = {
     id: 'vlaams', get kicker() { return NL.t.exVlaams; },
+    asks: 'nl', answers: 'nl',
+    given: chosenLabel,
     build(item) {
-      const any = NL.content.allItems().filter(x =>
-        x.be && x.id !== item.id && U.norm(x.be) !== U.norm(x.nl) && U.norm(x.be) !== U.norm(item.be));
-      /* Une phrase contre deux mots isolés se devine sans rien savoir : les
-         leurres viennent d'abord du même genre d'élément. */
-      const same = any.filter(x => x.kind === item.kind);
-      const pool = same.length >= 2 ? same : any;
-      const opts = U.shuffle([{ label: item.be, ok: true }]
-        .concat(U.sample(pool, 2).map(x => ({ label: x.be, ok: false }))));
+      const opts = U.shuffle([{ label: NL.content.beVariants(item)[0], ok: true }]
+        .concat(vlaamsDecoys(item).map(label => ({ label, ok: false }))));
       return { type: 'vlaams', item, opts };
     },
     view(t, L, phase) {
-      return '<div class="sentence prompt" lang="nl-BE">' + esc(t.item.nl) + '</div>' +
-        '<div class="gloss-line"' + NL.gloss.langAttr(t.item) + '>' + esc(NL.gloss.of(t.item)) + '</div>' + optList(t.opts, L, phase, NL_BE);
+      return '<div class="sentence prompt"' + NL.gloss.attr('nl') + '>' + esc(t.item.nl) + '</div>' +
+        '<div class="gloss-line"' + NL.gloss.langAttr(t.item) + '>' + esc(NL.gloss.of(t.item)) + '</div>' + optList(t.opts, L, phase, NL.gloss.attr('nl'));
     },
     ready: (t, L) => !!L.sel,
     judge: (t, L) => ({ ok: !!(L.sel && (t.opts[L.sel.i] || {}).ok) }),
-    answer: t => t.item.be
+    answer: t => NL.content.beVariants(t.item)[0]
   };
+
+  /* Les lettres d'un mot, accents compris. Dans une regex, `\w` et `\b` ne voient que
+     l'ASCII : « geïnstalleerd » s'y coupe à « ï », et « één » n'y est pas un mot. Le
+     barème récrit `\w`, `\W`, `\b` et `\B` sur ces lettres-ci (latin accentué, marques
+     combinantes), hors des crochets ; entre crochets, `\w` seul. Un navigateur qui ne
+     connaît pas le regard arrière garde la regex telle qu'écrite. */
+  const LETTER = 'A-Za-z0-9_\\u00C0-\\u00D6\\u00D8-\\u00F6\\u00F8-\\u024F\\u0300-\\u036F';
+  const IN = '[' + LETTER + ']';
+  const WIDE = {
+    w: IN, W: '[^' + LETTER + ']',
+    b: '(?:(?<!' + IN + ')(?=' + IN + ')|(?<=' + IN + ')(?!' + IN + '))',
+    B: '(?:(?<=' + IN + ')(?=' + IN + ')|(?<!' + IN + ')(?!' + IN + '))'
+  };
+  function wide(rx) {
+    const src = rx.source;
+    let out = '', inClass = false;
+    for (let i = 0; i < src.length; i++) {
+      const c = src[i];
+      if (c === '\\') {
+        const e = src[++i];
+        out += inClass ? (e === 'w' ? LETTER : '\\' + e) : (WIDE[e] || '\\' + e);
+        continue;
+      }
+      if (c === '[') inClass = true;
+      else if (c === ']') inClass = false;
+      out += c;
+    }
+    try { return new RegExp(out, rx.flags); } catch (e) { return rx; }
+  }
+
+  /* Une suite de mots entiers, dans l'ordre, parmi les mots de la réponse : « in »
+     n'est pas dans « kind », et « om half » n'est pas dans « kom half ». */
+  const hasRun = (words, run) => run.length > 0 && words.some((_, i) => run.every((y, j) => words[i + j] === y));
 
   /* Réponse libre, notée sur ce qu'elle CONTIENT et non sur sa formulation.
      Hors ligne, sans IA. C'est le passage de la reproduction à la composition. */
   function rubric(task, text) {
     const s = String(text || ''), w = U.words(s), met = [];
     (task.need || []).forEach(n => {
-      if (n.rx && n.rx.test(s)) { met.push(n.what); return; }
-      if (n.any && n.any.some(a => U.norm(s).indexOf(U.norm(a)) >= 0)) { met.push(n.what); return; }
+      if (n.rx && wide(n.rx).test(s)) { met.push(n.what); return; }
+      if (n.any && n.any.some(a => hasRun(w, U.words(a)))) { met.push(n.what); return; }
       if (n.min && w.length >= n.min) { met.push(n.what); return; }
     });
     return met;
   }
   R.open = {
     id: 'open', get kicker() { return NL.t.exOpen; },
+    asks: 'gloss', answers: 'nl',
+    given: () => null,
     build: item => ({ type: 'open', item, task: item.open }),
     view(t, L, phase) {
       const met = phase === 'ask' ? null : rubric(t.task, L.input);
-      return '<p class="sentence prompt"' + NL.gloss.langAttr(t.task.ask) + '>' + esc(NL.gloss.of(t.task.ask)) + '</p>' +
+      return '<p class="sentence prompt"' + NL.gloss.langAttr(t.task.ask) + '>' + NL.gloss.quoted(t.task.ask) + '</p>' +
         '<textarea class="textin open-box" rows="3" spellcheck="false" ' +
         'placeholder="' + esc(NL.t.openPlaceholder) + '"' + (phase === 'ask' ? '' : ' disabled') + '>' +
         esc(L.input) + '</textarea>' +
         '<div class="need-list">' + (t.task.need || []).map(n => {
           const on = met ? met.indexOf(n.what) >= 0 : null;
-          return '<span class="need' + (on === null ? '' : on ? ' ok' : ' no') + '"' + NL.gloss.langAttr(n.what) + '>' + esc(NL.gloss.of(n.what)) + '</span>';
+          return '<span class="need' + (on === null ? '' : on ? ' ok' : ' no') + '"' + NL.gloss.langAttr(n.what) + '>' + NL.gloss.quoted(n.what) + '</span>';
         }).join('') + '</div>' +
-        (phase !== 'ask' ? '<p class="model-answer"><i>' + NL.t.openModel + '</i> <span lang="nl-BE">' + esc(t.task.model) + '</span></p>' : '');
+        (phase !== 'ask' ? '<p class="model-answer"><i>' + NL.t.openModel + '</i> <span' + NL.gloss.attr('nl') + '>' + esc(t.task.model) + '</span></p>' : '');
     },
     ready: (t, L) => U.words(L.input).length >= 3,
     judge: (t, L) => ({ ok: rubric(t.task, L.input).length === (t.task.need || []).length }),
@@ -534,6 +617,8 @@ NL.ex = (function () {
 
   R.match = {
     id: 'match', get kicker() { return NL.t.exMatch; },
+    asks: null, answers: null,
+    given: () => null,
     build(items) {
       const pairs = items.slice(0, 5).map(it => ({ id: it.id, nl: U.bare(it.nl), gloss: NL.gloss.bare(it), lang: NL.gloss.langOf(it), item: it }));
       return {
@@ -548,7 +633,7 @@ NL.ex = (function () {
         const sel = L.matchSel && L.matchSel.id === id, bad = L.matchBad === id;
         return '<button class="pair' + (gone ? ' gone' : '') + (sel ? ' sel' : '') + (bad ? ' shake' : '') + '"' +
           ' data-match="' + id + '" data-k="' + c.k + '" data-side="' + c.s + '"' + (gone ? ' disabled' : '') + '>' +
-          '<span class="pair-n">' + (c.s === 'l' ? 'NL' : t.pairs[c.k].lang.toUpperCase()) + '</span>' + '<span' + (c.s === 'l' ? NL_BE : NL.gloss.langAttr(t.pairs[c.k].item)) + '>' + esc(c.t) + '</span></button>';
+          '<span class="pair-n">' + (c.s === 'l' ? 'NL' : t.pairs[c.k].lang.toUpperCase()) + '</span>' + '<span' + (c.s === 'l' ? NL.gloss.attr('nl') : NL.gloss.langAttr(t.pairs[c.k].item)) + '>' + esc(c.t) + '</span></button>';
       };
       let rows = '';
       for (let i = 0; i < t.pairs.length; i++) rows += cell(t.left[i]) + cell(t.right[i]);
@@ -571,8 +656,10 @@ NL.ex = (function () {
   };
 
   /* La ligne « Ici on dit » : les formes flamandes de l'élément, sans celle qui
-     répète le néerlandais standard ni la réponse déjà affichée (`shown`), sauf
-     `keepSame` — dans « Comment le dit-on ici ? » la variante EST la réponse. En
+     répète le néerlandais standard ni ce qui est déjà à l'écran (`shown` : la
+     réponse, et ce que la personne a donné), sauf `keepSame` — dans « Comment
+     le dit-on ici ? » manqué, la variante EST la réponse : toute la liste se
+     montre ; choisie, elle est à l'écran et ne s'y redit pas. En
      gras, ce qui change par rapport au standard ; la ponctuation reste dehors. */
   const PUNCT = '[.,!?;:"()…]*';
   function boldForm(item, form) {
@@ -596,11 +683,16 @@ NL.ex = (function () {
   }
   function hereLine(item, shown, keepSame) {
     if (!item || !item.be) return '';
-    const own = U.norm(U.bare(item.nl)), seen = U.norm(shown);
-    const forms = variants(item).filter(f => keepSame || (U.norm(U.bare(f)) !== own && U.norm(U.bare(f)) !== seen));
+    const own = U.norm(U.bare(item.nl)), seen = [].concat(shown).filter(s => s != null).map(s => U.norm(U.bare(s)));
+    const forms = NL.content.beVariants(item).filter(f => keepSame || (U.norm(U.bare(f)) !== own && seen.indexOf(U.norm(U.bare(f))) < 0));
     if (!forms.length) return '';
-    return '<p class="v-be">' + NL.t.hereThey + ' ' + forms.map(f => '<span lang="nl-BE">' + boldForm(item, f) + '</span>').join(', ') + '</p>';
+    return '<p class="v-be">' + NL.t.hereThey + ' ' + forms.map(f => '<span' + NL.gloss.attr('nl') + '>' + boldForm(item, f) + '</span>').join(', ') + '</p>';
   }
 
-  return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, recordPanel, selfRate, wordScore, hereLine };
+  /* L'explication d'un élément, que le pied montre sous son sens : la note d'un mot ou d'une
+     phrase, la règle d'un motif. On la lit ici et nulle part ailleurs ; le pied la rend par
+     NL.ui.ifProse, qui déclare nl-BE ce qu'elle cite. */
+  const explanation = item => !item ? null : (item.kind === 'pattern' ? item.rule : item.note) || null;
+
+  return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, recordPanel, selfRate, wordScore, hereLine, rubric, explanation, accepted };
 })();

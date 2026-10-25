@@ -98,6 +98,12 @@ function view(screen, arg) {
   head('4. Every exercise type, driven to a correct answer');
   const S = NL.screens.sessie;
   const seen = {};
+  /* A right answer is already on screen: the chosen label, the tiles, the typed or
+     heard text. The panel does not print it again in bold. « article » answers with
+     its word, « corrige », « open » and « match » give nothing to compare, and
+     neither does a spoken answer rated by hand. */
+  const GIVES = ['pick', 'recall', 'bank', 'order', 'cloze', 'dictation', 'type', 'intrus', 'vlaams'];
+  let unrepeated = 0;
   for (let round = 0; round < 14; round++) {
     /* Push items up the ladder so later rungs actually appear. */
     NL.content.allItems().forEach(it => {
@@ -149,6 +155,10 @@ function view(screen, arg) {
       const after = S.render();
       if (c.ex !== 'match') ok(after.indexOf('foot ok') >= 0 || after.indexOf('foot no') >= 0, c.ex + ' gave no verdict');
       if (c.ex !== 'match') ok(after.indexOf('foot no') < 0, c.ex + ' rejected a correct answer');
+      if (GIVES.indexOf(c.ex) >= 0 || (c.ex === 'speak' && !NL.speech.listenBlocked())) {
+        ok(!/<p><b[^>]*>/.test(after), c.ex + ' prints the right answer just given again, in bold');
+        unrepeated++;
+      }
       ok(!/\d\s?%/.test(text(after)), c.ex + ' shows a percentage after the answer');
       tap('sessie', { next: '1' });
     }
@@ -157,6 +167,7 @@ function view(screen, arg) {
   Object.keys(seen).sort().forEach(k => console.log('   ' + k.padEnd(12) + seen[k]));
   ['pick', 'article', 'bank', 'cloze', 'dictation', 'type', 'speak', 'order'].forEach(k =>
     ok(seen[k] > 0, 'exercise type never appeared: ' + k));
+  ok(unrepeated > 0, 'no right answer was checked against the panel');
 
   /* ---------------------------------------------------------- 5. scenario */
   head('5. A scenario, all the way through');

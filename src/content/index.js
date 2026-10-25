@@ -19,8 +19,12 @@ NL.content = NL.content || {};
       .replace(/\{stad\}/g, m.town || DEFAULTS.stad)
       .replace(/\{bedrijf\}/g, m.company || DEFAULTS.bedrijf);
   }
+  /* A regular expression (an open task's rx) is kept as it is: it holds no token, and copied
+     key by key it would come out an empty object. It is told by its kind, as the table writer
+     tells it (tools/content/lib/table.js), so one built outside the page, by a test, is kept too. */
   function deepFill(v) {
     if (typeof v === 'string') return fill(v);
+    if (Object.prototype.toString.call(v) === '[object RegExp]') return v;
     if (Array.isArray(v)) return v.map(deepFill);
     if (v && typeof v === 'object') {
       const o = {};
@@ -30,6 +34,20 @@ NL.content = NL.content || {};
     return v;
   }
   const TOKENED = ['units', 'patterns', 'scenarios', 'sheets', 'hetRules'];
+  /* The tables keyed by the Dutch. src/content/<table>.js sets NL.content.byDutch[<table>]:
+     one entry per word or phrase, keyed by its Dutch as written, tokens unfilled, and
+     build() puts the value, filled, on the item's <field>. Only an item's first listing is
+     looked up, so a table never holds an alias's Dutch; patterns and the learner's own words
+     get nothing. NL.content.tableReport says, per table, how many keys were put on an item
+     and which keys are no item's Dutch, or null when no file set the table: test/content.js
+     fails on either. A new table's file also goes in SRC in build.sh, after the lexicons. */
+  const TABLES = [
+    { table: 'be', field: 'be' },
+    { table: 'open.phrases', field: 'open' },
+    { table: 'notes', field: 'note' },
+    { table: 'decoys', field: 'decoys' },
+    { table: 'also', field: 'also' },
+  ]; // A new table: its line goes just above this one.
 
   function build() {
     if (!RAW) {
@@ -42,13 +60,32 @@ NL.content = NL.content || {};
     /* A pattern can be referenced by several units; it belongs to the first one
        that teaches it, and must appear exactly once or it gets drilled twice. */
     const claimed = new Set();
-    NL.content.units.forEach(u => {
-      (u.words || []).forEach((w, i) => flat.push(Object.assign({}, w, {
-        id: u.id + ':w' + i, unit: u.id, level: u.level, track: u.track, kind: 'word'
-      })));
-      (u.phrases || []).forEach((p, i) => flat.push(Object.assign({}, p, {
-        id: u.id + ':p' + i, unit: u.id, level: u.level, track: u.track, kind: 'phrase'
-      })));
+    /* So can a word or a phrase: listed in two units, it is still one item. The first
+       listing in course order is the item, and carries the ids of the later ones in
+       `aliases`; a later listing is not built. Listings match on their kind and their Dutch
+       as written, tokens unfilled, so a learner's {bedrijf} can neither make a match nor
+       break one. test/content.js holds the listings of an item to the same meaning. */
+    const firsts = new Map();
+    const tables = TABLES.map(t => (NL.content.byDutch || {})[t.table] || null);
+    const hits = TABLES.map(() => new Set());
+    const listing = (u, ui, kind, x, i) => {
+      const id = u.id + ':' + kind[0] + i;
+      const nl = RAW.units[ui][kind + 's'][i].nl;
+      const key = kind + '|' + NL.util.norm(nl);
+      const first = firsts.get(key);
+      if (first) { first.aliases = (first.aliases || []).concat(id); return; }
+      const item = Object.assign({}, x, { id, unit: u.id, level: u.level, track: u.track, kind });
+      TABLES.forEach((t, n) => {
+        if (!tables[n] || !Object.prototype.hasOwnProperty.call(tables[n], nl)) return;
+        item[t.field] = deepFill(tables[n][nl]);
+        hits[n].add(nl);
+      });
+      firsts.set(key, item);
+      flat.push(item);
+    };
+    NL.content.units.forEach((u, ui) => {
+      (u.words || []).forEach((w, i) => listing(u, ui, 'word', w, i));
+      (u.phrases || []).forEach((p, i) => listing(u, ui, 'phrase', p, i));
       (u.grammar || []).forEach(gid => {
         if (claimed.has(gid)) return;
         const g = (NL.content.patterns || []).find(x => x.id === gid);
@@ -58,6 +95,10 @@ NL.content = NL.content || {};
           open: (NL.content.openTasks || {})[g.id] || null }));
       });
     });
+    NL.content.tableReport = {};
+    TABLES.forEach((t, n) => {
+      NL.content.tableReport[t.table] = tables[n] ? { attached: hits[n].size, missing: Object.keys(tables[n]).filter(k => !hits[n].has(k)) } : null;
+    });
     NL.state.customs().forEach(c => flat.push(Object.assign({}, c, { kind: c.kind || 'word', unit: 'eigen', level: 'eigen', track: 'eigen' })));
     /* Palier par défaut, et détection des mots transparents : « de tram »,
        « de garage », « direct » sont offerts à un francophone. */
@@ -66,6 +107,9 @@ NL.content = NL.content || {};
       it.cognate = NL.gloss.cognate(it);
     });
     index = new Map(flat.map(it => [it.id, it]));
+    /* An alias's id finds its item: an answer logged under it, before it was an alias,
+       counts for the item. */
+    flat.forEach(it => (it.aliases || []).forEach(id => index.set(id, it)));
   }
 
   const allItems = () => { if (!flat) build(); return flat; };
@@ -133,6 +177,12 @@ NL.content = NL.content || {};
     };
   }
 
+  /* An item's be variants as the course writes them: a word lists its forms with
+     commas, the first being the one « Comment le dit-on ici ? » offers; a phrase
+     is one form, commas and all. */
+  const beVariants = item => !item || !item.be ? []
+    : item.kind === 'word' ? String(item.be).split(',').map(f => f.trim()).filter(Boolean) : [item.be];
+
   const scenario = id => (NL.content.scenarios || []).find(s => s.id === id) || null;
 
   /* Listening material is generated from what the scenarios already say, so
@@ -142,14 +192,12 @@ NL.content = NL.content || {};
     (NL.content.scenarios || []).forEach(s => {
       s.steps.forEach((st, i) => {
         if (!st.them) return;
-        out.push({
-          id: s.id + ':l' + i, nl: st.them.nl, be: st.them.be || st.them.nl, fr: st.them.fr, en: st.them.en,
-          from: NL.gloss.of(s.title), icon: s.icon, track: s.track
-        });
+        out.push(Object.assign({ id: s.id + ':l' + i, nl: st.them.nl, be: st.them.be || st.them.nl }, NL.gloss.meaning(st.them),
+          { from: NL.gloss.of(s.title), icon: s.icon, track: s.track }));
       });
     });
     return out;
   }
 
-  Object.assign(NL.content, { allItems, refresh, byId, unit, itemsOf, unitOpen, unitComplete, frontier, unitProgress, courseProgress, met: MET, produced: PRODUCED, scenario, listenClips, fill, DEFAULTS });
+  Object.assign(NL.content, { allItems, refresh, byId, unit, itemsOf, unitOpen, unitComplete, frontier, unitProgress, courseProgress, met: MET, produced: PRODUCED, scenario, listenClips, fill, DEFAULTS, TABLES, beVariants });
 })();

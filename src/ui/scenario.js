@@ -26,8 +26,8 @@
             '<span class="scn-icon">' + s.icon + '</span>' +
             '<span class="scn-body">' +
             '<span class="eyebrow">' + esc(NL.gloss.of(s.place)) + '</span>' +
-            '<b>' + esc(NL.gloss.of(s.title)) + '</b>' +
-            '<i>' + esc(NL.gloss.of(s.blurb)) + '</i></span>' +
+            '<b>' + NL.gloss.prose(NL.gloss.of(s.title)) + '</b>' +
+            '<i>' + NL.gloss.quoted(s.blurb) + '</i></span>' +
             '<span class="scn-go">' + (isDone ? NL.t.talkDone : NL.t.start) + '</span></button>';
         });
       });
@@ -51,7 +51,7 @@
   function advanceThem() {
     if (P.at < P.scn.steps.length && P.scn.steps[P.at].them) {
       const t = P.scn.steps[P.at].them;
-      P.log.push({ who: 'them', nl: t.nl, be: t.be, fr: t.fr, en: t.en });
+      P.log.push(Object.assign({ who: 'them', nl: t.nl, be: t.be }, NL.gloss.meaning(t)));
       P.at++;
       say(t.be || t.nl);
     }
@@ -84,11 +84,11 @@
         if (b.who === 'them') {
           return '<div class="bub them">' +
             '<button class="bub-say" data-say="' + esc(b.be || b.nl) + '" aria-label="' + NL.t.replay + '">' + ICON.speaker(17) + '</button>' +
-            '<div><p class="bub-nl" lang="nl-BE">' + esc(b.be || b.nl) + '</p>' +
-            (b.be && U.norm(b.be) !== U.norm(b.nl) ? '<p class="bub-std">' + NL.t.scnStd + ' <span lang="nl-BE">' + esc(b.nl) + '</span></p>' : '') +
+            '<div><p class="bub-nl"' + NL.gloss.attr('nl') + '>' + esc(b.be || b.nl) + '</p>' +
+            (b.be && U.norm(b.be) !== U.norm(b.nl) ? '<p class="bub-std">' + NL.t.scnStd + ' <span' + NL.gloss.attr('nl') + '>' + esc(b.nl) + '</span></p>' : '') +
             '<p class="bub-en"' + NL.gloss.langAttr(b) + '>' + esc(NL.gloss.of(b)) + '</p></div></div>';
         }
-        return '<div class="bub you"><div><p class="bub-nl" lang="nl-BE">' + esc(b.nl) + '</p>' +
+        return '<div class="bub you"><div><p class="bub-nl"' + NL.gloss.attr('nl') + '>' + esc(b.nl) + '</p>' +
           '<p class="bub-en"' + NL.gloss.langAttr(b) + '>' + esc(NL.gloss.of(b)) + '</p>' +
           NL.ui.ifText(b.score, 'p', 'bub-score') + '</div></div>';
       }).join('');
@@ -97,21 +97,21 @@
       if (P.phase === 'them') {
         panel = '<button class="btn btn-blue wide" data-step="next">' + NL.t.next + '</button>';
       } else if (P.phase === 'choose') {
-        panel = '<p class="ask">' + esc(NL.gloss.of(step.you.ask)) + '</p>' +
-          NL.ui.ifText(step.you.hint, 'p', 'ask-hint') +
+        panel = '<p class="ask">' + NL.gloss.quoted(step.you.ask) + '</p>' +
+          NL.ui.ifProse(step.you.hint, 'p', 'ask-hint') +
           '<div class="choices">' + step.you.choices.map((c, i) =>
-            '<button class="choice" data-choice="' + i + '"><b lang="nl-BE">' + esc(c.nl) + '</b><i>' + esc(NL.gloss.of(c)) + '</i></button>').join('') +
+            '<button class="choice" data-choice="' + i + '"><b' + NL.gloss.attr('nl') + '>' + esc(c.nl) + '</b><i' + NL.gloss.langAttr(c) + '>' + esc(NL.gloss.of(c)) + '</i></button>').join('') +
           '</div>';
       } else if (P.phase === 'speak') {
         const c = step.you.choices[P.choice];
-        panel = '<div class="say-now"><p class="say-target" lang="nl-BE">' + esc(c.nl) + '</p>' +
-          '<p class="say-en">' + esc(NL.gloss.of(c)) + '</p>' +
+        panel = '<div class="say-now"><p class="say-target"' + NL.gloss.attr('nl') + '>' + esc(c.nl) + '</p>' +
+          '<p class="say-en"' + NL.gloss.langAttr(c) + '>' + esc(NL.gloss.of(c)) + '</p>' +
           '<button class="speaker slow inline" data-say="' + esc(c.nl) + '" data-slow="1" aria-label="' + NL.t.slow + '">' + ICON.turtle() + '</button></div>' +
           micPanel(P.speech, c.nl) +
-          NL.ui.ifText(c.note, 'p', 'say-note');
+          NL.ui.ifProse(c.note, 'p', 'say-note');
       } else if (P.phase === 'done') {
         panel = '<div class="scn-done"><h2>' + NL.t.scnOver + '</h2>' +
-          '<p>' + esc(NL.gloss.of(s.outro)) + '</p>' +
+          '<p>' + NL.gloss.quoted(s.outro) + '</p>' +
           '<div class="tally"><div class="tally-box gold"><div class="t-n">+12</div><div class="t-l">' + NL.t.tallyXp + '</div></div>' +
           '<div class="tally-box blue"><div class="t-n">' + P.spoken + '/' + P.tried + '</div><div class="t-l">' + NL.t.micSaidIt + '</div></div></div>' +
           '<button class="btn btn-primary wide" data-step="again">' + NL.t.replay + '</button>' +
@@ -121,7 +121,7 @@
       return '<div class="lesson">' +
         '<div class="lesson-head">' +
         '<button class="iconbtn" data-step="back" aria-label="' + NL.t.back + '">' + NL.ui.I.back + '</button>' +
-        '<div class="head-title"><b>' + esc(NL.gloss.of(s.title)) + '</b><i>' + esc(NL.gloss.of(s.place)) + '</i></div>' +
+        '<div class="head-title"><b>' + NL.gloss.prose(NL.gloss.of(s.title)) + '</b><i>' + esc(NL.gloss.of(s.place)) + '</i></div>' +
         '<span class="pill">' + Math.min(P.at + 1, s.steps.length) + '/' + s.steps.length + '</span>' +
         '</div>' +
         '<div class="lesson-body"><div class="stage chat">' + transcript + '</div></div>' +
@@ -165,10 +165,10 @@
     if (!step || !step.you || P.choice == null) return;
     const c = step.you.choices[P.choice];
     if (ok) P.spoken++;
-    P.log.push({ who: 'you', nl: c.nl, fr: c.fr, en: c.en, score: score });
+    P.log.push(Object.assign({ who: 'you', nl: c.nl }, NL.gloss.meaning(c), { score: score }));
     P.at++;
     if (c.reply) {
-      P.log.push({ who: 'them', nl: c.reply.nl, be: c.reply.be, fr: c.reply.fr, en: c.reply.en });
+      P.log.push(Object.assign({ who: 'them', nl: c.reply.nl, be: c.reply.be }, NL.gloss.meaning(c.reply)));
       say(c.reply.be || c.reply.nl);
       P.phase = P.at < P.scn.steps.length ? (P.scn.steps[P.at].them ? 'them' : 'choose') : 'done';
       if (P.phase === 'done') finish();
@@ -219,15 +219,15 @@
     if (blocked) return NL.ex.recordPanel(sp, target, blocked);
     if (sp.phase === 'listening') {
       return '<div class="mic-panel live"><button class="mic big listening" data-mic="stop" aria-label="' + NL.t.stop + '">' + ICON.mic(32) + '</button>' +
-        '<p class="mic-why">' + NL.t.micListening + '</p>' + NL.ui.ifText(sp.partial, 'p', 'heard') + '</div>';
+        '<p class="mic-why">' + NL.t.micListening + '</p>' + NL.ui.ifText(sp.partial, 'p', 'heard', 'nl') + '</div>';
     }
     if (sp.phase === 'done') {
       return '<div class="mic-panel ' + (sp.ok ? 'good' : 'bad') + '">' +
         '<div class="score-row"><span class="score">' + NL.ex.wordScore(sp.parts) + '</span>' +
         '<span class="score-bar"><span style="width:' + sp.pct + '%"></span></span></div>' +
-        '<p class="word-diff">' + sp.parts.map(p =>
+        '<p class="word-diff"' + NL.gloss.attr('nl') + '>' + sp.parts.map(p =>
           '<span class="' + (p.ok ? (p.close ? 'w-close' : 'w-ok') : 'w-no') + '">' + esc(p.word) + '</span>').join(' ') + '</p>' +
-        (sp.heard ? '<p class="heard">' + NL.t.micHeard + ' &ldquo;' + esc(sp.heard) + '&rdquo;</p>' : '') +
+        (sp.heard ? '<p class="heard">' + NL.t.micHeard + ' &ldquo;<span' + NL.gloss.attr('nl') + '>' + esc(sp.heard) + '</span>&rdquo;</p>' : '') +
         '<div class="mic-actions">' +
         (!sp.ok && sp.tries < 3 ? '<button class="btn btn-blue" data-mic="start">' + NL.t.replay + '</button>' : '') +
         '<button class="btn ' + (sp.ok ? 'btn-good' : 'btn-ghost') + '" data-act="accept">' + (sp.ok ? NL.t.next : NL.t.micAnyway) + '</button>' +
