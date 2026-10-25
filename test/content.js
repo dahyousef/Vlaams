@@ -432,6 +432,24 @@ NL.state.open().then(() => {
     const t = uTag(v.fr);
     ok(v.en.indexOf(t) >= 0, where + ' « ' + v.nl + ' » : « ' + v.en + ' » doit porter « ' + t + ' »');
   });
+  /* Une note qui cite « kunde » à côté d'un « u » (« kunt u ») cite aussi « kunt ge » : « kunde » est « kunt ge »
+     contracté, et c'est le « ge » flamand qui vaut pour u comme pour je. « Kunde » qui remplacerait « kunt u » est
+     l'erreur que #12 corrige (issuecomment-6338329078). */
+  { const cited = s => Array.from(String(s).matchAll(/[«“]([^«»“”]*)[»”]/g), m => m[1]);
+    const says = (q, w) => new RegExp('(^|[^a-zà-ÿ])' + w + '(?![a-zà-ÿ])', 'i').test(q);
+    const wrongKunde = s => { const q = cited(s); return q.some(x => says(x, 'kunde')) && q.some(hasU) && !q.some(x => says(x, 'kunt ge')); };
+    ok(wrongKunde('À l’oral, « kunde » remplace « kunt u ».') && wrongKunde('“Kunde” covers “kunt u”.') &&
+      !wrongKunde('« Kunde » est « kunt ge » contracté, pas « kunt u ».') && !wrongKunde('« Kunde » se dit à l’oral.'),
+      'kunde : la garde doit voir « kunde » cité avec « kunt u » sans « kunt ge », et cela seul');
+    const notes = (NL.content.byDutch || {}).notes || {};
+    let kunde = 0;
+    Object.keys(notes).forEach(nl => ['fr', 'en'].forEach(l => {
+      const s = (notes[nl] || {})[l];
+      if (typeof s !== 'string' || !cited(s).some(x => says(x, 'kunde'))) return;
+      kunde++;
+      ok(!wrongKunde(s), 'la note (' + l + ') de « ' + nl + ' » cite « kunde » et un « u » sans « kunt ge » : « kunde » est « kunt ge » contracté, pas « kunt u » : « ' + s + ' »');
+    }));
+    ok(kunde > 0, 'aucune note ne cite « kunde » : la garde est creuse'); }
   /* Dans l'explication d'un point de grammaire, un <i> dont le texte est le même en français et en anglais est du
      néerlandais (<i>Morgen ik ga</i>) ; <i>element</i> / <i>élément</i> diffèrent, c'est de la prose. Il porte class="nl",
      que NL.gloss.prose déclare nl-BE : le cours n'écrit aucun lang="…". */
