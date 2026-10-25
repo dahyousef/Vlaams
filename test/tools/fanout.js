@@ -544,13 +544,24 @@ async function main() {
     same([Object.keys(all).length, all['rule:kunde+da+nie+is'], 'rule:kunde+ge' in all], [23, 'Kunde da nie is?', false],
       'outputs donne chaque combinaison où chaque règle change quelque chose');
     same(K.outputs('Goedemorgen.'), {}, 'sans règle qui s\'applique, rien');
+    /* La règle ge : derrière un verbe inversé de sa liste, « ge » et le verbe à sa forme en t ; derrière
+       un autre mot, ou un verbe que son sujet précède, rien plutôt qu'une forme fausse (#92). */
+    same(['Wat doe je meestal?', 'Heeft u dat?', 'Hoe oud ben je?', 'Hoe zeg je dat in het Nederlands?', 'Kunt u mij helpen?', 'u'].map(nl => K.compose(nl, ['ge']).text),
+      ['Wat doet ge meestal?', 'Hebt ge dat?', 'Hoe oud zijt ge?', 'Hoe zegt ge dat in het Nederlands?', 'Kunt ge mij helpen?', 'ge'],
+      'derrière un verbe inversé, la règle ge met le verbe à sa forme en t');
+    same(['Ik stuur u een mail.', 'Niks speciaals, en bij u?', 'dank u wel', 'Ik zie je morgen.', 'Fiets je naar het werk?'].map(nl => K.compose(nl, ['ge']).idle),
+      [['ge'], ['ge'], ['ge'], ['ge'], ['ge']], 'derrière un mot que sa liste ne tient pas, ou un verbe précédé de son sujet, la règle ge n\'écrit rien');
     /* Chaque forme qu'une règle écrit a sa raison dans `why`, et `why` ne garde rien qu'elle n'écrive pas :
-       sinon Merge lèverait, et Check refuserait une forme juste, le jour où flemish.tsv ne la tient plus. */
-    const SAMPLE = { kunde: 'Kunt u, kun je, hebt u, heeft u, heb je, bent u, ben je', ge: 'u je', da: 'Dat is wat dat', nie: 'niet', t: 'het', is: 'eens' };
+       sinon Merge lèverait, et Check refuserait une forme juste, le jour où flemish.tsv ne la tient plus.
+       Les formes en t que la règle ge donne au verbe n'en ont pas : ce sont des formes qu'OpenTaal tient. */
+    const SAMPLE = { kunde: 'Kunt u, kun je, hebt u, heeft u, heb je, bent u, ben je', ge: 'Doe je, heeft u, ben je', da: 'Dat is wat dat', nie: 'niet', t: 'het', is: 'eens' };
+    const SP = spelling.open(FR, CF.NL);
     K.RULES.forEach(r => {
+      const verbs = new Set(Object.values(r.verbs || {}));
       const before = new Set(spelling.tokens(SAMPLE[r.name]).map(spelling.stem));
       const written = spelling.tokens(r.apply(SAMPLE[r.name])).map(spelling.stem).filter(f => !before.has(f));
-      same([...new Set(written)].filter(f => f !== 't').sort(), Object.keys(r.why).sort(), 'la règle ' + r.name + ' donne une raison à chaque forme qu\'elle écrit');
+      same([...new Set(written)].filter(f => f !== 't' && !verbs.has(f)).sort(), Object.keys(r.why).sort(), 'la règle ' + r.name + ' donne une raison à chaque forme qu\'elle écrit');
+      same([...verbs].filter(f => !SP.forms.has(f)), [], 'la règle ' + r.name + ' ne donne au verbe que des formes qu\'OpenTaal tient');
     });
 
     /* Split : un lot par unité, ses mots et ses phrases sans forme flamande. */
@@ -631,7 +642,7 @@ async function main() {
     const draft = text(path.join(DOKTER, 'draft.json'));
     put(DOKTER, 'draft.json', draft.replace('"rule:kunde"', '"rule:ge"'));
     same(runFr('check.js', [DOKTER]).lines.filter(l => /^fail /.test(l)), [
-      'fail draft.json dokter:p6: rule:ge gives « Heeft ge een voorschrift nodig? », not be',
+      'fail draft.json dokter:p6: rule:ge gives « Hebt ge een voorschrift nodig? », not be',
       'fail draft.json dokter:p6: « hebde » is not a form OpenTaal knows, and rule:ge does not account for it: correct it, or cite evidence none',
       'fail review.json -: draft.json missing or failing'
     ], 'check.js dit les raisons du genre, et ne lit pas la suite');

@@ -32,14 +32,37 @@ function swapper(swaps) {
     .replace(new RegExp(CAP + '(\\s*)(\\S)', 'g'), (m, sp, c) => sp + c.toUpperCase()).split(CAP).join('');
 }
 
+/* La règle « ge » : « u » et « je » derrière un verbe inversé deviennent « ge », et le verbe prend
+   la forme en t qu'il a avec lui (« doe je » → « doet ge », « heeft u » → « hebt ge », « ben je »
+   → « zijt ge »). La liste des verbes est fermée : derrière un mot qu'elle ne tient pas (« bij u »,
+   « fiets je »), ou un verbe que son sujet précède (« ik zie je »), la règle n'écrit rien plutôt
+   qu'une forme fausse, et le rédacteur écrit la ligne. « u » ou « je » seul devient « ge ». */
+const T_FORM = {};
+[['doet', 'doe doet'], ['hebt', 'heb hebt heeft'], ['zijt', 'ben bent'], ['gaat', 'ga gaat'], ['komt', 'kom komt'],
+  ['kunt', 'kan kun kunt'], ['wilt', 'wil wilt'], ['zult', 'zal zult'], ['moet', 'moet'], ['weet', 'weet'],
+  ['zegt', 'zeg zegt'], ['spreekt', 'spreek spreekt'], ['heet', 'heet'], ['ziet', 'zie ziet'], ['woont', 'woon woont'],
+  ['werkt', 'werk werkt'], ['vindt', 'vind vindt'], ['neemt', 'neem neemt'], ['drinkt', 'drink drinkt'], ['eet', 'eet']]
+  .forEach(([t, forms]) => forms.split(' ').forEach(f => { T_FORM[f] = t; }));
+const INVERTED = new RegExp('(?<![' + EDGE + '])(' + Object.keys(T_FORM).join('|') + ')\\s+(?:u|je)(?![' + EDGE + '])', 'gi');
+const SUBJECT = new RegExp('(?<![' + EDGE + '])(?:ik|hij|zij|ze|we|wij|jullie|men)\\s+$', 'i');
+function ge(s) {
+  if (/^(u|je)$/i.test(s)) return s[0] === s[0].toLowerCase() ? 'ge' : 'Ge';
+  return s.replace(INVERTED, (m, verb, at) => {
+    if (SUBJECT.test(s.slice(0, at))) return m;
+    const t = T_FORM[verb.toLowerCase()];
+    return (verb[0] === verb[0].toLowerCase() ? t : t[0].toUpperCase() + t.slice(1)) + ' ge';
+  });
+}
+
 /* Les six règles du flamand parlé, dans l'ordre où elles s'appliquent : « kunde » avant « ge »,
    puisque « kunt u » est un tout. `why` donne, pour chaque forme qu'une règle écrit, la raison
-   que flemish.tsv inscrit quand OpenTaal ne la connaît pas. */
+   que flemish.tsv inscrit quand OpenTaal ne la connaît pas ; `verbs`, les formes en t que la
+   règle ge donne aux verbes, du néerlandais qu'OpenTaal tient. */
 const RULES = [
   { name: 'kunde',
     apply: swapper([['kunt u', 'kunde'], ['kun je', 'kunde'], ['hebt u', 'hebde'], ['heeft u', 'hebde'], ['heb je', 'hebde'], ['bent u', 'zijde'], ['ben je', 'zijde']]),
     why: { kunde: '« kunt ge » contracté, flamand parlé', hebde: '« hebt ge » contracté, flamand parlé', zijde: '« zijt ge » contracté, flamand parlé' } },
-  { name: 'ge', apply: swapper([['u', 'ge'], ['je', 'ge']]), why: { ge: 'flamand parlé pour « u » et « je »' } },
+  { name: 'ge', apply: ge, verbs: T_FORM, why: { ge: 'flamand parlé pour « u » et « je »' } },
   { name: 'da', apply: swapper([['dat is', 'da’s'], ['dat', 'da'], ['wat', 'wa']]), why: { da: 'flamand parlé pour « dat »', wa: 'flamand parlé pour « wat »' } },
   { name: 'nie', apply: swapper([['niet', 'nie']]), why: { nie: 'flamand parlé pour « niet »' } },
   { name: 't', apply: swapper([['het', '’t']]), why: {} },
