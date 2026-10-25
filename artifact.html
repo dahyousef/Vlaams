@@ -958,7 +958,7 @@ NL.tables.fr = {
   defiOut: 'Plus de vies.',
   defiOver: 'Plus de vies.',
   defiSurvived: 'Défi tenu.',
-  defiFlawless: 'Sans faute. Vingt sur vingt.',
+  defiFlawless: n => 'Sans faute. ' + n + ' sur ' + n + '.',
   defiScoreLine: (n, of) => n + ' bonnes réponses sur ' + of + '. Chacune compte comme une vraie révision.',
   defiRecord: (n, prev) => prev ? 'Nouveau record : ' + n + ', contre ' + prev + ' avant.' : 'Premier record posé : ' + n + '.',
   defiToBeat: n => 'Record à battre : ' + n + '.',
@@ -1360,7 +1360,7 @@ NL.tables.en = {
   defiOut: 'No lives left.',
   defiOver: 'No lives left.',
   defiSurvived: 'Challenge survived.',
-  defiFlawless: 'Flawless. Twenty out of twenty.',
+  defiFlawless: n => 'Flawless. ' + n + ' out of ' + n + '.',
   defiScoreLine: (n, of) => n + ' right answers out of ' + of + '. Each one counts as a real review.',
   defiRecord: (n, prev) => prev ? 'New record: ' + n + ', up from ' + prev + '.' : 'First record set: ' + n + '.',
   defiToBeat: n => 'Record to beat: ' + n + '.',
@@ -7925,8 +7925,8 @@ NL.screens.sessie = (function () {
     const out = L.lives <= 0, flawless = L.wrong === 0;
     return '<div class="lesson"><div class="lesson-body"><div class="stage done-stage">' +
       '<div class="done-mark">' + (flawless ? '\u{1F3C6}' : out ? '\u{1F494}' : '⚡') + '</div>' +
-      '<h2>' + (flawless ? NL.t.defiFlawless : out ? NL.t.defiOver : NL.t.defiSurvived) + '</h2>' +
-      '<p class="done-sub">' + NL.t.defiScoreLine(L.right, L.queue.length) + '</p>' +
+      '<h2>' + (flawless ? NL.t.defiFlawless(L.right) : out ? NL.t.defiOver : NL.t.defiSurvived) + '</h2>' +
+      '<p class="done-sub">' + NL.t.defiScoreLine(L.right, L.right + L.wrong) + '</p>' +
       '<div class="tally">' +
       box(L.right, NL.t.tallyScore, L.defiRecord ? 'gold' : 'blue') +
       box(Math.max(L.right, L.prevDefiBest), NL.t.tallyRecord, '') +

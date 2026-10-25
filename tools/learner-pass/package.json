@@ -1,0 +1,13 @@
+{
+  "name": "vlaams-learner-pass",
+  "private": true,
+  "description": "Plays the built page in a real browser, as a learner on Safari on iPhone. Not part of the app or of test/run-all.sh.",
+  "scripts": {
+    "days": "node days.js",
+    "corners": "node corners.js",
+    "sweep": "node sweep.js"
+  },
+  "devDependencies": {
+    "playwright-core": "1.55.0"
+  }
+}

@@ -498,8 +498,8 @@ NL.screens.sessie = (function () {
     const out = L.lives <= 0, flawless = L.wrong === 0;
     return '<div class="lesson"><div class="lesson-body"><div class="stage done-stage">' +
       '<div class="done-mark">' + (flawless ? '\u{1F3C6}' : out ? '\u{1F494}' : '⚡') + '</div>' +
-      '<h2>' + (flawless ? NL.t.defiFlawless : out ? NL.t.defiOver : NL.t.defiSurvived) + '</h2>' +
-      '<p class="done-sub">' + NL.t.defiScoreLine(L.right, L.queue.length) + '</p>' +
+      '<h2>' + (flawless ? NL.t.defiFlawless(L.right) : out ? NL.t.defiOver : NL.t.defiSurvived) + '</h2>' +
+      '<p class="done-sub">' + NL.t.defiScoreLine(L.right, L.right + L.wrong) + '</p>' +
       '<div class="tally">' +
       box(L.right, NL.t.tallyScore, L.defiRecord ? 'gold' : 'blue') +
       box(Math.max(L.right, L.prevDefiBest), NL.t.tallyRecord, '') +
