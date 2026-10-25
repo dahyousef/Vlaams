@@ -1113,8 +1113,10 @@ async function main() {
     const KB = require(path.join(EX, 'tools', 'content', 'kinds', 'explanations-be'));
     const KR = require(path.join(EX, 'tools', 'content', 'kinds', 'explanations'));
     const ctxB = { repo: EX, course: () => CE }, ctxR = { repo: EX, course: () => CE };
-    /* Une ligne écrite : sa note. */
-    const line = (id, note) => ({ id, note });
+    /* Une ligne écrite : sa note, aucun « on dit aussi », et deux leurres quand « Comment le dit-on
+       ici ? » pose la source. Les leurres sont des fautes d'apprenant, proches du néerlandais. */
+    const DECOYS = { 'overleven:w0': ['hai', 'helo'], 'overleven:p0': ['Ik zijn Nederlands aan het leren, hè.', 'Ik ben Nederlands an het leren, hè.'] };
+    const line = (id, note) => Object.assign({ id, note, also: [] }, DECOYS[id] ? { decoys: DECOYS[id] } : {});
     const why = (fr, en) => KB.check(line('overleven:p0', { fr, en }), rowIn(BED, 'overleven:p0'), ctxB);
     const GOOD = ['Le « hè » final cherche ton accord, comme « toch ».', 'The final “hè” asks you to agree, like “toch”.'];
     same(why(GOOD[0], GOOD[1]), [], 'une note juste passe');
@@ -1149,6 +1151,66 @@ async function main() {
       'le néerlandais du cours se cite');
     same(why('Ajoute « hè » à la fin, comme hè.', 'Add “hè” at the end.'), [], 'un mot nu dans une seule langue passe : 6d.4 ne le voit pas');
 
+    /* Check : les « on dit aussi » de chaque ligne, et les leurres d'une ligne que « Comment le
+       dit-on ici ? » pose. hallo tient déjà dag, qui n'est pas de son sens : une forme que la source
+       tient déjà reste. ja a une forme flamande, mais la première est le néerlandais : l'exercice
+       ne le pose pas. */
+    const HALLO_IN = rowIn(BED, 'overleven:w0'), JA_IN = rowIn(BED, 'overleven:w7');
+    same([HALLO_IN.vlaams, HALLO_IN.right, HALLO_IN.also, JA_IN.vlaams], [true, 'hey', ['dag'], false],
+      'hallo a l\'exercice, sa réponse hey, et un « on dit aussi » ; ja n\'a pas l\'exercice');
+    const rule = (id, extra) => {
+      const r = id === 'thuis:w12';
+      return (r ? KR : KB).check(Object.assign(line(id, { fr: GOOD[0], en: GOOD[1] }), extra), rowIn(r ? RD : BED, id), r ? ctxR : ctxB);
+    };
+    same(['overleven:w0', 'overleven:p0', 'overleven:w7', 'thuis:w12'].map(id => rule(id, {})), [[], [], [], []],
+      'une ligne juste passe : sa note, ses « on dit aussi », et deux leurres quand l\'exercice la pose');
+    const listOf = ['also is a list of Dutch forms, [] for none, each a text on one line with no space at either end'];
+    same([rule('thuis:w12', { also: 'het stadhuis' }), rule('thuis:w12', { also: [' het stadhuis'] }), rule('thuis:w12', { also: [''] }), rule('thuis:w12', { also: [3] })],
+      [listOf, listOf, listOf, listOf], 'also est une liste de formes');
+    same(rule('overleven:w7', { also: ['ja', 'jaja', 'jawel, jazeker', 'oké / goed'] }), [
+      'also « ja » is the Dutch itself',
+      'also « jaja » is a Flemish form in be.js',
+      'also « jawel, jazeker » holds more than one form: one form per entry',
+      'also « oké / goed » holds more than one form: one form per entry'
+    ], 'ni le néerlandais, ni une forme flamande, et une forme par entrée');
+    same(rule('thuis:w12', { also: ['het stadhuis', 'het Stadhuis', 'raadhuis', 'het stadhuus'] }), [
+      'also lists « het Stadhuis » twice',
+      'also « raadhuis » drops the article of « het gemeentehuis »',
+      'also « het stadhuus »: « stadhuus » is not Dutch that OpenTaal or flemish.tsv knows: leave it out, and say why in unsure if it is Flemish'
+    ], 'une forme une fois, un nom garde son article, et l\'orthographe de test/content.js');
+    same([rule('overleven:w0', { also: ['dag', 'goeiedag'] }), rule('overleven:w7', { also: ['dag'] })],
+      [[], ['also « dag » is the Dutch of overleven:w2, which is not of the same sense: an answer to one is not right for the other']],
+      'le néerlandais d\'un autre élément, seulement s\'il est du même sens ou si la source le tient déjà');
+    const pair = ['decoys is two wrong answers to « Comment le dit-on ici ? », each a text on one line with no space at either end'];
+    same([rule('overleven:w0', { decoys: undefined }), rule('overleven:w0', { decoys: ['hai'] }), rule('overleven:w0', { decoys: ['hai', 'helo', 'hoi'] }),
+      rule('overleven:w0', { decoys: ['hai', ' helo'] })], [pair, pair, pair, pair], 'deux leurres quand l\'exercice pose la source');
+    same(rule('overleven:w7', { decoys: ['jo', 'jaa'] }), ['decoys are for a row that « Comment le dit-on ici ? » asks (vlaams), and this one is not'],
+      'pas de leurres sans l\'exercice');
+    same(rule('overleven:w0', { decoys: ['hai', 'Hai'] }), ['decoys « hai » and « Hai » are one answer'], 'deux leurres distincts');
+    same([rule('overleven:w0', { also: ['dag', 'hoi'], decoys: ['ja', 'hoi'] }), rule('overleven:p0', { decoys: [LEREN, 'Ik ben Nederlands an het leren, hè.'] })], [[
+      'decoy « ja » is an answer the course accepts, for overleven:w7',
+      'decoy « hoi » is an answer the course accepts, for overleven:w0'
+    ], ['decoy « Ik ben Nederlands aan het leren. » is an answer the course accepts, for overleven:p0']],
+    'un leurre n\'est une réponse juste pour aucun élément, ni pour sa source avec les « on dit aussi » que la ligne lui donne');
+    same(rule('overleven:p0', { decoys: ['Ik zijn Nederlands aan het leren, hè', 'Nederlands ben ik aan het leren, hè.'] }), [
+      'decoy « Ik zijn Nederlands aan het leren, hè » ends with no punctuation, and the answer with « . »',
+      'decoy « Nederlands ben ik aan het leren, hè. » is further from the Dutch than the answer: 0.50, at least 0.76'
+    ], 'un leurre finit comme la réponse, et reste une faute proche du néerlandais');
+    same(rule('overleven:w0', { decoys: ['h', 'hallootje'] }), [
+      'decoy « h » is 1 character: 2 to 4, the length of the answer « hey » give or take 40%',
+      'decoy « hallootje » is 9 characters: 2 to 4, the length of the answer « hey » give or take 40%'
+    ], 'un leurre a la longueur de la réponse, à 40 % près');
+    const N = { fr: GOOD[0], en: GOOD[1] };
+    same([KB.readWhole(line('overleven:w0', N), HALLO_IN), KB.readWhole(Object.assign(line('overleven:w0', N), { also: ['dag'] }), HALLO_IN),
+      KB.readWhole(Object.assign(line('overleven:w0', N), { also: ['dag', 'hoi'] }), HALLO_IN)], ['', '', 'new also'],
+    'le relecteur lit en entier la ligne qui ajoute un « on dit aussi »');
+    same(['explanations-be', 'explanations'].map(k => { const K = kit.loadKind(EX, k); return [K.fields, K.optional, K.tables]; }),
+      [[['note', 'also'], ['decoys'], ['notes', 'also', 'decoys']], [['note', 'also'], [], ['notes', 'also']]],
+      'chaque ligne porte sa note et ses « on dit aussi », et une ligne de explanations-be ses leurres');
+    same([KB.merge(line('overleven:w7', N)), KB.merge(line('overleven:w0', N)), KR.merge(Object.assign(line('thuis:w12', N), { also: ['het stadhuis'] }))],
+      [{ notes: N, also: null, decoys: null }, { notes: N, also: null, decoys: DECOYS['overleven:w0'] }, { notes: N, also: ['het stadhuis'] }],
+      'Merge écrit la note, les « on dit aussi » et les leurres ; une liste vide ou pas de leurres ôtent la clé');
+
     /* De bout en bout, sur deux sources : be.js ne garde que les deux formes flamandes fixées,
        puis Split, chaque lot rédigé et relu, check.js, Merge, et Merge relancée. */
     const gone = {};
@@ -1160,7 +1222,7 @@ async function main() {
     const batches = ['be-words', 'be-phrases'];
     batches.forEach(b => {
       const dir = path.join(E2E, b), inp = JSON.parse(text(path.join(dir, 'input.json')));
-      put(dir, 'draft.json', inp.map(r => ({ id: r.id, stamp: r.stamp, note: r.id === 'overleven:p0' ? { fr: GOOD[0], en: GOOD[1] } : NOTE })));
+      put(dir, 'draft.json', inp.map(r => Object.assign(line(r.id, r.id === 'overleven:p0' ? { fr: GOOD[0], en: GOOD[1] } : NOTE), { stamp: r.stamp, also: r.also })));
       put(dir, 'review.json', inp.map(r => ({ id: r.id, verdict: 'keep' })));
     });
     const PHR = path.join(E2E, 'be-phrases');
@@ -1173,16 +1235,31 @@ async function main() {
     put(PHR, 'draft.json', draft);
     same(runEx('check.js', [PHR]).code, 0, 'le lot rédigé et relu passe');
     const NOTES = path.join(EX, 'src', 'content', 'notes.js');
-    same(runEx('merge.js', [EX, E2E]), { code: 0, lines: ['ok explanations-be 2 taken, 0 dropped', 'ok notes.js 2 set, 0 removed'] },
-      'Merge écrit chaque note dans notes.js');
-    const notes = table.load(NOTES).entries;
+    /* Les tables tiennent déjà ce que les genres ont fusionné avant : Merge n'en change que les clés
+       de ses deux sources. */
+    const keys = f => Object.keys(table.load(path.join(EX, 'src', 'content', f)).entries).sort();
+    const was = { also: keys('also.js'), decoys: keys('decoys.js') };
+    same(runEx('merge.js', [EX, E2E]), { code: 0, lines: ['ok explanations-be 2 taken, 0 dropped', 'ok notes.js 2 set, 0 removed',
+      'ok also.js 1 set, ' + (was.also.indexOf(LEREN) >= 0 ? 1 : 0) + ' removed', 'ok decoys.js 2 set, 0 removed'] },
+    'Merge écrit chaque note dans notes.js, les « on dit aussi » dans also.js et les leurres dans decoys.js');
+    const notes = table.load(NOTES).entries, also = table.load(path.join(EX, 'src', 'content', 'also.js')).entries;
+    const decoys = table.load(path.join(EX, 'src', 'content', 'decoys.js')).entries;
     same([notes[LEREN], notes[HALLO]], [{ fr: GOOD[0], en: GOOD[1] }, NOTE], 'notes.js tient chaque note sous le néerlandais de sa source');
+    same([also[HALLO], also[LEREN], keys('also.js')], [['dag'], undefined, Array.from(new Set(was.also.concat(HALLO))).filter(k => k !== LEREN).sort()],
+      'also.js tient les « on dit aussi » de hallo, rien pour une liste vide, et ses autres clés');
+    same([decoys[LEREN], decoys[HALLO], keys('decoys.js')], [DECOYS['overleven:p0'], DECOYS['overleven:w0'], Array.from(new Set(was.decoys.concat(LEREN, HALLO))).sort()],
+      'decoys.js tient les deux leurres de chaque source, et ses autres clés');
     const notesAfter = text(NOTES), again = runEx('merge.js', [EX, E2E]), CA = course(EX);
     same(again, { code: 1, lines: ['overleven:w0', 'overleven:p0'].map(id => 'fail explanations-be ' + id + ': stale, stamped ' + rowIn(E2E, id).stamp +
       ' at Split, the source now stamps ' + kit.stamp(kit.loadKind(EX, 'explanations-be'), CA.byId(id), CA.NL)) },
     'le tampon couvre la note : relancée après un succès, Merge refuse comme périmée chaque ligne dont elle a écrit la note');
     ok(text(NOTES) === notesAfter, 'refusée, Merge n\'écrit rien');
-    console.log('  explanations   ' + beSplit.lines.length + ' + ' + want.length + ' lots, ' + be.length + ' + ' + rest.length + ' lignes ; la note et ses citations ; Merge');
+    /* Les leurres et les « on dit aussi » s'écrivent à l'écran en néerlandais, sans passer par la table
+       de texte : test/lang.js (3a) les lit comme le néerlandais du cours, que dutchWords donne. */
+    const { dutchWords } = require(path.join(EX, 'test', 'lib', 'dutch'));
+    CA.NL.content.byDutch.also[HALLO] = ['dag', 'hoezee'];
+    same(['hai', 'helo', 'an', 'hoezee'].filter(w => !dutchWords(CA.NL).has(w)), [], 'les mots des leurres et des « on dit aussi » sont du néerlandais du cours');
+    console.log('  explanations   ' + beSplit.lines.length + ' + ' + want.length + ' lots, ' + be.length + ' + ' + rest.length + ' lignes ; la note et ses citations, les « on dit aussi », les leurres ; Merge');
   }
 
   console.log('\n' + checks + ' contrôles, ' + (fails === 0 ? 'KIT CONFORME' : fails + ' ÉCHEC(S)'));

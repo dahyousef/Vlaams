@@ -34,21 +34,22 @@ NL.state.open().then(() => {
      test/lib/spelling.js lit OpenTaal, les noms par défaut et cette liste. */
   const S = spelling.open(ROOT, NL);
 
-  /* La variante flamande vient de src/content/be.js et se lit sur l'élément, que seul le
-     premier listage forme. */
+  /* La variante flamande vient de src/content/be.js, les « on dit aussi » de src/content/also.js :
+     les deux se lisent sur l'élément, que seul le premier listage forme. */
   const beOf = id => { const it = NL.content.byId(id); return it && it.id === id ? it.be : null; };
+  const alsoOf = id => { const it = NL.content.byId(id); return it && it.id === id ? it.also || [] : []; };
   const texts = [];
   units.forEach(u => {
     (u.words || []).forEach((w, i) => {
       texts.push([w.nl, u.id + ':w' + i]);
       if (beOf(u.id + ':w' + i)) texts.push([beOf(u.id + ':w' + i), u.id + ':w' + i + ' (variante)']);
-      (w.also || []).forEach(a => texts.push([a, u.id + ':w' + i + ' (on dit aussi)']));
+      alsoOf(u.id + ':w' + i).forEach(a => texts.push([a, u.id + ':w' + i + ' (on dit aussi)']));
       (w.drills || []).forEach((d, j) => texts.push([d.nl, u.id + ':w' + i + ' phrase ' + (j + 1)]));
     });
     (u.phrases || []).forEach((p, i) => {
       texts.push([p.nl, u.id + ':p' + i]);
       if (beOf(u.id + ':p' + i)) texts.push([beOf(u.id + ':p' + i), u.id + ':p' + i + ' (variante)']);
-      (p.also || []).forEach(a => texts.push([a, u.id + ':p' + i + ' (on dit aussi)']));
+      alsoOf(u.id + ':p' + i).forEach(a => texts.push([a, u.id + ':p' + i + ' (on dit aussi)']));
     });
   });
   (NL.content.patterns || []).forEach(g => (g.drills || []).forEach((d, j) => texts.push([d.nl, g.id + ' phrase ' + (j + 1)])));
@@ -65,7 +66,6 @@ NL.state.open().then(() => {
   /* Une exception qui ne sert plus ne protège plus rien. */
   S.flemish.forEach((why, t) => ok(used.has(t), '« ' + t + ' » est dans test/data/flemish.tsv mais plus dans le cours : retirer l’exception'));
   ok(count > 3000, 'only ' + count + ' tokens were checked: the content did not load');
-  ok(NL.content.alsoReport && NL.content.alsoReport.missing.length === 0, 'src/content/also.js : ' + ((NL.content.alsoReport || { missing: ['(table non chargée)'] }).missing.join(', ')) + ' ne correspond à aucun élément du lexique');
   console.log('  orthographe     ' + count + ' formes vérifiées contre ' + S.forms.size + ', ' + unknown.size + ' inconnue(s), ' +
     S.flemish.size + ' flamandes assumées');
 
@@ -81,7 +81,7 @@ NL.state.open().then(() => {
   ok((NL.content.TABLES || []).length > 0, 'NL.content.TABLES est vide ou absent : aucune table n’est contrôlée');
   /* Ce qu'une table pose, le lexique ne l'écrit plus : écrit aux deux endroits, la table
      masquerait le lexique sans rien dire. */
-  const MOVED = ['be', 'note'];
+  const MOVED = ['be', 'note', 'also'];
   const written = [];
   RAW.units.forEach(u => ['word', 'phrase'].forEach(kind => (u[kind + 's'] || []).forEach((x, i) =>
     MOVED.forEach(f => { if (x[f] !== undefined && x[f] !== null) written.push(u.id + ':' + kind[0] + i + ' ' + f); }))));

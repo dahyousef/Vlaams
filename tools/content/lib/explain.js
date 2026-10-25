@@ -20,8 +20,13 @@
      right               la bonne réponse de cet exercice, quand vlaams ; null sinon
      labelled            les sens belges que le Wiktionnaire anglais donne au néerlandais lui-même
                          (« pos (étiquettes): sens »), ou null
-   Une ligne écrite porte note, une paire { fr, en } que Check lit avec les règles de checkNote.
-   Les raisons sont en anglais : ce sont les agents du kit qui les lisent. */
+   Une ligne écrite porte :
+      note                une paire { fr, en }, que checkNote lit
+      also                ses « on dit aussi », [] pour aucun, que checkAlso lit
+      decoys              explanations-be seulement, quand vlaams : deux mauvaises réponses à
+                          « Comment le dit-on ici ? », que checkDecoys lit
+    Merge les écrit dans notes.js, also.js et decoys.js ; une liste vide, ou une ligne sans
+    leurres, ôte la clé. Les raisons sont en anglais : ce sont les agents du kit qui les lisent. */
 const path = require('path');
 const kaikki = require('../kaikki');
 const spelling = require(path.join(__dirname, '..', '..', '..', 'test', 'lib', 'spelling'));
@@ -106,12 +111,14 @@ function split(part) {
   };
 }
 
-/* L'orthographe et le néerlandais du cours, lus une fois par lecture d'un lot. */
+/* Le cours, son orthographe, son néerlandais, et les réponses qu'il accepte (une forme comme
+   NL.ex.accepted l'écrit, et les sources qui l'acceptent), lus une fois par lecture d'un lot. */
 const memo = new WeakMap();
 function tools(ctx) {
   if (!memo.has(ctx)) {
-    const NL = ctx.course().NL;
-    memo.set(ctx, { NL, S: spelling.open(ctx.repo, NL), dutch: dutchWords(NL) });
+    const C = ctx.course(), NL = C.NL, owners = new Map();
+    C.sources.forEach(s => NL.ex.accepted(s).forEach(f => owners.set(f, (owners.get(f) || []).concat(s.id))));
+    memo.set(ctx, { C, NL, S: spelling.open(ctx.repo, NL), dutch: dutchWords(NL), owners });
   }
   return memo.get(ctx);
 }
@@ -141,8 +148,10 @@ const sentences = s => (s.match(/[.!?…]+(?=\s|$)/g) || []).length + (/[.!?…]
 const list = ws => ws.map(w => '« ' + w + ' »').join(', ');
 
 /* Ce que la ligne rend citable, même hors des listes d'orthographe : son néerlandais, sa forme
-   flamande, ses « on dit aussi ». */
-const ownForms = input => [input.nl, input.be || ''].concat(input.also);
+   flamande, ses « on dit aussi », ceux qu'elle tient et ceux qu'elle écrit. */
+const ownForms = (row, input) => [input.nl, input.be || ''].concat(input.also, Array.isArray(row.also) ? row.also : []);
+/* Un texte d'une ligne, sans blanc autour. */
+const oneLine = f => typeof f === 'string' && f.trim() !== '' && f === f.trim() && !/[\r\n]/.test(f);
 
 /* Les raisons qu'une note ne passe pas. */
 function checkNote(row, input, ctx) {
@@ -181,7 +190,7 @@ function checkNote(row, input, ctx) {
   if (fr.join('|') !== en.join('|')) {
     why.push('note.fr and note.en quote different Dutch: only en ' + list(en.filter(x => fr.indexOf(x) < 0)) + '; only fr ' + list(fr.filter(x => en.indexOf(x) < 0)));
   }
-  const own = new Set([].concat(...ownForms(input).map(f => spelling.tokens(f))));
+  const own = new Set([].concat(...ownForms(row, input).map(f => spelling.tokens(f))));
   U.uniq(q.en.quoted.concat(q.fr.quoted)).forEach(seg => {
     const bad = U.uniq(spelling.tokens(seg).filter(t => !T.S.known(t) && !own.has(t)));
     if (bad.length) why.push('« ' + seg + ' » is quoted, but ' + list(bad) + ' is not Dutch that OpenTaal, flemish.tsv or this row knows: quotes hold Dutch only, a translation goes in parentheses');
@@ -193,14 +202,81 @@ function checkNote(row, input, ctx) {
   return why;
 }
 
+/* Les raisons que les « on dit aussi » ne passent pas. Chacun devient une réponse que la saisie
+   accepte (NL.ex.accepted) : une seule forme néerlandaise, ni la source, ni sa forme flamande, un
+   nom avec son article, l'orthographe que test/content.js exige, et pas le néerlandais d'un autre
+   élément d'un autre sens. Une forme que la source tient déjà, ou celle d'un frère de sens, reste. */
+function checkAlso(row, input, ctx) {
+  const also = row.also;
+  if (!Array.isArray(also) || !also.every(oneLine)) return ['also is a list of Dutch forms, [] for none, each a text on one line with no space at either end'];
+  const T = tools(ctx), U = T.NL.util, word = input.kind === 'word', why = [];
+  const key = f => U.norm(word ? U.bare(f) : f);
+  const art = (T.C.byId(input.id) || {}).art;
+  const flemishForms = T.NL.content.beVariants(input).map(key);
+  const near = new Set(input.siblings.map(s => key(s.nl)).concat(input.also.map(key)));
+  const seen = new Set();
+  also.forEach(f => {
+    const k = key(f), say = s => why.push('also « ' + f + ' » ' + s);
+    if (/[/;]/.test(f) || (word && f.indexOf(',') >= 0)) return say('holds more than one form: one form per entry');
+    if (seen.has(k)) return why.push('also lists « ' + f + ' » twice');
+    seen.add(k);
+    if (k === key(input.nl)) return say('is the Dutch itself');
+    if (flemishForms.indexOf(k) >= 0) return say('is a Flemish form in be.js');
+    if (art && !/^(de|het) \S/i.test(f)) say('drops the article of « ' + input.nl + ' »');
+    const bad = U.uniq(spelling.tokens(f).filter(t => !T.S.known(t)));
+    if (bad.length) why.push('also « ' + f + ' »: ' + list(bad) + ' is not Dutch that OpenTaal or flemish.tsv knows: leave it out, and say why in unsure if it is Flemish');
+    if (near.has(k)) return;
+    const other = T.C.sources.find(s => s.id !== input.id && key(s.nl) === k);
+    if (other) say('is the Dutch of ' + other.id + ', which is not of the same sense: an answer to one is not right for the other');
+  });
+  return why;
+}
+
+const PAIR = 'decoys is two wrong answers to « Comment le dit-on ici ? », each a text on one line with no space at either end';
+/* Les raisons que les leurres ne passent pas : deux mauvaises réponses à « Comment le dit-on
+   ici ? », qu'aucun élément n'accepte, qui finissent comme la réponse, en ont la longueur à 40 %
+   près, et ne s'éloignent pas du néerlandais plus que la réponse (0,15 de rapport au plus). Les
+   « on dit aussi » de la ligne comptent pour sa source ; ceux qu'une autre ligne du lot écrit ne
+   comptent qu'après Merge, où test/content.js les voit. */
+function checkDecoys(row, input, ctx) {
+  const d = row.decoys;
+  if (!input.vlaams) return d === undefined ? [] : ['decoys are for a row that « Comment le dit-on ici ? » asks (vlaams), and this one is not'];
+  if (!Array.isArray(d) || d.length !== 2 || !d.every(oneLine)) return [PAIR];
+  const T = tools(ctx), NL = T.NL, U = NL.util;
+  if (U.norm(d[0]) === U.norm(d[1])) return ['decoys « ' + d[0] + ' » and « ' + d[1] + ' » are one answer'];
+  const mine = NL.ex.accepted(Object.assign({}, input, { also: Array.isArray(row.also) ? row.also : input.also }));
+  const end = s => (s.match(/[.!?…]+$/) || [''])[0];
+  const shown = e => e ? '« ' + e + ' »' : 'no punctuation';
+  const n = Array.from(input.right).length, lo = Math.ceil(n * 0.6), hi = Math.floor(n * 1.4);
+  const least = U.ratio(input.right, input.nl) - 0.15, why = [];
+  d.forEach(x => {
+    const keys = U.uniq([U.norm(x), U.norm(U.bare(x))]), say = s => why.push('decoy « ' + x + ' » ' + s);
+    const who = U.uniq((keys.some(k => mine.indexOf(k) >= 0) ? [input.id] : [])
+      .concat(...keys.map(k => (T.owners.get(k) || []).filter(id => id !== input.id))));
+    if (who.length) say('is an answer the course accepts, for ' + who.join(', '));
+    if (end(x) !== end(input.right)) say('ends with ' + shown(end(x)) + ', and the answer with ' + shown(end(input.right)));
+    const len = Array.from(x).length;
+    if (len < lo || len > hi) say('is ' + len + (len === 1 ? ' character: ' : ' characters: ') + lo + ' to ' + hi + ', the length of the answer « ' + input.right + ' » give or take 40%');
+    const r = U.ratio(x, input.nl);
+    if (r < least) say('is further from the Dutch than the answer: ' + r.toFixed(2) + ', at least ' + least.toFixed(2));
+  });
+  return why;
+}
+
 function kind(part) {
+  const be = part === 'be';
   return {
     stamp: STAMP,
-    fields: ['note'],
-    tables: ['notes'],
+    fields: ['note', 'also'],
+    optional: be ? ['decoys'] : [],
+    tables: be ? ['notes', 'also', 'decoys'] : ['notes', 'also'],
     split: split(part),
-    check: checkNote,
-    merge: row => ({ notes: row.note })
+    check: (row, input, ctx) => checkNote(row, input, ctx).concat(checkAlso(row, input, ctx), be ? checkDecoys(row, input, ctx) : []),
+    /* Le relecteur lit en entier la ligne qui ajoute un « on dit aussi » : une réponse de plus
+       que la saisie accepte. */
+    readWhole: (row, input) => Array.isArray(row.also) && row.also.some(f => input.also.indexOf(f) < 0) ? 'new also' : '',
+    /* Une liste vide, ou une ligne sans leurres, ôte la clé. */
+    merge: row => Object.assign({ notes: row.note, also: row.also.length ? row.also : null }, be ? { decoys: row.decoys || null } : {})
   };
 }
 

@@ -47,6 +47,7 @@ NL.content = NL.content || {};
     { table: 'open.phrases', field: 'open' },
     { table: 'notes', field: 'note' },
     { table: 'decoys', field: 'decoys' },
+    { table: 'also', field: 'also' },
   ]; // A new table: its line goes just above this one.
 
   function build() {
