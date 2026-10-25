@@ -197,7 +197,7 @@
     const sp = P.speech;
     const step = P.scn.steps[P.at];
     const target = step.you.choices[P.choice].nl;
-    if (action === 'stop') { NL.speech.abort(); sp.phase = 'idle'; NL.ui.render(); return; }
+    if (action === 'stop') { if (!NL.speech.finish()) { sp.phase = 'idle'; NL.ui.render(); } return; }
     sp.phase = 'listening'; sp.partial = ''; sp.error = null;
     NL.audio.mic(); NL.ui.render();
     NL.speech.listen({

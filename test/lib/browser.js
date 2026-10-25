@@ -129,7 +129,7 @@ const APP = 'src/app.js';
                 avec un autre mode, open() échoue ('held' laisse l'erreur sortir de B.tick())
      ua         navigator.userAgent
      voices     tableau de voix → speechSynthesis existe ; absent, il n'existe pas
-     recogniser true → webkitSpeechRecognition existe (ctx.__saidNext, ctx.__denyNext, ctx.__partialNext)
+     recogniser true → webkitSpeechRecognition existe (ctx.__saidNext, ctx.__denyNext, ctx.__partialNext, ctx.__interimNext, ctx.__stopIgnored)
      media      true → micro (refusé), MediaRecorder, presse-papiers, FileReader
      blobs      true → Blob, URL, Audio
      framed     true → la page tourne dans un cadre (window.top n'est pas window)
@@ -272,10 +272,20 @@ function open(opts) {
           if (this.onresult) this.onresult({ resultIndex: 0, results: [Object.assign([{ transcript: partial }], { isFinal: false, length: 1 })] });
           return;
         }
+        /* Safari sur iPhone : le résultat n'est jamais marqué final, et l'écoute finit quand même. */
+        if (ctx.__interimNext) {
+          const heard = ctx.__interimNext;
+          ctx.__interimNext = '';
+          if (this.onresult) this.onresult({ resultIndex: 0, results: [Object.assign([{ transcript: heard }], { isFinal: false, length: 1 })] });
+          if (this.onend) this.onend();
+          return;
+        }
         const said = ctx.__saidNext || '';
         if (this.onresult) this.onresult({ resultIndex: 0, results: [Object.assign([{ transcript: said }], { isFinal: true, length: 1 })] });
         if (this.onend) this.onend();
       };
+      /* stop() finit l'écoute en gardant ce qui a été entendu ; Safari n'y marque rien de final. */
+      this.stop = () => { if (ctx.__stopIgnored) { ctx.__stopIgnored = false; return; } if (this.onend) this.onend(); };
       this.abort = () => {};
     };
   }
@@ -296,7 +306,15 @@ function open(opts) {
     catch (e) { console.log('LOAD FAIL ' + f + ': ' + e.message); process.exit(1); }
   });
 
-  const tap = d => (listeners.click || []).forEach(f => f({ target: { closest: () => ({ dataset: d }) } }));
+  /* Un toucher passe par les sélecteurs du shell, comme un vrai clic : closest(sel) ne trouve
+     l'élément que si sel nomme l'un de ses data-*. Un attribut que le shell oublie ne mène
+     nulle part, comme sur l'appareil (« Je ne peux pas parler », octobre 2026). */
+  const attr = k => '[data-' + k.replace(/[A-Z]/g, c => '-' + c.toLowerCase()) + ']';
+  const tap = d => {
+    const el = { dataset: d };
+    const target = { closest: sel => Object.keys(d).some(k => sel.indexOf(attr(k)) >= 0) ? el : null };
+    (listeners.click || []).forEach(f => f({ target }));
+  };
 
   return { ctx, NL: ctx.NL, app, store, idb, listeners, spoken, clock, mkEl, tap, tick, waiting, fields, events, random: M.random };
 }

@@ -163,7 +163,7 @@ NL.screens.luisteren = (function () {
 
   function mic(action) {
     const c = S.clips[S.at];
-    if (action === 'stop') { NL.speech.abort(); S.speech.phase = 'idle'; NL.ui.render(); return; }
+    if (action === 'stop') { if (!NL.speech.finish()) { S.speech.phase = 'idle'; NL.ui.render(); } return; }
     S.speech = { phase: 'listening', tries: S.speech.tries, partial: '' };
     NL.audio.mic(); NL.ui.render();
     NL.speech.listen({
