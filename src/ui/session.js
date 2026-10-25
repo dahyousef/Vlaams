@@ -443,6 +443,9 @@ NL.screens.sessie = (function () {
        l'élément : c'est le sens de ce mot-là. */
     const meant = ex.asks === 'nl' && ex.answers === 'nl' ? c.task.odd || it : null;
     const mean = meant ? '<p class="v-mean"' + NL.gloss.langAttr(meant) + '>' + esc(NL.gloss.of(meant)) + '</p>' : '';
+    /* L'explication, sous le sens. « Remets dans l'ordre » montre déjà la règle du motif au-dessus
+       de ses tuiles : le pied ne la redit pas. */
+    const explanation = c.ex === 'order' ? null : EX.explanation(it);
     return '<div class="foot ' + (ok ? 'ok' : 'no') + '"><div class="foot-in">' +
       '<div class="verdict ' + (ok ? 'ok' : 'no') + '">' +
       '<span class="v-icon">' + (ok
@@ -451,7 +454,7 @@ NL.screens.sessie = (function () {
       '<div><h5>' + note + '</h5>' +
       (vl || repeat ? '' : asked || (ans ? '<p><b' + ansLang + '>' + esc(ans) + '</b></p>' : '')) +
       be + also + mean +
-      NL.ui.ifProse(EX.explanation(it), 'p', 'v-note') +
+      NL.ui.ifProse(explanation, 'p', 'v-note') +
       '</div></div>' +
       '<button class="btn ' + (ok ? 'btn-good' : 'btn-bad') + ' push" data-next="1">' + NL.t.next + '</button>' +
       '</div></div>';

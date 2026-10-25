@@ -689,9 +689,10 @@ NL.ex = (function () {
     return '<p class="v-be">' + NL.t.hereThey + ' ' + forms.map(f => '<span' + NL.gloss.attr('nl') + '>' + boldForm(item, f) + '</span>').join(', ') + '</p>';
   }
 
-  /* L'explication d'un élément, que le pied montre sous son sens : sa note. On la lit ici et nulle
-     part ailleurs ; le pied la rend par NL.ui.ifProse, qui déclare nl-BE ce qu'elle cite. */
-  const explanation = item => (item && item.note) || null;
+  /* L'explication d'un élément, que le pied montre sous son sens : la note d'un mot ou d'une
+     phrase, la règle d'un motif. On la lit ici et nulle part ailleurs ; le pied la rend par
+     NL.ui.ifProse, qui déclare nl-BE ce qu'elle cite. */
+  const explanation = item => !item ? null : (item.kind === 'pattern' ? item.rule : item.note) || null;
 
   return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, recordPanel, selfRate, wordScore, hereLine, rubric, explanation, accepted };
 })();

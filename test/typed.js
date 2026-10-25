@@ -507,6 +507,29 @@ NL.state.open().then(() => {
     console.log('  sens           « once more / again », juste et faux ; sept exercices sur leurs champs, l’intrus, le texte à trou');
   }
 
+  /* L'explication d'un motif est sa règle : après un exercice sur un motif, le pied la montre sous
+     la réponse, juste ou faux, dans la langue d'affichage, ce qu'elle cite déclaré nl-BE.
+     « Remets dans l'ordre » la montre déjà au-dessus de ses tuiles : le pied ne la redit pas. */
+  {
+    /* [exercice, échelon, dernier exercice servi, réponse] */
+    [['cloze', 2, 'corrige', 'right'], ['type', 3, 'speak', 'wrong'], ['order', 0, 'order', 'right']].forEach(([ex, rung, lastEx, how]) => {
+      fresh();
+      const it = NL.content.byId('g-present');
+      if (!it || !it.rule) { ok(false, 'setup: no pattern g-present with a rule'); return; }
+      if (!ask(it, ex, rung, lastEx)) { ok(false, 'setup: the pattern g-present is never asked in ' + ex); return; }
+      answer[how]();
+      const v = verdict(it), rule = NL.gloss.quoted(it.rule);
+      const note = (v.foot.match(/<p class="v-note"[^>]*>[\s\S]*?<\/p>/) || [null])[0];
+      if (ex === 'order') {
+        const times = B.app.innerHTML.split(rule).length - 1;
+        ok(times === 1 && note === null, 'order on g-present shows its rule ' + times + ' times, and the panel reads ' + note);
+      } else ok(note === '<p class="v-note">' + rule + '</p>',
+        ex + ' on g-present, ' + how + ', shows ' + note + ' under the answer, not the rule ' + rule + '; the panel reads « ' + v.text + ' »');
+      S.abandon();
+    });
+    console.log('  règle          g-present : sous la réponse du texte à trou et d’« Écris-le », pas redite après l’ordre');
+  }
+
   console.log('\n' + checks + ' contrôles, ' + fails + ' en échec');
   process.exit(fails ? 1 : 0);
 }).catch(e => { console.log('FAIL: ' + (e && e.stack || e)); process.exit(1); });

@@ -9,7 +9,7 @@ const fs = require('fs'), path = require('path');
 const browser = require('./lib/browser');
 const spelling = require('./lib/spelling');
 const sequence = require('./lib/sequence');
-const { raw, owed, at, owedTables } = require('./lib/prose');
+const { raw, owed, at, owedTables, has } = require('./lib/prose');
 const tree = require('./lib/tree');
 const ROOT = process.argv[2] || path.join(__dirname, '..');
 
@@ -140,6 +140,24 @@ NL.state.open().then(() => {
   const wrongDecoys = decoyFaults(decoyed.map(x => [x.id, x.decoys]));
   ok(wrongDecoys.length === 0, wrongDecoys.length + ' leurre(s) fautif(s) : ' + wrongDecoys.slice(0, 3).join(' ; '));
   console.log('  leurres         ' + decoyed.length + ' élément(s) avec leurs leurres, ' + wrongDecoys.length + ' faute(s)');
+
+  /* Un élément de « Comment le dit-on ici ? » sans leurres écrits tire ses options au hasard, et la
+     bonne se devine. Toléré, mais compté : le compte ne peut que baisser. */
+  const undecoyed = items.filter(x => NL.srs.supports(x, 'vlaams') && !x.decoys).length;
+  const DECOY_BUDGET = 66;
+  ok(undecoyed <= DECOY_BUDGET, undecoyed + ' élément(s) de « Comment le dit-on ici ? » sans leurres écrits, budget ' + DECOY_BUDGET + ' — baisser le budget, jamais le lever');
+  ok(undecoyed >= DECOY_BUDGET, 'seulement ' + undecoyed + ' élément(s) sans leurres écrits : baisser DECOY_BUDGET à ' + undecoyed + ' pour verrouiller le gain');
+  console.log('  sans leurres    ' + undecoyed + ' élément(s) de « Comment le dit-on ici ? » (budget ' + DECOY_BUDGET + ')');
+
+  /* L'explication d'un élément (NL.ex.explanation : la note d'un mot ou d'une phrase, la règle d'un
+     motif) se lit dans les deux langues d'affichage. Celui qui n'en a pas, ou qu'une moitié, est
+     toléré, mais compté : le compte ne peut que baisser. */
+  const bilingual = x => !!x && has(x.fr) && has(x.en);
+  const unexplained = items.filter(x => !bilingual(NL.ex.explanation(x))).length;
+  const EXPLAIN_BUDGET = 333;
+  ok(unexplained <= EXPLAIN_BUDGET, unexplained + ' élément(s) sans explication en français et en anglais, budget ' + EXPLAIN_BUDGET + ' — baisser le budget, jamais le lever');
+  ok(unexplained >= EXPLAIN_BUDGET, 'seulement ' + unexplained + ' élément(s) sans explication : baisser EXPLAIN_BUDGET à ' + unexplained + ' pour verrouiller le gain');
+  console.log('  explications    ' + unexplained + ' / ' + items.length + ' élément(s) sans explication dans les deux langues (budget ' + EXPLAIN_BUDGET + ')');
 
   /* Une réponse libre se note sur ce qu'elle contient, par le barème de la séance
      (NL.ex.rubric). L'exemple, montré après « Vérifier », coche chaque besoin. Et chaque
