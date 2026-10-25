@@ -17,8 +17,8 @@ sitting ») by the run controller or by the Claude session the maintainer is tal
 
 The sitting ends when the maintainer approves the brief, in three steps:
 
-1. it writes its hand-back, the new task's id, class, ticket and position (and, for a `fan-out` task, its
-   `Fan-out:` line for `run.md`), to `<WS>/tmp/design-<task>.md`;
+1. it writes its hand-back, the new task's id, class, ticket and position (and, for a `fan-out` or `gate`
+   task, its `Fan-out:` or `Gate:` line for `run.md`), to `<WS>/tmp/design-<task>.md`;
 2. it launches the next run sitting with the command and the start prompt of `run-controller.md`;
 3. it stops.
 
@@ -77,7 +77,9 @@ its steps run Merge, the build and the tests, and commit.
     <what the reader checks hardest: what no script can check>
 
 The task's `Fan-out:` line in `run.md` copies its Kind, Drafting after, Split, Check and Merged by. Its Format
-and Reader focus sections become `<WS>/drafts/<kind>/format.md`, word for word.
+and Reader focus sections become `<WS>/drafts/<kind>/format.md`, word for word. A Format may also name the
+rows that go to the maintainer by rule, with no retry, and the fields a reader's verdict carries
+(`reader.md`).
 
 The scripts' contract, which their tasks' tests check:
 
@@ -89,14 +91,15 @@ The scripts' contract, which their tasks' tests check:
 - **Check** `<batch folder>` checks every file the folder holds, by `batch-controller.md`'s table: a draft has
   one row per input row, same ids and stamps, in the format's fields, `unsure` allowed; a retry or a change
   has one row per id it answers, and no other; a review has one verdict per row it reads, `keep` or
-  `dispute: <reason>`; `rulings.json` has one entry per section of `disputes.md`. It prints
-  `ok <file> <n> rows` (for a review, `ok <file> <n> keep, <k> dispute`), or `fail <file> <id>: <why>` lines
-  and exits 1.
+  `dispute: <reason>` (`for maintainer: <reason>` on exactly the rows the format sends to the maintainer),
+  with the fields the format asks a verdict to carry; `rulings.json` has one entry per section of
+  `disputes.md`. It prints `ok <file> <n> rows` (for a review, `ok <file> <n> keep, <k> dispute`, then
+  `, <m> for maintainer` if any), or `fail <file> <id>: <why>` lines and exits 1.
 - **Merge** `<repo> <kind folder>` takes, for each row, the draft row `review.json` keeps, else the retry row
-  `retry-review.json` keeps, else what `rulings.json` rules: the retry row for keep, the `change.json` row for
-  a confirmed change, nothing for drop. It refuses, listing them, rows with none of these and rows whose stamp
-  no longer matches their source. It writes the format's fields only, into its kind's files under
-  `src/content/`.
+  `retry-review.json` keeps, else what `rulings.json` rules: the retry row for keep (the draft row, for a row
+  with no retry), the `change.json` row for a confirmed change, nothing for drop. It refuses, listing them,
+  rows with none of these and rows whose stamp no longer matches their source. It writes the format's fields
+  only, into its kind's files under `src/content/`.
 
 Before a fan-out brief is approved, whoever wrote it:
 
@@ -105,15 +108,36 @@ Before a fan-out brief is approved, whoever wrote it:
 - checks that no task between its `Drafting after:` and its merge task edits the rows Split cuts: Merge
   refuses them as stale.
 
+## The gate form
+
+A `gate` is the run's own step, in a run with `Mode: one session`: it shows the maintainer something and asks
+one question. It is never dispatched: the run controller runs it (`one-session.md`, « Starting a fan-out
+task »).
+
+    # Task <id>: <name>
+    Class: gate
+    Ticket: #<n> | none
+    After: <the task ids done first>
+    Show: <command, run in the worktree; its output goes to <WS>/tmp/gate-<id>.md>
+    Ask: « <the question to the maintainer> »
+    Answer to: <a path under <WS>, written one item per line | Rulings>
+    Why: <why the maintainer decides this, one paragraph>
+    Then: <what follows from each possible answer>
+
+Its `Gate:` line in `run.md` copies After, Show, Ask and Answer to: the run controller reads that line, not
+the brief. Only a fan-out task's `Drafting after:` may name a gate: the code lane passes over gates.
+
 ## Task classes in a plan
 
 Every task of a plan carries its class under its title: `Class: engine`, `Class: mechanical` or, in a
-one-session run, `Class: fan-out`.
+one-session run, `Class: fan-out` or `Class: gate`.
 
 - `engine`: changes to how a session is composed or scheduled, to stored records, to reset, migration or
   sync.
 - `mechanical`: everything else — screens and text, content, docs, tests alone, build.
 - `fan-out`: content rows written in batches by drafters and confirmed by readers (« The fan-out form »).
+- `gate`: the run's own step where it shows the maintainer something and asks one question (« The gate
+  form »). It runs no agent.
 
 The class sets the models (`task-controller.md`; `batch-controller.md` for `fan-out`). A plan's header says it
 runs with `docs/agents/plan-runs/run-controller.md`, not with a skill's controller loop.
