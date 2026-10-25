@@ -6,7 +6,8 @@
      const kit = require('./kit');
      kit.loadKind(repo, name)       le module d'un genre, vérifié
      kit.stamp(kind, src, NL)       l'empreinte d'une source : 8 hex
-     kit.split(repo, kindDir)       { ok, lines } — écrit <lot>/input.json et split.txt
+     kit.split(repo, kindDir, ids)  { ok, lines } — écrit <lot>/input.json et split.txt ; ids,
+                                    facultatif, n'en garde que ces lignes
      kit.check(repo, batchDir)      { ok, lines } — n'écrit rien
      kit.merge(repo, kindDir)       { ok, lines } — écrit les tables du genre, ou rien
      kit.readKind(repo, kindDir)    { name, kind, lines, rows } — chaque ligne d'entrée du genre et ce
@@ -72,8 +73,10 @@ const writeJson = (file, v) => fs.writeFileSync(file, JSON.stringify(v, null, 2)
 
 /* Split : la source coupée en lots, une fois. Un dossier déjà coupé (split.txt) n'est pas
    récrit : ses lignes sont imprimées telles quelles. Un lot vide n'est pas écrit, et
-   split.txt, écrit en dernier, ne liste que les lots écrits. */
-function split(repo, kindDir) {
+   split.txt, écrit en dernier, ne liste que les lots écrits. Des ids nommés ne gardent que
+   leurs lignes, dans le lot où le genre les met : c'est ainsi que quelques lignes déjà
+   fusionnées se récrivent. Un id que le genre ne coupe pas est refusé. */
+function split(repo, kindDir, ids) {
   const name = path.basename(kindDir), list = path.join(kindDir, 'split.txt');
   if (fs.existsSync(list)) return { ok: true, lines: fs.readFileSync(list, 'utf8').split('\n').filter(Boolean) };
   let kind;
@@ -96,8 +99,10 @@ function split(repo, kindDir) {
       seen.set(r.id, b.batch);
     });
   });
+  const keep = ids && ids.length ? new Set(ids) : null;
+  if (keep) keep.forEach(id => { if (!seen.has(id)) lines.push('fail ' + name + ' ' + id + ': not a row the kind\'s split cuts'); });
   if (failed(lines)) return { ok: false, lines };
-  batches.filter(b => b.rows.length).forEach(b => {
+  batches.map(b => keep ? { batch: b.batch, rows: b.rows.filter(r => keep.has(r.id)) } : b).filter(b => b.rows.length).forEach(b => {
     const rows = b.rows.map(r => {
       const src = C.byId(r.id), rest = Object.assign({}, r);
       delete rest.id;

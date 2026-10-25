@@ -83,11 +83,13 @@ rows that go to the maintainer by rule, with no retry, and the fields a reader's
 
 The scripts' contract, which their tasks' tests check:
 
-- **Split** `<repo> <kind folder>` cuts the source into batches, `<kind folder>/<batch>/input.json`, each one
-  unit of the source (a lesson, a theme) or about 40 rows. Every row is self-contained, carrying what a
+- **Split** `<repo> <kind folder> [<id>…]` cuts the source into batches, `<kind folder>/<batch>/input.json`,
+  each one unit of the source (a lesson, a theme) or about 40 rows. Every row is self-contained, carrying what a
   drafter needs to write it, with an `id` stable from run to run and a `stamp` of the source it was cut from.
   It prints one line per batch, `<batch> <rows>`. On a kind folder that already has batches, it writes nothing
-  and prints their lines.
+  and prints their lines. Given ids, it cuts only those rows, each in the batch the kind puts it in, writes no
+  batch left empty, and refuses an id the kind does not cut: that is how a few rows already merged are
+  redrafted, by a fan-out task whose Split names them.
 - **Check** `<batch folder>` checks every file the folder holds, by `batch-controller.md`'s table: a draft has
   one row per input row, same ids and stamps, in the format's fields, `unsure` allowed; a retry or a change
   has one row per id it answers, and no other; a review has one verdict per row it reads, `keep` or

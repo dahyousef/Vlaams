@@ -132,6 +132,17 @@ async function main() {
   same(run('split.js', [TMP, KIND]), { code: 0, lines: ['een 3', 'twee 2'] }, 'un genre déjà coupé redit ses lots');
   same(text(path.join(EEN, 'input.json')), kept + ' ', 'un genre déjà coupé n\'est pas recoupé');
   put(EEN, 'input.json', kept);
+  /* Des ids nommés : leurs seules lignes, dans le lot où le genre les met ; un lot qui n'en garde
+     aucune n'est pas écrit, et un id que le genre ne coupe pas est refusé, sans rien écrire. */
+  const SEUL = path.join(TMP, 'seul', 'essai'), UN = path.join(TMP, 'un', 'essai'), REFUS = path.join(TMP, 'refus', 'essai');
+  same([run('split.js', [TMP, SEUL, 'thuis:w1', 'bakker:w22']), ['een', 'twee'].map(b => JSON.parse(text(path.join(SEUL, b, 'input.json'))).map(r => r.id))],
+    [{ code: 0, lines: ['een 1', 'twee 1'] }, [['bakker:w22'], ['thuis:w1']]], 'Split d\'ids nommés ne coupe que leurs lignes, dans le lot où le genre les met');
+  same([run('split.js', [TMP, UN, 'thuis:w1']), fs.existsSync(path.join(UN, 'een'))], [{ code: 0, lines: ['twee 1'] }, false],
+    'un lot qui ne garde aucune ligne nommée n\'est pas écrit');
+  same([run('split.js', [TMP, REFUS, 'thuis:w1', 'overleven:w0', 'zzz:w9']), fs.existsSync(REFUS)], [{ code: 1, lines: [
+    'fail essai overleven:w0: not a row the kind\'s split cuts',
+    'fail essai zzz:w9: not a row the kind\'s split cuts'
+  ] }, false], 'Split refuse un id que le genre ne coupe pas, et n\'écrit rien');
 
   kindFile('mauvais', `module.exports = {
   stamp: [], fields: ['mot'], tables: [], check: () => [], merge: () => ({}),
