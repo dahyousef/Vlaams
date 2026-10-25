@@ -658,7 +658,8 @@ NL.ex = (function () {
   /* La ligne « Ici on dit » : les formes flamandes de l'élément, sans celle qui
      répète le néerlandais standard ni ce qui est déjà à l'écran (`shown` : la
      réponse, et ce que la personne a donné), sauf `keepSame` — dans « Comment
-     le dit-on ici ? » la variante EST la réponse. En
+     le dit-on ici ? » manqué, la variante EST la réponse : toute la liste se
+     montre ; choisie, elle est à l'écran et ne s'y redit pas. En
      gras, ce qui change par rapport au standard ; la ponctuation reste dehors. */
   const PUNCT = '[.,!?;:"()…]*';
   function boldForm(item, form) {
