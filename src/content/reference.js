@@ -50,20 +50,20 @@ NL.content.register = [
 NL.content.loans = [
   { nl: 'merci', fr: 'merci', note: 'Le mot normal pour dire merci en Flandre' },
   { nl: 'allez', fr: 'allez', note: 'Ouvre ou ferme une phrase sur deux à l’oral' },
-  { nl: 'plezant', fr: 'plaisant', note: 'Là où le nord dit leuk' },
+  { nl: 'plezant', fr: 'plaisant', note: 'Là où le nord dit « leuk »' },
   { nl: 'ambetant', fr: 'embêtant' },
   { nl: 'sjiek', fr: 'chic' },
   { nl: 'sjans', fr: 'chance' },
   { nl: 'een tas koffie', fr: 'une tasse' },
-  { nl: 'de confituur', fr: 'confiture', note: 'Le nord dit jam' },
+  { nl: 'de confituur', fr: 'confiture', note: 'Le nord dit « jam »' },
   { nl: 'het trottoir', fr: 'trottoir' },
   { nl: 'de paraplu', fr: 'parapluie' },
   { nl: 'de portefeuille', fr: 'portefeuille' },
   { nl: 'de pistolet', fr: 'pistolet', note: 'Le petit pain, gardé du français' },
-  { nl: 'de camion', fr: 'camion', note: 'Flamand parlé ; l’écrit dit vrachtwagen' },
+  { nl: 'de camion', fr: 'camion', note: 'Flamand parlé ; l’écrit dit « vrachtwagen »' },
   { nl: 'het perron', fr: 'perron' },
-  { nl: 'de fourchet', fr: 'fourchette', note: 'Dialecte ; le standard dit vork' },
-  { nl: 'direct', fr: 'direct', note: 'Se dit pour « tout de suite »' }
+  { nl: 'de fourchet', fr: 'fourchette', note: 'Dialecte ; le standard dit « vork »' },
+  { nl: 'direct', fr: 'direct', note: 'Veut dire tout de suite' }
 ];
 
 /* Les faux amis, qui coûtent plus cher que les emprunts ne rapportent. */
@@ -96,22 +96,22 @@ NL.content.anchors = { sounds: 'fr', loans: 'fr', faux: 'fr', fauxEn: 'en', regi
 
 /* Environ 70% des mots het sont prévisibles. Voici les familles. */
 NL.content.hetRules = [
-  { rule: { fr: 'Tous les diminutifs en -je, -tje, -pje', en: 'All diminutives in -je, -tje, -pje' }, ex: 'het meisje, het broodje, het pakje, het zakje', sure: true },
+  { rule: { fr: 'Tous les diminutifs en « -je », « -tje », « -pje »', en: 'All diminutives in “-je”, “-tje”, “-pje”' }, ex: 'het meisje, het broodje, het pakje, het zakje', sure: true },
   { rule: { fr: 'Toutes les langues', en: 'All languages' }, ex: 'het Nederlands, het Frans, het Engels', sure: true },
-  { rule: { fr: 'Les noms en ge-, be-, ver-, ont- sans suffixe', en: 'Nouns in ge-, be-, ver-, ont- without a suffix' }, ex: 'het gebouw, het begin, het verhaal, het ontbijt' },
+  { rule: { fr: 'Les noms en « ge- », « be- », « ver- », « ont- » sans suffixe', en: 'Nouns in “ge-”, “be-”, “ver-”, “ont-” without a suffix' }, ex: 'het gebouw, het begin, het verhaal, het ontbijt' },
   { rule: { fr: 'Les verbes employés comme noms', en: 'Verbs used as nouns' }, ex: 'het eten, het werken, het wandelen', sure: true },
   { rule: { fr: 'Les métaux', en: 'Metals' }, ex: 'het goud, het zilver, het ijzer' },
   { rule: { fr: 'Les points cardinaux', en: 'Points of the compass' }, ex: 'het noorden, het zuiden, het westen', sure: true },
   { rule: { fr: 'Les sports et les jeux', en: 'Sports and games' }, ex: 'het voetbal, het schaken, het tennis' },
   { rule: { fr: 'Les couleurs', en: 'Colours' }, ex: 'het rood, het groen, het blauw', sure: true },
-  { rule: { fr: 'Les noms en -um, -aat, -sel, -isme', en: 'Nouns in -um, -aat, -sel, -isme' }, ex: 'het museum, het resultaat, het deksel' },
+  { rule: { fr: 'Les noms en « -um », « -aat », « -sel », « -isme »', en: 'Nouns in “-um”, “-aat”, “-sel”, “-isme”' }, ex: 'het museum, het resultaat, het deksel' },
   { rule: { fr: 'Les pays, villes et lettres', en: 'Countries, towns and letters' }, ex: 'het mooie {stad}, het grote Brussel' }
 ];
 NL.content.deRules = [
   { rule: { fr: 'TOUS les pluriels, sans exception', en: 'ALL plurals, without exception' }, ex: 'de huizen, de kinderen, de boeken', sure: true },
   { rule: { fr: 'Les personnes et les métiers', en: 'People and professions' }, ex: 'de bakker, de collega, de dokter' },
-  { rule: { fr: 'Les noms en -ing, -heid, -tie, -teit, -schap', en: 'Nouns in -ing, -heid, -tie, -teit, -schap' }, ex: 'de regering, de waarheid, de politie' },
-  { rule: { fr: 'Les noms en -de, -te, -ij', en: 'Nouns in -de, -te, -ij' }, ex: 'de liefde, de hoogte, de bakkerij' },
+  { rule: { fr: 'Les noms en « -ing », « -heid », « -tie », « -teit », « -schap »', en: 'Nouns in “-ing”, “-heid”, “-tie”, “-teit”, “-schap”' }, ex: 'de regering, de waarheid, de politie' },
+  { rule: { fr: 'Les noms en « -de », « -te », « -ij »', en: 'Nouns in “-de”, “-te”, “-ij”' }, ex: 'de liefde, de hoogte, de bakkerij' },
   { rule: { fr: 'Fruits, arbres, fleurs, montagnes, rivières', en: 'Fruit, trees, flowers, mountains, rivers' }, ex: 'de appel, de eik, de roos' },
   { rule: { fr: 'Les chiffres et les lettres employés comme noms', en: 'Numbers and letters used as nouns' }, ex: 'de drie, de a' }
 ];
@@ -207,7 +207,7 @@ NL.content.sheets = [
           S('Ik denk er een beetje anders over.', { fr: 'Je le vois un peu autrement.', en: 'I see it a little differently.' }, { fr: 'La façon flamande de contredire : sous-entendre', en: 'The Flemish way to disagree: understate' }),
           S('Dat klopt, maar...', { fr: 'C’est exact, mais...', en: 'That is right, but...' }),
           S('Ik zou eerder zeggen dat...', { fr: 'Je dirais plutôt que...', en: 'I would rather say that...' }),
-          S('Laten we dat nog eens bekijken.', { fr: 'On va revoir ça.', en: 'Let us look at that again.' }, { fr: 'Poli pour « pas maintenant »', en: 'Polite for “not now”' })
+          S('Laten we dat nog eens bekijken.', { fr: 'On va revoir ça.', en: 'Let us look at that again.' }, { fr: 'Une façon polie de dire pas maintenant', en: 'A polite way to say not now' })
         ]
       },
       {
@@ -275,7 +275,7 @@ NL.content.sheets = [
       {
         h: { fr: 'Le corps', en: 'The body' }, rows: [
           S('Ik kom even terug op uw mail van gisteren.', { fr: 'Je reviens sur votre mail d’hier.', en: 'I am following up on your email from yesterday. (formal)' }),
-          S('In bijlage vindt u het verslag.', { fr: 'Vous trouverez le compte rendu en annexe.', en: 'You will find the report attached. (formal)' }, { fr: 'Tournure flamande ; le nord dit bijgevoegd', en: 'Flemish phrasing; the north says bijgevoegd' }),
+          S('In bijlage vindt u het verslag.', { fr: 'Vous trouverez le compte rendu en annexe.', en: 'You will find the report attached. (formal)' }, { fr: 'Tournure flamande ; le nord dit « bijgevoegd »', en: 'Flemish phrasing; the north says “bijgevoegd”' }),
           S('Kunt u mij laten weten of dat lukt?', { fr: 'Pouvez-vous me dire si ça marche ?', en: 'Could you let me know if that works? (formal)' }),
           S('Alvast bedankt.', { fr: 'Merci d’avance.', en: 'Thanks in advance.' }),
           S('Laat maar weten.', { fr: 'Tiens-moi au courant.', en: 'Let me know.' }, { fr: 'Informel, Teams', en: 'Informal, Teams' })
@@ -343,7 +343,7 @@ NL.content.sheets = [
       },
       {
         h: { fr: 'Ce qu’on te demande', en: 'What they ask you' }, rows: [
-          S('Is dat alles?', { fr: 'Ce sera tout ?', en: 'Will that be all?' }, { fr: 'Réponse : Ja, dat is alles, merci', en: 'Reply: Ja, dat is alles, merci' }),
+          S('Is dat alles?', { fr: 'Ce sera tout ?', en: 'Will that be all?' }, { fr: 'Réponse : « Ja, dat is alles, merci »', en: 'Reply: “Ja, dat is alles, merci”' }),
           S('Nog iets anders?', { fr: 'Autre chose ?', en: 'Anything else?' }),
           S('Voor hier of om mee te nemen?', { fr: 'Sur place ou à emporter ?', en: 'Eat in or take away?' }),
           S('Met de kaart of cash?', { fr: 'Carte ou liquide ?', en: 'Card or cash?' }),
@@ -367,7 +367,7 @@ NL.content.sheets = [
       {
         h: { fr: 'zijn et hebben', en: 'zijn and hebben' }, rows: [
           S('ik ben / ik heb', { fr: 'je suis / j’ai', en: 'I am / I have' }),
-          S('jij bent / jij hebt', { fr: 'tu es / tu as', en: 'you are / you have (informal)' }, { fr: 'En flamand : gij zijt / gij hebt', en: 'In Flemish: gij zijt / gij hebt' }),
+          S('jij bent / jij hebt', { fr: 'tu es / tu as', en: 'you are / you have (informal)' }, { fr: 'En flamand : « gij zijt » / « gij hebt »', en: 'In Flemish: “gij zijt” / “gij hebt”' }),
           S('hij is / hij heeft', { fr: 'il est / il a', en: 'he is / he has' }),
           S('wij zijn / wij hebben', { fr: 'nous sommes / nous avons', en: 'we are / we have' })
         ]

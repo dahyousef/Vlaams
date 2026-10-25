@@ -24,7 +24,7 @@ NL.content.openTasks = {
   'g-present': {
     ask: { fr: 'Dis ce que tu fais dans la vie et où.', en: 'Say what you do for a living and where.' },
     need: [
-      { what: { fr: 'ik + verbe', en: 'ik + verb' }, rx: /\bik\s+\w+/i,
+      { what: { fr: '« ik » + verbe', en: '“ik” + verb' }, rx: /\bik\s+\w+/i,
         miss: 'Ontwikkelaar bij een IT-bedrijf in Brussel.' },
       { what: { fr: 'un lieu ou un employeur', en: 'a place or an employer' }, any: ['bij', 'in', 'voor'],
         miss: 'Ik werk als ontwikkelaar en dat doe ik graag.' },
@@ -37,7 +37,7 @@ NL.content.openTasks = {
   'g-gegij': {
     ask: { fr: 'Pose une question à un collègue. Utilise « ge » ou « je ».', en: 'Ask a colleague a question. Use “ge” or “je”.' },
     need: [
-      { what: { fr: 'une forme de deuxième personne', en: 'a form of “you”' }, any: ['ge ', 'gij', 'je ', 'kunde', 'hebde', 'zijde'],
+      { what: { fr: 'une forme de deuxième personne', en: 'a second-person form' }, any: ['ge ', 'gij', 'je ', 'kunde', 'hebde', 'zijde'],
         miss: 'Kunt u mij daarmee even helpen?' },
       { what: { fr: 'une question', en: 'a question' }, rx: /\?\s*$/,
         miss: 'Ge kunt mij daarmee even helpen.' },
@@ -52,7 +52,7 @@ NL.content.openTasks = {
     need: [
       { what: { fr: 'un nombre écrit en toutes lettres', en: 'a number written out in words' }, rx: /\b\w*(twintig|dertig|veertig|vijftig|zestig|zeventig|tachtig|negentig|euro)\w*\b/i,
         miss: 'Ik ben 41 jaar oud.' },
-      { what: { fr: 'jaar ou euro', en: 'jaar or euro' }, any: ['jaar', 'euro'],
+      { what: { fr: '« jaar » ou « euro »', en: '“jaar” or “euro”' }, any: ['jaar', 'euro'],
         miss: 'Ik ben eenenveertig en mijn vrouw is negenendertig.' },
       { what: { fr: 'au moins 5 mots', en: 'at least 5 words' }, min: 5,
         miss: 'Ik ben eenenveertig jaar.' }
@@ -65,7 +65,7 @@ NL.content.openTasks = {
     need: [
       { what: { fr: 'une heure', en: 'a time' }, rx: /\b(half|kwart|uur)\b/i,
         miss: 'De vergadering begint om negen en stopt om elf.' },
-      { what: { fr: 'om …', en: 'om …' }, any: ['om '],
+      { what: { fr: '« om … »', en: '“om …”' }, any: ['om '],
         miss: 'De vergadering duurt van half tien tot elf uur.' },
       { what: { fr: 'au moins 6 mots', en: 'at least 6 words' }, min: 6,
         miss: 'Ze begint om half tien.' }

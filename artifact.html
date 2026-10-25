@@ -3387,7 +3387,7 @@ NL.content.units = NL.content.units || [];
 
   U({
     id: 'ikengij', n: 2, name: { fr: 'Moi et toi', en: 'Me and you' }, nlName: 'Ik en gij', level: 'A1', track: 'leven', icon: '\u{1F9D1}',
-    blurb: { fr: 'Les pronoms, zijn et hebben, et se présenter sans se figer.', en: 'The pronouns, zijn and hebben, and introducing yourself without freezing.' },
+    blurb: { fr: 'Les pronoms, « zijn » et « hebben », et se présenter sans se figer.', en: 'The pronouns, “zijn” and “hebben”, and introducing yourself without freezing.' },
     grammar: ['g-present', 'g-gegij'],
     words: [
       W('ik', { fr: 'je', en: 'I' }),
@@ -3613,7 +3613,7 @@ NL.content.units = NL.content.units || [];
 
   U({
     id: 'onderweg', n: 7, name: { fr: 'En route', en: 'On the way' }, nlName: 'Onderweg', level: 'A1', track: 'beide', icon: '\u{1F686}',
-    blurb: { fr: 'Le trajet : la SNCB, De Lijn, les files, et arriver en retard sans mal s’excuser.', en: 'The commute: the railway, De Lijn buses, traffic jams, and arriving late without apologising badly.' },
+    blurb: { fr: 'Le trajet : la SNCB, « De Lijn », les files, et arriver en retard sans mal s’excuser.', en: 'The commute: the railway, “De Lijn” buses, traffic jams, and arriving late without apologising badly.' },
     grammar: ['g-v2'],
     words: [
       W('de fiets', { fr: 'le vélo', en: 'bicycle' }, 'de'),
@@ -3794,7 +3794,7 @@ NL.content.units = NL.content.units || [];
 
   U({
     id: 'dokter', n: 11, name: { fr: 'Le corps et le médecin', en: 'The body and the doctor' }, nlName: 'Lichaam en dokter', level: 'A1', track: 'leven', icon: '\u{1FA7A}',
-    blurb: { fr: 'Prendre rendez-vous chez le huisarts et dire ce qui fait mal, sans passer au français.', en: 'Making an appointment at the huisarts and saying what hurts, without switching to French.' },
+    blurb: { fr: 'Prendre rendez-vous chez le « huisarts » et dire ce qui fait mal, sans passer au français.', en: 'Making an appointment at the “huisarts” and saying what hurts, without switching to French.' },
     grammar: ['g-dehet'],
     words: [
       W('ziek', { fr: 'malade', en: 'ill' }),
@@ -3983,11 +3983,11 @@ NL.content.patterns = (function () {
     {
       id: 'g-present', unit: 'ikengij', level: 'A1',
       title: { fr: 'Le présent : radical, radical+t, radical+en', en: 'The present tense: stem, stem+t, stem+en' },
-      rule: { fr: 'ik werk / jij werkt / hij werkt / wij werken.', en: 'ik werk / jij werkt / hij werkt / wij werken.' },
+      rule: { fr: '« ik werk / jij werkt / hij werkt / wij werken ».', en: '“ik werk / jij werkt / hij werkt / wij werken”.' },
       nl: 'Ik werk bij {bedrijf}.', fr: 'Je travaille chez {bedrijf}.', en: 'I work at {bedrijf}.',
       explain: {
-        fr: 'Trois formes et tu as tout le présent : <span class="ex">ik werk</span>, <span class="ex">jij/hij werkt</span>, <span class="ex">wij/jullie/zij werken</span>. Bien plus simple que le français, qui en a cinq. Un seul piège : quand <b class="nl">jij</b> passe derrière le verbe — dans une question, ou après un complément de temps — le <span class="ex">-t</span> disparaît. <span class="ex">Werk jij morgen?</span>, pas <i class="nl">werkt jij</i>. Uniquement avec jij, jamais avec hij.',
-        en: 'Three forms and you have the whole present tense: <span class="ex">ik werk</span>, <span class="ex">jij/hij werkt</span>, <span class="ex">wij/jullie/zij werken</span>. One trap: when <b class="nl">jij</b> comes after the verb — in a question, or after a time phrase — the <span class="ex">-t</span> disappears. <span class="ex">Werk jij morgen?</span>, not <i class="nl">werkt jij</i>. Only with jij, never with hij.'
+        fr: 'Trois formes et tu as tout le présent : <span class="ex">ik werk</span>, <span class="ex">jij/hij werkt</span>, <span class="ex">wij/jullie/zij werken</span>. Bien plus simple que le français, qui en a cinq. Un seul piège : quand <b class="nl">jij</b> passe derrière le verbe — dans une question, ou après un complément de temps — le <span class="ex">-t</span> disparaît. <span class="ex">Werk jij morgen?</span>, pas <i class="nl">werkt jij</i>. Uniquement avec <span class="nl">jij</span>, jamais avec <span class="nl">hij</span>.',
+        en: 'Three forms and you have the whole present tense: <span class="ex">ik werk</span>, <span class="ex">jij/hij werkt</span>, <span class="ex">wij/jullie/zij werken</span>. One trap: when <b class="nl">jij</b> comes after the verb — in a question, or after a time phrase — the <span class="ex">-t</span> disappears. <span class="ex">Werk jij morgen?</span>, not <i class="nl">werkt jij</i>. Only with <span class="nl">jij</span>, never with <span class="nl">hij</span>.'
       },
       drills: [
         D('Ik werk bij {bedrijf}.', { fr: 'Je travaille chez {bedrijf}.', en: 'I work at {bedrijf}.' }, 'werk'),
@@ -4003,8 +4003,8 @@ NL.content.patterns = (function () {
       rule: { fr: 'Dis « je ». Attends-toi à « ge ». C’est la même chose.', en: 'Say “je”. Expect “ge”. It is the same thing.' },
       nl: 'Hebt ge dat verstaan?', fr: 'Tu as compris ?', en: 'Did you understand that? (informal)',
       explain: {
-        fr: 'Les manuels enseignent <span class="ex">jij/je</span>. Le Brabant flamand dit <span class="ex">gij/ge</span> — à la boulangerie, au club de foot, et en face de toi au bureau. Ce n’est ni grossier ni purement dialectal : c’est simplement le sud. Les verbes suivent : <span class="ex">gij zijt</span> (jij bent), <span class="ex">gij hebt</span>, <span class="ex">gij kunt</span>, et les questions se contractent : <span class="ex">Kunde?</span> (kun je), <span class="ex">Hebde?</span> (heb je), <span class="ex">Zijde?</span> (ben je). <b>Produis « je » et tu es toujours correct. Reconnais « ge » ou tu perds la moitié de ce qu’on te dit.</b>',
-        en: 'Textbooks teach <span class="ex">jij/je</span>. Flemish Brabant says <span class="ex">gij/ge</span> — at the bakery, at the football club, and across the desk from you at work. It is neither rude nor purely dialect: it is simply the south. The verbs follow: <span class="ex">gij zijt</span> (jij bent), <span class="ex">gij hebt</span>, <span class="ex">gij kunt</span>, and questions contract: <span class="ex">Kunde?</span> (kun je), <span class="ex">Hebde?</span> (heb je), <span class="ex">Zijde?</span> (ben je). <b>Produce “je” and you are always correct. Recognise “ge” or you lose half of what is said to you.</b>'
+        fr: 'Les manuels enseignent <span class="ex">jij/je</span>. Le Brabant flamand dit <span class="ex">gij/ge</span> — à la boulangerie, au club de foot, et en face de toi au bureau. Ce n’est ni grossier ni purement dialectal : c’est simplement le sud. Les verbes suivent : <span class="ex">gij zijt</span> (<span class="nl">jij bent</span>), <span class="ex">gij hebt</span>, <span class="ex">gij kunt</span>, et les questions se contractent : <span class="ex">Kunde?</span> (<span class="nl">kun je</span>), <span class="ex">Hebde?</span> (<span class="nl">heb je</span>), <span class="ex">Zijde?</span> (<span class="nl">ben je</span>). <b>Produis « <span class="nl">je</span> » et tu es toujours correct. Reconnais « <span class="nl">ge</span> » ou tu perds la moitié de ce qu’on te dit.</b>',
+        en: 'Textbooks teach <span class="ex">jij/je</span>. Flemish Brabant says <span class="ex">gij/ge</span> — at the bakery, at the football club, and across the desk from you at work. It is neither rude nor purely dialect: it is simply the south. The verbs follow: <span class="ex">gij zijt</span> (<span class="nl">jij bent</span>), <span class="ex">gij hebt</span>, <span class="ex">gij kunt</span>, and questions contract: <span class="ex">Kunde?</span> (<span class="nl">kun je</span>), <span class="ex">Hebde?</span> (<span class="nl">heb je</span>), <span class="ex">Zijde?</span> (<span class="nl">ben je</span>). <b>Produce “<span class="nl">je</span>” and you are always correct. Recognise “<span class="nl">ge</span>” or you lose half of what is said to you.</b>'
       },
       drills: [
         D('Hebt ge dat verstaan?', { fr: 'Tu as compris ?', en: 'Did you understand that?' }, 'ge'),
@@ -4016,11 +4016,11 @@ NL.content.patterns = (function () {
     {
       id: 'g-getallen', unit: 'tijd', level: 'A1',
       title: { fr: 'Les unités avant les dizaines', en: 'Units before tens' },
-      rule: { fr: '21 se dit een-en-twintig : le petit chiffre d’abord.', en: '21 is said een-en-twintig: the small digit first.' },
+      rule: { fr: '21 se dit « een-en-twintig » : le petit chiffre d’abord.', en: '21 is said “een-en-twintig”: the small digit first.' },
       nl: 'Het kost eenentwintig euro.', fr: 'Ça coûte vingt-et-un euros.', en: 'It costs twenty-one euros.',
       explain: {
         fr: 'Le néerlandais dit les unités avant les dizaines : <span class="ex">eenentwintig</span> (21), <span class="ex">vierenzestig</span> (64), <span class="ex">negenennegentig</span> (99). En un seul mot, sans espace. C’est pour ça qu’un prix ou un numéro de téléphone semble mélangé : tu entends le deuxième chiffre avant le premier. Bonne nouvelle pour toi : <span class="ex">zeventig</span> = septante et <span class="ex">negentig</span> = nonante, exactement comme en Belgique. Le français de France, lui, t’aurait imposé un détour par soixante-dix.',
-        en: 'Dutch says the units before the tens: <span class="ex">eenentwintig</span> (21, literally “one-and-twenty”), <span class="ex">vierenzestig</span> (64), <span class="ex">negenennegentig</span> (99). As a single word, with no space. That is why a price or a phone number seems jumbled: you hear the second digit before the first. Good news: <span class="ex">zeventig</span> is simply seventy and <span class="ex">negentig</span> is simply ninety.'
+        en: 'Dutch says the units before the tens: <span class="ex">eenentwintig</span> (21, literally <i>one-and-twenty</i>), <span class="ex">vierenzestig</span> (64), <span class="ex">negenennegentig</span> (99). As a single word, with no space. That is why a price or a phone number seems jumbled: you hear the second digit before the first. Good news: <span class="ex">zeventig</span> is simply seventy and <span class="ex">negentig</span> is simply ninety.'
       },
       drills: [
         D('Het kost eenentwintig euro.', { fr: 'Ça coûte vingt-et-un euros.', en: 'It costs twenty-one euros.' }, 'eenentwintig'),
@@ -4032,11 +4032,11 @@ NL.content.patterns = (function () {
     {
       id: 'g-halfuur', unit: 'tijd', level: 'A1',
       title: { fr: 'Half drie, c’est 2h30', en: 'Half drie means 2:30' },
-      rule: { fr: 'half + heure = trente minutes AVANT cette heure.', en: 'half + hour = thirty minutes BEFORE that hour.' },
+      rule: { fr: '« half » + heure = trente minutes AVANT cette heure.', en: '“half” + hour = thirty minutes BEFORE that hour.' },
       nl: 'De vergadering begint om half drie.', fr: 'La réunion commence à deux heures et demie.', en: 'The meeting starts at half past two.',
       explain: {
-        fr: 'Le néerlandais compte <b>vers</b> l’heure qui vient. <span class="ex">Half drie</span> = une demi-heure avant trois heures, donc 2h30 — et non 3h30. Le français fait l’inverse : « trois heures et demie » = 3h30. Même logique pour <span class="ex">kwart voor</span> (moins le quart) et <span class="ex">kwart na</span> (et quart). La Flandre dit aussi <span class="ex">tien voor half vier</span> pour 15h20, compté à rebours depuis la demie. Te tromper une fois te coûte une réunion.',
-        en: 'Dutch counts <b>towards</b> the coming hour. <span class="ex">Half drie</span> = half an hour before three o’clock, so 2:30 — not 3:30. English “half three” is 3:30, so the trap is real. Same logic for <span class="ex">kwart voor</span> (quarter to) and <span class="ex">kwart na</span> (quarter past). Flanders also says <span class="ex">tien voor half vier</span> for 15:20, counted back from the half hour. Get it wrong once and you miss a meeting.'
+        fr: 'Le néerlandais compte <b>vers</b> l’heure qui vient. <span class="ex">Half drie</span> = une demi-heure avant trois heures, donc 2h30 — et non 3h30. Le français fait l’inverse : <i>trois heures et demie</i> = 3h30. Même logique pour <span class="ex">kwart voor</span> (moins le quart) et <span class="ex">kwart na</span> (et quart). La Flandre dit aussi <span class="ex">tien voor half vier</span> pour 15h20, compté à rebours depuis la demie. Te tromper une fois te coûte une réunion.',
+        en: 'Dutch counts <b>towards</b> the coming hour. <span class="ex">Half drie</span> = half an hour before three o’clock, so 2:30 — not 3:30. English <i>half three</i> is 3:30, so the trap is real. Same logic for <span class="ex">kwart voor</span> (quarter to) and <span class="ex">kwart na</span> (quarter past). Flanders also says <span class="ex">tien voor half vier</span> for 15:20, counted back from the half hour. Get it wrong once and you miss a meeting.'
       },
       drills: [
         D('De vergadering begint om half drie.', { fr: 'La réunion commence à 14h30.', en: 'The meeting starts at 14:30.' }, 'half'),
@@ -4047,11 +4047,11 @@ NL.content.patterns = (function () {
     {
       id: 'g-dehet', unit: 'bakker', level: 'A1',
       title: { fr: 'De ou het, et le -e en plus', en: 'De or het, and the extra -e' },
-      rule: { fr: 'een groot huis, mais het grote huis.', en: 'een groot huis, but het grote huis.' },
+      rule: { fr: '« een groot huis », mais « het grote huis ».', en: '“een groot huis”, but “het grote huis”.' },
       nl: 'Het grote huis staat in de straat.', fr: 'La grande maison est dans la rue.', en: 'The big house is in the street.',
       explain: {
-        fr: 'Environ trois noms sur quatre prennent <span class="ex">de</span>, le reste prend <span class="ex">het</span>. <b>Ne traduis jamais depuis le français</b> : <span class="ex">het huis</span> est neutre alors que « la maison » est féminine, <span class="ex">het bureau</span> est neutre alors que « le bureau » est masculin. Les genres ne se correspondent pas du tout. Bonne nouvelle : ce n’est pas totalement arbitraire — voir la fiche <i>Les familles de het</i>. Le gain vient avec l’adjectif : il prend <span class="ex">-e</span> partout — <span class="ex">de grote fiets</span>, <span class="ex">het grote huis</span>, <span class="ex">een grote fiets</span> — sauf après <b class="nl">een</b> devant un mot <b>het</b> : <span class="ex">een groot huis</span>. Après le verbe, toujours nu : <span class="ex">het huis is groot</span>.',
-        en: 'About three nouns in four take <span class="ex">de</span>, the rest take <span class="ex">het</span>. <b>Never guess from the meaning</b>: English has no grammatical gender to lean on, so learn the article together with the noun — <span class="ex">het huis</span>, <span class="ex">de tafel</span>. Good news: it is not entirely arbitrary — see the sheet <i>The het families</i>. The payoff comes with the adjective: it takes <span class="ex">-e</span> everywhere — <span class="ex">de grote fiets</span>, <span class="ex">het grote huis</span>, <span class="ex">een grote fiets</span> — except after <b class="nl">een</b> before a <b>het</b> word: <span class="ex">een groot huis</span>. After the verb, always bare: <span class="ex">het huis is groot</span>.'
+        fr: 'Environ trois noms sur quatre prennent <span class="ex">de</span>, le reste prend <span class="ex">het</span>. <b>Ne traduis jamais depuis le français</b> : <span class="ex">het huis</span> est neutre alors que <i>la maison</i> est féminine, <span class="ex">het bureau</span> est neutre alors que <i>le bureau</i> est masculin. Les genres ne se correspondent pas du tout. Bonne nouvelle : ce n’est pas totalement arbitraire — voir la fiche <i>Les familles de <span class="nl">het</span></i>. Le gain vient avec l’adjectif : il prend <span class="ex">-e</span> partout — <span class="ex">de grote fiets</span>, <span class="ex">het grote huis</span>, <span class="ex">een grote fiets</span> — sauf après <b class="nl">een</b> devant un mot <b class="nl">het</b> : <span class="ex">een groot huis</span>. Après le verbe, toujours nu : <span class="ex">het huis is groot</span>.',
+        en: 'About three nouns in four take <span class="ex">de</span>, the rest take <span class="ex">het</span>. <b>Never guess from the meaning</b>: English has no grammatical gender to lean on, so learn the article together with the noun — <span class="ex">het huis</span>, <span class="ex">de tafel</span>. Good news: it is not entirely arbitrary — see the sheet <i>The <span class="nl">het</span> families</i>. The payoff comes with the adjective: it takes <span class="ex">-e</span> everywhere — <span class="ex">de grote fiets</span>, <span class="ex">het grote huis</span>, <span class="ex">een grote fiets</span> — except after <b class="nl">een</b> before a <b class="nl">het</b> word: <span class="ex">een groot huis</span>. After the verb, always bare: <span class="ex">het huis is groot</span>.'
       },
       drills: [
         D('Het grote huis staat in de straat.', { fr: 'La grande maison est dans la rue.', en: 'The big house is in the street.' }, 'grote'),
@@ -4063,11 +4063,11 @@ NL.content.patterns = (function () {
     {
       id: 'g-bezit', unit: 'familie', level: 'A1',
       title: { fr: 'Mijn, uw, ons et onze', en: 'Mijn, uw, ons and onze' },
-      rule: { fr: 'ons devant un mot het, onze devant tout le reste.', en: 'ons before a het word, onze before everything else.' },
+      rule: { fr: '« ons » devant un mot « het », « onze » devant tout le reste.', en: '“ons” before a “het” word, “onze” before everything else.' },
       nl: 'Ons huis staat naast onze tuin.', fr: 'Notre maison est à côté de notre jardin.', en: 'Our house is next to our garden.',
       explain: {
-        fr: 'Les possessifs ne changent jamais de forme, sauf un. <span class="ex">mijn</span>, <span class="ex">je/uw</span>, <span class="ex">zijn</span> (son à lui), <span class="ex">haar</span> (son à elle), <span class="ex">hun</span> (leur) restent identiques quel que soit le nom — contrairement au français, où « mon/ma/mes » s’accorde. Le seul qui bouge est <b>ons/onze</b> : <span class="ex">ons</span> devant un mot het (<span class="ex">ons huis</span>, <span class="ex">ons kind</span>), <span class="ex">onze</span> partout ailleurs (<span class="ex">onze tuin</span>, <span class="ex">onze kinderen</span>). En Flandre tu entendras aussi <span class="ex">uw</span> de façon familière, là où le nord impose <span class="ex">je</span>.',
-        en: 'Possessives never change form, except one. <span class="ex">mijn</span> (my), <span class="ex">je</span> (your, informal) / <span class="ex">uw</span> (your, formal), <span class="ex">zijn</span> (his), <span class="ex">haar</span> (her), <span class="ex">hun</span> (their) stay the same whatever the noun. The only one that moves is <b>ons/onze</b> (our): <span class="ex">ons</span> before a het word (<span class="ex">ons huis</span>, <span class="ex">ons kind</span>), <span class="ex">onze</span> everywhere else (<span class="ex">onze tuin</span>, <span class="ex">onze kinderen</span>). In Flanders you will also hear <span class="ex">uw</span> used informally, where the north requires <span class="ex">je</span>.'
+        fr: 'Les possessifs ne changent jamais de forme, sauf un. <span class="ex">mijn</span>, <span class="ex">je/uw</span>, <span class="ex">zijn</span> (son à lui), <span class="ex">haar</span> (son à elle), <span class="ex">hun</span> (leur) restent identiques quel que soit le nom — contrairement au français, où <i>mon/ma/mes</i> s’accorde. Le seul qui bouge est <b class="nl">ons/onze</b> : <span class="ex">ons</span> devant un mot <span class="nl">het</span> (<span class="ex">ons huis</span>, <span class="ex">ons kind</span>), <span class="ex">onze</span> partout ailleurs (<span class="ex">onze tuin</span>, <span class="ex">onze kinderen</span>). En Flandre tu entendras aussi <span class="ex">uw</span> de façon familière, là où le nord impose <span class="ex">je</span>.',
+        en: 'Possessives never change form, except one. <span class="ex">mijn</span> (my), <span class="ex">je</span> (your, informal) / <span class="ex">uw</span> (your, formal), <span class="ex">zijn</span> (his), <span class="ex">haar</span> (her), <span class="ex">hun</span> (their) stay the same whatever the noun. The only one that moves is <b class="nl">ons/onze</b> (our): <span class="ex">ons</span> before a <span class="nl">het</span> word (<span class="ex">ons huis</span>, <span class="ex">ons kind</span>), <span class="ex">onze</span> everywhere else (<span class="ex">onze tuin</span>, <span class="ex">onze kinderen</span>). In Flanders you will also hear <span class="ex">uw</span> used informally, where the north requires <span class="ex">je</span>.'
       },
       drills: [
         D('Ons huis staat naast onze tuin.', { fr: 'Notre maison est à côté de notre jardin.', en: 'Our house is next to our garden.' }, 'Ons'),
@@ -4095,11 +4095,11 @@ NL.content.patterns = (function () {
     {
       id: 'g-perfect-intro', unit: 'weekend', level: 'A1',
       title: { fr: 'Le passé composé avec hebben', en: 'The perfect tense with hebben' },
-      rule: { fr: 'hebben + ge...t/d, participe à la fin.', en: 'hebben + ge...t/d, participle at the end.' },
+      rule: { fr: '« hebben » + « ge-...-t/-d », participe à la fin.', en: '“hebben” + “ge-...-t/-d”, participle at the end.' },
       nl: 'Ik heb dit weekend gewandeld.', fr: 'Je me suis promené ce week-end.', en: 'I went for a walk this weekend.',
       explain: {
-        fr: 'Sans ça, impossible de répondre à <i class="nl">hoe was uw weekend?</i>. Le néerlandais raconte le passé avec <span class="ex">hebben</span> (ou <span class="ex">zijn</span>) plus un participe garé <b>tout à la fin</b> de la phrase — c’est la différence avec le français, où le participe suit immédiatement l’auxiliaire : <span class="ex">Ik <b>heb</b> dit weekend <b>gewandeld</b></span>. Construis le participe avec <b>ge-</b> + radical + <b>-t</b> ou <b>-d</b> : werken → gewerkt, wandelen → gewandeld. Les verbes de mouvement et de changement prennent <span class="ex">zijn</span>, exactement comme le français prend « être » : <span class="ex">ik <b>ben</b> naar Brussel <b>geweest</b></span>.',
-        en: 'Without this, you cannot answer <i class="nl">hoe was uw weekend?</i>. Dutch tells the past with <span class="ex">hebben</span> (or <span class="ex">zijn</span>) plus a participle parked <b>at the very end</b> of the sentence — that is the difference from English, where the participle follows the auxiliary immediately: <span class="ex">Ik <b>heb</b> dit weekend <b>gewandeld</b></span>. Build the participle with <b>ge-</b> + stem + <b>-t</b> or <b>-d</b>: werken → gewerkt, wandelen → gewandeld. Verbs of movement and change take <span class="ex">zijn</span>: <span class="ex">ik <b>ben</b> naar Brussel <b>geweest</b></span>.'
+        fr: 'Sans ça, impossible de répondre à <i class="nl">hoe was uw weekend?</i>. Le néerlandais raconte le passé avec <span class="ex">hebben</span> (ou <span class="ex">zijn</span>) plus un participe garé <b>tout à la fin</b> de la phrase — c’est la différence avec le français, où le participe suit immédiatement l’auxiliaire : <span class="ex">Ik <b>heb</b> dit weekend <b>gewandeld</b></span>. Construis le participe avec <b class="nl">ge-</b> + radical + <b class="nl">-t</b> ou <b class="nl">-d</b> : <span class="nl">werken</span> → <span class="nl">gewerkt</span>, <span class="nl">wandelen</span> → <span class="nl">gewandeld</span>. Les verbes de mouvement et de changement prennent <span class="ex">zijn</span>, exactement comme le français prend <i>être</i> : <span class="ex">ik <b>ben</b> naar Brussel <b>geweest</b></span>.',
+        en: 'Without this, you cannot answer <i class="nl">hoe was uw weekend?</i>. Dutch tells the past with <span class="ex">hebben</span> (or <span class="ex">zijn</span>) plus a participle parked <b>at the very end</b> of the sentence — that is the difference from English, where the participle follows the auxiliary immediately: <span class="ex">Ik <b>heb</b> dit weekend <b>gewandeld</b></span>. Build the participle with <b class="nl">ge-</b> + stem + <b class="nl">-t</b> or <b class="nl">-d</b>: <span class="nl">werken</span> → <span class="nl">gewerkt</span>, <span class="nl">wandelen</span> → <span class="nl">gewandeld</span>. Verbs of movement and change take <span class="ex">zijn</span>: <span class="ex">ik <b>ben</b> naar Brussel <b>geweest</b></span>.'
       },
       drills: [
         D('Ik heb dit weekend gewandeld.', { fr: 'Je me suis promené ce week-end.', en: 'I went for a walk this weekend.' }, 'gewandeld'),
@@ -4749,7 +4749,7 @@ NL.content.openTasks = {
   'g-present': {
     ask: { fr: 'Dis ce que tu fais dans la vie et où.', en: 'Say what you do for a living and where.' },
     need: [
-      { what: { fr: 'ik + verbe', en: 'ik + verb' }, rx: /\bik\s+\w+/i,
+      { what: { fr: '« ik » + verbe', en: '“ik” + verb' }, rx: /\bik\s+\w+/i,
         miss: 'Ontwikkelaar bij een IT-bedrijf in Brussel.' },
       { what: { fr: 'un lieu ou un employeur', en: 'a place or an employer' }, any: ['bij', 'in', 'voor'],
         miss: 'Ik werk als ontwikkelaar en dat doe ik graag.' },
@@ -4762,7 +4762,7 @@ NL.content.openTasks = {
   'g-gegij': {
     ask: { fr: 'Pose une question à un collègue. Utilise « ge » ou « je ».', en: 'Ask a colleague a question. Use “ge” or “je”.' },
     need: [
-      { what: { fr: 'une forme de deuxième personne', en: 'a form of “you”' }, any: ['ge ', 'gij', 'je ', 'kunde', 'hebde', 'zijde'],
+      { what: { fr: 'une forme de deuxième personne', en: 'a second-person form' }, any: ['ge ', 'gij', 'je ', 'kunde', 'hebde', 'zijde'],
         miss: 'Kunt u mij daarmee even helpen?' },
       { what: { fr: 'une question', en: 'a question' }, rx: /\?\s*$/,
         miss: 'Ge kunt mij daarmee even helpen.' },
@@ -4777,7 +4777,7 @@ NL.content.openTasks = {
     need: [
       { what: { fr: 'un nombre écrit en toutes lettres', en: 'a number written out in words' }, rx: /\b\w*(twintig|dertig|veertig|vijftig|zestig|zeventig|tachtig|negentig|euro)\w*\b/i,
         miss: 'Ik ben 41 jaar oud.' },
-      { what: { fr: 'jaar ou euro', en: 'jaar or euro' }, any: ['jaar', 'euro'],
+      { what: { fr: '« jaar » ou « euro »', en: '“jaar” or “euro”' }, any: ['jaar', 'euro'],
         miss: 'Ik ben eenenveertig en mijn vrouw is negenendertig.' },
       { what: { fr: 'au moins 5 mots', en: 'at least 5 words' }, min: 5,
         miss: 'Ik ben eenenveertig jaar.' }
@@ -4790,7 +4790,7 @@ NL.content.openTasks = {
     need: [
       { what: { fr: 'une heure', en: 'a time' }, rx: /\b(half|kwart|uur)\b/i,
         miss: 'De vergadering begint om negen en stopt om elf.' },
-      { what: { fr: 'om …', en: 'om …' }, any: ['om '],
+      { what: { fr: '« om … »', en: '“om …”' }, any: ['om '],
         miss: 'De vergadering duurt van half tien tot elf uur.' },
       { what: { fr: 'au moins 6 mots', en: 'at least 6 words' }, min: 6,
         miss: 'Ze begint om half tien.' }
@@ -4917,20 +4917,20 @@ NL.content.register = [
 NL.content.loans = [
   { nl: 'merci', fr: 'merci', note: 'Le mot normal pour dire merci en Flandre' },
   { nl: 'allez', fr: 'allez', note: 'Ouvre ou ferme une phrase sur deux à l’oral' },
-  { nl: 'plezant', fr: 'plaisant', note: 'Là où le nord dit leuk' },
+  { nl: 'plezant', fr: 'plaisant', note: 'Là où le nord dit « leuk »' },
   { nl: 'ambetant', fr: 'embêtant' },
   { nl: 'sjiek', fr: 'chic' },
   { nl: 'sjans', fr: 'chance' },
   { nl: 'een tas koffie', fr: 'une tasse' },
-  { nl: 'de confituur', fr: 'confiture', note: 'Le nord dit jam' },
+  { nl: 'de confituur', fr: 'confiture', note: 'Le nord dit « jam »' },
   { nl: 'het trottoir', fr: 'trottoir' },
   { nl: 'de paraplu', fr: 'parapluie' },
   { nl: 'de portefeuille', fr: 'portefeuille' },
   { nl: 'de pistolet', fr: 'pistolet', note: 'Le petit pain, gardé du français' },
-  { nl: 'de camion', fr: 'camion', note: 'Flamand parlé ; l’écrit dit vrachtwagen' },
+  { nl: 'de camion', fr: 'camion', note: 'Flamand parlé ; l’écrit dit « vrachtwagen »' },
   { nl: 'het perron', fr: 'perron' },
-  { nl: 'de fourchet', fr: 'fourchette', note: 'Dialecte ; le standard dit vork' },
-  { nl: 'direct', fr: 'direct', note: 'Se dit pour « tout de suite »' }
+  { nl: 'de fourchet', fr: 'fourchette', note: 'Dialecte ; le standard dit « vork »' },
+  { nl: 'direct', fr: 'direct', note: 'Veut dire tout de suite' }
 ];
 
 /* Les faux amis, qui coûtent plus cher que les emprunts ne rapportent. */
@@ -4963,22 +4963,22 @@ NL.content.anchors = { sounds: 'fr', loans: 'fr', faux: 'fr', fauxEn: 'en', regi
 
 /* Environ 70% des mots het sont prévisibles. Voici les familles. */
 NL.content.hetRules = [
-  { rule: { fr: 'Tous les diminutifs en -je, -tje, -pje', en: 'All diminutives in -je, -tje, -pje' }, ex: 'het meisje, het broodje, het pakje, het zakje', sure: true },
+  { rule: { fr: 'Tous les diminutifs en « -je », « -tje », « -pje »', en: 'All diminutives in “-je”, “-tje”, “-pje”' }, ex: 'het meisje, het broodje, het pakje, het zakje', sure: true },
   { rule: { fr: 'Toutes les langues', en: 'All languages' }, ex: 'het Nederlands, het Frans, het Engels', sure: true },
-  { rule: { fr: 'Les noms en ge-, be-, ver-, ont- sans suffixe', en: 'Nouns in ge-, be-, ver-, ont- without a suffix' }, ex: 'het gebouw, het begin, het verhaal, het ontbijt' },
+  { rule: { fr: 'Les noms en « ge- », « be- », « ver- », « ont- » sans suffixe', en: 'Nouns in “ge-”, “be-”, “ver-”, “ont-” without a suffix' }, ex: 'het gebouw, het begin, het verhaal, het ontbijt' },
   { rule: { fr: 'Les verbes employés comme noms', en: 'Verbs used as nouns' }, ex: 'het eten, het werken, het wandelen', sure: true },
   { rule: { fr: 'Les métaux', en: 'Metals' }, ex: 'het goud, het zilver, het ijzer' },
   { rule: { fr: 'Les points cardinaux', en: 'Points of the compass' }, ex: 'het noorden, het zuiden, het westen', sure: true },
   { rule: { fr: 'Les sports et les jeux', en: 'Sports and games' }, ex: 'het voetbal, het schaken, het tennis' },
   { rule: { fr: 'Les couleurs', en: 'Colours' }, ex: 'het rood, het groen, het blauw', sure: true },
-  { rule: { fr: 'Les noms en -um, -aat, -sel, -isme', en: 'Nouns in -um, -aat, -sel, -isme' }, ex: 'het museum, het resultaat, het deksel' },
+  { rule: { fr: 'Les noms en « -um », « -aat », « -sel », « -isme »', en: 'Nouns in “-um”, “-aat”, “-sel”, “-isme”' }, ex: 'het museum, het resultaat, het deksel' },
   { rule: { fr: 'Les pays, villes et lettres', en: 'Countries, towns and letters' }, ex: 'het mooie {stad}, het grote Brussel' }
 ];
 NL.content.deRules = [
   { rule: { fr: 'TOUS les pluriels, sans exception', en: 'ALL plurals, without exception' }, ex: 'de huizen, de kinderen, de boeken', sure: true },
   { rule: { fr: 'Les personnes et les métiers', en: 'People and professions' }, ex: 'de bakker, de collega, de dokter' },
-  { rule: { fr: 'Les noms en -ing, -heid, -tie, -teit, -schap', en: 'Nouns in -ing, -heid, -tie, -teit, -schap' }, ex: 'de regering, de waarheid, de politie' },
-  { rule: { fr: 'Les noms en -de, -te, -ij', en: 'Nouns in -de, -te, -ij' }, ex: 'de liefde, de hoogte, de bakkerij' },
+  { rule: { fr: 'Les noms en « -ing », « -heid », « -tie », « -teit », « -schap »', en: 'Nouns in “-ing”, “-heid”, “-tie”, “-teit”, “-schap”' }, ex: 'de regering, de waarheid, de politie' },
+  { rule: { fr: 'Les noms en « -de », « -te », « -ij »', en: 'Nouns in “-de”, “-te”, “-ij”' }, ex: 'de liefde, de hoogte, de bakkerij' },
   { rule: { fr: 'Fruits, arbres, fleurs, montagnes, rivières', en: 'Fruit, trees, flowers, mountains, rivers' }, ex: 'de appel, de eik, de roos' },
   { rule: { fr: 'Les chiffres et les lettres employés comme noms', en: 'Numbers and letters used as nouns' }, ex: 'de drie, de a' }
 ];
@@ -5074,7 +5074,7 @@ NL.content.sheets = [
           S('Ik denk er een beetje anders over.', { fr: 'Je le vois un peu autrement.', en: 'I see it a little differently.' }, { fr: 'La façon flamande de contredire : sous-entendre', en: 'The Flemish way to disagree: understate' }),
           S('Dat klopt, maar...', { fr: 'C’est exact, mais...', en: 'That is right, but...' }),
           S('Ik zou eerder zeggen dat...', { fr: 'Je dirais plutôt que...', en: 'I would rather say that...' }),
-          S('Laten we dat nog eens bekijken.', { fr: 'On va revoir ça.', en: 'Let us look at that again.' }, { fr: 'Poli pour « pas maintenant »', en: 'Polite for “not now”' })
+          S('Laten we dat nog eens bekijken.', { fr: 'On va revoir ça.', en: 'Let us look at that again.' }, { fr: 'Une façon polie de dire pas maintenant', en: 'A polite way to say not now' })
         ]
       },
       {
@@ -5142,7 +5142,7 @@ NL.content.sheets = [
       {
         h: { fr: 'Le corps', en: 'The body' }, rows: [
           S('Ik kom even terug op uw mail van gisteren.', { fr: 'Je reviens sur votre mail d’hier.', en: 'I am following up on your email from yesterday. (formal)' }),
-          S('In bijlage vindt u het verslag.', { fr: 'Vous trouverez le compte rendu en annexe.', en: 'You will find the report attached. (formal)' }, { fr: 'Tournure flamande ; le nord dit bijgevoegd', en: 'Flemish phrasing; the north says bijgevoegd' }),
+          S('In bijlage vindt u het verslag.', { fr: 'Vous trouverez le compte rendu en annexe.', en: 'You will find the report attached. (formal)' }, { fr: 'Tournure flamande ; le nord dit « bijgevoegd »', en: 'Flemish phrasing; the north says “bijgevoegd”' }),
           S('Kunt u mij laten weten of dat lukt?', { fr: 'Pouvez-vous me dire si ça marche ?', en: 'Could you let me know if that works? (formal)' }),
           S('Alvast bedankt.', { fr: 'Merci d’avance.', en: 'Thanks in advance.' }),
           S('Laat maar weten.', { fr: 'Tiens-moi au courant.', en: 'Let me know.' }, { fr: 'Informel, Teams', en: 'Informal, Teams' })
@@ -5210,7 +5210,7 @@ NL.content.sheets = [
       },
       {
         h: { fr: 'Ce qu’on te demande', en: 'What they ask you' }, rows: [
-          S('Is dat alles?', { fr: 'Ce sera tout ?', en: 'Will that be all?' }, { fr: 'Réponse : Ja, dat is alles, merci', en: 'Reply: Ja, dat is alles, merci' }),
+          S('Is dat alles?', { fr: 'Ce sera tout ?', en: 'Will that be all?' }, { fr: 'Réponse : « Ja, dat is alles, merci »', en: 'Reply: “Ja, dat is alles, merci”' }),
           S('Nog iets anders?', { fr: 'Autre chose ?', en: 'Anything else?' }),
           S('Voor hier of om mee te nemen?', { fr: 'Sur place ou à emporter ?', en: 'Eat in or take away?' }),
           S('Met de kaart of cash?', { fr: 'Carte ou liquide ?', en: 'Card or cash?' }),
@@ -5234,7 +5234,7 @@ NL.content.sheets = [
       {
         h: { fr: 'zijn et hebben', en: 'zijn and hebben' }, rows: [
           S('ik ben / ik heb', { fr: 'je suis / j’ai', en: 'I am / I have' }),
-          S('jij bent / jij hebt', { fr: 'tu es / tu as', en: 'you are / you have (informal)' }, { fr: 'En flamand : gij zijt / gij hebt', en: 'In Flemish: gij zijt / gij hebt' }),
+          S('jij bent / jij hebt', { fr: 'tu es / tu as', en: 'you are / you have (informal)' }, { fr: 'En flamand : « gij zijt » / « gij hebt »', en: 'In Flemish: “gij zijt” / “gij hebt”' }),
           S('hij is / hij heeft', { fr: 'il est / il a', en: 'he is / he has' }),
           S('wij zijn / wij hebben', { fr: 'nous sommes / nous avons', en: 'we are / we have' })
         ]

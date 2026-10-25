@@ -895,12 +895,31 @@ const QUOTE_OK = {
   ermee: '« Ik ben ermee bezig », dans la note de bezig',
   developer: 'l’anglais qu’on dit aussi en néerlandais, dans la note de « Ik ben Java-ontwikkelaar. »',
   zal: 'le futur dont on se passe, dans la note de « Ik stuur u een mail. »',
-  pardon: 'le nord pour excuseer, dans la note d’un choix de la conversation du train'
+  pardon: 'le nord pour excuseer, dans la note d’un choix de la conversation du train',
+  lijn: '« De Lijn », les bus flamands, dans la présentation de l’unité du trajet',
+  jam: 'le nord pour de confituur, dans sa note d’emprunt',
+  vrachtwagen: 'l’écrit pour de camion, dans sa note d’emprunt',
+  vork: 'le standard pour de fourchet, dans sa note d’emprunt',
+  bijgevoegd: 'le nord pour « in bijlage », dans une note de la fiche des mails'
 };
-/* Les passages cités qui ne sont pas du néerlandais (« la maison », “not now”) enfreignent la règle :
+/* Les passages cités qui ne sont pas du néerlandais (« voilà », “here you are”) enfreignent la règle :
    une traduction va entre parenthèses, sans guillemets. Hors d'explain, NL.gloss.quoted les déclare
-   nl-BE à tort. Ce compte ne fait que baisser, jusqu'à 0. */
-const QUOTE_BUDGET = 36;
+   nl-BE à tort. Il n'en reste que dans les notes des mots et des phrases ; ce compte ne fait que
+   baisser, jusqu'à 0. */
+const QUOTE_BUDGET = 25;
+/* Les mots que le français et l'anglais écrivent tous deux et que le cours a aussi en néerlandais :
+   l'anglais du bureau, une marque, un article. 6d.4 ne les prend pas pour du néerlandais laissé nu. */
+const SHARED_OK = {
+  a: 'le verbe avoir et l’article anglais ; le cours ne l’a que comme lettre, « de a »',
+  ticket: 'l’anglais du bureau, le même en français et en anglais, dans la présentation de l’unité du travail',
+  build: 'l’anglais du bureau, le même en français et en anglais, dans deux présentations',
+  code: 'l’anglais du bureau, le même en français et en anglais, dans la présentation d’une fiche',
+  bancontact: 'la carte de paiement belge, une marque, dans la présentation de l’unité des courses',
+  stand: '« stand-up », la réunion du matin, en français comme en anglais',
+  up: '« stand-up », la réunion du matin, en français comme en anglais',
+  contact: '« premier contact », “first contact”, dans une note de la fiche des mails',
+  direct: '« Être direct », “Being direct”, dans une note de la conversation sur les délais'
+};
 /* Le champ de prose d'un texte du cours : sa clé, ou celle de son parent pour un côté fr ou en. Une valeur
    de table (byDutch.notes["hallo"].fr) a pour parent le champ que sa table pose, que C.TABLES donne. */
 function fieldOf(key, where, C) {
@@ -974,8 +993,9 @@ function quoteChecks() {
 
   /* 6d.3. Ce que NL.gloss.quoted marque, relu sur le cours : chaque mot est du néerlandais du cours, un
      chiffre ou une exception de QUOTE_OK, et le reste se compte contre QUOTE_BUDGET ; explain aussi,
-     balises ôtées. Chaque guillemet ouvert est fermé (sinon rien n'est marqué), et name, title, h et
-     place ne citent rien. */
+     balises ôtées. Un affixe cité avec son tiret (« -tje », « ge- ») est du néerlandais par sa forme ;
+     « soixante-dix » n'en est pas un. Chaque guillemet ouvert est fermé (sinon rien n'est marqué), et
+     name, title, h et place ne citent rien. */
   const q3 = () => {
     const B = boot();
     return B.NL.state.open().then(() => {
@@ -991,7 +1011,8 @@ function quoteChecks() {
         const segs = Array.from(Q(t).matchAll(/<span lang="nl-BE">([^<]*)<\/span>/g), m => unescape(m[1]));
         ok(segs.length === opened && opened === closed, '6d : ' + where + ' a un guillemet sans son pendant, ou une citation vide : « ' + s + ' »');
         segs.forEach(q => {
-          const miss = words(q).filter(w => !dutch.has(w) && !/^\d+$/.test(w));
+          const affixes = q.split(/[\s,\/…]+|\.{2,}/).filter(t => /^-\p{L}+$|^\p{L}+-$/u.test(t)).map(t => t.replace('-', '').toLowerCase());
+          const miss = words(q).filter(w => !dutch.has(w) && affixes.indexOf(w) < 0 && !/^\d+$/.test(w));
           miss.forEach(w => { if (QUOTE_OK[w]) excused.add(w); });
           if (miss.some(w => !QUOTE_OK[w])) foreign.push(where + ' « ' + q + ' »');
         });
@@ -1007,7 +1028,38 @@ function quoteChecks() {
     });
   };
 
-  return [q1, q2, q3].reduce((p, c) => p.then(c), Promise.resolve());
+  /* 6d.4. Le néerlandais qu'une prose laisse nu : un mot du néerlandais du cours que les côtés fr et
+     en d'un même texte écrivent tous deux hors de tout passage nl-BE (« ik werk », un <b>het</b>). Il se
+     cite, ou dans explain porte class="nl". Un mot que le français et l'anglais ont vraiment en commun
+     va dans SHARED_OK ; les noms de {naam}, {stad} et {bedrijf} sont les mêmes partout. Les notes des
+     mots et des phrases (byDutch.notes) attendent leur réécriture et restent hors du compte. Ce contrôle
+     ne voit pas le néerlandais qu'un seul côté écrit, ni celui que le cours n'enseigne pas. */
+  const q4 = () => {
+    const B = boot();
+    return B.NL.state.open().then(() => {
+      const NL = B.NL, dutch = dutchWords(NL), names = new Set(), shared = new Set(), nu = [];
+      const words = s => s.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+      Object.keys(NL.content.DEFAULTS).forEach(k => words(String(NL.content.DEFAULTS[k])).forEach(w => names.add(w)));
+      const bare = (f, s, l) => new Set([].concat(...runs(f === 'explain' ? NL.gloss.prose(s) : NL.gloss.quoted(s), l)
+        .filter(r => r.lang !== 'nl-BE').map(r => words(r.text))));
+      let fields = 0;
+      tree.visitCourse(NL.content, (v, key, where) => {
+        if (!v || typeof v !== 'object' || typeof v.fr !== 'string' || typeof v.en !== 'string') return;
+        if ((QUOTED_FIELDS.indexOf(key) < 0 && key !== 'explain') || /^byDutch\.notes\[/.test(where)) return;
+        fields++;
+        const en = bare(key, v.en, 'en');
+        const both = Array.from(bare(key, v.fr, 'fr')).filter(w => en.has(w) && dutch.has(w) && !names.has(w));
+        both.forEach(w => { if (SHARED_OK[w]) shared.add(w); });
+        if (both.some(w => !SHARED_OK[w])) nu.push(where + ' [' + both.filter(w => !SHARED_OK[w]).join(', ') + ']');
+      });
+      nu.forEach(n => ok(false, '6d : ' + n + ' : du néerlandais du cours, écrit pareil en français et en anglais hors de nl-BE — le citer, ou dans explain lui donner class="nl"'));
+      Object.keys(SHARED_OK).forEach(w => ok(shared.has(w), '6d : « ' + w + ' » n’est plus écrit pareil dans les deux langues, ou plus du néerlandais du cours : son exception est de trop'));
+      ok(fields > 0, '6d : aucun texte lu en deux langues, le contrôle est creux');
+      console.log('  néerlandais nu  ' + fields + ' champs lus en deux langues, ' + Object.keys(SHARED_OK).length + ' exceptions');
+    });
+  };
+
+  return [q1, q2, q3, q4].reduce((p, c) => p.then(c), Promise.resolve());
 }
 
 const plain = boot(), paired = boot({ prepare: NL => pairUp(NL.content) });

@@ -368,7 +368,8 @@ NL.state.open().then(() => {
      l'ASCII : « geïnstalleerd » est un seul mot, et un participe. */
   {
     /* La tâche libre d'un motif, servie seule à son échelon, la réponse tapée à l'écran.
-       Les besoins cochés sont lus dans le panneau, dans la langue lue. */
+       Les besoins cochés sont lus dans le panneau, dans la langue lue, d'un tenant : un mot cité y
+       porte sa propre balise (« om … »). */
     const wrote = (id, input) => {
       fresh();
       const it = NL.content.byId(id);
@@ -377,7 +378,7 @@ NL.state.open().then(() => {
       answer.type(input);
       answer.click({ check: '1' });
       const list = (B.app.innerHTML.match(/<div class="need-list">([\s\S]*?)<\/div>/) || [null, ''])[1];
-      const ticked = list.split('<span class="need').slice(1).filter(s => s.indexOf(' ok"') === 0).map(s => text('<span class="need' + s));
+      const ticked = list.split('<span class="need').slice(1).filter(s => s.indexOf(' ok"') === 0).map(s => joined('<span class="need' + s).trim());
       const v = Object.assign(verdict(it), { ticked });
       S.abandon();
       return v;

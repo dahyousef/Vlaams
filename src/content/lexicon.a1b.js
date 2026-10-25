@@ -10,7 +10,7 @@ NL.content.units = NL.content.units || [];
 
   U({
     id: 'onderweg', n: 7, name: { fr: 'En route', en: 'On the way' }, nlName: 'Onderweg', level: 'A1', track: 'beide', icon: '\u{1F686}',
-    blurb: { fr: 'Le trajet : la SNCB, De Lijn, les files, et arriver en retard sans mal s’excuser.', en: 'The commute: the railway, De Lijn buses, traffic jams, and arriving late without apologising badly.' },
+    blurb: { fr: 'Le trajet : la SNCB, « De Lijn », les files, et arriver en retard sans mal s’excuser.', en: 'The commute: the railway, “De Lijn” buses, traffic jams, and arriving late without apologising badly.' },
     grammar: ['g-v2'],
     words: [
       W('de fiets', { fr: 'le vélo', en: 'bicycle' }, 'de'),
@@ -191,7 +191,7 @@ NL.content.units = NL.content.units || [];
 
   U({
     id: 'dokter', n: 11, name: { fr: 'Le corps et le médecin', en: 'The body and the doctor' }, nlName: 'Lichaam en dokter', level: 'A1', track: 'leven', icon: '\u{1FA7A}',
-    blurb: { fr: 'Prendre rendez-vous chez le huisarts et dire ce qui fait mal, sans passer au français.', en: 'Making an appointment at the huisarts and saying what hurts, without switching to French.' },
+    blurb: { fr: 'Prendre rendez-vous chez le « huisarts » et dire ce qui fait mal, sans passer au français.', en: 'Making an appointment at the “huisarts” and saying what hurts, without switching to French.' },
     grammar: ['g-dehet'],
     words: [
       W('ziek', { fr: 'malade', en: 'ill' }),

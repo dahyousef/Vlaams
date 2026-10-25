@@ -62,7 +62,7 @@ NL.content.units = NL.content.units || [];
 
   U({
     id: 'ikengij', n: 2, name: { fr: 'Moi et toi', en: 'Me and you' }, nlName: 'Ik en gij', level: 'A1', track: 'leven', icon: '\u{1F9D1}',
-    blurb: { fr: 'Les pronoms, zijn et hebben, et se présenter sans se figer.', en: 'The pronouns, zijn and hebben, and introducing yourself without freezing.' },
+    blurb: { fr: 'Les pronoms, « zijn » et « hebben », et se présenter sans se figer.', en: 'The pronouns, “zijn” and “hebben”, and introducing yourself without freezing.' },
     grammar: ['g-present', 'g-gegij'],
     words: [
       W('ik', { fr: 'je', en: 'I' }),
