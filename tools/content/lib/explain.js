@@ -25,7 +25,7 @@
 const path = require('path');
 const kaikki = require('../kaikki');
 const spelling = require(path.join(__dirname, '..', '..', '..', 'test', 'lib', 'spelling'));
-const { dutchWords } = require(path.join(__dirname, '..', '..', '..', 'test', 'lib', 'dutch'));
+const { dutchWords, words } = require(path.join(__dirname, '..', '..', '..', 'test', 'lib', 'dutch'));
 
 /* Ce que l'empreinte couvre : ce que le rédacteur lit et ce que Merge écrit. Merge écrit la
    note, donc la relancer après un succès refuse comme périmée chaque ligne dont elle a changé
@@ -40,9 +40,6 @@ const QUOTES = { en: ['“', '”'], fr: ['«', '»'] };
    n'y est pas : « le but » est français. */
 const FR_IN_EN = 'le la les un une des du et est sont avec dans sur qui que pas ne il elle nous vous ce cette ces au aux mais ou où se sa ses leur très quand comme'.split(' ');
 const EN_IN_FR = 'the and of is are to with for you it this that not was were have has your what when which who from by if into do does'.split(' ');
-
-/* Les mots d'un texte, en minuscules, comme dutchWords les découpe. */
-const words = s => String(s).toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
 
 const flemish = (src, NL) => typeof src.be === 'string' && NL.util.norm(src.be) !== NL.util.norm(src.nl);
 /* « Comment le dit-on ici ? » pose l'élément : un barreau de son genre l'offre, et l'élément s'y prête. */

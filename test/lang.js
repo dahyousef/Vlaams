@@ -5,7 +5,7 @@ const fs = require('fs'), path = require('path');
 const browser = require('./lib/browser');
 const { PROSE } = require('./lib/prose');
 const tree = require('./lib/tree');
-const { dutchWords } = require('./lib/dutch');
+const { dutchWords, words } = require('./lib/dutch');
 const { text, joined, runs, count, argsOf } = require('./lib/langs');
 const { fakeSupabase } = require('./lib/supabase');
 const { dueReviews } = require('./lib/seed');
@@ -981,7 +981,6 @@ function quoteChecks() {
     return B.NL.state.open().then(() => {
       const NL = B.NL, Q = NL.gloss.quoted, dutch = dutchWords(NL);
       if (typeof Q !== 'function') { ok(false, '6d : NL.gloss.quoted manque'); return; }
-      const words = s => s.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
       const unescape = s => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&amp;/g, '&');
       const foreign = [], excused = new Set();
       eachText(NL.content, (s, f, where) => {

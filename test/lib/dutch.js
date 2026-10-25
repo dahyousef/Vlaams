@@ -2,7 +2,8 @@
    prose laisse nu (6d.4), et les genres d'explications (tools/content/lib/explain.js) refusent
    une note qui en laisse comme lui.
 
-     const { dutchWords } = require('./lib/dutch');
+     const { dutchWords, words } = require('./lib/dutch');
+     words(s)          les mots d'un texte, en minuscules, séparés par tout ce qui n'est ni lettre ni chiffre
      dutchWords(NL)    un Set des mots, en minuscules : nl, be, les phrases, les colonnes du
                        registre (std), les exemples des règles (ex), les modèles de réponse (model),
                        les identifiants d'unité, qui sont des mots néerlandais, ceux des tables
@@ -11,9 +12,11 @@
 const tree = require('./tree');
 
 const DUTCH_KEYS = ['nl', 'be', 'std', 'ex', 'model', 'id', 'nlName'];
+/* Les mots d'un texte, en minuscules : le découpage que dutchWords, lang.js et explain.js partagent. */
+const words = s => String(s).toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
 function dutchWords(NL) {
   const set = new Set();
-  const add = s => String(s).toLowerCase().split(/[^\p{L}\p{N}]+/u).forEach(w => { if (w) set.add(w); });
+  const add = s => words(s).forEach(w => set.add(w));
   const dutchKey = (v, key) => { if (DUTCH_KEYS.indexOf(key) >= 0 && typeof v === 'string') add(v); };
   tree.visit(NL.content, dutchKey);
   tree.visitTables(NL.content, dutchKey);
@@ -22,4 +25,4 @@ function dutchWords(NL) {
   return set;
 }
 
-module.exports = { DUTCH_KEYS, dutchWords };
+module.exports = { DUTCH_KEYS, dutchWords, words };
