@@ -1,8 +1,8 @@
 # Phase 3 follow-ups 2 — Implementation Plan
 
 > **For agentic workers:** this plan runs with `docs/agents/plan-runs/run-controller.md`, Mode: one session
-> (`one-session.md`). A run controller hands one code-lane task at a time to a task controller, and puts gate 8
-> to the maintainer; do not use a skill's controller loop. Implementers read `docs/agents/plan-runs/run-notes.md`
+> (`one-session.md`). A run controller hands one code-lane task at a time to a task controller, and answers gate 8
+> for the maintainer (D8); do not use a skill's controller loop. Implementers read `docs/agents/plan-runs/run-notes.md`
 > before their brief; where the notes and a command here differ, the notes win. Steps use checkbox (`- [ ]`)
 > syntax for tracking.
 
@@ -14,8 +14,9 @@ written once, and two names say what they hold. The home screen's week chart cou
 calendar and names each one there, so it shows seven days in a row around a clock change and west of UTC; §12 of
 `test/journey.js` counts the same way. The microphone panel's button attributes travel as one shape, its retry
 rule's 3 has one name, and `micPanel` reads `graded` once. The follow-ups plan gets a note under its Review
-Focus 5. In Settings, a tap that redraws the open sheet leaves it where it was scrolled. Before the maintainer's
-own check, a learner pass plays the branch in a real browser (gate 8).
+Focus 5. In Settings, a tap that redraws the open sheet leaves it where it was scrolled. Before the draft pull
+request, a learner pass plays the branch in a real browser, and the run controller reads it for the maintainer
+(gate 8).
 
 **Architecture:** no new mechanism. `kit.split` compares the ids it is given with the batches of a folder it
 has already cut (task 1). `test/lib/text.js` gains `strayQuotes` and `test/lib/dutch.js` gains
@@ -47,10 +48,11 @@ one shape, `taps` (task 5). `render()` keeps the scroll of the sheet it drew las
 | D1 | #106 | **Compare.** Split, given ids in a folder it has already cut, prints the folder's lines when its batches hold exactly the named rows, and refuses otherwise: a `fail` line, exit 1, nothing written. | 1 |
 | D2 | #105 | The week chart's day **labels** are fixed in the same task: west of UTC, each bar was named after the day before it. | 4 |
 | D3 | #108 | A **note** under Review Focus 5 of the 2026-10-25 plan; its condition stays as decided. | 6 |
-| D4 | — | **The run controller rules** on the maintainer's behalf, and logs each ruling in the ledger's Rulings. So `Mode: one session` (`CLAUDE.md`, « Running a plan »). Gate 8 stays the maintainer's. | set-up |
+| D4 | — | **The run controller rules** on the maintainer's behalf, and logs each ruling in the ledger's Rulings. So `Mode: one session` (`CLAUDE.md`, « Running a plan »). Gate 8 stayed the maintainer's, until D8. | set-up |
 | D5 | — | **The end:** a draft pull request into `main`, pushed. It is never marked ready and never merged. | set-up |
 | D6 | — | **Every task proved** before the plan is committed, by three writers on copies of `f7376ac`, then the whole plan replayed in its order. | this plan |
 | D7 | #103 | **Added to this run**, after the plan's first commit: the half of #103 that `e2b9ac5` left open, as task 7, before the gate. The task is written and proved, then the whole plan is replayed once more in its order. | 7 |
+| D8 | — | **Gate 8 waits for no one.** Asked whether the run tests as a learner once it is done, so that the maintainer need not check, the maintainer chose that the run controller answers the gate for them. A clean learner pass is answered « nothing ». Each `PROBLEM:` line is confirmed by hand by a subagent; a fault in the app is ticketed, not fixed in this run. The draft pull request carries the pass's result, and the maintainer's own look at the preview, if they take one, comes there, before any merge. | 8 |
 
 #107 and #110 had no decision to take: each ticket names its fix. Neither had #103, beyond D7: its acceptance
 names what the sheet does after the tap.
@@ -79,7 +81,7 @@ names what the sheet does after the tap.
   count differs, the `FAIL` lines and the verdict words are what count.
 - Gate 8's Show was run on that replay after task 7: `days.js`, `corners.js` and `sweep.js` each exited 0 with
   no `PROBLEM:` line. At the gate, a `PROBLEM:` line is a fault to confirm by hand, as
-  `tools/learner-pass/README.md` says, before it goes to the maintainer.
+  `tools/learner-pass/README.md` says, before it is ruled on (D8).
 
 ## Set-up decisions
 
@@ -91,18 +93,20 @@ names what the sheet does after the tap.
   gate 8 is why the mode matters beyond D4, since a gate runs only in it.
 - Tickets, all filed, all sub-issues of #12: #106 (task 1), #107 (task 2), #110 (tasks 3 and 5), #105 (task
   4), #108 (task 6), #103 (task 7). They carry `needs-triage`; their labels are the maintainer's.
-- The set-up writes D4, D5 and the maintainer's push notifications as the ledger's first Rulings lines, as
+- The set-up writes D4, D5, D8 and the maintainer's push notifications as the ledger's first Rulings lines, as
   the follow-ups run did, so that the run controller, which reads Rulings, holds them:
   - **Who rules.** A task's `needs ruling` and a fix the closing review proposes are decided by the run
     controller on the maintainer's behalf, each written as its own Rulings line ending « (on the
-    maintainer's behalf) ». Gate 8 stays the maintainer's and waits for their word. Never `main`, never a
-    merge.
+    maintainer's behalf) ». Gate 8 too: the run controller answers it as its `Gate:` line says, and waits for
+    no one (D8). Never `main`, never a merge.
   - **The end.** After the final report's push, a draft pull request from `phase-3-follow-ups-2` into
-    `main`, its body naming the tickets of the closing review's `TICKETS` line. Never marked ready, never
-    merged.
+    `main`, its body naming the tickets of the closing review's `TICKETS` line. Its body also has a « Learner
+    pass » section: each script's last line in `<WS>/tmp/gate-8.md` (and in `gate-8-closing.md`, if it was
+    run), each `PROBLEM:` line's verdict, the tickets gate 8 filed, and where the screenshots are,
+    `tools/learner-pass/shots/` in the run's worktree. Never marked ready, never merged.
   - **Reaching the maintainer.** A push notification (the `PushNotification` tool) beside the one-line
-    message, for each thing that waits on them: gate 8, a run that stops, and the final report with the pull
-    request's link.
+    message, for each thing that waits on them: a run that stops, and the final report with the pull
+    request's link. Gate 8 waits on no one, so it sends none (D8).
 - Task 7 and gate 8 run the learner pass in the repo, `tools/learner-pass/`. It needs one package, pinned in its
   `package-lock.json`, and the installed Chrome. The set-up installs it with no install script:
   `npm ci --ignore-scripts`, run in `tools/learner-pass/`. Its `node_modules/` and `shots/` are ignored by
@@ -197,7 +201,7 @@ One line per task: `<id>. <name> — <class> — <ticket> — waits <ids>`. The 
 5. The retry rule's three tries named once, the mic panel's buttons as one shape, `graded` read once, `micPanel`'s options named — mechanical — #110 — waits 4
 6. A note under the follow-ups plan's Review Focus 5 on its « Zijt gij » example — mechanical — #108 — waits none
 7. In Settings, a tap that redraws the open sheet leaves it where it was scrolled — mechanical — #103 — waits 5
-8. GATE: a learner pass in a real browser, before the maintainer's check — gate — none — waits 1, 2, 3, 4, 5, 6, 7
+8. GATE: a learner pass in a real browser, read by the run controller for the maintainer — gate — none — waits 1, 2, 3, 4, 5, 6, 7
 ```
 
 Tasks 1 to 3 touch the same kit files and `test/tools/fanout.js`, so each waits for the one before it. Task 5
@@ -211,8 +215,8 @@ controller puts its output in `<WS>/tmp/gate-<id>.md`.
 
 ```
 Mode: one session
-Gate: task 8 — after 1, 2, 3, 4, 5, 6, 7 — show: echo "## days"; node tools/learner-pass/days.js .; echo "## corners"; node tools/learner-pass/corners.js .; echo "## sweep"; node tools/learner-pass/sweep.js . — ask: « The learner pass played the branch's last commit as a learner on an iPhone would: <WS>/tmp/gate-8.md, its screenshots in `tools/learner-pass/shots/` (the week chart is on `meer.png`). Check it yourself on the branch's preview, Settings scrolled down to a switch among the rest: what did you find? (nothing is an answer) » — answer to: Rulings
-Learner pass: gate 8 plays the branch's last commit. If a `closing` task changes src/ after the gate's show, run that show again into <WS>/tmp/gate-8-closing.md before the final report, and give the maintainer both paths.
+Gate: task 8 — after 1, 2, 3, 4, 5, 6, 7 — show: echo "## days"; node tools/learner-pass/days.js .; echo "## corners"; node tools/learner-pass/corners.js .; echo "## sweep"; node tools/learner-pass/sweep.js . — ask: « Did the learner pass print a `PROBLEM:` line in <WS>/tmp/gate-8.md? » The run controller answers it for the maintainer, and neither tells them nor waits for them (D8). No `PROBLEM:` line: the answer is « nothing ». Otherwise, dispatch one background subagent on `sonnet`, description `task 8`, to confirm each `PROBLEM:` line by hand as `tools/learner-pass/README.md` (« Reading a fault ») says, returning at most 10 lines, one per `PROBLEM:` line, `harness` or `app` and why; file each `app` line as a ticket with `gh issue create --parent 12 --label needs-triage`; the answer is each line's verdict and the tickets' numbers. — answer to: Rulings
+Learner pass: gate 8 plays the branch's last commit. If a `closing` task changes src/ after the gate's show, run that show again into <WS>/tmp/gate-8-closing.md before the final report, answer it as the gate's ask says, and give the maintainer both paths.
 ```
 
 ## Calls made while writing, for the maintainer
@@ -256,7 +260,7 @@ the call.
    Whether `ikengij` accepts those depends on the item Check reads them for, since Check accepts an item's own
    words. The note gives « Zijt gij hier? », which has nothing ahead and nothing unmet at `ikengij` on the real
    course, whatever the item.
-8. **A learner pass before the maintainer's check (gate 8).** On 25 October 2026 the maintainer asked for a
+8. **A learner pass before the draft pull request (gate 8).** On 25 October 2026 the maintainer asked for a
    hands-on learner pass in a real browser before every learner's check; the follow-ups run's gate 13 ran
    one. Tasks 4, 5 and 7 change what a learner meets, so this plan has one pass, after the last code-lane task.
    If the closing review adds a task that changes `src/`, the pass runs again (the run file's
@@ -266,6 +270,11 @@ the call.
    only when the sheet drawn is the one already open, so another sheet, or the same one closed and opened
    again, starts at its top. The sweep gains the check, so the gate's learner pass sees a jump of its own
    accord; the toast, which never redraws the sheet, keeps its section in `test/screens.js` as it is.
+10. **How the run controller reads gate 8 (D8).** A clean pass is the answer « nothing », with no agent. A
+   `PROBLEM:` line goes to one `sonnet` subagent, not `haiku`: confirming it means replaying a tap in the
+   learner pass's browser and reading its screenshot, which `README.md` (« Reading a fault ») says to do
+   before calling it the app's. A fault in the app is ticketed, not fixed in this run: a fix needs a brief,
+   and a brief is written in a design sitting with the maintainer, which would stop the run D8 keeps going.
 
 Left out of this plan, for the maintainer:
 - **The tickets' labels.** All six carry `needs-triage`, and the run does not relabel them.
@@ -1946,15 +1955,16 @@ Done when:
   `artifact.html` are committed.
 - `sh test/run-all.sh` passes.
 
-### Task 8: GATE: a learner pass in a real browser, before the maintainer's check
+### Task 8: GATE: a learner pass in a real browser, read by the run controller for the maintainer
 Class: gate
 Ticket: none
 After: 1, 2, 3, 4, 5, 6, 7
 Show: echo "## days"; node tools/learner-pass/days.js .; echo "## corners"; node tools/learner-pass/corners.js .; echo "## sweep"; node tools/learner-pass/sweep.js .
-Ask: « The learner pass played the branch's last commit as a learner on an iPhone would: <WS>/tmp/gate-8.md, its screenshots in `tools/learner-pass/shots/` (the week chart is on `meer.png`). Check it yourself on the branch's preview, Settings scrolled down to a switch among the rest: what did you find? (nothing is an answer) »
+Ask: « Did the learner pass print a `PROBLEM:` line in <WS>/tmp/gate-8.md? » The run controller answers it for the maintainer, and neither tells them nor waits for them (D8). No `PROBLEM:` line: the answer is « nothing ». Otherwise, dispatch one background subagent on `sonnet`, description `task 8`, to confirm each `PROBLEM:` line by hand as `tools/learner-pass/README.md` (« Reading a fault ») says, returning at most 10 lines, one per `PROBLEM:` line, `harness` or `app` and why; file each `app` line as a ticket with `gh issue create --parent 12 --label needs-triage`; the answer is each line's verdict and the tickets' numbers.
 Answer to: Rulings
 Why: on 25 October 2026 the maintainer asked for a hands-on learner pass in a real browser before every
-learner's check, and the follow-ups plan's gate 13 ran one. Three tasks here change code a learner meets:
+learner's check, and the follow-ups plan's gate 13 ran one. On 26 October they chose that this gate waits for
+no one (D8): the run controller answers it for them, and the draft pull request carries what the pass found. Three tasks here change code a learner meets:
 - Task 4 changes how the week chart on `meer` (« More ») counts and names its days.
 - Task 5 reshapes the microphone panel of the speak exercise, a conversation's turn and the nazeggen, and the
   retry rule of the first two.
@@ -1992,14 +2002,15 @@ took about seven minutes, printed no `PROBLEM:` line, and each script exited 0:
 - `sweep.js` tapped 274 things on 16 screens, 16 of them in the settings sheet. It ended `EVERY TAP DOES
   SOMETHING`.
 
-If Show cannot start (no `node_modules` in `tools/learner-pass/`, no Chrome), tell the maintainer its error
-lines in place of the question. Until the maintainer answers, the gate stays `in progress`.
-Then:
-- **Nothing.** The Rulings line holds the question and « nothing ». The gate is `done`.
-- **A fault.** The maintainer says, for each, whether it is fixed in this run or ticketed. A fix in this run
-  is one proposed `mechanical` task after the gate, with a test that fails on the old code, and the gate's
-  Show runs again once it is `done`. A ticket is filed by the run controller on the maintainer's word, with
-  `gh issue create --parent 12 --label needs-triage` (`docs/agents/issue-tracker.md`), and its number goes in
-  the Rulings line.
+If Show cannot start (no `node_modules` in `tools/learner-pass/`, no Chrome), the run stops there: tell the
+maintainer its error lines, with a push notification, as for any run that stops. The gate stays `in progress`.
+Then, each answer a Rulings line ending « (on the maintainer's behalf) », and the gate `done`:
+- **No `PROBLEM:` line.** The Rulings line holds the question and « nothing ».
+- **`PROBLEM:` lines.** The subagent the ask names confirms each by hand. A `harness` line (a trap the README
+  lists, or another the subagent shows) goes in the Rulings line with its reason. An `app` line is filed by
+  the run controller with `gh issue create --parent 12 --label needs-triage` (`docs/agents/issue-tracker.md`),
+  titled for what a learner meets, its body the `PROBLEM:` line, the subagent's reason and the screenshot's
+  path; its number goes in the Rulings line. Nothing is fixed in this run (call 10).
 - **A `closing` task changes `src/` after the gate.** The run file's `Learner pass:` line says it: Show runs
-  again before the final report, and the maintainer gets both paths.
+  again before the final report, and is answered the same way. The maintainer gets both paths, and the draft
+  pull request both results.
