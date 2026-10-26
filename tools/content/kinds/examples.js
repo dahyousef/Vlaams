@@ -33,7 +33,7 @@ const hand = s => (s.drills || []).filter(d => !('src' in d)).length;
    unité de chaque forme, l'orthographe, et l'extrait de Tatoeba quand on le demande. */
 const memo = new WeakMap();
 function seen(C, repo) {
-  if (!memo.has(C)) memo.set(C, { order: C.RAW.units.map(u => u.id), first: sequence.firstUnits(C.RAW.units), S: spelling.open(repo, C.NL), T: null });
+  if (!memo.has(C)) memo.set(C, { order: C.RAW.units.map(u => u.id), first: sequence.firstUnits(C.RAW), S: spelling.open(repo, C.NL), T: null });
   return memo.get(C);
 }
 const extractOf = (C, repo) => {

@@ -60,7 +60,7 @@ function facts(C, repo) {
   const D = C.NL.content.DEFAULTS;
   const f = {
     index: new Map(units.map((u, ui) => [u.id, ui])), taught, dutch,
-    first: sequence.firstUnits(units), S: spelling.open(repo, C.NL),
+    first: sequence.firstUnits(C.RAW), S: spelling.open(repo, C.NL),
     names: new Set([].concat(...Object.keys(D).map(k => words(untoken(D[k])))))
   };
   memo.set(C, f);

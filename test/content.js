@@ -187,13 +187,13 @@ NL.state.open().then(() => {
      comptent pas : on ne peut pas écrire une phrase sans eux. L'ordre du cours
      et les mots-outils sont dans test/lib/sequence.js, que les outils de contenu
      lisent aussi. */
-  const first = sequence.firstUnits(units);
+  const first = sequence.firstUnits(NL.content);
   let ahead = 0, sentences = 0;
   units.forEach((u, ui) => (u.words || []).forEach(w => (w.drills || []).forEach(d => {
     sentences++;
     if (sequence.ahead(d.nl, ui, first).length) ahead++;
   })));
-  const AHEAD_BUDGET = 62;
+  const AHEAD_BUDGET = 61;
   ok(ahead <= AHEAD_BUDGET, ahead + ' phrases d’exemple empruntent du vocabulaire à une unité ultérieure, budget ' + AHEAD_BUDGET +
     ' — baisser le budget quand on en corrige, jamais le lever');
   ok(ahead >= AHEAD_BUDGET, 'seulement ' + ahead + ' phrases empruntent en avant : baisser AHEAD_BUDGET à ' + ahead + ' pour verrouiller le gain');

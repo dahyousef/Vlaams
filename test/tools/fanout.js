@@ -915,6 +915,16 @@ async function main() {
     const gctx = { repo: EX, course: () => course(EX) };
     const gwhy = sentence => G.check(gen('bakker:w19', sentence), gin[1], gctx);
     same(gwhy(gdraft[1].sentence), [], 'une phrase écrite qui suit les règles');
+    /* #99 : une règle de grammaire enseigne le trou de ses phrases, à la première unité qui la
+       liste. « Zijt », le trou de g-gegij, est vu à ikengij ; « begint », que g-halfuur écrit
+       autour de son trou, n'est enseigné nulle part. */
+    const gwhyDrie = sentence => G.check(gen('tijd:w3', sentence), gin[0], gctx);
+    same(gwhyDrie({ nl: 'Zijt gij hier al drie jaar?', gap: 'drie', en: 'Have you been here for three years?', fr: 'Tu es ici depuis trois ans ?' }), [],
+      'une forme qu\'une règle de grammaire enseigne compte comme vue à l\'unité qui liste la règle (#99)');
+    same(gwhyDrie({ nl: 'Zijt gij om drie uur vrij?', gap: 'drie', en: 'Are you free at three?', fr: 'Tu es libre à trois heures ?' }),
+      ['sentence uses forms the course never teaches: vrij'], 'une forme qu\'aucune unité ni aucune règle n\'enseigne reste refusée');
+    same(gwhyDrie({ nl: 'Het begint om drie uur.', gap: 'drie', en: 'It starts at three.', fr: 'Ça commence à trois heures.' }),
+      ['sentence uses forms the course never teaches: begint'], 'une règle enseigne le trou de ses phrases, pas les mots qui l\'entourent');
     same(gwhy({ nl: 'Heb jij ook dorst?', gap: 'dorst', en: 'Are you thirsty too?', fr: 'Tu as soif aussi ?' }), ['sentence: « jij » is not how the course says you: ge or gij'], 'ge ou gij, jamais jij');
     same(gwhy({ nl: 'Ik heb dorst.', gap: 'dorst', en: 'I am thirsty.', fr: 'J’ai soif.' }), ['sentence has 3 tiles: 4 to 8'], 'les règles des phrases sourcées');
     same(gwhy({ nl: 'Ik heb dorst, gij ook?', gap: 'dorst', en: 'I am thirsty, are you?' }), ['sentence has the fields nl, gap, en, fr'], 'ses quatre champs');
@@ -1037,6 +1047,8 @@ async function main() {
     ok(/^need 1: rx « \(mag » does not compile: /.test(why(r => { r.need[0].rx = '(mag'; }).join('|')), 'Check : un rx se compile');
     same(why(null, 'overleven:p1'), ['the model uses « drie », which unit 3 (tijd) teaches, after this phrase\'s unit 1',
       'the model uses « pistolets », which unit 4 (bakker) teaches, after this phrase\'s unit 1'], 'Check : l\'unité est celle de la ligne d\'entrée');
+    same(why(r => { r.model = 'Mag ik drie pistolets voor ons?'; }), ['the model uses « ons », which unit 6 (familie) teaches, after this phrase\'s unit 4'],
+      'Check : « ons », le trou de g-bezit, est enseigné à familie, la première unité qui liste la règle (#99)');
 
     /* Le verdict : un keep porte deux bonnes réponses du relecteur, que la tâche accepte. */
     const RIGHT = ['Mag ik een koffiekoek en twee pistolets?', 'Mag ik vier pistolets hebben?'];
