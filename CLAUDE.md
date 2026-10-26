@@ -40,9 +40,10 @@ a time to a task controller and reads only the ledger's status table and rulings
 returns of at most 10 lines. Every task in a plan carries `Class: engine`,
 `Class: mechanical` or, in a one-session run, `Class: fan-out` or `Class: gate`, which
 sets the models. Design never happens inside an implementer: it
-goes to a design sitting (`design-sitting.md`). Phase 3 alone runs as one session, with a
-drafting lane beside the code lane (`one-session.md`); the maintainer decides at its end
-whether that stays.
+goes to a design sitting (`design-sitting.md`). A plan of about fifteen tasks or fewer,
+whose rulings the maintainer leaves to the run controller, runs as one session, with a
+drafting lane beside the code lane (`one-session.md`); a longer plan, or one whose rulings
+the maintainer answers, runs in sittings.
 
 ## Conventions you can't infer from the code
 
