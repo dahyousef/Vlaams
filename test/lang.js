@@ -894,8 +894,8 @@ function displayChecks() {
    seule langue (NL.content.anchors), se lisent de même : say, la prose des sons, comme explain ;
    trap, le piège d'un faux ami, comme une note. */
 const QUOTED_FIELDS = ['note', 'blurb', 'rule', 'ask', 'what', 'outro', 'hint', 'trap'];
-/* Les champs écrits en HTML, montrés par NL.gloss.prose. */
-const HTML_FIELDS = ['explain', 'say', 'title', 'h'];
+/* Les champs écrits en HTML, montrés par NL.gloss.prose : g est la tête d'une ligne de la table des sons. */
+const HTML_FIELDS = ['explain', 'say', 'title', 'h', 'g'];
 /* Les tables de référence (src/content/reference.js) lues avec le cours : les emprunts, les sons et les
    deux tables de faux amis. C.TABLES, lui, donne les tables par le néerlandais (byDutch). */
 const REFERENCE_TABLES = ['loans', 'sounds', 'faux', 'fauxEn'];
@@ -1174,9 +1174,10 @@ function quoteChecks() {
     const B = boot();
     return B.NL.state.open().then(() => {
       B.NL.ui.go('klanken');
-      /* Le texte de chaque son seul : ni la tête de sa ligne, le nom du son, que l'écran déclare
-         nl-BE lui-même, ni l'en-tête de l'app, qui a son gras à lui, « Vlaams ». */
-      const says = (B.app.innerHTML.match(/<div class="snd-row[\s\S]*?<\/p><\/div>/g) || []).map(row => row.replace(/^[\s\S]*?<\/div>|<\/div>$/g, ''));
+      /* Le texte de chaque son seul : ni la tête de sa ligne, le nom du son, lue plus bas, ni l'en-tête
+         de l'app, qui a son gras à lui, « Vlaams ». */
+      const rows = B.app.innerHTML.match(/<div class="snd-row[\s\S]*?<\/p><\/div>/g) || [];
+      const says = rows.map(row => row.replace(/^[\s\S]*?<\/div>|<\/div>$/g, ''));
       ok(says.length === B.NL.content.sounds.length, '6d : l’écran des sons ne montre pas une ligne par son, le contrôle lit mal sa table');
       const bold = runs(says.join(''), pageLang(B)).filter(r => r.tags.indexOf('b') >= 0);
       const dutch = bold.filter(r => r.lang === 'nl-BE'), bare = bold.filter(r => r.lang !== 'nl-BE');
@@ -1185,6 +1186,23 @@ function quoteChecks() {
       Object.keys(SOUND_OK).forEach(w => ok(bare.some(r => r.text === w), '6d : « ' + w + ' » n’est plus une comparaison en gras de la table des sons : son exception est de trop'));
       ok(dutch.length > 0, '6d : aucun gras déclaré nl-BE dans le texte des sons, le contrôle est creux');
       console.log('  sons en gras    ' + dutch.length + ' déclarés nl-BE, ' + bare.length + ' comparaisons, ' + Object.keys(SOUND_OK).length + ' exceptions');
+      /* La tête de chaque ligne, le nom du son : l'orthographe néerlandaise qu'il enseigne, déclarée
+         nl-BE, et ce qui la nomme en français (« accent tonique », « final », « suppression du »), nu.
+         Un mot de la tête est du néerlandais quand un exemple néerlandais de sa ligne l'écrit : eu dans
+         deur, t dans niet. Déclaré nl-BE, il doit y être ; nu, il ne doit pas. */
+      let named = 0;
+      rows.forEach((row, i) => {
+        const head = runs((/<div class="snd-head">(<b\b[\s\S]*?<\/b>)/.exec(row) || ['', ''])[1], pageLang(B));
+        const said = runs(says[i], pageLang(B)).filter(r => r.lang === 'nl-BE').map(r => r.text.toLowerCase()).join(' ');
+        const wrong = [].concat(...head.map(r => (r.text.toLowerCase().match(/\p{L}+/gu) || [])
+          .filter(w => (r.lang === 'nl-BE') !== (said.indexOf(w) >= 0)).map(w => w + ' (' + r.lang + ')')));
+        named += head.filter(r => r.lang === 'nl-BE').length;
+        ok(head.length > 0 && wrong.length === 0, head.length
+          ? '6d : la tête « ' + head.map(r => r.text).join(' ') + ' » de la table des sons déclare mal ' + wrong.join(', ') + ' — nl-BE, ce qu’un exemple de sa ligne écrit ; nu, le français qui le nomme'
+          : '6d : la ligne ' + (i + 1) + ' de la table des sons n’a pas de tête en gras, le contrôle lit mal l’écran');
+      });
+      ok(named > 0, '6d : aucune tête de la table des sons ne déclare nl-BE, le contrôle est creux');
+      console.log('  têtes des sons  ' + rows.length + ' têtes, ' + named + ' passages déclarés nl-BE');
     });
   };
 
