@@ -46,7 +46,7 @@ function check(row, input, ctx) {
   if (!d || typeof d !== 'object' || Array.isArray(d) || Object.keys(d).sort().join() !== FIELDS.slice().sort().join()) {
     return ['sentence has the fields ' + FIELDS.join(', ')];
   }
-  if (!FIELDS.every(k => oneLine(d[k]))) return ['sentence: nl, gap, en and fr are each a string on one line'];
+  if (!FIELDS.every(k => oneLine(d[k]))) return ['sentence: nl, gap, en and fr are each a string on one line with no space at either end'];
   const C = ctx.course(), out = examples.RULES(d, 'sentence', C.byId(input.id), C, ctx.repo);
   const je = tokens(d.nl).filter(t => JE.indexOf(t) >= 0);
   if (je.length) out.push('sentence: ' + je.map(t => '« ' + t + ' »').join(', ') + ' is not how the course says you: ge or gij');
@@ -54,7 +54,7 @@ function check(row, input, ctx) {
 }
 
 /* Le verdict : la traduction du lecteur, écrite de nl avant de lire celles de la ligne. */
-const checkVerdict = v => (oneLine(v.en) && oneLine(v.fr) ? [] : ['a verdict carries the reader\'s own en and fr of nl, each on one line']);
+const checkVerdict = v => (oneLine(v.en) && oneLine(v.fr) ? [] : ['a verdict carries the reader\'s own en and fr of nl, each on one line with no space at either end']);
 
 module.exports = {
   stamp: examples.stamp,

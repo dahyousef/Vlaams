@@ -105,21 +105,21 @@ function check(row, input, ctx) {
   const C = ctx.course(), F = facts(C, ctx.repo), U = C.NL.util;
   const ui = F.index.get(input.unit);
   const out = [];
-  if (!pair(row.ask)) out.push('ask is { "fr": …, "en": … }, each one line');
-  if (!oneLine(row.model)) out.push('model is one line of Dutch');
+  if (!pair(row.ask)) out.push('ask is { "fr": …, "en": … }, each one line with no space at either end');
+  if (!oneLine(row.model)) out.push('model is one line of Dutch with no space at either end');
   if (!Array.isArray(row.need) || row.need.length < 2 || row.need.length > 4) out.push('need is a list of 2 to 4 needs');
   if (out.length) return out;
   row.need.forEach((n, i) => {
     const at = 'need ' + (i + 1);
     if (!n || typeof n !== 'object' || Array.isArray(n)) { out.push(at + ' is an object'); return; }
     Object.keys(n).filter(k => KEYS.indexOf(k) < 0).forEach(k => out.push(at + ': unknown field ' + k));
-    if (!pair(n.what)) out.push(at + ': what is { "fr": …, "en": … }, each one line');
-    if (!oneLine(n.miss)) out.push(at + ': miss is one line of Dutch');
+    if (!pair(n.what)) out.push(at + ': what is { "fr": …, "en": … }, each one line with no space at either end');
+    if (!oneLine(n.miss)) out.push(at + ': miss is one line of Dutch with no space at either end');
     const how = ['rx', 'any', 'min'].filter(k => n[k] !== undefined);
     if (how.length !== 1) { out.push(at + ': exactly one of rx, any and min'); return; }
     if (n.rx !== undefined && (typeof n.rx !== 'string' || !n.rx)) out.push(at + ': rx is the source of a regular expression, a string');
     else if (typeof n.rx === 'string' && typeof regex(n.rx) === 'string') out.push(at + ': rx « ' + n.rx + ' » does not compile: ' + regex(n.rx));
-    if (n.any !== undefined && (!Array.isArray(n.any) || !n.any.length || !n.any.every(oneLine))) out.push(at + ': any is a list of words or runs of words');
+    if (n.any !== undefined && (!Array.isArray(n.any) || !n.any.length || !n.any.every(oneLine))) out.push(at + ': any is a list of words or runs of words, each with no space at either end');
     if (n.min !== undefined && !(Number.isInteger(n.min) && n.min >= MIN[0] && n.min <= MIN[1])) out.push(at + ': min is a whole number from ' + MIN[0] + ' to ' + MIN[1]);
     if (n.min !== undefined && pair(n.what) && ['fr', 'en'].some(l => (n.what[l].match(/\d+/g) || []).indexOf(String(n.min)) < 0)) out.push(at + ': its what names its number, ' + n.min + ', in fr and in en');
   });
@@ -168,7 +168,7 @@ function check(row, input, ctx) {
 function checkVerdict(v, row, input, ctx) {
   if (v.verdict !== 'keep') return v.right === undefined ? [] : ['only a keep carries right'];
   const r = v.right;
-  if (!Array.isArray(r) || r.length !== 2 || !r.every(oneLine)) return ['a keep carries right: two right answers of the reader\'s own, each one line of Dutch'];
+  if (!Array.isArray(r) || r.length !== 2 || !r.every(oneLine)) return ['a keep carries right: two right answers of the reader\'s own, each one line of Dutch with no space at either end'];
   const C = ctx.course(), U = C.NL.util, task = taskOf(row), out = [];
   if (U.norm(r[0]) === U.norm(r[1])) out.push('the two right answers are the same answer');
   r.forEach((a, k) => {

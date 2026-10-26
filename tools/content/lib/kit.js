@@ -167,7 +167,7 @@ function checkRow(file, row, input, kind, ctx, out) {
   kind.fields.forEach(f => { if (row[f] === undefined) out.push('fail ' + file + ' ' + row.id + ': missing field ' + f); });
   const known = KIT_FIELDS.concat(kind.fields, kind.optional);
   Object.keys(row).forEach(k => { if (known.indexOf(k) < 0) out.push('fail ' + file + ' ' + row.id + ': unknown field ' + k); });
-  if ('unsure' in row && !oneLine(row.unsure)) out.push('fail ' + file + ' ' + row.id + ': unsure is a reason on one line');
+  if ('unsure' in row && !oneLine(row.unsure)) out.push('fail ' + file + ' ' + row.id + ': unsure is a reason on one line with no space at either end');
   if (out.length > before) return;
   let reasons;
   try { reasons = kind.check(row, input, ctx); } catch (e) { reasons = ['the kind\'s check threw: ' + e.message]; }

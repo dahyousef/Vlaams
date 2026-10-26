@@ -225,7 +225,7 @@ function split(C) {
 function check(row, input, ctx) {
   const be = row.be, evidence = row.evidence;
   if (be === null) return evidence === null ? [] : ['evidence is null when be is null'];
-  if (!oneLine(be)) return ['be is a form on one line, or null'];
+  if (!oneLine(be)) return ['be is a form on one line with no space at either end, or null'];
   if (typeof evidence !== 'string' || !EVIDENCE.test(evidence)) return ['evidence is rule:<rule>[+<rule>…], wiktionary:<lemma> or none'];
   const T = tools(ctx), U = T.NL.util, why = [];
 
