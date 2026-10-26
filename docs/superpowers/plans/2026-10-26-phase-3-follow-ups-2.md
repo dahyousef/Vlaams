@@ -1,27 +1,29 @@
 # Phase 3 follow-ups 2 — Implementation Plan
 
 > **For agentic workers:** this plan runs with `docs/agents/plan-runs/run-controller.md`, Mode: one session
-> (`one-session.md`). A run controller hands one code-lane task at a time to a task controller, and puts gate 7
+> (`one-session.md`). A run controller hands one code-lane task at a time to a task controller, and puts gate 8
 > to the maintainer; do not use a skill's controller loop. Implementers read `docs/agents/plan-runs/run-notes.md`
 > before their brief; where the notes and a command here differ, the notes win. Steps use checkbox (`- [ ]`)
 > syntax for tracking.
 
-**Goal:** close the five Minors the phase 3 follow-ups run left open (#105 to #108, and #110), before phase 4
-is designed. Split, given ids in a folder it has already cut, prints the old batches only when they hold
-exactly the named rows, and refuses otherwise. Every one-line reason in the kit says that a blank at either end
-is refused. The kit's other-language quotes check and its `words(untoken(…))` are written once, and two names
-say what they hold. The home screen's week chart counts its days back on the local calendar and names each one
-there, so it shows seven days in a row around a clock change and west of UTC; §12 of `test/journey.js` counts
-the same way. The microphone panel's button attributes travel as one shape, its retry rule's 3 has one name,
-and `micPanel` reads `graded` once. The follow-ups plan gets a note under its Review Focus 5. Before the
-maintainer's own check, a learner pass plays the branch in a real browser (gate 7).
+**Goal:** close the five Minors the phase 3 follow-ups run left open (#105 to #108, and #110), and the half of
+#103 still open, before phase 4 is designed. Split, given ids in a folder it has already cut, prints the old
+batches only when they hold exactly the named rows, and refuses otherwise. Every one-line reason in the kit says
+that a blank at either end is refused. The kit's other-language quotes check and its `words(untoken(…))` are
+written once, and two names say what they hold. The home screen's week chart counts its days back on the local
+calendar and names each one there, so it shows seven days in a row around a clock change and west of UTC; §12 of
+`test/journey.js` counts the same way. The microphone panel's button attributes travel as one shape, its retry
+rule's 3 has one name, and `micPanel` reads `graded` once. The follow-ups plan gets a note under its Review
+Focus 5. In Settings, a tap that redraws the open sheet leaves it where it was scrolled. Before the maintainer's
+own check, a learner pass plays the branch in a real browser (gate 8).
 
 **Architecture:** no new mechanism. `kit.split` compares the ids it is given with the batches of a folder it
 has already cut (task 1). `test/lib/text.js` gains `strayQuotes` and `test/lib/dutch.js` gains
 `tokenFreeWords`, each written once for the kit's two callers (task 3). `NL.util.daysBack(n)` gives the same
 hour n dates back on the local calendar, and `test/lib/zone.js` holds the zone handling three suites share
 (task 4). `NL.ex.retryButton` writes the retry rule once, and `NL.ex.micPanel` takes its two buttons' taps as
-one shape, `taps` (task 5).
+one shape, `taps` (task 5). `render()` keeps the scroll of the sheet it drew last, and the fake `#app` of
+`test/lib/browser.js` and the learner pass's sweep both see a sheet's scroll (task 7).
 
 **Tech Stack:**
 - Plain browser JavaScript, concatenated by `build.sh`.
@@ -33,7 +35,7 @@ one shape, `taps` (task 5).
 
 **Spec:**
 - GitHub issue #12, « New vocabulary every day, English by default, and content to B1 ».
-- The tickets, sub-issues of #12: #105, #106, #107, #108 and #110. Each task names its own.
+- The tickets, sub-issues of #12: #103, #105, #106, #107, #108 and #110. Each task names its own.
 - The maintainer's decisions of 26 October 2026, below. They were given in conversation at this plan's
   design sitting, so this plan states them.
 - `GLOSSARY.md`; ADR 0006 is not touched by any task.
@@ -45,11 +47,13 @@ one shape, `taps` (task 5).
 | D1 | #106 | **Compare.** Split, given ids in a folder it has already cut, prints the folder's lines when its batches hold exactly the named rows, and refuses otherwise: a `fail` line, exit 1, nothing written. | 1 |
 | D2 | #105 | The week chart's day **labels** are fixed in the same task: west of UTC, each bar was named after the day before it. | 4 |
 | D3 | #108 | A **note** under Review Focus 5 of the 2026-10-25 plan; its condition stays as decided. | 6 |
-| D4 | — | **The run controller rules** on the maintainer's behalf, and logs each ruling in the ledger's Rulings. So `Mode: one session` (`CLAUDE.md`, « Running a plan »). Gate 7 stays the maintainer's. | set-up |
+| D4 | — | **The run controller rules** on the maintainer's behalf, and logs each ruling in the ledger's Rulings. So `Mode: one session` (`CLAUDE.md`, « Running a plan »). Gate 8 stays the maintainer's. | set-up |
 | D5 | — | **The end:** a draft pull request into `main`, pushed. It is never marked ready and never merged. | set-up |
 | D6 | — | **Every task proved** before the plan is committed, by three writers on copies of `f7376ac`, then the whole plan replayed in its order. | this plan |
+| D7 | #103 | **Added to this run**, after the plan's first commit: the half of #103 that `e2b9ac5` left open, as task 7, before the gate. The task is written and proved, then the whole plan is replayed once more in its order. | 7 |
 
-#107 and #110 had no decision to take: each ticket names its fix.
+#107 and #110 had no decision to take: each ticket names its fix. Neither had #103, beyond D7: its acceptance
+names what the sheet does after the tap.
 
 ## How far to trust this plan
 
@@ -57,16 +61,23 @@ one shape, `taps` (task 5).
   with the tasks before it applied; task 4 alone, task 5 alone, and task 6 by the assembler. The red step failed
   as written, the green step passed, and `sh test/run-all.sh` printed `TOUTE LA SUITE EST PASSÉE` after task
   3, after task 4 and after task 5.
-- The assembler then had the whole plan replayed in its order, tasks 1 to 6 from the briefs as they stand
-  here, by an implementer that had not written them, on a copy of `f7376ac` with the learner pass installed as
-  the set-up installs it. Every old text was found once, and every red and green step printed its Expected
-  lines. The replay's code is the writers' own, line for line. The counts task 4 moves are restated in task 5:
-  `828` checks in `test/screens.js`, and the build's sizes.
-- `sh test/run-all.sh` on the replay printed `TOUTE LA SUITE EST PASSÉE`, with `content` 2077, `lang` 23173,
-  `typed` 853, `screens` 828, `engine` 307, `sync` 244, `tools/fanout.js` 454, `tools/sources.js` 33, and the
+- The assembler then had tasks 1 to 6 replayed in their order, from the briefs, by an implementer that had not
+  written them, on a copy of `f7376ac`. Every old text was found once, every red and green step printed its
+  Expected lines, and the suite passed.
+- Task 7 came after (D7). The assembler proved it on a copy of `8d6cf5f` with tasks 4 and 5 applied: its red
+  step failed as written, the sweep on task 5's build printed the three switches, the green step passed, and
+  `sh test/run-all.sh` printed `TOUTE LA SUITE EST PASSÉE`.
+- Then the whole plan was replayed once more, tasks 1 to 7 from the briefs as they stand here, by a new
+  implementer, on a copy of `8d6cf5f` with the learner pass installed as the set-up installs it (57 minutes in
+  all). Every old text was found once, and every red and green step printed its Expected lines, the sweep's
+  three `PROBLEM:` lines in task 7 among them. Task 7's code in the replay is the assembler's own, byte for
+  byte. The counts a task moves are restated in the tasks after it: `828` checks in `test/screens.js` after
+  task 4, `842` after task 7, and the build's sizes.
+- `sh test/run-all.sh` on that replay printed `TOUTE LA SUITE EST PASSÉE`, with `content` 2077, `lang` 23173,
+  `typed` 853, `screens` 842, `engine` 307, `sync` 244, `tools/fanout.js` 454, `tools/sources.js` 33, and the
   journeys with no problem. Where a line number still differs in your tree, find the place by its text; where a
   count differs, the `FAIL` lines and the verdict words are what count.
-- Gate 7's Show was run on the replay after task 6: `days.js`, `corners.js` and `sweep.js` each exited 0 with
+- Gate 8's Show was run on that replay after task 7: `days.js`, `corners.js` and `sweep.js` each exited 0 with
   no `PROBLEM:` line. At the gate, a `PROBLEM:` line is a fault to confirm by hand, as
   `tools/learner-pass/README.md` says, before it goes to the maintainer.
 
@@ -76,23 +87,23 @@ one shape, `taps` (task 5).
   `%USERPROFILE%\dev\vlaams-phase-2`, on branch `phase-3-follow-ups-2`, cut from `f7376ac` (`main` after PR
   #109). The plan's own commit is on it; `Base:` is that commit. It pushes with
   `git push origin HEAD:phase-3-follow-ups-2`. Nothing goes to `main`.
-- `Mode: one session` (D4). The plan has seven tasks and no `fan-out` task, so its drafting lane stays idle;
-  gate 7 is why the mode matters beyond D4, since a gate runs only in it.
+- `Mode: one session` (D4). The plan has eight tasks and no `fan-out` task, so its drafting lane stays idle;
+  gate 8 is why the mode matters beyond D4, since a gate runs only in it.
 - Tickets, all filed, all sub-issues of #12: #106 (task 1), #107 (task 2), #110 (tasks 3 and 5), #105 (task
-  4), #108 (task 6). They carry `needs-triage`; their labels are the maintainer's.
+  4), #108 (task 6), #103 (task 7). They carry `needs-triage`; their labels are the maintainer's.
 - The set-up writes D4, D5 and the maintainer's push notifications as the ledger's first Rulings lines, as
   the follow-ups run did, so that the run controller, which reads Rulings, holds them:
   - **Who rules.** A task's `needs ruling` and a fix the closing review proposes are decided by the run
     controller on the maintainer's behalf, each written as its own Rulings line ending « (on the
-    maintainer's behalf) ». Gate 7 stays the maintainer's and waits for their word. Never `main`, never a
+    maintainer's behalf) ». Gate 8 stays the maintainer's and waits for their word. Never `main`, never a
     merge.
   - **The end.** After the final report's push, a draft pull request from `phase-3-follow-ups-2` into
     `main`, its body naming the tickets of the closing review's `TICKETS` line. Never marked ready, never
     merged.
   - **Reaching the maintainer.** A push notification (the `PushNotification` tool) beside the one-line
-    message, for each thing that waits on them: gate 7, a run that stops, and the final report with the pull
+    message, for each thing that waits on them: gate 8, a run that stops, and the final report with the pull
     request's link.
-- Gate 7 runs the learner pass in the repo, `tools/learner-pass/`. It needs one package, pinned in its
+- Task 7 and gate 8 run the learner pass in the repo, `tools/learner-pass/`. It needs one package, pinned in its
   `package-lock.json`, and the installed Chrome. The set-up installs it with no install script:
   `npm ci --ignore-scripts`, run in `tools/learner-pass/`. Its `node_modules/` and `shots/` are ignored by
   git.
@@ -166,6 +177,13 @@ Public repository:
    - Expected: the same markup, byte for byte, before and after; its buttons named in the display language.
    - Tests: task 5, steps 1 and 6 (a snapshot the run does not commit), and `test/screens.js`,
      `test/lang.js` and `test/smoke.js`, unchanged.
+6. **A sheet scrolled down stays where it was when a tap redraws it.**
+   - Condition: the settings sheet scrolled down, then a tap on each of the three switches, the theme, the
+     pace and the display language; then « Reset »; then the sheet closed and opened again.
+   - Expected: the sheet at the same scroll after each of the six taps; the reset confirmation, and the
+     sheet opened again, at their top.
+   - Tests: task 7, step 1 (`test/screens.js`, « LES RÉGLAGES »), and step 3's check in
+     `tools/learner-pass/sweep.js`, which the gate's Show runs again.
 
 ## Run order
 
@@ -178,11 +196,13 @@ One line per task: `<id>. <name> — <class> — <ticket> — waits <ids>`. The 
 4. The week chart counts its days on the local calendar, and names them there — mechanical — #105 — waits none
 5. The retry rule's three tries named once, the mic panel's buttons as one shape, `graded` read once, `micPanel`'s options named — mechanical — #110 — waits 4
 6. A note under the follow-ups plan's Review Focus 5 on its « Zijt gij » example — mechanical — #108 — waits none
-7. GATE: a learner pass in a real browser, before the maintainer's check — gate — none — waits 1, 2, 3, 4, 5, 6
+7. In Settings, a tap that redraws the open sheet leaves it where it was scrolled — mechanical — #103 — waits 5
+8. GATE: a learner pass in a real browser, before the maintainer's check — gate — none — waits 1, 2, 3, 4, 5, 6, 7
 ```
 
 Tasks 1 to 3 touch the same kit files and `test/tools/fanout.js`, so each waits for the one before it. Task 5
-builds over task 4's `index.html`, and its Expected lines count task 4's checks, so it waits for task 4.
+builds over task 4's `index.html`, and its Expected lines count task 4's checks, so it waits for task 4. Task 7
+builds over task 5's, and counts task 4's checks too, so it waits for task 5.
 
 ## The run file's lines
 
@@ -191,8 +211,8 @@ controller puts its output in `<WS>/tmp/gate-<id>.md`.
 
 ```
 Mode: one session
-Gate: task 7 — after 1, 2, 3, 4, 5, 6 — show: echo "## days"; node tools/learner-pass/days.js .; echo "## corners"; node tools/learner-pass/corners.js .; echo "## sweep"; node tools/learner-pass/sweep.js . — ask: « The learner pass played the branch's last commit as a learner on an iPhone would: <WS>/tmp/gate-7.md, its screenshots in `tools/learner-pass/shots/` (the week chart is on `meer.png`). Check it yourself on the branch's preview: what did you find? (nothing is an answer) » — answer to: Rulings
-Learner pass: gate 7 plays the branch's last commit. If a `closing` task changes src/ after the gate's show, run that show again into <WS>/tmp/gate-7-closing.md before the final report, and give the maintainer both paths.
+Gate: task 8 — after 1, 2, 3, 4, 5, 6, 7 — show: echo "## days"; node tools/learner-pass/days.js .; echo "## corners"; node tools/learner-pass/corners.js .; echo "## sweep"; node tools/learner-pass/sweep.js . — ask: « The learner pass played the branch's last commit as a learner on an iPhone would: <WS>/tmp/gate-8.md, its screenshots in `tools/learner-pass/shots/` (the week chart is on `meer.png`). Check it yourself on the branch's preview, Settings scrolled down to a switch among the rest: what did you find? (nothing is an answer) » — answer to: Rulings
+Learner pass: gate 8 plays the branch's last commit. If a `closing` task changes src/ after the gate's show, run that show again into <WS>/tmp/gate-8-closing.md before the final report, and give the maintainer both paths.
 ```
 
 ## Calls made while writing, for the maintainer
@@ -201,8 +221,8 @@ Each is the design sitting's call, made inside the maintainer's decisions. The t
 the call.
 
 1. **One session (set-up, D4).** The maintainer leaves the rulings to the run controller, and the plan has
-   seven tasks, so `CLAUDE.md` puts it in one session. No task is a fan-out, so the drafting lane stays idle;
-   gate 7 runs only in this mode.
+   eight tasks, so `CLAUDE.md` puts it in one session. No task is a fan-out, so the drafting lane stays idle;
+   gate 8 runs only in this mode.
 2. **What « exactly the named rows » reads (task 1, D1).** The ids are compared with the `id`s in the
    batches' `input.json`, in any order. Split loads neither the kind nor the course for a folder it has
    already cut, so an id the kind does not cut is reported there as « named but not in its batches ». Without
@@ -236,15 +256,19 @@ the call.
    Whether `ikengij` accepts those depends on the item Check reads them for, since Check accepts an item's own
    words. The note gives « Zijt gij hier? », which has nothing ahead and nothing unmet at `ikengij` on the real
    course, whatever the item.
-8. **A learner pass before the maintainer's check (gate 7).** On 25 October 2026 the maintainer asked for a
+8. **A learner pass before the maintainer's check (gate 8).** On 25 October 2026 the maintainer asked for a
    hands-on learner pass in a real browser before every learner's check; the follow-ups run's gate 13 ran
-   one. Tasks 4 and 5 change what a learner meets, so this plan has one pass, after the last code-lane task.
+   one. Tasks 4, 5 and 7 change what a learner meets, so this plan has one pass, after the last code-lane task.
    If the closing review adds a task that changes `src/`, the pass runs again (the run file's
    `Learner pass:` line).
+9. **Where the sheet keeps its scroll (task 7, D7).** `render()` keeps it, not each tap's handler: the sync
+   status and the voices arriving redraw the open sheet too, and one place covers every redraw. It keeps it
+   only when the sheet drawn is the one already open, so another sheet, or the same one closed and opened
+   again, starts at its top. The sweep gains the check, so the gate's learner pass sees a jump of its own
+   accord; the toast, which never redraws the sheet, keeps its section in `test/screens.js` as it is.
 
 Left out of this plan, for the maintainer:
-- **The Settings sheet's jump, #103.** Still open, and no task here.
-- **The tickets' labels.** All five carry `needs-triage`, and the run does not relabel them.
+- **The tickets' labels.** All six carry `needs-triage`, and the run does not relabel them.
 
 ## The run
 
@@ -959,7 +983,8 @@ Files:
 - Build: `index.html`, `artifact.html`
 
 Lines are as of `f7376ac`. Task 1 changes another row of `TESTING.md` (line 26), away from this task's; tasks 1
-to 3 touch none of the other files.
+to 3 touch none of the other files. Task 7, later, adds a section to `test/screens.js` after the toast's, far
+from this task's, and adds to the end of the `screens.js` row after this task's words.
 
 Notes:
 - **Waits for no task.** Task 5 changes `src/ex/index.js`, `src/ui/scenario.js` and `src/ui/listen.js`, none of
@@ -1328,9 +1353,9 @@ Notes:
   `micPanel` now writes the `aria-label`s when it renders, so the options hold no text but `after`'s, which is
   a function already.
 - **No other task touches these files.** Tasks 1 to 3 are the kit and its tests, task 4 the week chart, task 6
-  a plan's note. Task 4 rebuilds `index.html` and `artifact.html` too: step 5 rebuilds them over it, so when
-  task 4 has run the build's byte counts, and the counts of a suite it adds checks to, differ from the ones
-  below.
+  a plan's note, task 7 the shell, the fake page and the sweep. Task 4 rebuilds `index.html` and
+  `artifact.html` too: step 5 rebuilds them over it, so when task 4 has run the build's byte counts, and the
+  counts of a suite it adds checks to, differ from the ones below. Task 7 rebuilds them over this task's.
 - **The proof.** These steps ran on a copy of `f7376ac`. Step 1 and step 6 printed `178 states, 178 with a mic
   panel, 349303 bytes`, and `cmp` printed nothing. To check that the snapshot sees each new piece, each was
   changed in turn and the states that differed counted: `TRIES` 3 → 2, 4 exercise states and 1 turn state;
@@ -1658,19 +1683,285 @@ Done when:
   line).
 - `git diff HEAD~1 --stat` lists the 2026-10-25 plan only (#108's second: no change under `src/` or `test/`).
 
-### Task 7: GATE: a learner pass in a real browser, before the maintainer's check
+### Task 7: in Settings, a tap that redraws the open sheet leaves it where it was scrolled
+Class: mechanical
+Ticket: #103
+Promises: none
+Why: #103, filed on the maintainer's word on 25 October 2026 after the follow-ups design sitting's learner
+pass. In Settings, a tap that redraws the sheet throws it back to its top, so a learner who has scrolled down
+to a switch loses their place at each tap. `render()` (`src/ui/shell.js:78–91`) rebuilds the whole of
+`root.innerHTML`, the open sheet with it, and keeps no scroll position. Half of #103 is fixed already:
+`e2b9ac5`, on `main` since 25 October, puts the toast on the page without a redraw, and `test/screens.js`
+checks it (« LE TOAST — posé sur la page, sans la redessiner »). The other half is open. The three switches,
+the theme, the pace and the display language each call `render()` (`src/ui/shell.js:346–349`), with the sheet
+open. So do a sync's change and the voices' rescan (`src/app.js:30, 34`). After this task, `render()` reads
+the open sheet's scroll before it redraws, and puts it back after, when the sheet it draws is the one it drew
+last. A different sheet, or the same one opened again, starts at its top, as before.
+
+#103 says that neither the vm suite nor the sweep could see the fault. After this task, both see it. The sheet
+card in the fake `#app` scrolls, and every write of its `innerHTML` puts a new card at its top, as a browser
+does. The sweep reads the open sheet's scroll before and after each tap. The shell gains one variable, `drawn`.
+Nothing is exported and nothing is stored.
+
+Files:
+- Modify: `src/ui/shell.js` (line 7, and `render()`, line 89)
+- Modify: `test/lib/browser.js` (the fake `#app`, lines 162–170)
+- Test: `test/screens.js` (a new section after « LE TOAST — posé sur la page, sans la redessiner »)
+- Modify: `tools/learner-pass/sweep.js` (the tap loop, lines 78 and 92)
+- Modify: `tools/learner-pass/README.md` (the `sweep.js` row, line 29)
+- Modify: `TESTING.md` (the `screens.js` row, line 20)
+- Build: `index.html`, `artifact.html`
+
+Lines are as of `f7376ac`. Task 4 adds a section to `test/screens.js` and changes the end of `TESTING.md`'s
+`screens.js` row. This task's steps find both places by their text, after task 4. Task 1 changes another row
+of `TESTING.md` (line 26), away from this one. No other task touches these files.
+
+Notes:
+- **Waits for task 5.** No code of task 4 or task 5 is here. But this task's section follows task 4's checks
+  in `test/screens.js`, and its build goes over task 5's. Its Expected lines are counted in the run's order.
+- **A sheet** here is the shell's panel: `sheet` in `shell.js`, drawn by `card()` as `.sheet-card`. It is not
+  a reference sheet (`GLOSSARY.md`). `GLOSSARY.md`'s _Avoid_ « card » is about an item. The test's `card()`
+  reads the sheet's `.sheet-card`, as the shell's `card()` draws it.
+- **Only the same sheet keeps its place.** `drawn` holds the sheet `render()` drew last. Some taps draw a
+  sheet `drawn` does not hold, and that sheet starts at its top:
+  - « Reset » opens its confirmation.
+  - Closing the sheet and opening it again.
+  - A custom sheet (`{ custom: … }`: export, import, a grammar note). It is a new object each time it opens.
+- **The card read after the redraw is named `now`.** In `render()`, `card` would hide the shell's `card()`.
+- **What the sweep sees.** At 390 × 844, the theme, pace and language buttons sit in the sheet's first
+  screen. When the sweep centres one of them for the tap, the sheet does not scroll, so the sweep sees the
+  three switches only. The vm section taps all six, at a scroll it sets.
+- **The fake `#app`.** Its `innerHTML` becomes a property with a setter, so each write puts a new card at its
+  top. `insertAdjacentHTML` and the toast's `remove()` change the HTML without going through the setter, so
+  they leave the card where it was, as a browser does. `querySelector('.sheet-card')` returns the card, with
+  its `scrollTop`, while the HTML holds one. Every suite that opens a page goes through this fake, so the full
+  suite is the check that nothing else moved.
+- **`smoke.js` and `lang.js`.** The new code uses `const`, arrows, and no optional chaining. It adds no text
+  that a learner reads.
+- **The proof.** These steps ran on a copy of `8d6cf5f` with tasks 4 and 5 applied.
+  - Step 2 printed the six `FAIL` lines below and `842 checks, 6 FAILED`.
+  - Step 3's sweep, on task 5's build, printed three `PROBLEM:` lines and `3 PROBLEM(S)` (4 min 15 s).
+  - Step 5 printed `842 checks, SCREENS OK`, `23173 contrôles, LANGUE CONFORME` and `ALL CHECKS PASSED`.
+  - Step 6 printed `built (local only) index.html (681953 bytes), artifact.html (681339 bytes)`.
+  - Step 7's sweep printed `EVERY TAP DOES SOMETHING`.
+  - `sh test/run-all.sh` printed `TOUTE LA SUITE EST PASSÉE` and exited 0 (10 min 53 s).
+
+  The reset and reopen checks pass on the old code too. They are there to catch a fix that keeps the scroll
+  for every sheet.
+
+- [ ] **Step 1: Write the failing test.** In `test/lib/browser.js`, replace
+  ```js
+    /* #app pose du HTML à sa fin, et retire par sa classe un élément qui ne contient que du
+       texte : c'est ce que fait le toast (shell.js), qui ne redessine pas la page. */
+    app.insertAdjacentHTML = (where, h) => { if (where === 'beforeend') app.innerHTML += h; };
+    app.querySelector = sel => {
+      const m = /^\.([\w-]+)$/.exec(sel);
+      const re = m && new RegExp('<(\\w+) class="' + m[1] + '">[^<]*</\\1>');
+      return re && re.test(app.innerHTML) ? { remove() { app.innerHTML = app.innerHTML.replace(re, ''); } } : null;
+    };
+  ```
+  with
+  ```js
+    /* #app pose du HTML à sa fin, et retire par sa classe un élément qui ne contient que du
+       texte : c'est ce que fait le toast (shell.js), qui ne redessine pas la page.
+       La carte d'une feuille défile, comme la vraie : écrire innerHTML en pose une neuve, revenue
+       en haut ; ajouter ou retirer le toast ne la touche pas (#103). */
+    let html = '', cardTop = 0;
+    Object.defineProperty(app, 'innerHTML', { get: () => html, set: h => { html = h; cardTop = 0; } });
+    app.insertAdjacentHTML = (where, h) => { if (where === 'beforeend') html += h; };
+    app.querySelector = sel => {
+      if (sel === '.sheet-card') return html.indexOf('class="sheet-card"') < 0 ? null : { get scrollTop() { return cardTop; }, set scrollTop(v) { cardTop = v; } };
+      const m = /^\.([\w-]+)$/.exec(sel);
+      const re = m && new RegExp('<(\\w+) class="' + m[1] + '">[^<]*</\\1>');
+      return re && re.test(html) ? { remove() { html = html.replace(re, ''); } } : null;
+    };
+  ```
+  In `test/screens.js`, after the end of the « LE TOAST — posé sur la page, sans la redessiner » section,
+  ```js
+      console.log('  le toast arrive, cède sa place et s’en va sans redessiner la feuille des réglages ; un rendu le garde');
+    }
+  ```
+  insert
+  ```js
+
+    /* ------------------------------------------------------------------ */
+    console.log('\nLES RÉGLAGES — une feuille redessinée garde sa place');
+    {
+      /* Un interrupteur, le thème, le rythme et la langue redessinent la page, et la feuille ouverte
+         avec : elle revenait en haut, et qui l'avait fait défiler jusqu'aux interrupteurs perdait
+         sa place à chaque toucher (#103). Le faux #app pose une carte neuve, revenue en haut, à
+         chaque rendu (test/lib/browser.js). Une autre feuille, ou la même rouverte, part du haut. */
+      const P = browser.open({ root: ROOT, seed: browser.SEED, byId: 'stub', timers: 'held' });
+      await new Promise(r => setImmediate(r));
+      while (P.waiting()) P.tick();
+      const card = () => P.app.querySelector('.sheet-card');
+      const top = () => (card() ? card().scrollTop + ' px' : 'no sheet');
+      P.NL.ui.go('vandaag'); P.NL.ui.openSheet('instellingen');
+      [{ toggle: 'showFlemish' }, { toggle: 'autoplay' }, { toggle: 'sfx' }, { theme: 'dark' }, { pace: 'calme' }, { displayLang: 'fr' }].forEach((d, i) => {
+        const at = 400 + 40 * i, page = P.app.innerHTML;
+        card().scrollTop = at;
+        P.tap(d);
+        ok(P.app.innerHTML !== page, 'a tap on ' + JSON.stringify(d) + ' did not redraw the settings sheet');
+        ok(top() === at + ' px', 'a tap on ' + JSON.stringify(d) + ' in the settings sheet, scrolled to ' + at + ' px, left it at ' + top());
+      });
+      card().scrollTop = 600;
+      P.tap({ reset: '1' });
+      ok(top() === '0 px', 'the reset confirmation opened at ' + top() + ', where the settings sheet had been scrolled');
+      P.tap({ close: '1' }); P.NL.ui.openSheet('instellingen');
+      ok(top() === '0 px', 'the settings sheet, closed and opened again, opened at ' + top());
+      console.log('  les trois interrupteurs, le thème, le rythme et la langue redessinent la feuille à sa place ; une autre feuille, ou la même rouverte, part du haut');
+    }
+  ```
+
+- [ ] **Step 2: Run it and watch it fail.**
+  ```
+  node test/screens.js .
+  ```
+  Expected: exactly six `FAIL` lines, and the last line `842 checks, 6 FAILED`:
+  ```
+    FAIL: a tap on {"toggle":"showFlemish"} in the settings sheet, scrolled to 400 px, left it at 0 px
+    FAIL: a tap on {"toggle":"autoplay"} in the settings sheet, scrolled to 440 px, left it at 0 px
+    FAIL: a tap on {"toggle":"sfx"} in the settings sheet, scrolled to 480 px, left it at 0 px
+    FAIL: a tap on {"theme":"dark"} in the settings sheet, scrolled to 520 px, left it at 0 px
+    FAIL: a tap on {"pace":"calme"} in the settings sheet, scrolled to 560 px, left it at 0 px
+    FAIL: a tap on {"displayLang":"fr"} in the settings sheet, scrolled to 600 px, left it at 0 px
+  ```
+  If the suite stops instead on a `TypeError` about `scrollTop`, step 1's fake `#app` is not in place.
+
+- [ ] **Step 3: The sweep reads the sheet's scroll, and sees the fault.** In `tools/learner-pass/sweep.js`,
+  after
+  ```js
+        if (hit) { problems.push(what + ' is covered, even centred, by ' + hit); continue; }
+  ```
+  insert
+  ```js
+        /* La feuille ouverte, par son titre, et l'endroit où on l'a fait défiler : un toucher qui la
+           redessine la laisse là (#103). */
+        const place = () => p.evaluate(() => {
+          const c = document.querySelector('.sheet-card');
+          return c ? { title: c.querySelector('h3').textContent, top: Math.round(c.scrollTop) } : null;
+        });
+        const was = await place();
+  ```
+  and after
+  ```js
+        if ((await sig()) === before) problems.push(what + ': nothing changed');
+  ```
+  insert
+  ```js
+        const is = was ? await place() : null;
+        if (is && is.title === was.title && Math.abs(is.top - was.top) > 1) problems.push(what + ': the sheet scrolled to ' + was.top + ' px went to ' + is.top + ' px');
+  ```
+  Then, on task 5's build, the committed `index.html` (nothing is rebuilt before step 6):
+  ```
+  node tools/learner-pass/sweep.js .
+  ```
+  Expected: it exits 1, after about four minutes, with exactly three `PROBLEM:` lines, one per switch, and
+  `3 PROBLEM(S)`:
+  ```
+    PROBLEM: sheet-instellingen: BUTTON «  » {"toggle":"showFlemish"}: the sheet scrolled to 105 px went to 0 px
+    PROBLEM: sheet-instellingen: BUTTON «  » {"toggle":"autoplay"}: the sheet scrolled to 145 px went to 0 px
+    PROBLEM: sheet-instellingen: BUTTON «  » {"toggle":"sfx"}: the sheet scrolled to 185 px went to 0 px
+  ```
+  The pixels come from the machine's fonts. What must match is the three switches and `went to 0 px`.
+
+- [ ] **Step 4: Implement.** In `src/ui/shell.js`, replace
+  ```js
+    let route = 'vandaag', arg = null, sheet = null, toastMsg = null, toastT = null;
+  ```
+  with
+  ```js
+    let route = 'vandaag', arg = null, sheet = null, drawn = null, toastMsg = null, toastT = null;
+  ```
+  and replace
+  ```js
+      root.innerHTML = html + (sheet ? sheetHtml() : '') + ifText(toastMsg, 'div', 'toast');
+      if (S.after) S.after(arg);
+  ```
+  with
+  ```js
+      /* La feuille redessinée telle quelle garde l'endroit où on l'avait fait défiler : un
+         interrupteur, le thème, le rythme ou la langue la renvoyaient en haut (#103). Une autre
+         feuille part du haut. */
+      const was = sheet && sheet === drawn ? root.querySelector('.sheet-card') : null;
+      const at = was ? was.scrollTop : 0;
+      root.innerHTML = html + (sheet ? sheetHtml() : '') + ifText(toastMsg, 'div', 'toast');
+      drawn = sheet;
+      const now = at ? root.querySelector('.sheet-card') : null;
+      if (now) now.scrollTop = at;
+      if (S.after) S.after(arg);
+  ```
+
+- [ ] **Step 5: Run it and watch it pass.**
+  ```
+  node test/screens.js .
+  node test/lang.js .
+  node test/smoke.js .
+  ```
+  Expected: `842 checks, SCREENS OK`, `23173 contrôles, LANGUE CONFORME`, `ALL CHECKS PASSED`.
+
+- [ ] **Step 6: Build.**
+  ```
+  sh build.sh
+  ```
+  Expected: `built (local only) index.html (681953 bytes), artifact.html (681339 bytes)`, in the run's order
+  (after task 5).
+
+- [ ] **Step 7: The sweep again, on the new build.**
+  ```
+  node tools/learner-pass/sweep.js .
+  ```
+  Expected: it exits 0, with no `PROBLEM:` line, and its last line is `EVERY TAP DOES SOMETHING`.
+
+- [ ] **Step 8: The docs say it.** In `TESTING.md`, at the end of the `screens.js` row, replace
+  ```
+  et les jours en arrière que la série de `journey.js` (§12) compte à ces instants |
+  ```
+  with
+  ```
+  et les jours en arrière que la série de `journey.js` (§12) compte à ces instants ; la feuille des réglages qu'on a fait défiler garde sa place : le toast s'y pose et s'en va sans la redessiner, un interrupteur, le thème, le rythme ou la langue la redessinent au même endroit, et une autre feuille, ou la même rouverte, part du haut |
+  ```
+  In `tools/learner-pass/README.md`, replace
+  ```
+  one a finger cannot reach, overflow at 390 px, console errors |
+  ```
+  with
+  ```
+  one a finger cannot reach, a sheet that jumps from where it was scrolled, overflow at 390 px, console errors |
+  ```
+
+- [ ] **Step 9: Commit.**
+  ```
+  git add src/ui/shell.js test/lib/browser.js test/screens.js tools/learner-pass/sweep.js tools/learner-pass/README.md TESTING.md index.html artifact.html
+  git commit -m "fix(settings): a tap that redraws the open sheet leaves it where it was scrolled; another sheet, or the same one opened again, starts at its top (#103)" -m "render() rebuilt the whole page with the sheet, so each switch, the theme, the pace and the display language threw the settings sheet back to its top. It now keeps the scroll of the sheet it drew last. The fake #app's sheet card scrolls, and screens.js checks the six taps; the learner pass's sweep reports a sheet that jumps. The toast half of #103 was fixed by e2b9ac5." -m "Refs #103"
+  ```
+
+Done when:
+- In the settings sheet scrolled down, a tap on each switch, the theme, the pace and the display language
+  redraws the sheet at the same place (#103's first acceptance line). Before step 4, none of the six did.
+- The reset confirmation, and the settings sheet closed and opened again, open at their top.
+- `sweep.js` reports a sheet that jumps from where it was scrolled. On task 5's build it reported the three
+  switches; on this task's build it prints `EVERY TAP DOES SOMETHING`.
+- `node test/screens.js .` prints `842 checks, SCREENS OK`. `sh build.sh` ran, and `index.html` and
+  `artifact.html` are committed.
+- `sh test/run-all.sh` passes.
+
+### Task 8: GATE: a learner pass in a real browser, before the maintainer's check
 Class: gate
 Ticket: none
-After: 1, 2, 3, 4, 5, 6
+After: 1, 2, 3, 4, 5, 6, 7
 Show: echo "## days"; node tools/learner-pass/days.js .; echo "## corners"; node tools/learner-pass/corners.js .; echo "## sweep"; node tools/learner-pass/sweep.js .
-Ask: « The learner pass played the branch's last commit as a learner on an iPhone would: <WS>/tmp/gate-7.md, its screenshots in `tools/learner-pass/shots/` (the week chart is on `meer.png`). Check it yourself on the branch's preview: what did you find? (nothing is an answer) »
+Ask: « The learner pass played the branch's last commit as a learner on an iPhone would: <WS>/tmp/gate-8.md, its screenshots in `tools/learner-pass/shots/` (the week chart is on `meer.png`). Check it yourself on the branch's preview, Settings scrolled down to a switch among the rest: what did you find? (nothing is an answer) »
 Answer to: Rulings
 Why: on 25 October 2026 the maintainer asked for a hands-on learner pass in a real browser before every
-learner's check, and the follow-ups plan's gate 13 ran one. Two tasks here change code a learner meets. Task 4
-changes how the week chart on `meer` (« More ») counts and names its days. Task 5 reshapes the microphone
-panel of the speak exercise, a conversation's turn and the nazeggen, and the retry rule of the first two. The
-suite checks
-their markup, and task 5's snapshot checks the panel's, byte for byte. Only a browser checks a tap. The
+learner's check, and the follow-ups plan's gate 13 ran one. Three tasks here change code a learner meets:
+- Task 4 changes how the week chart on `meer` (« More ») counts and names its days.
+- Task 5 reshapes the microphone panel of the speak exercise, a conversation's turn and the nazeggen, and the
+  retry rule of the first two.
+- Task 7 keeps the settings sheet where it was scrolled when a tap redraws it.
+
+The suite checks their markup, and task 5's snapshot checks the panel's, byte for byte. Task 7's check moves
+a scroll that the fake page keeps by hand. Only a browser checks a tap and a real scroll. The
 learner pass, `tools/learner-pass/` (its `README.md` says what each script plays), plays the committed
 `index.html` in headless Chrome dressed as Safari on iPhone (390×844, touch, `fr-BE`), with a fake recogniser
 that behaves like Safari's. Show writes nothing tracked: its screenshots go to `tools/learner-pass/shots/`,
@@ -1680,18 +1971,26 @@ which git ignores. Each script exits 1 with one `PROBLEM:` line per fault, and p
   ends `THE STUDY DAYS PLAY THROUGH`.
 - `corners.js`: listening (Comprendre, Répéter), the baker conversation, the challenge. A clean run ends
   `LISTENING, CONVERSATION AND CHALLENGE PLAY THROUGH`.
-- `sweep.js`: every tappable thing on 16 screens, `meer` among them: one that changes nothing, one
-  a finger cannot reach, overflow at 390 px, console errors. A clean run ends `EVERY TAP DOES SOMETHING`.
+- `sweep.js`: every tappable thing on 16 screens, `meer` and the settings sheet among them. It reports a tap
+  that changes nothing, a button a finger cannot reach, a sheet that jumps from where it was scrolled (task 7),
+  overflow at 390 px, and console errors. A clean run ends `EVERY TAP DOES SOMETHING`.
 
 The pass runs in the machine's own zone, at the clock its scripts set: the week chart's hour around a clock
-change is task 4's test, not this gate's.
+change is task 4's test, not this gate's. In the settings sheet, the sweep can see a jump only on the three
+switches: the theme, pace and language buttons sit in the sheet's first screen (task 7's Notes).
 
-The proof. The assembler ran this Show on the replay of tasks 1 to 6 (« How far to trust this plan »), with
-`index.html` built after task 5: each script exited 0, ending `THE STUDY DAYS PLAY THROUGH`, `LISTENING,
-CONVERSATION AND CHALLENGE PLAY THROUGH` and `EVERY TAP DOES SOMETHING`, with no `PROBLEM:` line.
-
-Known before the run, and not for this gate: in Settings, a switch that redraws the sheet throws it back to its
-top (#103, open). `sweep.js` does not report it.
+The proof. The assembler had this Show run, word for word, on the plan's second replay: a copy of `8d6cf5f`
+with tasks 1 to 7 applied and `index.html` built, after `npm ci --ignore-scripts` in `tools/learner-pass/`. It
+took about seven minutes, printed no `PROBLEM:` line, and each script exited 0:
+- `days.js` played study days 0, 1, 2, 3, 5 and 7. One spoken card came up on day 3 (`mic-panel good`). On day
+  5 « Je ne peux pas parler » left no spoken card in the session, which ended « 6 spoken exercises kept for the
+  next session ». Day 7 held 14 spoken cards: wrong then right (`mic-panel bad`, then `good`), ending by
+  itself, and right. It ended `THE STUDY DAYS PLAY THROUGH`.
+- `corners.js` played eight Comprendre lines, eight Répéter lines (each `mic-panel good`, every word of the
+  line), the baker conversation (four spoken turns) and a nine-card challenge. It ended `LISTENING,
+  CONVERSATION AND CHALLENGE PLAY THROUGH`.
+- `sweep.js` tapped 274 things on 16 screens, 16 of them in the settings sheet. It ended `EVERY TAP DOES
+  SOMETHING`.
 
 If Show cannot start (no `node_modules` in `tools/learner-pass/`, no Chrome), tell the maintainer its error
 lines in place of the question. Until the maintainer answers, the gate stays `in progress`.
