@@ -3,7 +3,7 @@
      const { text, joined, runs, count, argsOf } = require('./lib/langs');
      text(html)          le texte que l'écran montre, balises retirées
      joined(html)        ce texte d'un tenant : chaque balise ôtée sans rien à sa place
-     runs(html, lang)    ses passages de texte, chacun avec la langue qu'il déclare
+     runs(html, lang)    ses passages de texte, chacun avec la langue qu'il déclare et ses balises
      count(s, sub)       combien de fois `sub` paraît dans `s`
      argsOf(k, f, nums)  ce qu'une fonction des tables fr et en reçoit dans un test */
 
@@ -16,7 +16,8 @@ const text = html => String(html).replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' 
 const joined = html => String(html).replace(/<[^>]*>/g, '');
 
 /* Les passages de texte d'un HTML et la langue que chacun déclare : celle de l'attribut
-   lang le plus proche qui l'enveloppe, sinon celle de la racine. */
+   lang le plus proche qui l'enveloppe, sinon celle de la racine. tags nomme les balises qui
+   l'enveloppent, de la plus lointaine à la plus proche : un passage en gras y a b. */
 const VOID = /^(area|base|br|col|embed|hr|img|input|link|meta|source|track|wbr)$/i;
 function runs(html, rootLang) {
   const out = [], stack = [], re = /<!--[\s\S]*?-->|<(\/?)([a-zA-Z][a-zA-Z0-9-]*)((?:"[^"]*"|'[^']*'|[^>"'])*)>/g;
@@ -25,7 +26,7 @@ function runs(html, rootLang) {
   let last = 0, m;
   const flush = to => {
     const t = src.slice(last, to).replace(/&nbsp;/g, ' ').replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ').trim();
-    if (t) out.push({ text: t, lang: cur() });
+    if (t) out.push({ text: t, lang: cur(), tags: stack.map(s => s.name) });
   };
   while ((m = re.exec(src))) {
     flush(m.index);

@@ -4,19 +4,23 @@
 NL.content = NL.content || {};
 
 /* Écrit pour un francophone, pas pour un anglophone : plusieurs voyelles
-   néerlandaises existent déjà en français, ce qui est un avantage réel. */
+   néerlandaises existent déjà en français, ce qui est un avantage réel.
+   Le gras dit deux choses. Le néerlandais, l'orthographe du son enseigné (class="nl") ou la
+   syllabe accentuée d'un exemple (dans son class="ex"), est déclaré nl-BE par NL.gloss.prose.
+   La lettre ou le mot auquel on compare le son, français (une fois, le w anglais), reste nu :
+   le u de tu est la lettre française. SOUND_OK, dans test/lang.js (6d.8), nomme chacun. */
 NL.content.sounds = [
   { g: 'eu', ipa: '/ø/', good: true, say: 'Tu l’as déjà : c’est le <b>eu</b> de <i>peu</i>, identique. <span class="ex">deur</span>, <span class="ex">leuk</span>, <span class="ex">beenhouwer</span>. Un anglophone galère des mois là-dessus ; toi, non.' },
   { g: 'oe', ipa: '/u/', good: true, say: 'C’est le <b>ou</b> français, rien d’autre. <span class="ex">boek</span>, <span class="ex">goed</span>, <span class="ex">zoeken</span>. Ne le lis jamais comme un <b>oe</b> français.' },
-  { g: 'u', ipa: '/y/', good: true, say: 'Le <b class="nl">u</b> de <i>tu</i>, exactement. <span class="ex">nu</span>, <span class="ex">minuut</span>, <span class="ex">uur</span>. Encore un cadeau du français.' },
-  { g: 'g / ch', ipa: '/ɣ/ doux', say: 'En Flandre c’est le <b>g doux</b> : un souffle au milieu de la bouche, proche de la <i>jota</i> espagnole adoucie — et bien plus près de ton <b>r</b> français que du raclement d’Amsterdam. <span class="ex">goeiedag</span>, <span class="ex">gracht</span>. Si tu as copié des enregistrements du nord, c’est la première chose à désapprendre.' },
+  { g: 'u', ipa: '/y/', good: true, say: 'Le <b>u</b> de <i>tu</i>, exactement. <span class="ex">nu</span>, <span class="ex">minuut</span>, <span class="ex">uur</span>. Encore un cadeau du français.' },
+  { g: 'g / ch', ipa: '/ɣ/ doux', say: 'En Flandre c’est le <b><span class="nl">g</span> doux</b> : un souffle au milieu de la bouche, proche de la <i>jota</i> espagnole adoucie — et bien plus près de ton <b>r</b> français que du raclement d’Amsterdam. <span class="ex">goeiedag</span>, <span class="ex">gracht</span>. Si tu as copié des enregistrements du nord, c’est la première chose à désapprendre.' },
   { g: 'ui', ipa: '/œy/', say: 'Pars du <b>eu</b> de <i>peur</i>, lèvres arrondies, puis glisse vers un <b>i</b>. <span class="ex">huis</span>, <span class="ex">buiten</span>, <span class="ex">uit</span>. Le français te donne le point de départ ; il ne reste que le glissement.' },
   { g: 'ij / ei', ipa: '/ɛi/', say: 'Même son, deux orthographes. Proche du <b>è</b> de <i>père</i> qui glisse vers un <b>i</b>. En Flandre il est plus plat qu’au nord. <span class="ex">wij</span>, <span class="ex">klein</span>, <span class="ex">vrijdag</span>.' },
-  { g: 'h', ipa: '/h/', warn: true, say: 'Le piège francophone numéro un : en néerlandais le <b>h</b> se prononce vraiment, avec un souffle. <span class="ex">huis</span>, <span class="ex">hebben</span>, <span class="ex">honger</span>. Le laisser tomber comme en français rend <i class="nl">hout</i> (bois) identique à <i class="nl">oud</i> (vieux).' },
+  { g: 'h', ipa: '/h/', warn: true, say: 'Le piège francophone numéro un : en néerlandais le <b class="nl">h</b> se prononce vraiment, avec un souffle. <span class="ex">huis</span>, <span class="ex">hebben</span>, <span class="ex">honger</span>. Le laisser tomber comme en français rend <i class="nl">hout</i> (bois) identique à <i class="nl">oud</i> (vieux).' },
   { g: 'sch', ipa: '/sx/', say: 's suivi du g doux. <span class="ex">school</span>, <span class="ex">schrijven</span>. À la <i>fin</i> d’un mot, c’est juste /s/ : <span class="ex">Belgisch</span>.' },
   { g: 'w', ipa: '/ʋ/', say: 'Entre le <b>v</b> et le <b>ou</b> français : les lèvres frôlent à peine les dents. <span class="ex">water</span>, <span class="ex">werk</span>. Jamais le <b>w</b> anglais.' },
   { g: 'accent tonique', ipa: '—', warn: true, say: 'Le français accentue la <b>dernière</b> syllabe ; le néerlandais accentue presque toujours la <b>première</b>. <span class="ex"><b>va</b>der</span>, <span class="ex"><b>wer</b>ken</span>, <span class="ex"><b>bak</b>ker</span>. Accentuer à la française est ce qui trahit le plus vite un francophone.' },
-  { g: '-en final', ipa: '/ə/', say: 'Le <b>n</b> tombe presque toujours à l’oral : <span class="ex">werken</span> sonne « <span class="nl">werke</span> », <span class="ex">lopen</span> sonne « <span class="nl">lope</span> ». Écris le n, ne le dis pas.' },
+  { g: '-en final', ipa: '/ə/', say: 'Le <b class="nl">n</b> tombe presque toujours à l’oral : <span class="ex">werken</span> sonne « <span class="nl">werke</span> », <span class="ex">lopen</span> sonne « <span class="nl">lope</span> ». Écris le n, ne le dis pas.' },
   { g: 'suppression du t', ipa: '—', say: 'Le flamand rapide mange les t finaux : <span class="ex">niet</span> → « <span class="nl">nie</span> », <span class="ex">dat</span> → « <span class="nl">da</span> », <span class="ex">het</span> → « <span class="nl">’t</span> ». C’est pour ça que ça semble plus rapide que ça ne l’est.' }
 ];
 
