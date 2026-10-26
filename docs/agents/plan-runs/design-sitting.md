@@ -90,7 +90,10 @@ The scripts' contract, which their tasks' tests check:
   It prints one line per batch, `<batch> <rows>`. On a kind folder that already has batches, it writes nothing
   and prints their lines. Given ids, it cuts only those rows, each in the batch the kind puts it in, writes no
   batch left empty, and refuses an id the kind does not cut: that is how a few rows already merged are
-  redrafted, by a fan-out task whose Split names them.
+  redrafted, by a fan-out task whose Split names them. Given ids on a kind folder that already has batches,
+  it prints their lines only when those batches hold exactly the named rows, in any order; otherwise it
+  prints one `fail` line naming the difference (named rows its batches lack, rows they hold that were not
+  named) and exits 1.
 - **Check** `<batch folder>` checks every file the folder holds, by `batch-controller.md`'s table: a draft has
   one row per input row, same ids and stamps, in the format's fields, `unsure` allowed; a retry or a change
   has one row per id it answers, and no other; a review has one verdict per row it reads, `keep` or

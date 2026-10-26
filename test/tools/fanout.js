@@ -143,6 +143,22 @@ async function main() {
     'fail essai overleven:w0: not a row the kind\'s split cuts',
     'fail essai zzz:w9: not a row the kind\'s split cuts'
   ] }, false], 'Split refuse un id que le genre ne coupe pas, et n\'écrit rien');
+  /* Des ids nommés sur un dossier déjà coupé : ses lots doivent tenir exactement ces lignes, dans
+     n'importe quel ordre. Alors Split redit ses lots ; sinon il nomme la différence, sans rien écrire. */
+  const seul = () => ['split.txt', 'een/input.json', 'twee/input.json'].map(f => text(path.join(SEUL, f)));
+  const seulAvant = seul();
+  same(run('split.js', [TMP, SEUL, 'bakker:w22', 'thuis:w1']), { code: 0, lines: ['een 1', 'twee 1'] },
+    'un dossier déjà coupé pour les mêmes ids, dans un autre ordre, redit ses lots');
+  same(run('split.js', [TMP, SEUL, 'thuis:w1', 'thuis:w24']), { code: 1, lines: [
+    'fail essai -: already split with other rows; named but not in its batches: thuis:w24; in its batches but not named: bakker:w22'
+  ] }, 'un dossier déjà coupé pour d\'autres ids nomme la différence');
+  same(run('split.js', [TMP, SEUL, 'thuis:w1', 'bakker:w22', 'thuis:w24']), { code: 1, lines: [
+    'fail essai -: already split with other rows; named but not in its batches: thuis:w24'
+  ] }, 'un id nommé que ses lots ne tiennent pas est refusé');
+  same(run('split.js', [TMP, SEUL, 'thuis:w1']), { code: 1, lines: [
+    'fail essai -: already split with other rows; in its batches but not named: bakker:w22'
+  ] }, 'une ligne de ses lots qui n\'est pas nommée est refusée');
+  same(seul(), seulAvant, 'un dossier déjà coupé n\'est pas récrit');
 
   kindFile('mauvais', `module.exports = {
   stamp: [], fields: ['mot'], tables: [], check: () => [], merge: () => ({}),
