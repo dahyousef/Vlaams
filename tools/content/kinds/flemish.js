@@ -85,20 +85,21 @@ const kunde = inversions((verb, pron) => CONTRACT[verb + ' ' + pron]);
 /* Derrière une forme que « je » partage avec « u », et donc avec « hij » (« kan », « weet »,
    « heet »…), « je » peut aussi être « ton » : « Hoe heet je zus? ». La règle ge ne l'y change
    que si le mot suivant ne peut pas suivre « ton » : la fin de la phrase, une majuscule, ou un
-   mot de FREE. « u » seul ou « je » seul devient « ge ». */
-const FREE = new Set([ASKS, PREPS, 'wie via me mij hem ze ons hen hun het \'t ’t dat dit die deze of iets niets niks ' +
+   mot de NEVER_AFTER_YOUR. « u » seul ou « je » seul devient « ge ». */
+const NEVER_AFTER_YOUR = new Set([ASKS, PREPS, 'wie via me mij hem ze ons hen hun het \'t ’t dat dit die deze of iets niets niks ' +
   'iemand niemand alles er daar hier nog niet echt ook al wel toch eens even graag zeker misschien eigenlijk nu dan ' +
   'zo heel erg meer liever beter goed altijd nooit ooit soms vaak morgen vandaag vanavond straks later eerst weer ' +
   'nou anders precies toevallig alsjeblieft ergens veel een de geen zo\'n zo’n mijn zijn onze mee weg terug thuis ' +
   'samen alleen zelf'].join(' ').split(' '));
-function free(rest) {
+/* Vrai quand le mot qui suit « je » peut suivre « ton » : « je » peut alors être « ton ». */
+function mayBeYour(rest) {
   const next = /^\s*([^\s?!.,;:"»)]*)/.exec(rest)[1];
-  return !next || /^[A-ZÀ-Ý]/.test(next) || FREE.has(next.toLowerCase());
+  return !!next && !/^[A-ZÀ-Ý]/.test(next) && !NEVER_AFTER_YOUR.has(next.toLowerCase());
 }
 const geInversions = inversions((verb, pron, rest) => {
   const t = TAKES[pron][verb];
   if (!t) return null;
-  return pron === 'je' && TAKES.u[verb] && !free(rest) ? null : t + ' ge';
+  return pron === 'je' && TAKES.u[verb] && mayBeYour(rest) ? null : t + ' ge';
 });
 const ge = s => (/^(u|je)$/i.test(s) ? sameCase(s, 'ge') : geInversions(s));
 

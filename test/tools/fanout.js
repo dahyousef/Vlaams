@@ -935,12 +935,12 @@ async function main() {
     /* #99 : une règle de grammaire enseigne le trou de ses phrases, à la première unité qui la
        liste. « Zijt », le trou de g-gegij, est vu à ikengij ; « begint », que g-halfuur écrit
        autour de son trou, n'est enseigné nulle part. */
-    const gwhyDrie = sentence => G.check(gen('tijd:w3', sentence), gin[0], gctx);
-    same(gwhyDrie({ nl: 'Zijt gij hier al drie jaar?', gap: 'drie', en: 'Have you been here for three years?', fr: 'Tu es ici depuis trois ans ?' }), [],
+    const gwhyThree = sentence => G.check(gen('tijd:w3', sentence), gin[0], gctx);
+    same(gwhyThree({ nl: 'Zijt gij hier al drie jaar?', gap: 'drie', en: 'Have you been here for three years?', fr: 'Tu es ici depuis trois ans ?' }), [],
       'une forme qu\'une règle de grammaire enseigne compte comme vue à l\'unité qui liste la règle (#99)');
-    same(gwhyDrie({ nl: 'Zijt gij om drie uur vrij?', gap: 'drie', en: 'Are you free at three?', fr: 'Tu es libre à trois heures ?' }),
+    same(gwhyThree({ nl: 'Zijt gij om drie uur vrij?', gap: 'drie', en: 'Are you free at three?', fr: 'Tu es libre à trois heures ?' }),
       ['sentence uses forms the course never teaches: vrij'], 'une forme qu\'aucune unité ni aucune règle n\'enseigne reste refusée');
-    same(gwhyDrie({ nl: 'Het begint om drie uur.', gap: 'drie', en: 'It starts at three.', fr: 'Ça commence à trois heures.' }),
+    same(gwhyThree({ nl: 'Het begint om drie uur.', gap: 'drie', en: 'It starts at three.', fr: 'Ça commence à trois heures.' }),
       ['sentence uses forms the course never teaches: begint'], 'une règle enseigne le trou de ses phrases, pas les mots qui l\'entourent');
     same(gwhy({ nl: 'Heb jij ook dorst?', gap: 'dorst', en: 'Are you thirsty too?', fr: 'Tu as soif aussi ?' }), ['sentence: « jij » is not how the course says you: ge or gij'], 'ge ou gij, jamais jij');
     same(gwhy({ nl: 'Ik heb dorst.', gap: 'dorst', en: 'I am thirsty.', fr: 'J’ai soif.' }), ['sentence has 3 tiles: 4 to 8'], 'les règles des phrases sourcées');

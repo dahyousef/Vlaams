@@ -1,13 +1,16 @@
 /* Ce que le kit de contenu (tools/content/) et test/content.js lisent d'un texte, écrit une
    fois : une forme sur une ligne, ses chiffres et ses {jetons}, ses citations.
 
-     const { QUOTES, oneLine, sig, untoken, quotes } = require('./lib/text');
+     const { QUOTES, oneLine, sig, untoken, quotes, strayQuotes } = require('./lib/text');
      QUOTES          les guillemets de chaque langue : fr « », en “ ”
      oneLine(s)      vrai pour une chaîne non vide, sans blanc autour, sans \r ni \n
      sig(s)          les chiffres et les {jetons} d'un texte, triés : deux textes qui disent la
                      même chose, en fr et en en, ont la même
      untoken(s)      le texte, chaque {jeton} remplacé par un blanc
-     quotes(s, l)    les citations d'un texte de langue l : { quoted, outside, why }, voir plus bas */
+     quotes(s, l)    les citations d'un texte de langue l : { quoted, outside, why }, voir plus bas
+     strayQuotes(s, l, also)
+                     la raison qu'un texte de langue l écrit les guillemets de l'autre langue,
+                     ou l'un des signes also ; '' sinon */
 
 const QUOTES = { en: ['“', '”'], fr: ['«', '»'] };
 const oneLine = s => typeof s === 'string' && s !== '' && s === s.trim() && !/[\r\n]/.test(s);
@@ -18,7 +21,7 @@ const untoken = s => String(s).replace(/\{[a-z]+\}/g, ' ');
    rognés. outside : le texte hors citations, chacune remplacée par « # », pour que la
    ponctuation qu'elle porte ne compte pas. why : '' quand chaque guillemet a sa paire, sinon la
    première faute dans l'ordre du texte, en anglais comme les raisons du kit. Les guillemets de
-   l'autre langue ne comptent pas ici : chaque appelant dit lui-même ce qu'il en fait. */
+   l'autre langue ne comptent pas ici : strayQuotes les lit. */
 function quotes(s, l) {
   const [open, close] = QUOTES[l], quoted = [];
   let depth = 0, cur = '', outside = '', why = '';
@@ -40,4 +43,10 @@ function quotes(s, l) {
   return { quoted, outside, why };
 }
 
-module.exports = { QUOTES, oneLine, sig, untoken, quotes };
+/* Chaque langue ne cite qu'avec ses guillemets : la raison, en anglais comme celles du kit,
+   qu'un texte de langue l écrit ceux de l'autre langue ou l'un des signes also, '' sinon.
+   open.js passe le guillemet droit dans also ; explain.js le refuse d'une autre raison. */
+const strayQuotes = (s, l, also) => (QUOTES[l === 'fr' ? 'en' : 'fr'].concat(also || []).some(m => s.indexOf(m) >= 0) ?
+  l + ' quotes with ' + QUOTES[l].join(' ') + ' only' : '');
+
+module.exports = { QUOTES, oneLine, sig, untoken, quotes, strayQuotes };
