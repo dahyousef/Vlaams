@@ -51,7 +51,8 @@ ships. Before a brief is approved, whoever wrote it:
 - reads its code as `reviewer.md` Part 2 reads a diff, smells included;
 - checks each insertion point against the file as it now stands;
 - gives step 1 a red check for every site step 3 changes, refactors aside (`CLAUDE.md`);
-- names under `Promises:` every ticket its text says will be filed.
+- names under `Promises:` every ticket its text says will be filed, and nothing else: what the task keeps
+  for the tasks after it (a name, a signature, an export) goes in its Why.
 
 ## The fan-out form
 

@@ -901,8 +901,9 @@ const HTML_FIELDS = ['explain', 'say', 'title', 'h', 'g'];
 const REFERENCE_TABLES = ['loans', 'sounds', 'faux', 'fauxEn'];
 /* Les mots cités hors du néerlandais du cours qui sont pourtant du néerlandais, avec la raison. Une note
    de mot ou de phrase n'en a pas besoin pour un mot que l'orthographe connaît et qu'elle cite dans ses
-   deux langues (6d.3). */
-const QUOTE_OK = {
+   deux langues (6d.3). Cette table, SHARED_OK et SOUND_OK n'ont pas de prototype : un mot lu
+   « constructor » ou « toString » n'y est pas listé. */
+const QUOTE_OK = Object.assign(Object.create(null), {
   pardon: 'le nord pour excuseer, dans la note d’un choix de la conversation du train',
   lijn: '« De Lijn », les bus flamands, dans la présentation de l’unité du trajet',
   jam: 'le nord pour de confituur, dans sa note d’emprunt',
@@ -918,10 +919,10 @@ const QUOTE_OK = {
   zeldzaam: 'ce que veut dire rare, dans le piège de raar',
   merk: '« het merk », ce que veut dire brand (une marque), dans le piège de de brand',
   plattegrond: '« de plattegrond », ce que veut dire map (un plan), dans le piège de de map'
-};
+});
 /* Les mots que le français et l'anglais écrivent tous deux et que le cours a aussi en néerlandais :
    l'anglais du bureau, une marque, un article. 6d.4 ne les prend pas pour du néerlandais laissé nu. */
-const SHARED_OK = {
+const SHARED_OK = Object.assign(Object.create(null), {
   a: 'le verbe avoir et l’article anglais ; le cours ne l’a que comme lettre, « de a »',
   ticket: 'l’anglais du bureau, le même en français et en anglais, dans la présentation de l’unité du travail',
   build: 'l’anglais du bureau, le même en français et en anglais, dans deux présentations',
@@ -934,12 +935,12 @@ const SHARED_OK = {
   t: 'la lettre t, nommée de même en français et en anglais, dans les notes de « Dat was plezant. », « Wat betekent dat? », « acht » et « komen »',
   s: 'la lettre s, nommée de même en français et en anglais, dans la note de « Niks speciaals, en bij u? »',
   o: 'la lettre o, nommée de même en français et en anglais, dans la note de « goedkoop »'
-};
+});
 /* Ce que la table des sons met en gras sans le déclarer néerlandais : la lettre ou le mot auquel elle
    compare un son, français (une fois, le w anglais), avec la raison (D5). Le reste de son gras est
    du néerlandais déclaré nl-BE : l'orthographe du son enseigné, ou la syllabe accentuée d'un
    exemple (6d.8). */
-const SOUND_OK = {
+const SOUND_OK = Object.assign(Object.create(null), {
   eu: 'le eu français de « peu » et de « peur », d’où partent eu et ui',
   ou: 'le ou français : le son de oe, et un côté du w',
   oe: '« un oe français », la lecture que oe ne doit pas avoir',
@@ -952,7 +953,7 @@ const SOUND_OK = {
   'dernière': 'la syllabe que le français accentue',
   'première': 'la syllabe que le néerlandais accentue, dite en français',
   doux: '« g doux », le nom français du son, dont le g est néerlandais'
-};
+});
 /* Le champ de prose d'un texte du cours : sa clé, ou celle de son parent pour un côté fr ou en. Une valeur
    de table (byDutch.notes["hallo"].fr) a pour parent le champ que sa table pose, que C.TABLES donne. */
 function fieldOf(key, where, C) {

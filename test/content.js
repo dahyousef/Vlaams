@@ -188,6 +188,11 @@ NL.state.open().then(() => {
      et les mots-outils sont dans test/lib/sequence.js, que les outils de contenu
      lisent aussi. */
   const first = sequence.firstUnits(NL.content);
+  /* « zijt » n'est le néerlandais d'aucun mot ni d'aucune phrase du cours : ikengij le pose en listant
+     le patron g-gegij, dont les exercices le donnent en lacune. Une phrase d'exemple peut l'écrire dès
+     ikengij (#99). */
+  ok(first.get('zijt') === units.findIndex(u => u.id === 'ikengij'),
+    '« zijt » n’est pas enseigné dès ikengij, qui liste g-gegij (#99) : première unité ' + first.get('zijt'));
   let ahead = 0, sentences = 0;
   units.forEach((u, ui) => (u.words || []).forEach(w => (w.drills || []).forEach(d => {
     sentences++;

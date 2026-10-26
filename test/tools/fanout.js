@@ -612,8 +612,9 @@ async function main() {
     Object.keys(PICK).forEach(id => same(why(id, PICK[id].be, PICK[id].evidence), [], 'une ligne juste passe : ' + id + ', ' + PICK[id].evidence));
     same(why('overleven:w12', null, null), [], 'be null, sans preuve : le néerlandais suffit');
     same(why('overleven:w12', null, 'none'), ['evidence is null when be is null'], 'be null n\'a pas de preuve');
-    same([why('overleven:w12', ' nie', 'rule:nie'), why('overleven:w12', 'ni\re', 'rule:nie')], [['be is a form on one line, or null'], ['be is a form on one line, or null']],
-      'be est une forme sur une ligne : ni blanc autour, ni \\r');
+    same([why('overleven:w12', ' nie', 'rule:nie'), why('overleven:w12', 'nie ', 'rule:nie'), why('overleven:w12', 'ni\re', 'rule:nie')],
+      [['be is a form on one line, or null'], ['be is a form on one line, or null'], ['be is a form on one line, or null']],
+      'be est une forme sur une ligne : ni blanc devant ou derrière, ni \\r');
     same(why('overleven:w12', 'nie', 'rule'), ['evidence is rule:<rule>[+<rule>…], wiktionary:<lemma> or none'], 'une preuve a sa forme');
     same(why('overleven:w12', 'Niet', 'none'), ['be is the Dutch itself: with nothing Flemish to teach, be is null'], 'be n\'est pas le néerlandais');
     same(why('onderweg:w0', 'de fiets, de velo', 'wiktionary:velo'), ['a word\'s first form is the Flemish one, and here it is the Dutch itself'],
