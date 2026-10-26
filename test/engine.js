@@ -6,6 +6,7 @@
    prévu dans douze minutes n'arrive jamais, et le défaut que cette suite garde
    est invisible. */
 const browser = require('./lib/browser');
+const { inZone, offsets } = require('./lib/zone');
 const ROOT = process.argv[2];
 const T0 = Date.parse('2026-10-05T08:00:00Z');
 const MIN = 60000, HOUR = 3600000, DAY = 86400000;
@@ -174,16 +175,12 @@ NL.state.open().then(() => {
   /* Un élément revient au début du jour local situé `interval` jours après la
      réponse, et jamais moins de huit heures après elle. Les instants sont écrits
      en UTC, et ce qu'on en attend aussi, relevé sur le calendrier de Bruxelles.
-     Le fuseau est fixé pour ce bloc seul : la CI, qui tourne en UTC, voit ainsi
-     les mêmes nuits de changement d'heure. Effacer TZ ne rend pas le fuseau de
-     départ, Node garde le dernier : on remet donc son nom, et le reste de la
+     Le fuseau est fixé pour ce bloc seul (test/lib/zone.js) : la CI, qui tourne
+     en UTC, voit ainsi les mêmes nuits de changement d'heure, et le reste de la
      suite tourne là où il a commencé. */
   {
-    const offsets = () => [Date.UTC(2026, 0, 15), Date.UTC(2026, 6, 15)].map(t => new Date(t).getTimezoneOffset()).join(' / ');
     const before = offsets();
-    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    process.env.TZ = 'Europe/Brussels';
-    try {
+    inZone('Europe/Brussels', () => {
       fresh();
       const it = NL.content.allItems().find(i => i.kind === 'word' && !i.cognate);
       [
@@ -198,7 +195,7 @@ NL.state.open().then(() => {
         const r = NL.srs.grade(it, true, { ex: 'type' });
         ok(r.due === Date.parse(want), 'answered on ' + when + ' in Brussels, an item is due ' + new Date(r.due).toISOString() + ', not ' + want);
       });
-    } finally { process.env.TZ = zone; }
+    });
     ok(offsets() === before, 'after the Brussels block the rest of the suite runs at UTC offsets ' + offsets() + ' (January / July), not ' + before + ' as before it');
     console.log('  8 h → minuit ; 23 h 50 → huit heures plus tard ; les deux nuits de changement d’heure ; huit jours → minuit');
   }

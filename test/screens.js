@@ -21,6 +21,7 @@ const { text } = require('./lib/langs');
 const put = (it, rung, due) => { NL.srs.seed(it, rung); const r = NL.state.rec(it.id); r.due = due; NL.state.setRec(r); };
 const fresh = () => { NL.state.clearAll(); NL.content.refresh(); B.clock.set(T0); };
 const { SCREENS } = require('./lib/screens');
+const { inZone, offsets } = require('./lib/zone');
 
 /* Ce qu'aucun écran ne doit montrer, quel que soit l'état. */
 function read(name, html, state) {
@@ -365,6 +366,41 @@ NL.state.open().then(async () => {
     fresh(); NL.content.refresh();
     ok(!/à toi/.test(text(NL.screens.meer.render())), 'with no own words the strip still shows « à toi »');
     console.log('  tuile et bandeau de Plus = ' + cp.met + ' rencontrés, ' + cp.produce + ' produits, 3 à toi ; filtre « produits » : ' + rows + ' lignes');
+  }
+
+  /* ------------------------------------------------------------------ */
+  console.log('\nLA SEMAINE DE PLUS — sept jours du calendrier, chacun sous son nom');
+  /* Un jour se compte sur le calendrier local, jamais en 24 heures : à Bruxelles, le
+     dernier dimanche d'octobre dure 25 heures, le dernier dimanche de mars 23 (#105).
+     Les instants sont écrits en UTC ; les jours attendus, relevés sur le calendrier
+     du fuseau, et leur nom tiré de la date seule, hors de tout fuseau. À Montréal,
+     une date lue comme minuit UTC tombe la veille : chaque barre y portait le nom du
+     jour d'avant. Chaque instant tourne dans son fuseau le temps de ses contrôles
+     (test/lib/zone.js). */
+  {
+    const before = offsets();
+    const U = NL.util;
+    const back = (key, n) => new Date(Date.parse(key + 'T00:00:00Z') - n * DAY).toISOString().slice(0, 10);
+    const named = key => key + ' ' + t.days[new Date(key + 'T00:00:00Z').getUTCDay()];
+    const bars = () => [...NL.screens.meer.render().matchAll(/class="spark-col" title="(\d{4}-\d\d-\d\d) : \d+">[\s\S]*?<span>([^<]*)<\/span>/g)]
+      .map(m => m[1] + ' ' + m[2]).join(', ');
+    fresh();
+    [
+      ['Europe/Brussels', '25 October 2026, 23:30', '2026-10-25T22:30:00Z', '2026-10-25'],   // le jour de 25 heures
+      ['Europe/Brussels', '27 October 2026, 23:30', '2026-10-27T22:30:00Z', '2026-10-27'],   // il est dans la semaine
+      ['Europe/Brussels', '30 March 2026, 00:30', '2026-03-29T22:30:00Z', '2026-03-30'],     // le lendemain du jour de 23 heures
+      ['America/Montreal', '25 October 2026, 18:30', '2026-10-25T22:30:00Z', '2026-10-25']   // à l'ouest de UTC
+    ].forEach(([tz, when, at, today]) => inZone(tz, () => {
+      B.clock.set(Date.parse(at));
+      const want = [6, 5, 4, 3, 2, 1, 0].map(n => named(back(today, n))).join(', '), got = bars();
+      ok(got === want, 'at ' + when + ' in ' + tz + ', the week chart reads « ' + got + ' », not « ' + want + ' »');
+      /* §12 de test/journey.js compte la série sur les jours que l'aide lui donne. */
+      const said = typeof U.daysBack === 'function' ? [1, 3].map(n => U.dayKey(U.daysBack(n))).join(' and ') : 'no NL.util.daysBack';
+      const meant = [1, 3].map(n => back(today, n)).join(' and ');
+      ok(said === meant, 'at ' + when + ' in ' + tz + ', one and three days back, as §12 of test/journey.js counts them, are ' + said + ', not ' + meant);
+    }));
+    ok(offsets() === before, 'after the week chart block the rest of the suite runs at UTC offsets ' + offsets() + ' (January / July), not ' + before + ' as before it');
+    console.log('  Bruxelles, autour des deux changements d’heure : sept jours de suite ; Montréal : chaque barre sous le nom de son jour ; un et trois jours plus tôt, comme les compte la série');
   }
 
   /* ------------------------------------------------------------------ */

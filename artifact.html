@@ -703,6 +703,10 @@ NL.util = (function () {
     return new Date(x.getTime() - x.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
   };
   const dayDiff = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000);
+  /* Le jour local n jours plus tôt, compté sur le calendrier et jamais en 24 heures :
+     à Bruxelles, le dernier dimanche d'octobre dure 25 heures, celui de mars 23 (#105).
+     La même heure, n dates plus tôt ; dayKey() en tire la clé, getDay() le nom du jour. */
+  const daysBack = n => { const x = new Date(); x.setDate(x.getDate() - n); return x; };
 
   const MIN = 60000, HOUR = 60 * MIN, DAY = 24 * HOUR;
   function ago(ms) {
@@ -715,7 +719,7 @@ NL.util = (function () {
 
   const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
 
-  return { esc, shuffle, sample, one, clamp, uniq, norm, words, tiles, bare, bareFr, lev, near, tolFor, typedOk, ratio, diffWords, dayKey, dayDiff, ago, debounce, MIN, HOUR, DAY };
+  return { esc, shuffle, sample, one, clamp, uniq, norm, words, tiles, bare, bareFr, lev, near, tolFor, typedOk, ratio, diffWords, dayKey, dayDiff, daysBack, ago, debounce, MIN, HOUR, DAY };
 })();
 </script>
 <script>
@@ -8290,8 +8294,8 @@ NL.screens.sessie = (function () {
       NL.state.logs().forEach(l => { const d = U.dayKey(l.t); byDay[d] = (byDay[d] || 0) + 1; });
       const days = [];
       for (let i = 6; i >= 0; i--) {
-        const d = U.dayKey(Date.now() - i * U.DAY);
-        days.push({ d, n: byDay[d] || 0 });
+        const at = U.daysBack(i), d = U.dayKey(at);
+        days.push({ d, n: byDay[d] || 0, weekday: at.getDay() });
       }
       const maxN = Math.max(1, ...days.map(x => x.n));
 
@@ -8311,7 +8315,7 @@ NL.screens.sessie = (function () {
         '<section class="card"><div class="spark">' +
         days.map(x => '<div class="spark-col" title="' + x.d + ' : ' + x.n + '">' +
           '<div class="spark-bar" style="height:' + Math.max(4, x.n / maxN * 62) + 'px"></div>' +
-          '<span>' + t.days[new Date(x.d).getDay()] + '</span></div>').join('') +
+          '<span>' + t.days[x.weekday] + '</span></div>').join('') +
         '</div>' +
         '<div class="mini-stats">' +
         '<span><b>' + cp.met + '</b> ' + t.statMet + '</span>' +

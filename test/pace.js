@@ -3,6 +3,7 @@
    la dette de révisions, l'oscillation sous plafond, la monotonie des types,
    et le contenu épuisé au jour 27. */
 const browser = require('./lib/browser');
+const { offsets } = require('./lib/zone');
 const ROOT = process.argv[2];
 const DAYS = Number(process.argv[3] || 400);
 const T0 = Date.parse('2026-01-05T08:00:00Z');
@@ -190,8 +191,8 @@ NL.state.open().then(() => {
      jours où il commence plus tôt que la veille sont ceux qu'aucun autre ne
      voit. */
   if (DRIFT) {
-    const offsets = [Date.UTC(2026, 0, 15), Date.UTC(2026, 6, 15)].map(t => new Date(t).getTimezoneOffset()).join(' / ');
-    ok(offsets === '-60 / -120', 'l’apprenant qui dérive tourne aux décalages ' + offsets + ' (janvier / juillet), pas à ceux de Bruxelles (-60 / -120) : son lendemain ne se compte pas à l’heure locale');
+    const seen = offsets();
+    ok(seen === '-60 / -120', 'l’apprenant qui dérive tourne aux décalages ' + seen + ' (janvier / juillet), pas à ceux de Bruxelles (-60 / -120) : son lendemain ne se compte pas à l’heure locale');
     okLong(nextEarlier > 0,'aucun des ' + leftEarlier + ' éléments laissés à un jour n’est revenu le lendemain, les jours où la séance commence plus tôt que la veille');
     P('  dont les jours commencés plus tôt', nextEarlier + ' sur ' + leftEarlier);
   }

@@ -297,7 +297,7 @@ function view(screen, arg) {
   /* ---------------------------------------------------------- 12. streak */
   head('12. Streak across days');
   NL.state.clearAll();
-  const day = d => U.dayKey(Date.now() - d * U.DAY);
+  const day = d => U.dayKey(U.daysBack(d));
   NL.state.setMeta({ lastDay: day(1), streak: 3, best: 3 });
   NL.state.creditDay(5);
   ok(NL.state.meta().streak === 4, 'a consecutive day did not extend the streak (got ' + NL.state.meta().streak + ')');
