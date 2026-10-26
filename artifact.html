@@ -6647,32 +6647,7 @@ NL.ex = (function () {
     },
     view(t, L, phase) {
       const sp = L.speech;
-      const blocked = NL.speech.listenBlocked();
-      let panel;
-
-      if (blocked) {
-        panel = recordPanel(sp, t.target, blocked);
-      } else if (sp.phase === 'listening') {
-        panel = '<div class="mic-panel live"><button class="mic big listening" data-mic="stop" aria-label="' + NL.t.stop + '">' + ICON.mic(34) + '</button>' +
-          '<p class="mic-why">' + NL.t.micListening + '</p>' +
-          NL.ui.ifText(sp.partial, 'p', 'heard', 'nl') + '</div>';
-      } else if (sp.phase === 'done') {
-        panel = '<div class="mic-panel ' + (sp.ok ? 'good' : 'bad') + '">' +
-          '<div class="score-row"><span class="score">' + wordScore(sp.parts) + '</span>' +
-          '<span class="score-bar"><span style="width:' + sp.pct + '%"></span></span></div>' +
-          '<p class="word-diff"' + NL.gloss.attr('nl') + '>' + sp.parts.map(p =>
-            '<span class="' + (p.ok ? (p.close ? 'w-close' : 'w-ok') : 'w-no') + '">' + esc(p.word) + '</span>').join(' ') + '</p>' +
-          (sp.heard ? '<p class="heard">' + NL.t.micHeard + ' &ldquo;<span' + NL.gloss.attr('nl') + '>' + esc(sp.heard) + '</span>&rdquo;</p>' : '') +
-          (!sp.ok && sp.tries < 3 ? '<div class="mic-actions"><button class="btn btn-blue" data-mic="start">' + NL.t.micRetry(3 - sp.tries) + '</button></div>' : '') +
-          /* Trois refus : le micro n'entend peut-être simplement pas ce mot-là.
-             Sans cette issue, l'élément serait redemandé chaque jour sans jamais monter. */
-          (!sp.ok && sp.tries >= 3 ? selfRate(sp) : '') +
-          '</div>';
-      } else {
-        panel = '<div class="mic-panel"><button class="mic big" data-mic="start" aria-label="' + NL.t.speak + '">' + ICON.mic(34) + '</button>' +
-          '<p class="mic-why">' + (sp.error ? esc(micError(sp.error)) : NL.t.micTap) + '</p>' +
-          (sp.error ? selfRate(sp) : '') + '</div>';
-      }
+      const panel = micPanel(sp, t.target);
 
       /* « Je ne peux pas parler » : proposé tant que rien n'a été tenté. Une fois
          la réponse donnée, c'est une réponse. */
@@ -6695,6 +6670,56 @@ NL.ex = (function () {
     },
     answer: t => t.target
   };
+
+  /* Le panneau du micro, le même sur les trois écrans qui font parler : cet exercice, le tour de
+     parole d'une conversation (scenario.js) et le nazeggen (listen.js). Il écoute, puis montre le
+     score, le mot à mot et ce que le micro a entendu ; quand le micro ne peut pas écouter, c'est
+     recordPanel. Un appelant passe dans `opts` ce qui diffère d'un écran à l'autre ; ce qu'il omet
+     est ce que fait cet exercice :
+       icon                   la taille du micro (34) ;
+       startAttrs, stopAttrs  les attributs des boutons qui lancent et arrêtent l'écoute
+                              (data-mic="start" et data-mic="stop", avec leur aria-label) ;
+       after(sp)              ce qui suit le score : l'action qui accepte et la règle qui fait
+                              réessayer (ici, réessayer jusqu'au troisième refus, puis s'évaluer) ;
+       graded                 false pour un écran qui ne note rien, le nazeggen : ni ligne
+                              « entendu », ni auto-évaluation, et un simple avis à la place de
+                              recordPanel. */
+  function micPanel(sp, target, opts) {
+    const o = Object.assign({
+      icon: 34, graded: true, after: retryThenRate,
+      startAttrs: ' data-mic="start" aria-label="' + NL.t.speak + '"',
+      stopAttrs: ' data-mic="stop" aria-label="' + NL.t.stop + '"'
+    }, opts);
+    const blocked = NL.speech.listenBlocked();
+    if (blocked) {
+      return o.graded ? recordPanel(sp, target, blocked) : '<div class="mic-panel offline"><p class="mic-why">' + NL.t.micNoBrowser + '</p></div>';
+    }
+    if (sp.phase === 'listening') {
+      return '<div class="mic-panel live"><button class="mic big listening"' + o.stopAttrs + '>' + ICON.mic(o.icon) + '</button>' +
+        '<p class="mic-why">' + NL.t.micListening + '</p>' +
+        NL.ui.ifText(sp.partial, 'p', 'heard', 'nl') + '</div>';
+    }
+    if (sp.phase === 'done') {
+      return '<div class="mic-panel ' + (sp.ok ? 'good' : 'bad') + '">' +
+        '<div class="score-row"><span class="score">' + wordScore(sp.parts) + '</span>' +
+        '<span class="score-bar"><span style="width:' + sp.pct + '%"></span></span></div>' +
+        '<p class="word-diff"' + NL.gloss.attr('nl') + '>' + sp.parts.map(p =>
+          '<span class="' + (p.ok ? (p.close ? 'w-close' : 'w-ok') : 'w-no') + '">' + esc(p.word) + '</span>').join(' ') + '</p>' +
+        (o.graded && sp.heard ? '<p class="heard">' + NL.t.micHeard + ' &ldquo;<span' + NL.gloss.attr('nl') + '>' + esc(sp.heard) + '</span>&rdquo;</p>' : '') +
+        o.after(sp) + '</div>';
+    }
+    /* Un refus s'affiche : sans ça, toucher le micro ne faisait rien, en silence. */
+    return '<div class="mic-panel"><button class="mic big"' + o.startAttrs + '>' + ICON.mic(o.icon) + '</button>' +
+      '<p class="mic-why">' + (sp.error ? esc(micError(sp.error)) : NL.t.micTap) + '</p>' +
+      (o.graded && sp.error ? selfRate(sp) : '') + '</div>';
+  }
+
+  /* Ce qui suit le score dans l'exercice : réessayer, puis s'évaluer. Trois refus : le micro
+     n'entend peut-être simplement pas ce mot-là. Sans cette issue, l'élément serait redemandé
+     chaque jour sans jamais monter. */
+  const retryThenRate = sp =>
+    (!sp.ok && sp.tries < 3 ? '<div class="mic-actions"><button class="btn btn-blue" data-mic="start">' + NL.t.micRetry(3 - sp.tries) + '</button></div>' : '') +
+    (!sp.ok && sp.tries >= 3 ? selfRate(sp) : '');
 
   /* No recogniser available. Record yourself instead and compare against the
      model — no service needed, works offline, works in Opera. Falls through to
@@ -7004,7 +7029,7 @@ NL.ex = (function () {
      NL.ui.ifProse, qui déclare nl-BE ce qu'elle cite. */
   const explanation = item => !item ? null : (item.kind === 'pattern' ? item.rule : item.note) || null;
 
-  return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, recordPanel, selfRate, wordScore, hereLine, rubric, explanation, accepted };
+  return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, micPanel, wordScore, hereLine, rubric, explanation, accepted };
 })();
 </script>
 <script>
@@ -8410,7 +8435,7 @@ NL.screens.sessie = (function () {
         panel = '<div class="say-now"><p class="say-target"' + NL.gloss.attr('nl') + '>' + esc(c.nl) + '</p>' +
           '<p class="say-en"' + NL.gloss.langAttr(c) + '>' + esc(NL.gloss.of(c)) + '</p>' +
           '<button class="speaker slow inline" data-say="' + esc(c.nl) + '" data-slow="1" aria-label="' + NL.t.slow + '">' + ICON.turtle() + '</button></div>' +
-          micPanel(P.speech, c.nl) +
+          NL.ex.micPanel(P.speech, c.nl, TURN) +
           NL.ui.ifProse(c.note, 'p', 'say-note');
       } else if (P.phase === 'done') {
         panel = '<div class="scn-done"><h2>' + NL.t.scnOver + '</h2>' +
@@ -8516,33 +8541,16 @@ NL.screens.sessie = (function () {
     });
   }
 
-  /* Shared look with the speak exercise, so the microphone always behaves the same. */
-  function micPanel(sp, target) {
-    const blocked = NL.speech.listenBlocked();
-    if (blocked) return NL.ex.recordPanel(sp, target, blocked);
-    if (sp.phase === 'listening') {
-      return '<div class="mic-panel live"><button class="mic big listening" data-mic="stop" aria-label="' + NL.t.stop + '">' + ICON.mic(32) + '</button>' +
-        '<p class="mic-why">' + NL.t.micListening + '</p>' + NL.ui.ifText(sp.partial, 'p', 'heard', 'nl') + '</div>';
-    }
-    if (sp.phase === 'done') {
-      return '<div class="mic-panel ' + (sp.ok ? 'good' : 'bad') + '">' +
-        '<div class="score-row"><span class="score">' + NL.ex.wordScore(sp.parts) + '</span>' +
-        '<span class="score-bar"><span style="width:' + sp.pct + '%"></span></span></div>' +
-        '<p class="word-diff"' + NL.gloss.attr('nl') + '>' + sp.parts.map(p =>
-          '<span class="' + (p.ok ? (p.close ? 'w-close' : 'w-ok') : 'w-no') + '">' + esc(p.word) + '</span>').join(' ') + '</p>' +
-        (sp.heard ? '<p class="heard">' + NL.t.micHeard + ' &ldquo;<span' + NL.gloss.attr('nl') + '>' + esc(sp.heard) + '</span>&rdquo;</p>' : '') +
-        '<div class="mic-actions">' +
-        (!sp.ok && sp.tries < 3 ? '<button class="btn btn-blue" data-mic="start">' + NL.t.replay + '</button>' : '') +
-        '<button class="btn ' + (sp.ok ? 'btn-good' : 'btn-ghost') + '" data-act="accept">' + (sp.ok ? NL.t.next : NL.t.micAnyway) + '</button>' +
-        '</div></div>';
-    }
-    return '<div class="mic-panel"><button class="mic big" data-mic="start" aria-label="' + NL.t.speak + '">' + ICON.mic(32) + '</button>' +
-      '<p class="mic-why">' + (sp.error ? esc(errText(sp.error)) : NL.t.micTap) + '</p>' +
-      (sp.error ? NL.ex.selfRate(sp) : '') + '</div>';
-  }
-  const errText = k => k === 'denied' ? NL.t.micDenied
-    : k === 'silence' ? NL.t.micSilence
-      : k === 'network' ? NL.t.micNetwork : NL.t.micFail;
+  /* The speak exercise's microphone panel (NL.ex.micPanel), so the microphone always behaves the
+     same. A turn differs by what follows the score: a retry until the third try, and a button that
+     always accepts the turn and moves on. */
+  const TURN = {
+    icon: 32,
+    after: sp => '<div class="mic-actions">' +
+      (!sp.ok && sp.tries < 3 ? '<button class="btn btn-blue" data-mic="start">' + NL.t.replay + '</button>' : '') +
+      '<button class="btn ' + (sp.ok ? 'btn-good' : 'btn-ghost') + '" data-act="accept">' + (sp.ok ? NL.t.next : NL.t.micAnyway) + '</button>' +
+      '</div>'
+  };
 })();
 </script>
 <script>
@@ -8639,7 +8647,7 @@ NL.screens.luisteren = (function () {
         '<p class="rev-nl"' + NL.gloss.attr('nl') + '>' + esc(c.be || c.nl) + '</p>' +
         '<p class="rev-en"' + NL.gloss.langAttr(c) + '>' + esc(NL.gloss.of(c)) + '</p>' +
         '<div class="listen-actions"><button class="btn btn-ghost" data-act="slow">' + NL.t.slow + '</button></div>' +
-        '</div>' + shadowPanel(sp);
+        '</div>' + NL.ex.micPanel(sp, c.nl, SHADOW);
     }
 
     return '<div class="lesson">' +
@@ -8658,26 +8666,12 @@ NL.screens.luisteren = (function () {
       '</div></div></div>';
   }
 
-  function shadowPanel(sp) {
-    if (NL.speech.listenBlocked()) {
-      return '<div class="mic-panel offline"><p class="mic-why">' + NL.t.micNoBrowser + '</p></div>';
-    }
-    if (sp.phase === 'listening') {
-      return '<div class="mic-panel live"><button class="mic big listening" data-act="micstop">' + ICON.mic(32) + '</button>' +
-        '<p class="mic-why">' + NL.t.micListening + '</p>' + NL.ui.ifText(sp.partial, 'p', 'heard', 'nl') + '</div>';
-    }
-    if (sp.phase === 'done') {
-      return '<div class="mic-panel ' + (sp.ok ? 'good' : 'bad') + '">' +
-        '<div class="score-row"><span class="score">' + NL.ex.wordScore(sp.parts) + '</span>' +
-        '<span class="score-bar"><span style="width:' + sp.pct + '%"></span></span></div>' +
-        '<p class="word-diff"' + NL.gloss.attr('nl') + '>' + sp.parts.map(p => '<span class="' + (p.ok ? (p.close ? 'w-close' : 'w-ok') : 'w-no') + '">' + esc(p.word) + '</span>').join(' ') + '</p>' +
-        '<div class="mic-actions"><button class="btn btn-blue" data-act="mic">' + NL.t.replay + '</button></div></div>';
-    }
-    /* Un refus s'affiche : sans ça, toucher le micro ne faisait rien, en silence. */
-    return '<div class="mic-panel"><button class="mic big" data-act="mic">' + ICON.mic(32) + '</button>' +
-      '<p class="mic-why">' + (sp.error ? esc(sp.error === 'denied' ? NL.t.micDenied : sp.error === 'silence' ? NL.t.micSilence
-        : sp.error === 'network' ? NL.t.micNetwork : NL.t.micFail) : NL.t.micTap) + '</p></div>';
-  }
+  /* Le panneau du micro de l'exercice « dire » (NL.ex.micPanel). Le nazeggen ne note rien : son
+     micro passe par data-act, et après le score il n'offre que de recommencer. */
+  const SHADOW = {
+    icon: 32, graded: false, startAttrs: ' data-act="mic"', stopAttrs: ' data-act="micstop"',
+    after: () => '<div class="mic-actions"><button class="btn btn-blue" data-act="mic">' + NL.t.replay + '</button></div>'
+  };
 
   function menu() {
     return '<div class="wrap">' +

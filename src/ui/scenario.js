@@ -107,7 +107,7 @@
         panel = '<div class="say-now"><p class="say-target"' + NL.gloss.attr('nl') + '>' + esc(c.nl) + '</p>' +
           '<p class="say-en"' + NL.gloss.langAttr(c) + '>' + esc(NL.gloss.of(c)) + '</p>' +
           '<button class="speaker slow inline" data-say="' + esc(c.nl) + '" data-slow="1" aria-label="' + NL.t.slow + '">' + ICON.turtle() + '</button></div>' +
-          micPanel(P.speech, c.nl) +
+          NL.ex.micPanel(P.speech, c.nl, TURN) +
           NL.ui.ifProse(c.note, 'p', 'say-note');
       } else if (P.phase === 'done') {
         panel = '<div class="scn-done"><h2>' + NL.t.scnOver + '</h2>' +
@@ -213,31 +213,14 @@
     });
   }
 
-  /* Shared look with the speak exercise, so the microphone always behaves the same. */
-  function micPanel(sp, target) {
-    const blocked = NL.speech.listenBlocked();
-    if (blocked) return NL.ex.recordPanel(sp, target, blocked);
-    if (sp.phase === 'listening') {
-      return '<div class="mic-panel live"><button class="mic big listening" data-mic="stop" aria-label="' + NL.t.stop + '">' + ICON.mic(32) + '</button>' +
-        '<p class="mic-why">' + NL.t.micListening + '</p>' + NL.ui.ifText(sp.partial, 'p', 'heard', 'nl') + '</div>';
-    }
-    if (sp.phase === 'done') {
-      return '<div class="mic-panel ' + (sp.ok ? 'good' : 'bad') + '">' +
-        '<div class="score-row"><span class="score">' + NL.ex.wordScore(sp.parts) + '</span>' +
-        '<span class="score-bar"><span style="width:' + sp.pct + '%"></span></span></div>' +
-        '<p class="word-diff"' + NL.gloss.attr('nl') + '>' + sp.parts.map(p =>
-          '<span class="' + (p.ok ? (p.close ? 'w-close' : 'w-ok') : 'w-no') + '">' + esc(p.word) + '</span>').join(' ') + '</p>' +
-        (sp.heard ? '<p class="heard">' + NL.t.micHeard + ' &ldquo;<span' + NL.gloss.attr('nl') + '>' + esc(sp.heard) + '</span>&rdquo;</p>' : '') +
-        '<div class="mic-actions">' +
-        (!sp.ok && sp.tries < 3 ? '<button class="btn btn-blue" data-mic="start">' + NL.t.replay + '</button>' : '') +
-        '<button class="btn ' + (sp.ok ? 'btn-good' : 'btn-ghost') + '" data-act="accept">' + (sp.ok ? NL.t.next : NL.t.micAnyway) + '</button>' +
-        '</div></div>';
-    }
-    return '<div class="mic-panel"><button class="mic big" data-mic="start" aria-label="' + NL.t.speak + '">' + ICON.mic(32) + '</button>' +
-      '<p class="mic-why">' + (sp.error ? esc(errText(sp.error)) : NL.t.micTap) + '</p>' +
-      (sp.error ? NL.ex.selfRate(sp) : '') + '</div>';
-  }
-  const errText = k => k === 'denied' ? NL.t.micDenied
-    : k === 'silence' ? NL.t.micSilence
-      : k === 'network' ? NL.t.micNetwork : NL.t.micFail;
+  /* The speak exercise's microphone panel (NL.ex.micPanel), so the microphone always behaves the
+     same. A turn differs by what follows the score: a retry until the third try, and a button that
+     always accepts the turn and moves on. */
+  const TURN = {
+    icon: 32,
+    after: sp => '<div class="mic-actions">' +
+      (!sp.ok && sp.tries < 3 ? '<button class="btn btn-blue" data-mic="start">' + NL.t.replay + '</button>' : '') +
+      '<button class="btn ' + (sp.ok ? 'btn-good' : 'btn-ghost') + '" data-act="accept">' + (sp.ok ? NL.t.next : NL.t.micAnyway) + '</button>' +
+      '</div>'
+  };
 })();
