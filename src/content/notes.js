@@ -323,7 +323,7 @@ NL.content.byDutch['notes'] = {
   'iedereen': { fr: 'On salue toute une salle avec « Dag iedereen! » (bonjour tout le monde).', en: 'You greet a whole room with “Dag iedereen!” (hello everyone).' },
   'ik': { fr: 'Après « ik », le verbe garde son radical nu, sans « t » : « ik werk », « ik woon ».', en: 'After “ik”, the verb keeps its bare stem, with no “t”: “ik werk”, “ik woon”.' },
   'ja': { fr: 'Redoublé, « jaja » veut souvent dire « ja, ja, ik weet het » et peut sonner impatient.', en: 'Doubled, “jaja” often means “ja, ja, ik weet het” and can sound impatient.' },
-  'jij': { fr: '« Gij » et « ge » sont la forme flamande courante. Dis « je » toi-même ; attends-toi à « ge » en retour.', en: '“Gij” and “ge” are the common Flemish form. Say “je” yourself; expect “ge” in return.' },
+  'jij': { fr: 'En Flandre, « gij » et « ge » remplacent « jij » à l’oral, et le verbe garde son -t même en tête : « hebt ge » là où les Pays-Bas disent « heb je ».', en: 'In Flanders, “gij” and “ge” replace “jij” in speech, and the verb keeps its -t even when it comes first: “hebt ge” where the Netherlands says “heb je”.' },
   'jong': { fr: 'Comparatif « jonger », superlatif « jongst ».', en: 'Comparative “jonger”, superlative “jongst”.' },
   'kijken': { fr: 'Pour regarder quelque chose, « naar » : « Ik kijk naar de foto » (je regarde la photo). Un film se regarde sans : « een film kijken ».', en: 'To look at something, “naar”: “Ik kijk naar de foto” (I look at the photo). A film is watched without it: “een film kijken”.' },
   'klaar': { fr: 'Deux prépositions : « klaar met » (fini avec) et « klaar voor » (prêt pour).', en: 'Two prepositions: “klaar met” (finished with) and “klaar voor” (ready for).' },

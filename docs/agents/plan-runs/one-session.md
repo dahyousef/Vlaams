@@ -2,8 +2,11 @@
 
 For a run whose `run.md` says `Mode: one session`. One run controller drives the whole plan, and a drafting
 lane runs beside the code lane. Where this file and `run-controller.md` differ, this file wins. The maintainer
-chose this on 2026-10-22 for phase 3 alone, as a trial, and decides at its end, from the trial report below,
-whether it stays.
+chose this on 2026-10-22 for phase 3, as a trial, and kept it on 2026-10-26, from phase 3's two trial reports,
+for a plan of about fifteen tasks or fewer whose rulings the maintainer leaves to the run controller. A longer
+plan, or one whose rulings the maintainer answers, runs in sittings: phase 3's 38 tasks took 7 compactions and
+17 slips in one session, its 12 follow-ups 1 compaction and no failed task. A longer plan with `fan-out` or
+`gate` tasks, which exist only here, is put to the maintainer before its run.
 
 You keep a chief of staff's stance (after `mattpocock/skills@5beb35b`, `skills/in-progress/chief-of-staff`,
 not installed): every piece of work is delegated, the ledger is your only memory, and the maintainer gets
@@ -106,13 +109,12 @@ Every dispatch's description starts with what it serves: `task <N>`, `batch <kin
 `measure`. Task and batch controllers name their own dispatches the same way, so the measure groups every
 transcript by them.
 
-## Measuring, and the trial report
+## Measuring
 
 The measures of `run-controller.md` (after the third code-lane task, and at the end) go to a `haiku` agent,
-description `measure`: "Read docs/agents/plan-runs/one-session.md, section « Measuring, and the trial
-report », and measure the run in <WS>/run.md. Report to <WS>/tmp/measure-<n>.md." It returns at most 10
-lines. At the plan's end, after the closing review, its report is the trial report, `<WS>/trial-report.md`:
-give the maintainer its path with the run's final report, and ask whether one session stays.
+description `measure`: "Read docs/agents/plan-runs/one-session.md, section « Measuring », and measure the
+run in <WS>/run.md. Report to <WS>/tmp/measure-<n>.md." It returns at most 10 lines. At the plan's end, after
+the closing review, give the maintainer its report's path with the run's final report.
 
 For the measuring agent:
 
@@ -121,7 +123,7 @@ For the measuring agent:
 2. Group its rows by the first words of their labels. A row whose label names no task, batch, `closing` or
    `measure` counts with its parent: its `.meta.json`, beside its transcript, gives the `parentAgentId`. The
    session's own row is the run controller's, reported apart: it cannot be split by task.
-3. Write, phase 3 beside phase 2:
+3. Write, the run beside phase 2:
    - **tokens**, weighted: the total, per code-lane task, the average per class, per batch and per kind, and
      the run controller's own row;
    - **hours**: from the first `Sitting:` line to the branch's last commit (`git log -1 --format=%ci`);

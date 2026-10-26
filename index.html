@@ -4358,7 +4358,7 @@ NL.content.byDutch['sourced'] = {
     'de minuut': [S('Ik ben er over vijf minuten.', { fr: 'J’y suis dans cinq minutes.', en: 'I’ll be there in five minutes.' }, 'minuten'),
       S('Nog één minuut, alstublieft.', { fr: 'Encore une minute, s’il vous plaît.', en: 'One more minute, please.' }, 'minuut')],
     'de dag': [S('Elke dag neem ik de trein.', { fr: 'Chaque jour je prends le train.', en: 'Every day I take the train.' }, 'dag'),
-      S('Het is een lange dag geweest.', { fr: 'Ça a été une longue journée.', en: 'It has been a long day.' }, 'dag')],
+      S('Het is een lange dag.', { fr: 'C’est une longue journée.', en: 'It’s a long day.' }, 'dag')],
     'de week': [S('Volgende week ben ik thuis.', { fr: 'La semaine prochaine je suis à la maison.', en: 'Next week I’ll be at home.' }, 'week'),
       S('Ik werk vier dagen per week.', { fr: 'Je travaille quatre jours par semaine.', en: 'I work four days a week.' }, 'week')],
     'de maand': [S('Volgende maand ga ik op vakantie.', { fr: 'Le mois prochain je pars en vacances.', en: 'Next month I’m going on holiday.' }, 'maand'),
@@ -4411,7 +4411,7 @@ NL.content.byDutch['sourced'] = {
       S('Ik neem twee broodjes mee.', { fr: 'J’emporte deux sandwichs.', en: 'I’ll take two sandwiches with me.' }, 'neem')],
 
     /* ---- unité 5 : chez toi ---- */
-    'het huis': [S('Ons huis staat in een rustige straat.', { fr: 'Notre maison est dans une rue calme.', en: 'Our house is in a quiet street.' }, 'huis'),
+    'het huis': [S('Mijn huis staat in een rustige straat.', { fr: 'Ma maison est dans une rue calme.', en: 'My house is in a quiet street.' }, 'huis'),
       S('Het huis van de buren is groot.', { fr: 'La maison des voisins est grande.', en: 'The neighbours’ house is big.' }, 'huis')],
     'de straat': [S('Wij wonen in dezelfde straat.', { fr: 'Nous habitons dans la même rue.', en: 'We live in the same street.' }, 'straat'),
       S('In onze straat is het rustig.', { fr: 'Dans notre rue c’est calme.', en: 'Our street is quiet.' }, 'straat')],
@@ -5114,7 +5114,7 @@ NL.content.byDutch['notes'] = {
   'iedereen': { fr: 'On salue toute une salle avec « Dag iedereen! » (bonjour tout le monde).', en: 'You greet a whole room with “Dag iedereen!” (hello everyone).' },
   'ik': { fr: 'Après « ik », le verbe garde son radical nu, sans « t » : « ik werk », « ik woon ».', en: 'After “ik”, the verb keeps its bare stem, with no “t”: “ik werk”, “ik woon”.' },
   'ja': { fr: 'Redoublé, « jaja » veut souvent dire « ja, ja, ik weet het » et peut sonner impatient.', en: 'Doubled, “jaja” often means “ja, ja, ik weet het” and can sound impatient.' },
-  'jij': { fr: '« Gij » et « ge » sont la forme flamande courante. Dis « je » toi-même ; attends-toi à « ge » en retour.', en: '“Gij” and “ge” are the common Flemish form. Say “je” yourself; expect “ge” in return.' },
+  'jij': { fr: 'En Flandre, « gij » et « ge » remplacent « jij » à l’oral, et le verbe garde son -t même en tête : « hebt ge » là où les Pays-Bas disent « heb je ».', en: 'In Flanders, “gij” and “ge” replace “jij” in speech, and the verb keeps its -t even when it comes first: “hebt ge” where the Netherlands says “heb je”.' },
   'jong': { fr: 'Comparatif « jonger », superlatif « jongst ».', en: 'Comparative “jonger”, superlative “jongst”.' },
   'kijken': { fr: 'Pour regarder quelque chose, « naar » : « Ik kijk naar de foto » (je regarde la photo). Un film se regarde sans : « een film kijken ».', en: 'To look at something, “naar”: “Ik kijk naar de foto” (I look at the photo). A film is watched without it: “een film kijken”.' },
   'klaar': { fr: 'Deux prépositions : « klaar met » (fini avec) et « klaar voor » (prêt pour).', en: 'Two prepositions: “klaar met” (finished with) and “klaar voor” (ready for).' },
@@ -5287,7 +5287,7 @@ NL.content.byDutch['decoys'] = {
   'goeiedag': ['goeidendag', 'goeienag'],
   'hallo': ['hei', 'hay'],
   'het thuiswerk': ['telewerg', 'televerk'],
-  'jij': ['gjij', 'jgij'],
+  'jij': ['jou', 'jy'],
   'natuurlijk': ['tuurlijg', 'turlijk'],
   'niet': ['nit', 'niee'],
   'nog eens': ['nog ies', 'nog ens'],
@@ -5480,20 +5480,26 @@ NL.content.byDutch['open.phrases'] = {
 NL.content = NL.content || {};
 
 /* Écrit pour un francophone, pas pour un anglophone : plusieurs voyelles
-   néerlandaises existent déjà en français, ce qui est un avantage réel. */
+   néerlandaises existent déjà en français, ce qui est un avantage réel.
+   Le gras dit deux choses. Le néerlandais, l'orthographe du son enseigné (class="nl") ou la
+   syllabe accentuée d'un exemple (dans son class="ex"), est déclaré nl-BE par NL.gloss.prose.
+   La lettre ou le mot auquel on compare le son, français (une fois, le w anglais), reste nu :
+   le u de tu est la lettre française. SOUND_OK, dans test/lang.js (6d.8), nomme chacun.
+   La tête d'une ligne (g), le nom du son, est une prose elle aussi : l'orthographe enseignée y porte
+   class="nl", et ce qui la nomme en français (accent tonique, final, suppression du) reste nu. */
 NL.content.sounds = [
-  { g: 'eu', ipa: '/ø/', good: true, say: 'Tu l’as déjà : c’est le <b>eu</b> de <i>peu</i>, identique. <span class="ex">deur</span>, <span class="ex">leuk</span>, <span class="ex">beenhouwer</span>. Un anglophone galère des mois là-dessus ; toi, non.' },
-  { g: 'oe', ipa: '/u/', good: true, say: 'C’est le <b>ou</b> français, rien d’autre. <span class="ex">boek</span>, <span class="ex">goed</span>, <span class="ex">zoeken</span>. Ne le lis jamais comme un <b>oe</b> français.' },
-  { g: 'u', ipa: '/y/', good: true, say: 'Le <b class="nl">u</b> de <i>tu</i>, exactement. <span class="ex">nu</span>, <span class="ex">minuut</span>, <span class="ex">uur</span>. Encore un cadeau du français.' },
-  { g: 'g / ch', ipa: '/ɣ/ doux', say: 'En Flandre c’est le <b>g doux</b> : un souffle au milieu de la bouche, proche de la <i>jota</i> espagnole adoucie — et bien plus près de ton <b>r</b> français que du raclement d’Amsterdam. <span class="ex">goeiedag</span>, <span class="ex">gracht</span>. Si tu as copié des enregistrements du nord, c’est la première chose à désapprendre.' },
-  { g: 'ui', ipa: '/œy/', say: 'Pars du <b>eu</b> de <i>peur</i>, lèvres arrondies, puis glisse vers un <b>i</b>. <span class="ex">huis</span>, <span class="ex">buiten</span>, <span class="ex">uit</span>. Le français te donne le point de départ ; il ne reste que le glissement.' },
-  { g: 'ij / ei', ipa: '/ɛi/', say: 'Même son, deux orthographes. Proche du <b>è</b> de <i>père</i> qui glisse vers un <b>i</b>. En Flandre il est plus plat qu’au nord. <span class="ex">wij</span>, <span class="ex">klein</span>, <span class="ex">vrijdag</span>.' },
-  { g: 'h', ipa: '/h/', warn: true, say: 'Le piège francophone numéro un : en néerlandais le <b>h</b> se prononce vraiment, avec un souffle. <span class="ex">huis</span>, <span class="ex">hebben</span>, <span class="ex">honger</span>. Le laisser tomber comme en français rend <i class="nl">hout</i> (bois) identique à <i class="nl">oud</i> (vieux).' },
-  { g: 'sch', ipa: '/sx/', say: 's suivi du g doux. <span class="ex">school</span>, <span class="ex">schrijven</span>. À la <i>fin</i> d’un mot, c’est juste /s/ : <span class="ex">Belgisch</span>.' },
-  { g: 'w', ipa: '/ʋ/', say: 'Entre le <b>v</b> et le <b>ou</b> français : les lèvres frôlent à peine les dents. <span class="ex">water</span>, <span class="ex">werk</span>. Jamais le <b>w</b> anglais.' },
+  { g: '<span class="nl">eu</span>', ipa: '/ø/', good: true, say: 'Tu l’as déjà : c’est le <b>eu</b> de <i>peu</i>, identique. <span class="ex">deur</span>, <span class="ex">leuk</span>, <span class="ex">beenhouwer</span>. Un anglophone galère des mois là-dessus ; toi, non.' },
+  { g: '<span class="nl">oe</span>', ipa: '/u/', good: true, say: 'C’est le <b>ou</b> français, rien d’autre. <span class="ex">boek</span>, <span class="ex">goed</span>, <span class="ex">zoeken</span>. Ne le lis jamais comme un <b>oe</b> français.' },
+  { g: '<span class="nl">u</span>', ipa: '/y/', good: true, say: 'Le <b>u</b> de <i>tu</i>, exactement. <span class="ex">nu</span>, <span class="ex">minuut</span>, <span class="ex">uur</span>. Encore un cadeau du français.' },
+  { g: '<span class="nl">g / ch</span>', ipa: '/ɣ/ doux', say: 'En Flandre c’est le <b><span class="nl">g</span> doux</b> : un souffle au milieu de la bouche, proche de la <i>jota</i> espagnole adoucie — et bien plus près de ton <b>r</b> français que du raclement d’Amsterdam. <span class="ex">goeiedag</span>, <span class="ex">gracht</span>. Si tu as copié des enregistrements du nord, c’est la première chose à désapprendre.' },
+  { g: '<span class="nl">ui</span>', ipa: '/œy/', say: 'Pars du <b>eu</b> de <i>peur</i>, lèvres arrondies, puis glisse vers un <b>i</b>. <span class="ex">huis</span>, <span class="ex">buiten</span>, <span class="ex">uit</span>. Le français te donne le point de départ ; il ne reste que le glissement.' },
+  { g: '<span class="nl">ij / ei</span>', ipa: '/ɛi/', say: 'Même son, deux orthographes. Proche du <b>è</b> de <i>père</i> qui glisse vers un <b>i</b>. En Flandre il est plus plat qu’au nord. <span class="ex">wij</span>, <span class="ex">klein</span>, <span class="ex">vrijdag</span>.' },
+  { g: '<span class="nl">h</span>', ipa: '/h/', warn: true, say: 'Le piège francophone numéro un : en néerlandais le <b class="nl">h</b> se prononce vraiment, avec un souffle. <span class="ex">huis</span>, <span class="ex">hebben</span>, <span class="ex">honger</span>. Le laisser tomber comme en français rend <i class="nl">hout</i> (bois) identique à <i class="nl">oud</i> (vieux).' },
+  { g: '<span class="nl">sch</span>', ipa: '/sx/', say: 's suivi du g doux. <span class="ex">school</span>, <span class="ex">schrijven</span>. À la <i>fin</i> d’un mot, c’est juste /s/ : <span class="ex">Belgisch</span>.' },
+  { g: '<span class="nl">w</span>', ipa: '/ʋ/', say: 'Entre le <b>v</b> et le <b>ou</b> français : les lèvres frôlent à peine les dents. <span class="ex">water</span>, <span class="ex">werk</span>. Jamais le <b>w</b> anglais.' },
   { g: 'accent tonique', ipa: '—', warn: true, say: 'Le français accentue la <b>dernière</b> syllabe ; le néerlandais accentue presque toujours la <b>première</b>. <span class="ex"><b>va</b>der</span>, <span class="ex"><b>wer</b>ken</span>, <span class="ex"><b>bak</b>ker</span>. Accentuer à la française est ce qui trahit le plus vite un francophone.' },
-  { g: '-en final', ipa: '/ə/', say: 'Le <b>n</b> tombe presque toujours à l’oral : <span class="ex">werken</span> sonne « <span class="nl">werke</span> », <span class="ex">lopen</span> sonne « <span class="nl">lope</span> ». Écris le n, ne le dis pas.' },
-  { g: 'suppression du t', ipa: '—', say: 'Le flamand rapide mange les t finaux : <span class="ex">niet</span> → « <span class="nl">nie</span> », <span class="ex">dat</span> → « <span class="nl">da</span> », <span class="ex">het</span> → « <span class="nl">’t</span> ». C’est pour ça que ça semble plus rapide que ça ne l’est.' }
+  { g: '<span class="nl">-en</span> final', ipa: '/ə/', say: 'Le <b class="nl">n</b> tombe presque toujours à l’oral : <span class="ex">werken</span> sonne « <span class="nl">werke</span> », <span class="ex">lopen</span> sonne « <span class="nl">lope</span> ». Écris le n, ne le dis pas.' },
+  { g: 'suppression du <span class="nl">t</span>', ipa: '—', say: 'Le flamand rapide mange les t finaux : <span class="ex">niet</span> → « <span class="nl">nie</span> », <span class="ex">dat</span> → « <span class="nl">da</span> », <span class="ex">het</span> → « <span class="nl">’t</span> ». C’est pour ça que ça semble plus rapide que ça ne l’est.' }
 ];
 
 /* Produis la colonne de gauche. Comprends celle de droite. */
@@ -6660,32 +6666,7 @@ NL.ex = (function () {
     },
     view(t, L, phase) {
       const sp = L.speech;
-      const blocked = NL.speech.listenBlocked();
-      let panel;
-
-      if (blocked) {
-        panel = recordPanel(sp, t.target, blocked);
-      } else if (sp.phase === 'listening') {
-        panel = '<div class="mic-panel live"><button class="mic big listening" data-mic="stop" aria-label="' + NL.t.stop + '">' + ICON.mic(34) + '</button>' +
-          '<p class="mic-why">' + NL.t.micListening + '</p>' +
-          NL.ui.ifText(sp.partial, 'p', 'heard', 'nl') + '</div>';
-      } else if (sp.phase === 'done') {
-        panel = '<div class="mic-panel ' + (sp.ok ? 'good' : 'bad') + '">' +
-          '<div class="score-row"><span class="score">' + wordScore(sp.parts) + '</span>' +
-          '<span class="score-bar"><span style="width:' + sp.pct + '%"></span></span></div>' +
-          '<p class="word-diff"' + NL.gloss.attr('nl') + '>' + sp.parts.map(p =>
-            '<span class="' + (p.ok ? (p.close ? 'w-close' : 'w-ok') : 'w-no') + '">' + esc(p.word) + '</span>').join(' ') + '</p>' +
-          (sp.heard ? '<p class="heard">' + NL.t.micHeard + ' &ldquo;<span' + NL.gloss.attr('nl') + '>' + esc(sp.heard) + '</span>&rdquo;</p>' : '') +
-          (!sp.ok && sp.tries < 3 ? '<div class="mic-actions"><button class="btn btn-blue" data-mic="start">' + NL.t.micRetry(3 - sp.tries) + '</button></div>' : '') +
-          /* Trois refus : le micro n'entend peut-être simplement pas ce mot-là.
-             Sans cette issue, l'élément serait redemandé chaque jour sans jamais monter. */
-          (!sp.ok && sp.tries >= 3 ? selfRate(sp) : '') +
-          '</div>';
-      } else {
-        panel = '<div class="mic-panel"><button class="mic big" data-mic="start" aria-label="' + NL.t.speak + '">' + ICON.mic(34) + '</button>' +
-          '<p class="mic-why">' + (sp.error ? esc(micError(sp.error)) : NL.t.micTap) + '</p>' +
-          (sp.error ? selfRate(sp) : '') + '</div>';
-      }
+      const panel = micPanel(sp, t.target);
 
       /* « Je ne peux pas parler » : proposé tant que rien n'a été tenté. Une fois
          la réponse donnée, c'est une réponse. */
@@ -6708,6 +6689,56 @@ NL.ex = (function () {
     },
     answer: t => t.target
   };
+
+  /* Le panneau du micro, le même sur les trois écrans qui font parler : cet exercice, le tour de
+     parole d'une conversation (scenario.js) et le nazeggen (listen.js). Il écoute, puis montre le
+     score, le mot à mot et ce que le micro a entendu ; quand le micro ne peut pas écouter, c'est
+     recordPanel. Un appelant passe dans `opts` ce qui diffère d'un écran à l'autre ; ce qu'il omet
+     est ce que fait cet exercice :
+       icon                   la taille du micro (34) ;
+       startAttrs, stopAttrs  les attributs des boutons qui lancent et arrêtent l'écoute
+                              (data-mic="start" et data-mic="stop", avec leur aria-label) ;
+       after(sp)              ce qui suit le score : l'action qui accepte et la règle qui fait
+                              réessayer (ici, réessayer jusqu'au troisième refus, puis s'évaluer) ;
+       graded                 false pour un écran qui ne note rien, le nazeggen : ni ligne
+                              « entendu », ni auto-évaluation, et un simple avis à la place de
+                              recordPanel. */
+  function micPanel(sp, target, opts) {
+    const o = Object.assign({
+      icon: 34, graded: true, after: retryThenRate,
+      startAttrs: ' data-mic="start" aria-label="' + NL.t.speak + '"',
+      stopAttrs: ' data-mic="stop" aria-label="' + NL.t.stop + '"'
+    }, opts);
+    const blocked = NL.speech.listenBlocked();
+    if (blocked) {
+      return o.graded ? recordPanel(sp, target, blocked) : '<div class="mic-panel offline"><p class="mic-why">' + NL.t.micNoBrowser + '</p></div>';
+    }
+    if (sp.phase === 'listening') {
+      return '<div class="mic-panel live"><button class="mic big listening"' + o.stopAttrs + '>' + ICON.mic(o.icon) + '</button>' +
+        '<p class="mic-why">' + NL.t.micListening + '</p>' +
+        NL.ui.ifText(sp.partial, 'p', 'heard', 'nl') + '</div>';
+    }
+    if (sp.phase === 'done') {
+      return '<div class="mic-panel ' + (sp.ok ? 'good' : 'bad') + '">' +
+        '<div class="score-row"><span class="score">' + wordScore(sp.parts) + '</span>' +
+        '<span class="score-bar"><span style="width:' + sp.pct + '%"></span></span></div>' +
+        '<p class="word-diff"' + NL.gloss.attr('nl') + '>' + sp.parts.map(p =>
+          '<span class="' + (p.ok ? (p.close ? 'w-close' : 'w-ok') : 'w-no') + '">' + esc(p.word) + '</span>').join(' ') + '</p>' +
+        (o.graded && sp.heard ? '<p class="heard">' + NL.t.micHeard + ' &ldquo;<span' + NL.gloss.attr('nl') + '>' + esc(sp.heard) + '</span>&rdquo;</p>' : '') +
+        o.after(sp) + '</div>';
+    }
+    /* Un refus s'affiche : sans ça, toucher le micro ne faisait rien, en silence. */
+    return '<div class="mic-panel"><button class="mic big"' + o.startAttrs + '>' + ICON.mic(o.icon) + '</button>' +
+      '<p class="mic-why">' + (sp.error ? esc(micError(sp.error)) : NL.t.micTap) + '</p>' +
+      (o.graded && sp.error ? selfRate(sp) : '') + '</div>';
+  }
+
+  /* Ce qui suit le score dans l'exercice : réessayer, puis s'évaluer. Trois refus : le micro
+     n'entend peut-être simplement pas ce mot-là. Sans cette issue, l'élément serait redemandé
+     chaque jour sans jamais monter. */
+  const retryThenRate = sp =>
+    (!sp.ok && sp.tries < 3 ? '<div class="mic-actions"><button class="btn btn-blue" data-mic="start">' + NL.t.micRetry(3 - sp.tries) + '</button></div>' : '') +
+    (!sp.ok && sp.tries >= 3 ? selfRate(sp) : '');
 
   /* No recogniser available. Record yourself instead and compare against the
      model — no service needed, works offline, works in Opera. Falls through to
@@ -7017,7 +7048,7 @@ NL.ex = (function () {
      NL.ui.ifProse, qui déclare nl-BE ce qu'elle cite. */
   const explanation = item => !item ? null : (item.kind === 'pattern' ? item.rule : item.note) || null;
 
-  return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, recordPanel, selfRate, wordScore, hereLine, rubric, explanation, accepted };
+  return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, micPanel, wordScore, hereLine, rubric, explanation, accepted };
 })();
 </script>
 <script>
@@ -8423,7 +8454,7 @@ NL.screens.sessie = (function () {
         panel = '<div class="say-now"><p class="say-target"' + NL.gloss.attr('nl') + '>' + esc(c.nl) + '</p>' +
           '<p class="say-en"' + NL.gloss.langAttr(c) + '>' + esc(NL.gloss.of(c)) + '</p>' +
           '<button class="speaker slow inline" data-say="' + esc(c.nl) + '" data-slow="1" aria-label="' + NL.t.slow + '">' + ICON.turtle() + '</button></div>' +
-          micPanel(P.speech, c.nl) +
+          NL.ex.micPanel(P.speech, c.nl, TURN) +
           NL.ui.ifProse(c.note, 'p', 'say-note');
       } else if (P.phase === 'done') {
         panel = '<div class="scn-done"><h2>' + NL.t.scnOver + '</h2>' +
@@ -8529,33 +8560,16 @@ NL.screens.sessie = (function () {
     });
   }
 
-  /* Shared look with the speak exercise, so the microphone always behaves the same. */
-  function micPanel(sp, target) {
-    const blocked = NL.speech.listenBlocked();
-    if (blocked) return NL.ex.recordPanel(sp, target, blocked);
-    if (sp.phase === 'listening') {
-      return '<div class="mic-panel live"><button class="mic big listening" data-mic="stop" aria-label="' + NL.t.stop + '">' + ICON.mic(32) + '</button>' +
-        '<p class="mic-why">' + NL.t.micListening + '</p>' + NL.ui.ifText(sp.partial, 'p', 'heard', 'nl') + '</div>';
-    }
-    if (sp.phase === 'done') {
-      return '<div class="mic-panel ' + (sp.ok ? 'good' : 'bad') + '">' +
-        '<div class="score-row"><span class="score">' + NL.ex.wordScore(sp.parts) + '</span>' +
-        '<span class="score-bar"><span style="width:' + sp.pct + '%"></span></span></div>' +
-        '<p class="word-diff"' + NL.gloss.attr('nl') + '>' + sp.parts.map(p =>
-          '<span class="' + (p.ok ? (p.close ? 'w-close' : 'w-ok') : 'w-no') + '">' + esc(p.word) + '</span>').join(' ') + '</p>' +
-        (sp.heard ? '<p class="heard">' + NL.t.micHeard + ' &ldquo;<span' + NL.gloss.attr('nl') + '>' + esc(sp.heard) + '</span>&rdquo;</p>' : '') +
-        '<div class="mic-actions">' +
-        (!sp.ok && sp.tries < 3 ? '<button class="btn btn-blue" data-mic="start">' + NL.t.replay + '</button>' : '') +
-        '<button class="btn ' + (sp.ok ? 'btn-good' : 'btn-ghost') + '" data-act="accept">' + (sp.ok ? NL.t.next : NL.t.micAnyway) + '</button>' +
-        '</div></div>';
-    }
-    return '<div class="mic-panel"><button class="mic big" data-mic="start" aria-label="' + NL.t.speak + '">' + ICON.mic(32) + '</button>' +
-      '<p class="mic-why">' + (sp.error ? esc(errText(sp.error)) : NL.t.micTap) + '</p>' +
-      (sp.error ? NL.ex.selfRate(sp) : '') + '</div>';
-  }
-  const errText = k => k === 'denied' ? NL.t.micDenied
-    : k === 'silence' ? NL.t.micSilence
-      : k === 'network' ? NL.t.micNetwork : NL.t.micFail;
+  /* The speak exercise's microphone panel (NL.ex.micPanel), so the microphone always behaves the
+     same. A turn differs by what follows the score: a retry until the third try, and a button that
+     always accepts the turn and moves on. */
+  const TURN = {
+    icon: 32,
+    after: sp => '<div class="mic-actions">' +
+      (!sp.ok && sp.tries < 3 ? '<button class="btn btn-blue" data-mic="start">' + NL.t.replay + '</button>' : '') +
+      '<button class="btn ' + (sp.ok ? 'btn-good' : 'btn-ghost') + '" data-act="accept">' + (sp.ok ? NL.t.next : NL.t.micAnyway) + '</button>' +
+      '</div>'
+  };
 })();
 </script>
 <script>
@@ -8652,7 +8666,7 @@ NL.screens.luisteren = (function () {
         '<p class="rev-nl"' + NL.gloss.attr('nl') + '>' + esc(c.be || c.nl) + '</p>' +
         '<p class="rev-en"' + NL.gloss.langAttr(c) + '>' + esc(NL.gloss.of(c)) + '</p>' +
         '<div class="listen-actions"><button class="btn btn-ghost" data-act="slow">' + NL.t.slow + '</button></div>' +
-        '</div>' + shadowPanel(sp);
+        '</div>' + NL.ex.micPanel(sp, c.nl, shadow());
     }
 
     return '<div class="lesson">' +
@@ -8671,26 +8685,15 @@ NL.screens.luisteren = (function () {
       '</div></div></div>';
   }
 
-  function shadowPanel(sp) {
-    if (NL.speech.listenBlocked()) {
-      return '<div class="mic-panel offline"><p class="mic-why">' + NL.t.micNoBrowser + '</p></div>';
-    }
-    if (sp.phase === 'listening') {
-      return '<div class="mic-panel live"><button class="mic big listening" data-act="micstop">' + ICON.mic(32) + '</button>' +
-        '<p class="mic-why">' + NL.t.micListening + '</p>' + NL.ui.ifText(sp.partial, 'p', 'heard', 'nl') + '</div>';
-    }
-    if (sp.phase === 'done') {
-      return '<div class="mic-panel ' + (sp.ok ? 'good' : 'bad') + '">' +
-        '<div class="score-row"><span class="score">' + NL.ex.wordScore(sp.parts) + '</span>' +
-        '<span class="score-bar"><span style="width:' + sp.pct + '%"></span></span></div>' +
-        '<p class="word-diff"' + NL.gloss.attr('nl') + '>' + sp.parts.map(p => '<span class="' + (p.ok ? (p.close ? 'w-close' : 'w-ok') : 'w-no') + '">' + esc(p.word) + '</span>').join(' ') + '</p>' +
-        '<div class="mic-actions"><button class="btn btn-blue" data-act="mic">' + NL.t.replay + '</button></div></div>';
-    }
-    /* Un refus s'affiche : sans ça, toucher le micro ne faisait rien, en silence. */
-    return '<div class="mic-panel"><button class="mic big" data-act="mic">' + ICON.mic(32) + '</button>' +
-      '<p class="mic-why">' + (sp.error ? esc(sp.error === 'denied' ? NL.t.micDenied : sp.error === 'silence' ? NL.t.micSilence
-        : sp.error === 'network' ? NL.t.micNetwork : NL.t.micFail) : NL.t.micTap) + '</p></div>';
-  }
+  /* Le panneau du micro de l'exercice « dire » (NL.ex.micPanel). Le nazeggen ne note rien : son
+     micro passe par data-act, et après le score il n'offre que de recommencer. Ses boutons portent
+     les noms de ceux de l'exercice, lus dans la langue du moment : d'où une fonction. */
+  const shadow = () => ({
+    icon: 32, graded: false,
+    startAttrs: ' data-act="mic" aria-label="' + NL.t.speak + '"',
+    stopAttrs: ' data-act="micstop" aria-label="' + NL.t.stop + '"',
+    after: () => '<div class="mic-actions"><button class="btn btn-blue" data-act="mic">' + NL.t.replay + '</button></div>'
+  });
 
   function menu() {
     return '<div class="wrap">' +
@@ -8979,7 +8982,7 @@ NL.screens.luisteren = (function () {
         '<h1>' + NL.t.soundsTitle + '</h1>' +
         '<p>' + NL.t.soundsBody + '</p></section>' +
         NL.content.sounds.map(s =>
-          '<div class="snd-row' + (s.good ? ' good' : s.warn ? ' warn' : '') + '"><div class="snd-head"><b' + NL.gloss.attr('nl') + '>' + esc(s.g) + '</b><code>' + esc(s.ipa) + '</code>' +
+          '<div class="snd-row' + (s.good ? ' good' : s.warn ? ' warn' : '') + '"><div class="snd-head"><b' + NL.gloss.langAttr(s.g) + '>' + NL.gloss.prose(s.g) + '</b><code>' + esc(s.ipa) + '</code>' +
           (s.good ? '<span class="snd-tag good">' + NL.t.soundsEasy + '</span>' : s.warn ? '<span class="snd-tag warn">' + NL.t.soundsWatch + '</span>' : '') + '</div>' +
           '<p' + NL.gloss.langAttr(s.say) + '>' + NL.gloss.prose(s.say) + '</p></div>').join('') +
         '</div>';

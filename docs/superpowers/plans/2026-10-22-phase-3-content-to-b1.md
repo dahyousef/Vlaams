@@ -8962,6 +8962,13 @@ and the reader's verdict on it:
 - **Do fr and en ask the same thing**, and does each `what` mean the same on both sides?
 - `unsure` rows first.
 
+**Note, 25 October 2026 (#94).** The example row's « dit combien » need stops at six: a learner who asks
+for « zeven pistolets », « tien » or « 12 » is told they did not say how many, and the Reader focus above
+disputes a need that rejects a right answer. Both readers of `units-1-6` disputed it, and the retry widened
+the need to every number: `src/content/open.phrases.js` ships
+`rx: /\d|\b(een|één|half|elf|twaalf|honderd|\S*(twee|drie|vier|vijf|zes|zeven|acht|negen|tien|tig))\b/i`.
+The example stays as it was decided on 22 October; a Format copied from it takes the need that shipped.
+
 ### Task 23: The meaning when both sides are Dutch (D2)
 Class: engine
 Ticket: #90

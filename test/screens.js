@@ -33,6 +33,14 @@ function read(name, html, state) {
   ok(!/\d\s?%/.test(txt), where + ' shows a percentage: « ' + (txt.match(/.{0,40}\d\s?%.{0,15}/) || [''])[0] + ' »');
   ok(!/ma[iî]tris|\bmaster/i.test(txt), where + ' still speaks of mastery: « ' + (txt.match(/.{0,30}(ma[iî]tris|\bmaster).{0,20}/i) || [''])[0] + ' »');
   ok(!/test de niveau/i.test(txt) && html.indexOf('placement') < 0, where + ' still offers the placement test');
+  /* Un bouton sans texte, une icône seule, se nomme par son aria-label : sans lui, un lecteur
+     d'écran ne dit que « bouton ». Un bouton dans un <label> qui a du texte porte ce texte pour
+     nom : les interrupteurs des réglages. */
+  const unlabelled = html.replace(/<label\b[^>]*>[\s\S]*?<\/label>/g, l => text(l).trim() ? '' : l);
+  const unnamed = (unlabelled.match(/<button\b[^>]*>[\s\S]*?<\/button>/g) || [])
+    .map(b => [b.match(/^<button\b[^>]*>/)[0], text(b).trim()])
+    .filter(([open, said]) => !said && !/\saria-label="[^"]+"/.test(open)).map(([open]) => open);
+  ok(unnamed.length === 0, where + ' has a button with neither text nor aria-label: ' + unnamed.join(' '));
   return txt;
 }
 const sweep = state => SCREENS.forEach(name => {
@@ -261,6 +269,45 @@ NL.state.open().then(async () => {
     ok(spoken === 0, spoken + ' spoken exercise(s) after the button was pressed');
     S.abandon();
     console.log('  présent sur l’exercice parlé, absent des ' + asked + ' autres, retiré une fois la réponse donnée ; appuyé : plus rien à voix haute');
+  }
+
+  /* ------------------------------------------------------------------ */
+  console.log('\nLE MICRO A UN NOM — fermé et ouvert');
+  {
+    /* Le micro n'est qu'une icône, et read() demande un nom à tout bouton sans texte. Mais la page
+       de ce fichier n'a pas de reconnaissance vocale : ses écrans montrent l'enregistreur ou un avis
+       à la place du micro. Une page qui en a une le montre, fermé puis ouvert : au tour de parole
+       d'une conversation, qui prend les boutons de l'exercice parlé, et au nazeggen, qui passe les
+       siens. Le nom se lit dans la langue du moment : en anglais aussi. */
+    const R = browser.open({ root: ROOT, seed: browser.SEED, now: T0, ua: browser.UA.EDG, byId: 'stub', media: true, recogniser: true,
+      voices: [{ name: 'Microsoft Bart - Dutch (Belgium)', lang: 'nl-BE', localService: true }] });
+    await R.NL.state.open();
+    const page = () => R.app.innerHTML;
+    /* Un résultat provisoire garde l'écoute ouverte (test/lib/browser.js) : sans lui, le faux
+       micro entend un silence et se ferme aussitôt. */
+    const named = (where, start, stop, closed) => {
+      ok(page().indexOf(closed) >= 0, where + ': the microphone is not on screen, the check is hollow');
+      read(where, page(), 'micro fermé');
+      R.ctx.__partialNext = 'nog'; start();
+      ok(page().indexOf('mic big listening') >= 0, where + ': the microphone did not open, the check is hollow');
+      read(where, page(), 'micro ouvert');
+      stop();
+    };
+    const shadowing = () => { R.NL.ui.go('luisteren'); R.NL.screens.luisteren.click({ dataset: {} }, { act: 'nazeggen' }); };
+    R.NL.ui.go('scenario', 's-bakker');
+    for (let g = 0; page().indexOf('data-mic="start"') < 0 && g < 20; g++) {
+      R.NL.screens.scenario.click({ dataset: {} }, { step: 'next' }); R.NL.screens.scenario.click({ dataset: {} }, { choice: '0' });
+    }
+    named('scenario', () => R.tap({ mic: 'start' }), () => R.tap({ mic: 'stop' }), 'data-mic="start"');
+    shadowing();
+    named('nazeggen', () => R.tap({ act: 'mic' }), () => R.tap({ act: 'micstop' }), 'data-act="mic"');
+    /* En anglais, le micro fermé du nazeggen dit « Speak » : un nom écrit au chargement resterait
+       dans la langue où la page s'est ouverte. */
+    R.NL.state.setMeta({ displayLang: 'en' }); R.NL.lang.apply();
+    shadowing();
+    const mic = (page().match(/<button class="mic big"[^>]*>/) || [''])[0];
+    ok(mic.indexOf('aria-label="' + R.NL.tables.en.speak + '"') >= 0, 'in English, the nazeggen microphone is not named « ' + R.NL.tables.en.speak + ' »: ' + (mic || 'no microphone'));
+    console.log('  au tour de parole et au nazeggen, le micro fermé et ouvert a un nom ; en anglais, « ' + R.NL.tables.en.speak + ' »');
   }
 
   /* ------------------------------------------------------------------ */

@@ -5,8 +5,11 @@
      const sequence = require('./lib/sequence');
      sequence.GRAMMAR                 les mots-outils (un Set) : on n'écrit pas une phrase sans
                                       eux, ils ne comptent jamais
-     sequence.firstUnits(units)       Map forme → index de la première unité dont un mot ou une
-                                      phrase écrit cette forme (spelling.tokens)
+     sequence.firstUnits(course)      Map forme → index de la première unité qui l'enseigne
+                                      (spelling.tokens) : un de ses mots ou une de ses phrases
+                                      l'écrit, ou c'est le trou d'une phrase d'une règle de
+                                      grammaire qu'elle liste ; course est { units, patterns },
+                                      NL.content ou le RAW des outils
      sequence.forms(item, NL)         les formes d'un mot qu'une phrase peut employer (un Set) :
                                       ses formes, et pour un mot d'une forme, un pluriel (nom),
                                       un radical et sa forme en -t (verbe), une forme en -e (autre)
@@ -15,7 +18,10 @@
                                       n'enseigne et que le Set own ne contient pas
 
    ui est l'index d'une unité dans l'ordre du cours, first ce que firstUnits() rend. Une forme
-   n'est comptée qu'une fois par texte. Ce que ces formes NE voient PAS : une forme fléchie
+   n'est comptée qu'une fois par texte. Une règle de grammaire enseigne le trou de chacune de ses
+   phrases, à la première unité qui la liste, comme src/content/index.js la range ; les autres
+   mots d'une phrase l'entourent et ne comptent pas : « begint », que g-halfuur écrit, n'est
+   enseigné nulle part (#99). Ce que ces formes NE voient PAS : une forme fléchie
    qu'elles ne savent pas former (un participe, un pluriel irrégulier) compte comme jamais
    enseignée ; un homographe compte comme le mot du cours. Une forme fléchie d'un AUTRE mot du
    cours (« oude » quand le cours a enseigné « oud ») compte aussi comme jamais enseignée :
@@ -28,10 +34,14 @@ const GRAMMAR = new Set(('ik ge gij je jij u hij ze zij we wij het de een is ben
   'die deze er hier daar ook nog al wel te in op van met voor aan bij naar uit om over door tot me mijn ' +
   'uw zo heel veel wat wie waar hoe nu dan als zich eens even graag ja nee').split(' '));
 
-function firstUnits(units) {
+function firstUnits(course) {
   const first = new Map();
-  units.forEach((u, ui) => (u.words || []).concat(u.phrases || []).forEach(it =>
-    tokens(it.nl).forEach(t => { if (!first.has(t)) first.set(t, ui); })));
+  course.units.forEach((u, ui) => {
+    const listed = course.patterns.filter(p => (u.grammar || []).indexOf(p.id) >= 0);
+    (u.words || []).concat(u.phrases || []).map(it => it.nl)
+      .concat(...listed.map(p => (p.drills || []).map(d => d.gap)))
+      .forEach(s => tokens(s).forEach(t => { if (!first.has(t)) first.set(t, ui); }));
+  });
   return first;
 }
 

@@ -151,7 +151,17 @@ async function main() {
   /* Gent est vu à la première unité, comme le cours écrit la commune par défaut : seul named l'écarte. */
   const units = [{ words: [{ nl: 'de bakker' }, { nl: 'het brood' }, { nl: 'oud' }, { nl: 'tot straks' }, { nl: 'bakken' }, { nl: 'de dag' }],
     phrases: [{ nl: 'in Gent' }] }, { words: [{ nl: 'de trein' }] }];
-  const seq = { NL, first: sequence.firstUnits(units), ui: 0 };
+  const seq = { NL, first: sequence.firstUnits({ units, patterns: [] }), ui: 0 };
+  /* #99, ce que firstUnits rend et que rank lit : une règle de grammaire enseigne le trou de
+     chacune de ses phrases, à la première unité qui la liste, comme src/content/index.js range
+     la règle ; les autres mots de la phrase l'entourent, elle ne les enseigne pas. */
+  const taught = sequence.firstUnits({
+    units: [{ words: [{ nl: 'de trein' }], grammar: ['g-b'] }, { words: [{ nl: 'werken' }, { nl: 'klaar' }], grammar: ['g-a', 'g-b'] }],
+    patterns: [{ id: 'g-a', drills: [{ nl: 'Zijt ge klaar?', gap: 'Zijt' }, { nl: 'Neemt ge de trein?', gap: 'trein' }] },
+      { id: 'g-b', drills: [{ nl: 'Ik werk thuis.', gap: 'werk' }] }]
+  });
+  same(['zijt', 'trein', 'werk', 'klaar', 'neemt', 'thuis'].map(t => taught.has(t) ? taught.get(t) : null), [1, 0, 0, 1, null, null],
+    'firstUnits : le trou d\'une phrase compte à la première unité qui liste sa règle, ses autres mots jamais');
   const word = (nl, art, en) => ({ kind: 'word', nl, art, fr: '-', en });
   const ids = (nl, art, en) => tatoeba.rank(T, word(nl, art, en), seq).map(c => c.id);
   same(tatoeba.rank(T, word('de bakker', 'de', 'the baker'), seq)[0], {

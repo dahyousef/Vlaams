@@ -65,7 +65,7 @@ NL.content.byDutch['decoys'] = {
   'goeiedag': ['goeidendag', 'goeienag'],
   'hallo': ['hei', 'hay'],
   'het thuiswerk': ['telewerg', 'televerk'],
-  'jij': ['gjij', 'jgij'],
+  'jij': ['jou', 'jy'],
   'natuurlijk': ['tuurlijg', 'turlijk'],
   'niet': ['nit', 'niee'],
   'nog eens': ['nog ies', 'nog ens'],

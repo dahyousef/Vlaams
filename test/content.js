@@ -11,6 +11,7 @@ const spelling = require('./lib/spelling');
 const sequence = require('./lib/sequence');
 const { raw, owed, at, owedTables, has } = require('./lib/prose');
 const tree = require('./lib/tree');
+const { oneLine, sig } = require('./lib/text');
 const ROOT = process.argv[2] || path.join(__dirname, '..');
 
 let fails = 0, checks = 0;
@@ -186,13 +187,18 @@ NL.state.open().then(() => {
      comptent pas : on ne peut pas écrire une phrase sans eux. L'ordre du cours
      et les mots-outils sont dans test/lib/sequence.js, que les outils de contenu
      lisent aussi. */
-  const first = sequence.firstUnits(units);
+  const first = sequence.firstUnits(NL.content);
+  /* « zijt » n'est le néerlandais d'aucun mot ni d'aucune phrase du cours : ikengij le pose en listant
+     le patron g-gegij, dont les exercices le donnent en lacune. Une phrase d'exemple peut l'écrire dès
+     ikengij (#99). */
+  ok(first.get('zijt') === units.findIndex(u => u.id === 'ikengij'),
+    '« zijt » n’est pas enseigné dès ikengij, qui liste g-gegij (#99) : première unité ' + first.get('zijt'));
   let ahead = 0, sentences = 0;
   units.forEach((u, ui) => (u.words || []).forEach(w => (w.drills || []).forEach(d => {
     sentences++;
     if (sequence.ahead(d.nl, ui, first).length) ahead++;
   })));
-  const AHEAD_BUDGET = 62;
+  const AHEAD_BUDGET = 61;
   ok(ahead <= AHEAD_BUDGET, ahead + ' phrases d’exemple empruntent du vocabulaire à une unité ultérieure, budget ' + AHEAD_BUDGET +
     ' — baisser le budget quand on en corrige, jamais le lever');
   ok(ahead >= AHEAD_BUDGET, 'seulement ' + ahead + ' phrases empruntent en avant : baisser AHEAD_BUDGET à ' + ahead + ' pour verrouiller le gain');
@@ -211,7 +217,6 @@ NL.state.open().then(() => {
   ok(!!sourced && !!sr, 'src/content/sourced.js n’est pas chargé : l’inscrire dans SRC (build.sh), juste avant src/content/examples.js');
   ok(!sr || sr.missing.length === 0, 'src/content/sourced.js : ' + (sr ? sr.missing.join(', ') : '') + ' ne correspond à aucun mot du cours');
   const FIELDS = ['en', 'fr', 'gap', 'nl', 'src'];
-  const line = s => typeof s === 'string' && s.trim() !== '' && !/[\r\n]/.test(s);
   const credited = [], keys = new Set(), neverTaught = [];
   let fromSource = 0;
   RAW.units.forEach((u, ui) => (u.words || []).forEach((w, i) => {
@@ -227,8 +232,8 @@ NL.state.open().then(() => {
       const at = where + ' phrase ' + (j + 1);
       ok(Object.keys(d).sort().join() === FIELDS.join(), at + ' : ses champs sont ' + Object.keys(d).sort().join(', ') + ', pas ' + FIELDS.join(', '));
       ok((Number.isInteger(d.src) && d.src > 0) || d.src === 'gen', at + ' : src vaut le numéro d’une phrase de Tatoeba ou « gen », pas ' + JSON.stringify(d.src));
-      ok(['nl', 'fr', 'en', 'gap'].every(k => line(d[k])), at + ' : nl, fr, en et gap tiennent chacun sur une ligne, non vide');
-      if (!line(d.nl) || !line(d.gap)) return;
+      ok(['nl', 'fr', 'en', 'gap'].every(k => oneLine(d[k])), at + ' : nl, fr, en et gap tiennent chacun sur une ligne, non vide, sans blanc autour');
+      if (!oneLine(d.nl) || !oneLine(d.gap)) return;
       const cloze = NL.ex.get('cloze').build(Object.assign({}, NL.content.byId(u.id + ':w' + i), { drills: [d] }));
       ok(cloze.gap === d.gap && cloze.shown !== d.nl, at + ' : le texte à trous ne sait pas cacher « ' + d.gap + ' » dans « ' + d.nl + ' »');
       ok(![d.nl, d.fr, d.en].some(s => spelling.named(s, NL)), at + ' : une phrase sourcée n’a ni jeton ni nom par défaut (NL.content.DEFAULTS)');
@@ -378,7 +383,6 @@ NL.state.open().then(() => {
 
   /* Parcours de RAW : tout objet qui porte un `en` porte un `fr`, et les mêmes chiffres et {jetons}. */
   let lonely = 0, drift = 0;
-  const sig = s => (String(s).match(/\d+|\{[a-z]+\}/g) || []).sort().join('|');
   ok(sig('{naam} arrive à 3 h') === sig('Arrives at 3, {naam}'), 'sig : un jeton et un chiffre dans un autre ordre ne sont pas une dérive');
   ok(sig('3 h') !== sig('4 h'), 'sig : un chiffre qui change reste une dérive');
   tree.visitCourse(RAW, (v, key, where) => {

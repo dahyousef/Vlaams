@@ -515,12 +515,15 @@ function langAttrFind(B, each) {
   tree.visit(NL.content, (v, key) => { if ((key === 'fr' || key === 'en') && typeof v === 'string') gloss[key].add(U.norm(v)); });
   ['fr', 'en'].forEach(l => tree.visit(NL.tables[l], v => { if (typeof v === 'string') gloss[l].add(U.norm(v)); }));
   ok(dutch.size > 100, '6 : trop peu de mots néerlandais à chercher (' + dutch.size + ')');
+  /* La table des sons compare un son à une lettre française, en gras et nue (6d.8) : « le u de tu »
+     est le u français. Ce que SOUND_OK nomme, en gras sur l'écran des sons, n'est pas cherché. */
+  const compared = (n, r) => n === 'klanken' && r.tags.indexOf('b') >= 0 && SOUND_OK[r.text];
   const bad = new Map();
   ['fr', 'en'].forEach(l => {
     (l === 'fr' ? French : English)(B);
     each(B, (n, h) => runs(h, pageLang(B)).forEach(r => {
       const t = U.norm(r.text), own = /^fr/i.test(r.lang) ? 'fr' : /^en/i.test(r.lang) ? 'en' : null;
-      if (dutch.has(t) && !/^nl/i.test(r.lang) && !(own && gloss[own].has(t))) { const key = l + ' « ' + r.text + ' » (' + (r.lang || 'sans lang') + ')'; if (!bad.has(key)) bad.set(key, n); }
+      if (dutch.has(t) && !/^nl/i.test(r.lang) && !(own && gloss[own].has(t)) && !compared(n, r)) { const key = l + ' « ' + r.text + ' » (' + (r.lang || 'sans lang') + ')'; if (!bad.has(key)) bad.set(key, n); }
     }));
   });
   return bad;
@@ -891,15 +894,16 @@ function displayChecks() {
    seule langue (NL.content.anchors), se lisent de même : say, la prose des sons, comme explain ;
    trap, le piège d'un faux ami, comme une note. */
 const QUOTED_FIELDS = ['note', 'blurb', 'rule', 'ask', 'what', 'outro', 'hint', 'trap'];
-/* Les champs écrits en HTML, montrés par NL.gloss.prose. */
-const HTML_FIELDS = ['explain', 'say', 'title', 'h'];
+/* Les champs écrits en HTML, montrés par NL.gloss.prose : g est la tête d'une ligne de la table des sons. */
+const HTML_FIELDS = ['explain', 'say', 'title', 'h', 'g'];
 /* Les tables de référence (src/content/reference.js) lues avec le cours : les emprunts, les sons et les
    deux tables de faux amis. C.TABLES, lui, donne les tables par le néerlandais (byDutch). */
 const REFERENCE_TABLES = ['loans', 'sounds', 'faux', 'fauxEn'];
 /* Les mots cités hors du néerlandais du cours qui sont pourtant du néerlandais, avec la raison. Une note
    de mot ou de phrase n'en a pas besoin pour un mot que l'orthographe connaît et qu'elle cite dans ses
-   deux langues (6d.3). */
-const QUOTE_OK = {
+   deux langues (6d.3). Cette table, SHARED_OK et SOUND_OK n'ont pas de prototype : un mot lu
+   « constructor » ou « toString » n'y est pas listé. */
+const QUOTE_OK = Object.assign(Object.create(null), {
   pardon: 'le nord pour excuseer, dans la note d’un choix de la conversation du train',
   lijn: '« De Lijn », les bus flamands, dans la présentation de l’unité du trajet',
   jam: 'le nord pour de confituur, dans sa note d’emprunt',
@@ -915,10 +919,10 @@ const QUOTE_OK = {
   zeldzaam: 'ce que veut dire rare, dans le piège de raar',
   merk: '« het merk », ce que veut dire brand (une marque), dans le piège de de brand',
   plattegrond: '« de plattegrond », ce que veut dire map (un plan), dans le piège de de map'
-};
+});
 /* Les mots que le français et l'anglais écrivent tous deux et que le cours a aussi en néerlandais :
    l'anglais du bureau, une marque, un article. 6d.4 ne les prend pas pour du néerlandais laissé nu. */
-const SHARED_OK = {
+const SHARED_OK = Object.assign(Object.create(null), {
   a: 'le verbe avoir et l’article anglais ; le cours ne l’a que comme lettre, « de a »',
   ticket: 'l’anglais du bureau, le même en français et en anglais, dans la présentation de l’unité du travail',
   build: 'l’anglais du bureau, le même en français et en anglais, dans deux présentations',
@@ -931,7 +935,25 @@ const SHARED_OK = {
   t: 'la lettre t, nommée de même en français et en anglais, dans les notes de « Dat was plezant. », « Wat betekent dat? », « acht » et « komen »',
   s: 'la lettre s, nommée de même en français et en anglais, dans la note de « Niks speciaals, en bij u? »',
   o: 'la lettre o, nommée de même en français et en anglais, dans la note de « goedkoop »'
-};
+});
+/* Ce que la table des sons met en gras sans le déclarer néerlandais : la lettre ou le mot auquel elle
+   compare un son, français (une fois, le w anglais), avec la raison (D5). Le reste de son gras est
+   du néerlandais déclaré nl-BE : l'orthographe du son enseigné, ou la syllabe accentuée d'un
+   exemple (6d.8). */
+const SOUND_OK = Object.assign(Object.create(null), {
+  eu: 'le eu français de « peu » et de « peur », d’où partent eu et ui',
+  ou: 'le ou français : le son de oe, et un côté du w',
+  oe: '« un oe français », la lecture que oe ne doit pas avoir',
+  u: 'le u de « tu » : la lettre française, que le néerlandais prononce pareil',
+  r: 'le r français, plus près du g doux que le raclement du nord',
+  i: 'le i français, vers lequel glissent ui et ij / ei',
+  'è': 'le è de « père », d’où part ij / ei',
+  v: 'le v français, l’autre côté du w',
+  w: '« le w anglais », la lecture que w ne doit pas avoir',
+  'dernière': 'la syllabe que le français accentue',
+  'première': 'la syllabe que le néerlandais accentue, dite en français',
+  doux: '« g doux », le nom français du son, dont le g est néerlandais'
+});
 /* Le champ de prose d'un texte du cours : sa clé, ou celle de son parent pour un côté fr ou en. Une valeur
    de table (byDutch.notes["hallo"].fr) a pour parent le champ que sa table pose, que C.TABLES donne. */
 function fieldOf(key, where, C) {
@@ -1144,7 +1166,48 @@ function quoteChecks() {
     });
   };
 
-  return [q1, q2, q3, q4, q5, q6, q7].reduce((p, c) => p.then(c), Promise.resolve());
+  /* 6d.8. Le gras de la table des sons, lu sur son écran (D5) : du néerlandais, que l'écran déclare
+     nl-BE (l'orthographe du son enseigné, qui porte class="nl", ou la syllabe accentuée d'un
+     exemple), ou la lettre ou le mot auquel la table compare le son, nu, que SOUND_OK nomme avec sa
+     raison. Un gras nu hors de SOUND_OK est du néerlandais non déclaré ; une comparaison déclarée
+     nl-BE, du français pris pour du néerlandais. */
+  const q8 = () => {
+    const B = boot();
+    return B.NL.state.open().then(() => {
+      B.NL.ui.go('klanken');
+      /* Le texte de chaque son seul : ni la tête de sa ligne, le nom du son, lue plus bas, ni l'en-tête
+         de l'app, qui a son gras à lui, « Vlaams ». */
+      const rows = B.app.innerHTML.match(/<div class="snd-row[\s\S]*?<\/p><\/div>/g) || [];
+      const says = rows.map(row => row.replace(/^[\s\S]*?<\/div>|<\/div>$/g, ''));
+      ok(says.length === B.NL.content.sounds.length, '6d : l’écran des sons ne montre pas une ligne par son, le contrôle lit mal sa table');
+      const bold = runs(says.join(''), pageLang(B)).filter(r => r.tags.indexOf('b') >= 0);
+      const dutch = bold.filter(r => r.lang === 'nl-BE'), bare = bold.filter(r => r.lang !== 'nl-BE');
+      bare.filter(r => !SOUND_OK[r.text]).forEach(r => ok(false, '6d : « ' + r.text + ' » en gras dans la table des sons, hors de nl-BE — une orthographe néerlandaise porte class="nl", une comparaison va dans SOUND_OK avec sa raison'));
+      dutch.filter(r => SOUND_OK[r.text]).forEach(r => ok(false, '6d : « ' + r.text + ' » déclaré nl-BE dans la table des sons, quand SOUND_OK en fait une comparaison, nue'));
+      Object.keys(SOUND_OK).forEach(w => ok(bare.some(r => r.text === w), '6d : « ' + w + ' » n’est plus une comparaison en gras de la table des sons : son exception est de trop'));
+      ok(dutch.length > 0, '6d : aucun gras déclaré nl-BE dans le texte des sons, le contrôle est creux');
+      console.log('  sons en gras    ' + dutch.length + ' déclarés nl-BE, ' + bare.length + ' comparaisons, ' + Object.keys(SOUND_OK).length + ' exceptions');
+      /* La tête de chaque ligne, le nom du son : l'orthographe néerlandaise qu'il enseigne, déclarée
+         nl-BE, et ce qui la nomme en français (« accent tonique », « final », « suppression du »), nu.
+         Un mot de la tête est du néerlandais quand un exemple néerlandais de sa ligne l'écrit : eu dans
+         deur, t dans niet. Déclaré nl-BE, il doit y être ; nu, il ne doit pas. */
+      let named = 0;
+      rows.forEach((row, i) => {
+        const head = runs((/<div class="snd-head">(<b\b[\s\S]*?<\/b>)/.exec(row) || ['', ''])[1], pageLang(B));
+        const said = runs(says[i], pageLang(B)).filter(r => r.lang === 'nl-BE').map(r => r.text.toLowerCase()).join(' ');
+        const wrong = [].concat(...head.map(r => (r.text.toLowerCase().match(/\p{L}+/gu) || [])
+          .filter(w => (r.lang === 'nl-BE') !== (said.indexOf(w) >= 0)).map(w => w + ' (' + r.lang + ')')));
+        named += head.filter(r => r.lang === 'nl-BE').length;
+        ok(head.length > 0 && wrong.length === 0, head.length
+          ? '6d : la tête « ' + head.map(r => r.text).join(' ') + ' » de la table des sons déclare mal ' + wrong.join(', ') + ' — nl-BE, ce qu’un exemple de sa ligne écrit ; nu, le français qui le nomme'
+          : '6d : la ligne ' + (i + 1) + ' de la table des sons n’a pas de tête en gras, le contrôle lit mal l’écran');
+      });
+      ok(named > 0, '6d : aucune tête de la table des sons ne déclare nl-BE, le contrôle est creux');
+      console.log('  têtes des sons  ' + rows.length + ' têtes, ' + named + ' passages déclarés nl-BE');
+    });
+  };
+
+  return [q1, q2, q3, q4, q5, q6, q7, q8].reduce((p, c) => p.then(c), Promise.resolve());
 }
 
 const plain = boot(), paired = boot({ prepare: NL => pairUp(NL.content) });

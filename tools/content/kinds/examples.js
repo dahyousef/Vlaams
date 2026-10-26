@@ -13,30 +13,27 @@
    (src/content/examples.js). Les phrases sourcées n'y sont pas : Merge les écrit, et une
    seconde Merge ne doit pas trouver ses propres lignes périmées.
 
-   Le genre examples-gen (tools/content/kinds/examples-gen.js) reprend d'ici RULES, cut, line, MAX
-   et stamp. Ce que Check imprime est en anglais, comme le reste du kit. */
+   Le genre examples-gen (tools/content/kinds/examples-gen.js) reprend d'ici RULES, cut, MAX et
+   stamp. Ce que Check imprime est en anglais, comme le reste du kit. */
 const fs = require('fs'), path = require('path');
 const tatoeba = require('../tatoeba');
 const table = require('../lib/table');
 const sequence = require('../../../test/lib/sequence');
 const spelling = require('../../../test/lib/spelling');
 const { tokens } = spelling;
+const { oneLine, sig } = require('../../../test/lib/text');
 
 const MAX = 40;
 const FIELDS = ['src', 'nl', 'gap', 'en', 'enSrc', 'fr', 'frSrc'];
 const CREDITS = 'word	nld	nld_owner	eng	eng_owner	fra	fra_owner	adapted';
 
-const line = s => typeof s === 'string' && s.trim() !== '' && !/[\r\n]/.test(s);
-/* Les chiffres et les {jetons} d'un texte, triés : test/content.js tient le fr et l'en de chaque
-   paire du cours à la même signature, avec la même fonction. */
-const sig = s => (String(s).match(/\d+|\{[a-z]+\}/g) || []).sort().join('|');
 const hand = s => (s.drills || []).filter(d => !('src' in d)).length;
 
 /* Ce que le cours donne aux règles, une fois par chargement : l'ordre des unités, la première
    unité de chaque forme, l'orthographe, et l'extrait de Tatoeba quand on le demande. */
 const memo = new WeakMap();
 function seen(C, repo) {
-  if (!memo.has(C)) memo.set(C, { order: C.RAW.units.map(u => u.id), first: sequence.firstUnits(C.RAW.units), S: spelling.open(repo, C.NL), T: null });
+  if (!memo.has(C)) memo.set(C, { order: C.RAW.units.map(u => u.id), first: sequence.firstUnits(C.RAW), S: spelling.open(repo, C.NL), T: null });
   return memo.get(C);
 }
 const extractOf = (C, repo) => {
@@ -105,7 +102,7 @@ function split(C, ctx) {
 function check(row, input, ctx) {
   const out = [], list = row.sentences;
   if (!Array.isArray(list) || list.length > 2 || list.some(d => !d || typeof d !== 'object' || Array.isArray(d))) return ['sentences is a list of 0 to 2 sentences'];
-  if (!list.length && !line(row.skip)) out.push('a row with no sentence says why in skip, on one line');
+  if (!list.length && !oneLine(row.skip)) out.push('a row with no sentence says why in skip, on one line');
   if (list.length && 'skip' in row) out.push('skip is for a row with no sentence');
   if (!list.length) return out;
   const C = ctx.course(), src = C.byId(input.id);
@@ -118,7 +115,7 @@ function check(row, input, ctx) {
       out.push(at + ' has the fields ' + FIELDS.join(', ') + ' (and edited when a translation is not Tatoeba\'s), not ' + Object.keys(d).join(', '));
       return;
     }
-    if (![d.nl, d.gap, d.en, d.fr].every(line)) { out.push(at + ': nl, gap, en and fr are each a string on one line'); return; }
+    if (![d.nl, d.gap, d.en, d.fr].every(oneLine)) { out.push(at + ': nl, gap, en and fr are each a string on one line'); return; }
     const s = T.nld.get(d.src);
     if (!(input.candidates || []).some(c => c.id === d.src) || !s) { out.push(at + ': src ' + d.src + ' is not one of the row\'s candidates'); return; }
     if (d.nl !== s.text) out.push(at + ': nl is not Tatoeba\'s sentence ' + d.src + ', « ' + s.text + ' »: a sentence is taken as Tatoeba writes it');
@@ -128,7 +125,7 @@ function check(row, input, ctx) {
       if (s[k].indexOf(id) < 0 || !t) { out.push(at + ': ' + l + 'Src ' + id + ' is not a translation Tatoeba links to ' + d.src); return; }
       if (d[l] !== t.text) changed.push(l + ' « ' + d[l] + ' » is not Tatoeba\'s ' + id + ', « ' + t.text + ' »');
     });
-    if (changed.length && !line(d.edited)) changed.forEach(c => out.push(at + ': ' + c + ': take it as written, or say why in edited'));
+    if (changed.length && !oneLine(d.edited)) changed.forEach(c => out.push(at + ': ' + c + ': take it as written, or say why in edited'));
     if (!changed.length && 'edited' in d) out.push(at + ': edited is for a translation that is not Tatoeba\'s, and both are');
     RULES(d, at, src, C, ctx.repo).forEach(r => out.push(r));
   });
@@ -172,5 +169,5 @@ module.exports = {
   merge: row => ({ sourced: row.sentences.length ? row.sentences.map(d => ({ nl: d.nl, fr: d.fr, en: d.en, gap: d.gap, src: d.src })) : undefined }),
   write: credit,
   readWhole: row => (row.sentences || []).some(d => 'edited' in d) ? 'edited translation' : '',
-  MAX, CREDITS, RULES, cut, line
+  MAX, CREDITS, RULES, cut
 };

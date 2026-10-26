@@ -91,7 +91,7 @@ NL.screens.luisteren = (function () {
         '<p class="rev-nl"' + NL.gloss.attr('nl') + '>' + esc(c.be || c.nl) + '</p>' +
         '<p class="rev-en"' + NL.gloss.langAttr(c) + '>' + esc(NL.gloss.of(c)) + '</p>' +
         '<div class="listen-actions"><button class="btn btn-ghost" data-act="slow">' + NL.t.slow + '</button></div>' +
-        '</div>' + shadowPanel(sp);
+        '</div>' + NL.ex.micPanel(sp, c.nl, shadow());
     }
 
     return '<div class="lesson">' +
@@ -110,26 +110,15 @@ NL.screens.luisteren = (function () {
       '</div></div></div>';
   }
 
-  function shadowPanel(sp) {
-    if (NL.speech.listenBlocked()) {
-      return '<div class="mic-panel offline"><p class="mic-why">' + NL.t.micNoBrowser + '</p></div>';
-    }
-    if (sp.phase === 'listening') {
-      return '<div class="mic-panel live"><button class="mic big listening" data-act="micstop">' + ICON.mic(32) + '</button>' +
-        '<p class="mic-why">' + NL.t.micListening + '</p>' + NL.ui.ifText(sp.partial, 'p', 'heard', 'nl') + '</div>';
-    }
-    if (sp.phase === 'done') {
-      return '<div class="mic-panel ' + (sp.ok ? 'good' : 'bad') + '">' +
-        '<div class="score-row"><span class="score">' + NL.ex.wordScore(sp.parts) + '</span>' +
-        '<span class="score-bar"><span style="width:' + sp.pct + '%"></span></span></div>' +
-        '<p class="word-diff"' + NL.gloss.attr('nl') + '>' + sp.parts.map(p => '<span class="' + (p.ok ? (p.close ? 'w-close' : 'w-ok') : 'w-no') + '">' + esc(p.word) + '</span>').join(' ') + '</p>' +
-        '<div class="mic-actions"><button class="btn btn-blue" data-act="mic">' + NL.t.replay + '</button></div></div>';
-    }
-    /* Un refus s'affiche : sans ça, toucher le micro ne faisait rien, en silence. */
-    return '<div class="mic-panel"><button class="mic big" data-act="mic">' + ICON.mic(32) + '</button>' +
-      '<p class="mic-why">' + (sp.error ? esc(sp.error === 'denied' ? NL.t.micDenied : sp.error === 'silence' ? NL.t.micSilence
-        : sp.error === 'network' ? NL.t.micNetwork : NL.t.micFail) : NL.t.micTap) + '</p></div>';
-  }
+  /* Le panneau du micro de l'exercice « dire » (NL.ex.micPanel). Le nazeggen ne note rien : son
+     micro passe par data-act, et après le score il n'offre que de recommencer. Ses boutons portent
+     les noms de ceux de l'exercice, lus dans la langue du moment : d'où une fonction. */
+  const shadow = () => ({
+    icon: 32, graded: false,
+    startAttrs: ' data-act="mic" aria-label="' + NL.t.speak + '"',
+    stopAttrs: ' data-act="micstop" aria-label="' + NL.t.stop + '"',
+    after: () => '<div class="mic-actions"><button class="btn btn-blue" data-act="mic">' + NL.t.replay + '</button></div>'
+  });
 
   function menu() {
     return '<div class="wrap">' +

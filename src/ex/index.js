@@ -337,32 +337,7 @@ NL.ex = (function () {
     },
     view(t, L, phase) {
       const sp = L.speech;
-      const blocked = NL.speech.listenBlocked();
-      let panel;
-
-      if (blocked) {
-        panel = recordPanel(sp, t.target, blocked);
-      } else if (sp.phase === 'listening') {
-        panel = '<div class="mic-panel live"><button class="mic big listening" data-mic="stop" aria-label="' + NL.t.stop + '">' + ICON.mic(34) + '</button>' +
-          '<p class="mic-why">' + NL.t.micListening + '</p>' +
-          NL.ui.ifText(sp.partial, 'p', 'heard', 'nl') + '</div>';
-      } else if (sp.phase === 'done') {
-        panel = '<div class="mic-panel ' + (sp.ok ? 'good' : 'bad') + '">' +
-          '<div class="score-row"><span class="score">' + wordScore(sp.parts) + '</span>' +
-          '<span class="score-bar"><span style="width:' + sp.pct + '%"></span></span></div>' +
-          '<p class="word-diff"' + NL.gloss.attr('nl') + '>' + sp.parts.map(p =>
-            '<span class="' + (p.ok ? (p.close ? 'w-close' : 'w-ok') : 'w-no') + '">' + esc(p.word) + '</span>').join(' ') + '</p>' +
-          (sp.heard ? '<p class="heard">' + NL.t.micHeard + ' &ldquo;<span' + NL.gloss.attr('nl') + '>' + esc(sp.heard) + '</span>&rdquo;</p>' : '') +
-          (!sp.ok && sp.tries < 3 ? '<div class="mic-actions"><button class="btn btn-blue" data-mic="start">' + NL.t.micRetry(3 - sp.tries) + '</button></div>' : '') +
-          /* Trois refus : le micro n'entend peut-être simplement pas ce mot-là.
-             Sans cette issue, l'élément serait redemandé chaque jour sans jamais monter. */
-          (!sp.ok && sp.tries >= 3 ? selfRate(sp) : '') +
-          '</div>';
-      } else {
-        panel = '<div class="mic-panel"><button class="mic big" data-mic="start" aria-label="' + NL.t.speak + '">' + ICON.mic(34) + '</button>' +
-          '<p class="mic-why">' + (sp.error ? esc(micError(sp.error)) : NL.t.micTap) + '</p>' +
-          (sp.error ? selfRate(sp) : '') + '</div>';
-      }
+      const panel = micPanel(sp, t.target);
 
       /* « Je ne peux pas parler » : proposé tant que rien n'a été tenté. Une fois
          la réponse donnée, c'est une réponse. */
@@ -385,6 +360,56 @@ NL.ex = (function () {
     },
     answer: t => t.target
   };
+
+  /* Le panneau du micro, le même sur les trois écrans qui font parler : cet exercice, le tour de
+     parole d'une conversation (scenario.js) et le nazeggen (listen.js). Il écoute, puis montre le
+     score, le mot à mot et ce que le micro a entendu ; quand le micro ne peut pas écouter, c'est
+     recordPanel. Un appelant passe dans `opts` ce qui diffère d'un écran à l'autre ; ce qu'il omet
+     est ce que fait cet exercice :
+       icon                   la taille du micro (34) ;
+       startAttrs, stopAttrs  les attributs des boutons qui lancent et arrêtent l'écoute
+                              (data-mic="start" et data-mic="stop", avec leur aria-label) ;
+       after(sp)              ce qui suit le score : l'action qui accepte et la règle qui fait
+                              réessayer (ici, réessayer jusqu'au troisième refus, puis s'évaluer) ;
+       graded                 false pour un écran qui ne note rien, le nazeggen : ni ligne
+                              « entendu », ni auto-évaluation, et un simple avis à la place de
+                              recordPanel. */
+  function micPanel(sp, target, opts) {
+    const o = Object.assign({
+      icon: 34, graded: true, after: retryThenRate,
+      startAttrs: ' data-mic="start" aria-label="' + NL.t.speak + '"',
+      stopAttrs: ' data-mic="stop" aria-label="' + NL.t.stop + '"'
+    }, opts);
+    const blocked = NL.speech.listenBlocked();
+    if (blocked) {
+      return o.graded ? recordPanel(sp, target, blocked) : '<div class="mic-panel offline"><p class="mic-why">' + NL.t.micNoBrowser + '</p></div>';
+    }
+    if (sp.phase === 'listening') {
+      return '<div class="mic-panel live"><button class="mic big listening"' + o.stopAttrs + '>' + ICON.mic(o.icon) + '</button>' +
+        '<p class="mic-why">' + NL.t.micListening + '</p>' +
+        NL.ui.ifText(sp.partial, 'p', 'heard', 'nl') + '</div>';
+    }
+    if (sp.phase === 'done') {
+      return '<div class="mic-panel ' + (sp.ok ? 'good' : 'bad') + '">' +
+        '<div class="score-row"><span class="score">' + wordScore(sp.parts) + '</span>' +
+        '<span class="score-bar"><span style="width:' + sp.pct + '%"></span></span></div>' +
+        '<p class="word-diff"' + NL.gloss.attr('nl') + '>' + sp.parts.map(p =>
+          '<span class="' + (p.ok ? (p.close ? 'w-close' : 'w-ok') : 'w-no') + '">' + esc(p.word) + '</span>').join(' ') + '</p>' +
+        (o.graded && sp.heard ? '<p class="heard">' + NL.t.micHeard + ' &ldquo;<span' + NL.gloss.attr('nl') + '>' + esc(sp.heard) + '</span>&rdquo;</p>' : '') +
+        o.after(sp) + '</div>';
+    }
+    /* Un refus s'affiche : sans ça, toucher le micro ne faisait rien, en silence. */
+    return '<div class="mic-panel"><button class="mic big"' + o.startAttrs + '>' + ICON.mic(o.icon) + '</button>' +
+      '<p class="mic-why">' + (sp.error ? esc(micError(sp.error)) : NL.t.micTap) + '</p>' +
+      (o.graded && sp.error ? selfRate(sp) : '') + '</div>';
+  }
+
+  /* Ce qui suit le score dans l'exercice : réessayer, puis s'évaluer. Trois refus : le micro
+     n'entend peut-être simplement pas ce mot-là. Sans cette issue, l'élément serait redemandé
+     chaque jour sans jamais monter. */
+  const retryThenRate = sp =>
+    (!sp.ok && sp.tries < 3 ? '<div class="mic-actions"><button class="btn btn-blue" data-mic="start">' + NL.t.micRetry(3 - sp.tries) + '</button></div>' : '') +
+    (!sp.ok && sp.tries >= 3 ? selfRate(sp) : '');
 
   /* No recogniser available. Record yourself instead and compare against the
      model — no service needed, works offline, works in Opera. Falls through to
@@ -694,5 +719,5 @@ NL.ex = (function () {
      NL.ui.ifProse, qui déclare nl-BE ce qu'elle cite. */
   const explanation = item => !item ? null : (item.kind === 'pattern' ? item.rule : item.note) || null;
 
-  return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, recordPanel, selfRate, wordScore, hereLine, rubric, explanation, accepted };
+  return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, micPanel, wordScore, hereLine, rubric, explanation, accepted };
 })();

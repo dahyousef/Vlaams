@@ -132,6 +132,17 @@ async function main() {
   same(run('split.js', [TMP, KIND]), { code: 0, lines: ['een 3', 'twee 2'] }, 'un genre déjà coupé redit ses lots');
   same(text(path.join(EEN, 'input.json')), kept + ' ', 'un genre déjà coupé n\'est pas recoupé');
   put(EEN, 'input.json', kept);
+  /* Des ids nommés : leurs seules lignes, dans le lot où le genre les met ; un lot qui n'en garde
+     aucune n'est pas écrit, et un id que le genre ne coupe pas est refusé, sans rien écrire. */
+  const SEUL = path.join(TMP, 'seul', 'essai'), UN = path.join(TMP, 'un', 'essai'), REFUS = path.join(TMP, 'refus', 'essai');
+  same([run('split.js', [TMP, SEUL, 'thuis:w1', 'bakker:w22']), ['een', 'twee'].map(b => JSON.parse(text(path.join(SEUL, b, 'input.json'))).map(r => r.id))],
+    [{ code: 0, lines: ['een 1', 'twee 1'] }, [['bakker:w22'], ['thuis:w1']]], 'Split d\'ids nommés ne coupe que leurs lignes, dans le lot où le genre les met');
+  same([run('split.js', [TMP, UN, 'thuis:w1']), fs.existsSync(path.join(UN, 'een'))], [{ code: 0, lines: ['twee 1'] }, false],
+    'un lot qui ne garde aucune ligne nommée n\'est pas écrit');
+  same([run('split.js', [TMP, REFUS, 'thuis:w1', 'overleven:w0', 'zzz:w9']), fs.existsSync(REFUS)], [{ code: 1, lines: [
+    'fail essai overleven:w0: not a row the kind\'s split cuts',
+    'fail essai zzz:w9: not a row the kind\'s split cuts'
+  ] }, false], 'Split refuse un id que le genre ne coupe pas, et n\'écrit rien');
 
   kindFile('mauvais', `module.exports = {
   stamp: [], fields: ['mot'], tables: [], check: () => [], merge: () => ({}),
@@ -195,6 +206,9 @@ async function main() {
     'fail draft.json overleven:w2: unsure is a reason on one line',
     'fail draft.json bakker:w22: mot is not MEENEMEN'
   ], 'une ligne : son empreinte, ses champs, « unsure » sur une ligne, puis les règles du genre');
+  put(EEN, 'draft.json', [draftEen[0], Object.assign({}, draftEen[1], { unsure: 'dag,\ror de dag?' }), Object.assign({}, draftEen[2], { unsure: 'maître ' })]);
+  same(only(EEN, 'draft.json'), ['fail draft.json overleven:w2: unsure is a reason on one line', 'fail draft.json bakker:w22: unsure is a reason on one line'],
+    '« unsure » tient sur une ligne comme tout texte du kit : ni \\r, ni blanc autour');
   put(EEN, 'draft.json', '[{');
   ok(/^fail draft\.json -: not JSON \(/.test(only(EEN, 'draft.json')[0]), 'un fichier qui n\'est pas du JSON est nommé');
   put(EEN, 'draft.json', {});
@@ -544,13 +558,38 @@ async function main() {
     same([Object.keys(all).length, all['rule:kunde+da+nie+is'], 'rule:kunde+ge' in all], [23, 'Kunde da nie is?', false],
       'outputs donne chaque combinaison où chaque règle change quelque chose');
     same(K.outputs('Goedemorgen.'), {}, 'sans règle qui s\'applique, rien');
+    /* Les règles kunde et ge : dans une question, derrière un verbe inversé en tête ou derrière le mot qui
+       la pose, « ge » et le verbe à sa forme en t, ou la forme contractée ; ailleurs, derrière un verbe qui
+       n'a pas la forme de son sujet, devant ce qui peut suivre « ton », ou quand un « je », un « u » ou un
+       « zich » reste, rien plutôt qu'une forme fausse (#92). */
+    const FIRES = [['Wat doe je meestal?', 'ge'], ['Heeft u dat?', 'ge'], ['Hoe oud ben je?', 'ge'], ['Hoe zeg je dat in het Nederlands?', 'ge'],
+      ['Kunt u mij helpen?', 'ge'], ['u', 'ge'], ['U', 'ge'], ['Sorry, kan je dat herhalen?', 'ge'], ['Om hoe laat kom je?', 'ge'],
+      ['Met wie ga je?', 'ge'], ['Hoe heet je?', 'ge'], ['Kan je Engels?', 'ge'], ['Kunt u dat spellen, a.u.b.?', 'ge'], ['En waar woon je?', 'ge'],
+      ['Heb je tijd?', 'kunde']];
+    same(FIRES.map(([nl, rule]) => K.compose(nl, [rule]).text),
+      ['Wat doet ge meestal?', 'Hebt ge dat?', 'Hoe oud zijt ge?', 'Hoe zegt ge dat in het Nederlands?', 'Kunt ge mij helpen?', 'ge', 'Ge',
+        'Sorry, kunt ge dat herhalen?', 'Om hoe laat komt ge?', 'Met wie gaat ge?', 'Hoe heet ge?', 'Kunt ge Engels?', 'Kunt ge dat spellen, a.u.b.?',
+        'En waar woont ge?', 'Hebde tijd?'],
+      'dans une question, derrière un verbe inversé, la règle ge met le verbe à sa forme en t, et la règle kunde le contracte');
+    const IDLE = [['Ik stuur u een mail.', 'ge'], ['Niks speciaals, en bij u?', 'ge'], ['dank u wel', 'ge'], ['Ik zie je morgen.', 'ge'],
+      ['Fiets je naar het werk?', 'ge'], ['Dat doet je goed.', 'ge'], ['De dokter ziet je nu.', 'ge'], ['Morgen bent u vrij.', 'ge'],
+      ['Doe je best!', 'ge'], ['Je moet je haasten.', 'ge'], ['Wie heeft je geholpen?', 'ge'], ['Wie heeft u geholpen?', 'ge'],
+      ['Wat heeft je zo boos gemaakt?', 'ge'], ['Wat doet je vader?', 'ge'], ['Hoe heet je zus?', 'ge'], ['Hoe heet je haar?', 'ge'], ['Heb je je fiets?', 'ge'],
+      ['Weet u welke maat u hebt?', 'ge'], ['Ik heb je vriend ontmoet.', 'kunde'], ['Ik ben je broer.', 'kunde'], ['Daar ben je niet veilig.', 'kunde'],
+      ['Heb je je zus gevonden?', 'kunde'], ['Kunt u zich even omdraaien?', 'kunde']];
+    same(IDLE.map(([nl, rule]) => K.compose(nl, [rule]).text), IDLE.map(([nl]) => nl),
+      'hors d\'une question, derrière « wie » ou un verbe qui n\'a pas la forme de son sujet, devant ce qui peut suivre « ton », ou quand un « je », un « u » ou un « zich » reste, les règles kunde et ge n\'écrivent rien');
     /* Chaque forme qu'une règle écrit a sa raison dans `why`, et `why` ne garde rien qu'elle n'écrive pas :
-       sinon Merge lèverait, et Check refuserait une forme juste, le jour où flemish.tsv ne la tient plus. */
-    const SAMPLE = { kunde: 'Kunt u, kun je, hebt u, heeft u, heb je, bent u, ben je', ge: 'u je', da: 'Dat is wat dat', nie: 'niet', t: 'het', is: 'eens' };
+       sinon Merge lèverait, et Check refuserait une forme juste, le jour où flemish.tsv ne la tient plus.
+       Les formes en t que la règle ge donne au verbe n'en ont pas : ce sont des formes qu'OpenTaal tient. */
+    const SAMPLE = { kunde: 'Kunt u? Kun je? Hebt u? Heeft u? Heb je? Bent u? Ben je?', ge: 'Doe je dat? Heeft u dat? Ben je dat?', da: 'Dat is wat dat', nie: 'niet', t: 'het', is: 'eens' };
+    const SP = spelling.open(FR, CF.NL);
     K.RULES.forEach(r => {
+      const verbs = new Set(Object.values(r.verbs || {}));
       const before = new Set(spelling.tokens(SAMPLE[r.name]).map(spelling.stem));
       const written = spelling.tokens(r.apply(SAMPLE[r.name])).map(spelling.stem).filter(f => !before.has(f));
-      same([...new Set(written)].filter(f => f !== 't').sort(), Object.keys(r.why).sort(), 'la règle ' + r.name + ' donne une raison à chaque forme qu\'elle écrit');
+      same([...new Set(written)].filter(f => f !== 't' && !verbs.has(f)).sort(), Object.keys(r.why).sort(), 'la règle ' + r.name + ' donne une raison à chaque forme qu\'elle écrit');
+      same([...verbs].filter(f => !SP.forms.has(f)), [], 'la règle ' + r.name + ' ne donne au verbe que des formes qu\'OpenTaal tient');
     });
 
     /* Split : un lot par unité, ses mots et ses phrases sans forme flamande. */
@@ -573,7 +612,9 @@ async function main() {
     Object.keys(PICK).forEach(id => same(why(id, PICK[id].be, PICK[id].evidence), [], 'une ligne juste passe : ' + id + ', ' + PICK[id].evidence));
     same(why('overleven:w12', null, null), [], 'be null, sans preuve : le néerlandais suffit');
     same(why('overleven:w12', null, 'none'), ['evidence is null when be is null'], 'be null n\'a pas de preuve');
-    same(why('overleven:w12', ' nie', 'rule:nie'), ['be is a form on one line, or null'], 'be est une forme sur une ligne');
+    same([why('overleven:w12', ' nie', 'rule:nie'), why('overleven:w12', 'nie ', 'rule:nie'), why('overleven:w12', 'ni\re', 'rule:nie')],
+      [['be is a form on one line, or null'], ['be is a form on one line, or null'], ['be is a form on one line, or null']],
+      'be est une forme sur une ligne : ni blanc devant ou derrière, ni \\r');
     same(why('overleven:w12', 'nie', 'rule'), ['evidence is rule:<rule>[+<rule>…], wiktionary:<lemma> or none'], 'une preuve a sa forme');
     same(why('overleven:w12', 'Niet', 'none'), ['be is the Dutch itself: with nothing Flemish to teach, be is null'], 'be n\'est pas le néerlandais');
     same(why('onderweg:w0', 'de fiets, de velo', 'wiktionary:velo'), ['a word\'s first form is the Flemish one, and here it is the Dutch itself'],
@@ -631,7 +672,7 @@ async function main() {
     const draft = text(path.join(DOKTER, 'draft.json'));
     put(DOKTER, 'draft.json', draft.replace('"rule:kunde"', '"rule:ge"'));
     same(runFr('check.js', [DOKTER]).lines.filter(l => /^fail /.test(l)), [
-      'fail draft.json dokter:p6: rule:ge gives « Heeft ge een voorschrift nodig? », not be',
+      'fail draft.json dokter:p6: rule:ge gives « Hebt ge een voorschrift nodig? », not be',
       'fail draft.json dokter:p6: « hebde » is not a form OpenTaal knows, and rule:ge does not account for it: correct it, or cite evidence none',
       'fail review.json -: draft.json missing or failing'
     ], 'check.js dit les raisons du genre, et ne lit pas la suite');
@@ -765,6 +806,12 @@ async function main() {
 
     same(why([as({ en: 'two\nlines' })]), ['sentence 1: nl, gap, en and fr are each a string on one line'], 'une traduction sur plusieurs lignes, non');
     same(why([as({ gap: '' })]), ['sentence 1: nl, gap, en and fr are each a string on one line'], 'un trou vide, non');
+    same(why([as({ en: 'She speaks English well. ', edited: 'the learner hears the space' })]), ['sentence 1: nl, gap, en and fr are each a string on one line'],
+      'une traduction avec un blanc autour, non, même avec sa raison');
+    same(why([], { skip: ' no candidate fits' }), ['a row with no sentence says why in skip, on one line'], 'skip sans blanc autour');
+    same(why([as({ en: 'She speaks English very well.', edited: 'the learner hears the adverb ' })]),
+      ['sentence 1: en « She speaks English very well. » is not Tatoeba\'s 203, « She speaks English well. »: take it as written, or say why in edited'],
+      'edited sans blanc autour');
     same(why([as({ frSrc: 301 })]), ['sentence 1: frSrc 301 is not a translation Tatoeba links to 102'], 'une traduction française que Tatoeba ne lie pas à la phrase');
     same(why([as({ fr: 'Elle parle très bien anglais.' })]),
       ['sentence 1: fr « Elle parle très bien anglais. » is not Tatoeba\'s 302, « Elle parle bien anglais. »: take it as written, or say why in edited'],
@@ -869,9 +916,22 @@ async function main() {
     const gctx = { repo: EX, course: () => course(EX) };
     const gwhy = sentence => G.check(gen('bakker:w19', sentence), gin[1], gctx);
     same(gwhy(gdraft[1].sentence), [], 'une phrase écrite qui suit les règles');
+    /* #99 : une règle de grammaire enseigne le trou de ses phrases, à la première unité qui la
+       liste. « Zijt », le trou de g-gegij, est vu à ikengij ; « begint », que g-halfuur écrit
+       autour de son trou, n'est enseigné nulle part. */
+    const gwhyDrie = sentence => G.check(gen('tijd:w3', sentence), gin[0], gctx);
+    same(gwhyDrie({ nl: 'Zijt gij hier al drie jaar?', gap: 'drie', en: 'Have you been here for three years?', fr: 'Tu es ici depuis trois ans ?' }), [],
+      'une forme qu\'une règle de grammaire enseigne compte comme vue à l\'unité qui liste la règle (#99)');
+    same(gwhyDrie({ nl: 'Zijt gij om drie uur vrij?', gap: 'drie', en: 'Are you free at three?', fr: 'Tu es libre à trois heures ?' }),
+      ['sentence uses forms the course never teaches: vrij'], 'une forme qu\'aucune unité ni aucune règle n\'enseigne reste refusée');
+    same(gwhyDrie({ nl: 'Het begint om drie uur.', gap: 'drie', en: 'It starts at three.', fr: 'Ça commence à trois heures.' }),
+      ['sentence uses forms the course never teaches: begint'], 'une règle enseigne le trou de ses phrases, pas les mots qui l\'entourent');
     same(gwhy({ nl: 'Heb jij ook dorst?', gap: 'dorst', en: 'Are you thirsty too?', fr: 'Tu as soif aussi ?' }), ['sentence: « jij » is not how the course says you: ge or gij'], 'ge ou gij, jamais jij');
     same(gwhy({ nl: 'Ik heb dorst.', gap: 'dorst', en: 'I am thirsty.', fr: 'J’ai soif.' }), ['sentence has 3 tiles: 4 to 8'], 'les règles des phrases sourcées');
     same(gwhy({ nl: 'Ik heb dorst, gij ook?', gap: 'dorst', en: 'I am thirsty, are you?' }), ['sentence has the fields nl, gap, en, fr'], 'ses quatre champs');
+    same(gwhy(Object.assign({}, gdraft[1].sentence, { fr: 'J’ai soif, et toi ? ' })), ['sentence: nl, gap, en and fr are each a string on one line'], 'chaque champ sans blanc autour');
+    same(G.checkVerdict({ id: 'tijd:w3', verdict: 'keep', en: ' It is three o\'clock.', fr: 'Il est trois heures.' }),
+      ['a verdict carries the reader\'s own en and fr of nl, each on one line'], 'la traduction du lecteur sans blanc autour');
     put(GB, 'draft.json', gdraft);
     put(GB, 'review.json', gdraft.map(r => ({ id: r.id, verdict: 'keep' })));
     same(runEx('check.js', [GB]), { code: 1, lines: ['ok input.json 2 rows', 'ok draft.json 2 rows',
@@ -944,6 +1004,10 @@ async function main() {
       [r => { r.need[0].flags = 'i'; }, ['need 1: unknown field flags'], 'un besoin n\'a pas de champ inconnu'],
       [r => { r.need[0].min = 4; }, ['need 1: exactly one of rx, any and min'], 'un besoin se note d\'une seule façon'],
       [r => { r.need[0].miss = ''; }, ['need 1: miss is one line of Dutch'], 'chaque besoin a sa réponse manquée'],
+      [r => { r.ask.en = 'At the bakery,\rask for what you want, and how many. Start with “Mag ik”.'; }, ['ask is { "fr": …, "en": … }, each one line'], 'une paire tient sur une ligne : pas de \\r'],
+      [r => { r.model = 'Mag ik drie\rpistolets, alstublieft?'; }, ['model is one line of Dutch'], 'l\'exemple tient sur une ligne : pas de \\r'],
+      [r => { r.need[0].miss = ' Ik wil twee pistolets, alstublieft.'; }, ['need 1: miss is one line of Dutch'], 'une réponse manquée sans blanc autour'],
+      [r => { r.need[1].any[1] = 'twee '; }, ['need 2: any is a list of words or runs of words'], 'un mot de any sans blanc autour'],
       [r => { r.need[2].min = 2; r.need[2].what = { fr: 'au moins 2 mots', en: 'at least 2 words' }; }, ['need 3: min is a whole number from 3 to 12'], 'min va de 3 à 12'],
       [r => { r.need[2].what.en = 'at least four words'; }, ['need 3: its what names its number, 4, in fr and in en'], 'le what d\'un min dit son nombre'],
       [r => { r.need.pop(); }, ['one need is a min, and only one: 0 are'], 'un besoin est un min'],
@@ -984,6 +1048,8 @@ async function main() {
     ok(/^need 1: rx « \(mag » does not compile: /.test(why(r => { r.need[0].rx = '(mag'; }).join('|')), 'Check : un rx se compile');
     same(why(null, 'overleven:p1'), ['the model uses « drie », which unit 3 (tijd) teaches, after this phrase\'s unit 1',
       'the model uses « pistolets », which unit 4 (bakker) teaches, after this phrase\'s unit 1'], 'Check : l\'unité est celle de la ligne d\'entrée');
+    same(why(r => { r.model = 'Mag ik drie pistolets voor ons?'; }), ['the model uses « ons », which unit 6 (familie) teaches, after this phrase\'s unit 4'],
+      'Check : « ons », le trou de g-bezit, est enseigné à familie, la première unité qui liste la règle (#99)');
 
     /* Le verdict : un keep porte deux bonnes réponses du relecteur, que la tâche accepte. */
     const RIGHT = ['Mag ik een koffiekoek en twee pistolets?', 'Mag ik vier pistolets hebben?'];
@@ -992,6 +1058,7 @@ async function main() {
     same([verdict('keep', RIGHT), verdict('dispute: trop vague')], [[], []], 'un keep porte right, une contestation non');
     same([verdict('keep'), verdict('keep', RIGHT.slice(1)), verdict('dispute: trop vague', RIGHT)], [[TWO], [TWO], ['only a keep carries right']],
       'un keep sans ses deux réponses est refusé, une contestation qui en porte aussi');
+    same(verdict('keep', [RIGHT[0], RIGHT[1] + ' ']), [TWO], 'une bonne réponse sans blanc autour');
     same(verdict('keep', [BAKKER.model, RIGHT[1]]), ['right answer 1 « Mag ik drie pistolets, alstublieft? » is the model: write one of your own'], 'une bonne réponse n\'est pas l\'exemple');
     same(verdict('keep', [RIGHT[1], 'mag ik vier pistolets hebben']), ['the two right answers are the same answer'], 'les deux réponses diffèrent');
     ok(verdict('keep', [RIGHT[1], 'Ja ja']).indexOf('right answer 2 « Ja ja » has fewer than 3 words: the session judges no shorter answer') >= 0, 'une bonne réponse a au moins 3 mots');
@@ -1213,10 +1280,15 @@ async function main() {
       'decoy « Ik zijn Nederlands aan het leren, hè » ends with no punctuation, and the answer with « . »',
       'decoy « Nederlands ben ik aan het leren, hè. » is further from the Dutch than the answer: 0.50, at least 0.76'
     ], 'un leurre finit comme la réponse, et reste une faute proche du néerlandais');
-    same(rule('overleven:w0', { decoys: ['h', 'hallootje'] }), [
-      'decoy « h » is 1 character: 2 to 4, the length of the answer « hey » give or take 40%',
-      'decoy « hallootje » is 9 characters: 2 to 4, the length of the answer « hey » give or take 40%'
-    ], 'un leurre a la longueur de la réponse, à 40 % près');
+    same([rule('overleven:w0', { decoys: ['h', 'hallootje'] }), rule('overleven:p0', { decoys: [DECOYS['overleven:p0'][0], 'Ik leer het, hè.'] })], [[
+      'decoy « hallootje » is 9 characters: 1 to 5, the length of the answer « hey » give or take 40% or two letters, whichever is more'
+    ], [
+      'decoy « Ik leer het, hè. » is 16 characters: 22 to 50, the length of the answer « Ik ben Nederlands aan het leren, hè. » give or take 40% or two letters, whichever is more',
+      'decoy « Ik leer het, hè. » is further from the Dutch than the answer: 0.35, at least 0.76'
+    ]], 'un leurre a la longueur de la réponse, à 40 % ou à deux lettres près');
+    same([rule('ikengij:w1', { decoys: ['je', 'jou'] }), rule('ikengij:w1', { decoys: ['je', 'kat'] })],
+      [[], ['decoy « kat » is further from the Dutch than the answer: 0.00, at least 0.33']],
+      'une réponse de trois lettres a ses fautes : une forme courte du même pronom passe, un mot sans rapport non');
     const N = { fr: GOOD[0], en: GOOD[1] };
     same([KB.readWhole(line('overleven:w0', N), HALLO_IN), KB.readWhole(Object.assign(line('overleven:w0', N), { also: ['dag'] }), HALLO_IN),
       KB.readWhole(Object.assign(line('overleven:w0', N), { also: ['dag', 'hoi'] }), HALLO_IN)], ['', '', 'new also'],

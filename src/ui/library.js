@@ -207,7 +207,7 @@
         '<h1>' + NL.t.soundsTitle + '</h1>' +
         '<p>' + NL.t.soundsBody + '</p></section>' +
         NL.content.sounds.map(s =>
-          '<div class="snd-row' + (s.good ? ' good' : s.warn ? ' warn' : '') + '"><div class="snd-head"><b' + NL.gloss.attr('nl') + '>' + esc(s.g) + '</b><code>' + esc(s.ipa) + '</code>' +
+          '<div class="snd-row' + (s.good ? ' good' : s.warn ? ' warn' : '') + '"><div class="snd-head"><b' + NL.gloss.langAttr(s.g) + '>' + NL.gloss.prose(s.g) + '</b><code>' + esc(s.ipa) + '</code>' +
           (s.good ? '<span class="snd-tag good">' + NL.t.soundsEasy + '</span>' : s.warn ? '<span class="snd-tag warn">' + NL.t.soundsWatch + '</span>' : '') + '</div>' +
           '<p' + NL.gloss.langAttr(s.say) + '>' + NL.gloss.prose(s.say) + '</p></div>').join('') +
         '</div>';
