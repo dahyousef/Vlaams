@@ -6688,15 +6688,14 @@ NL.ex = (function () {
      est ce que fait cet exercice :
        icon       la taille du micro (34) ;
        taps       ce que portent les boutons qui lancent et arrêtent l'écoute, tel que le clic de
-                  l'écran le lit ({ start: { mic: 'start' }, stop: { mic: 'stop' } }) ; le panneau
-                  leur ajoute leur aria-label ;
+                  l'écran le lit (MIC_TAPS) ; le panneau leur ajoute leur aria-label ;
        after(sp)  ce qui suit le score : l'action qui accepte et la règle qui fait réessayer (ici,
                   réessayer jusqu'au troisième refus, puis s'évaluer) ;
        graded     false pour un écran qui ne note rien, le nazeggen : UNGRADED au lieu de GRADED. */
   function micPanel(sp, target, opts) {
     const screen = Object.assign({
       icon: 34, graded: true, after: retryThenRate,
-      taps: { start: { mic: 'start' }, stop: { mic: 'stop' } }
+      taps: MIC_TAPS
     }, opts);
     const grading = screen.graded ? GRADED : UNGRADED;
     const blocked = NL.speech.listenBlocked();
@@ -6720,9 +6719,14 @@ NL.ex = (function () {
       grading.afterError(sp) + '</div>';
   }
 
-  /* Les attributs d'un bouton du micro : le data-* que lit le clic de l'écran, et son nom pour un
-     lecteur d'écran. */
-  const micAttrs = (tap, label) => Object.keys(tap).map(k => ' data-' + k + '="' + tap[k] + '"').join('') + ' aria-label="' + label + '"';
+  /* Ce que portent les boutons du micro de l'exercice et du tour de parole : le clic de ces écrans
+     lit data-mic. Le bouton « réessayer » (retryButton) porte celui qui lance l'écoute. */
+  const MIC_TAPS = { start: { mic: 'start' }, stop: { mic: 'stop' } };
+
+  /* Les attributs d'un bouton du micro : le data-* que lit le clic de l'écran (tapAttrs), et son
+     nom pour un lecteur d'écran. */
+  const tapAttrs = tap => Object.keys(tap).map(k => ' data-' + k + '="' + tap[k] + '"').join('');
+  const micAttrs = (tap, label) => tapAttrs(tap) + ' aria-label="' + label + '"';
 
   /* Ce que le panneau ajoute sur un écran qui note : recordPanel quand le micro ne peut pas écouter,
      la ligne « entendu » sous le score, et l'auto-évaluation sous une erreur. Le nazeggen ne note
@@ -6743,7 +6747,7 @@ NL.ex = (function () {
      `left` étant le nombre d'essais qui restent. */
   const TRIES = 3;
   const retryButton = (sp, label) => !sp.ok && sp.tries < TRIES
-    ? '<button class="btn btn-blue" data-mic="start">' + label(TRIES - sp.tries) + '</button>' : '';
+    ? '<button class="btn btn-blue"' + tapAttrs(MIC_TAPS.start) + '>' + label(TRIES - sp.tries) + '</button>' : '';
 
   /* Ce qui suit le score dans l'exercice : réessayer, puis s'évaluer. Trois refus (TRIES) : le
      micro n'entend peut-être simplement pas ce mot-là. Sans cette issue, l'élément serait redemandé
@@ -7071,7 +7075,7 @@ NL.ui = (function () {
   'use strict';
   const U = NL.util, esc = U.esc, t = NL.t;
   let root = null;
-  let route = 'vandaag', arg = null, sheet = null, drawn = null, toastMsg = null, toastT = null;
+  let route = 'vandaag', arg = null, sheet = null, lastSheet = null, toastMsg = null, toastT = null;
 
   const I = {
     flame: '<svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5c2.2 3.4 1.2 5.1.2 6.3-.9 1.1-2 2-2 3.6a3.1 3.1 0 0 0 1.5 2.7c-.4-1.6.3-2.9 1.4-3.7.2 1.8 1.3 2.3 2.4 3.4a4.6 4.6 0 0 1 1.4 3.3A5.3 5.3 0 0 1 12 21.5a6 6 0 0 1-6-6c0-4.6 4.2-5.9 6-13Z"/></svg>',
@@ -7156,12 +7160,12 @@ NL.ui = (function () {
     /* La feuille redessinée telle quelle garde l'endroit où on l'avait fait défiler : un
        interrupteur, le thème, le rythme ou la langue la renvoyaient en haut (#103). Une autre
        feuille part du haut. */
-    const was = sheet && sheet === drawn ? root.querySelector('.sheet-card') : null;
-    const at = was ? was.scrollTop : 0;
+    const oldCard = sheet && sheet === lastSheet ? root.querySelector('.sheet-card') : null;
+    const at = oldCard ? oldCard.scrollTop : 0;
     root.innerHTML = html + (sheet ? sheetHtml() : '') + ifText(toastMsg, 'div', 'toast');
-    drawn = sheet;
-    const now = at ? root.querySelector('.sheet-card') : null;
-    if (now) now.scrollTop = at;
+    lastSheet = sheet;
+    const newCard = at ? root.querySelector('.sheet-card') : null;
+    if (newCard) newCard.scrollTop = at;
     if (S.after) S.after(arg);
   }
 

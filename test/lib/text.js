@@ -8,9 +8,10 @@
                      même chose, en fr et en en, ont la même
      untoken(s)      le texte, chaque {jeton} remplacé par un blanc
      quotes(s, l)    les citations d'un texte de langue l : { quoted, outside, why }, voir plus bas
-     strayQuotes(s, l, also)
+     strayQuotes(s, l, banned)
                      la raison qu'un texte de langue l écrit les guillemets de l'autre langue,
-                     ou l'un des signes also ; '' sinon */
+                     ou l'un des signes de banned ; '' sinon. Elle ne nomme pas le texte : qui
+                     l'appelle la fait précéder du nom de son champ (fr, note.fr) */
 
 const QUOTES = { en: ['“', '”'], fr: ['«', '»'] };
 const oneLine = s => typeof s === 'string' && s !== '' && s === s.trim() && !/[\r\n]/.test(s);
@@ -44,9 +45,10 @@ function quotes(s, l) {
 }
 
 /* Chaque langue ne cite qu'avec ses guillemets : la raison, en anglais comme celles du kit,
-   qu'un texte de langue l écrit ceux de l'autre langue ou l'un des signes also, '' sinon.
-   open.js passe le guillemet droit dans also ; explain.js le refuse d'une autre raison. */
-const strayQuotes = (s, l, also) => (QUOTES[l === 'fr' ? 'en' : 'fr'].concat(also || []).some(m => s.indexOf(m) >= 0) ?
-  l + ' quotes with ' + QUOTES[l].join(' ') + ' only' : '');
+   qu'un texte de langue l écrit ceux de l'autre langue ou l'un des signes de banned, '' sinon.
+   Elle ne nomme pas le texte : qui l'appelle la fait précéder du nom de son champ. open.js
+   passe le guillemet droit dans banned ; explain.js le refuse d'une autre raison. */
+const strayQuotes = (s, l, banned) => (QUOTES[l === 'fr' ? 'en' : 'fr'].concat(banned || []).some(m => s.indexOf(m) >= 0) ?
+  'quotes with ' + QUOTES[l].join(' ') + ' only' : '');
 
 module.exports = { QUOTES, oneLine, sig, untoken, quotes, strayQuotes };

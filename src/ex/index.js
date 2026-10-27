@@ -368,15 +368,14 @@ NL.ex = (function () {
      est ce que fait cet exercice :
        icon       la taille du micro (34) ;
        taps       ce que portent les boutons qui lancent et arrêtent l'écoute, tel que le clic de
-                  l'écran le lit ({ start: { mic: 'start' }, stop: { mic: 'stop' } }) ; le panneau
-                  leur ajoute leur aria-label ;
+                  l'écran le lit (MIC_TAPS) ; le panneau leur ajoute leur aria-label ;
        after(sp)  ce qui suit le score : l'action qui accepte et la règle qui fait réessayer (ici,
                   réessayer jusqu'au troisième refus, puis s'évaluer) ;
        graded     false pour un écran qui ne note rien, le nazeggen : UNGRADED au lieu de GRADED. */
   function micPanel(sp, target, opts) {
     const screen = Object.assign({
       icon: 34, graded: true, after: retryThenRate,
-      taps: { start: { mic: 'start' }, stop: { mic: 'stop' } }
+      taps: MIC_TAPS
     }, opts);
     const grading = screen.graded ? GRADED : UNGRADED;
     const blocked = NL.speech.listenBlocked();
@@ -400,9 +399,14 @@ NL.ex = (function () {
       grading.afterError(sp) + '</div>';
   }
 
-  /* Les attributs d'un bouton du micro : le data-* que lit le clic de l'écran, et son nom pour un
-     lecteur d'écran. */
-  const micAttrs = (tap, label) => Object.keys(tap).map(k => ' data-' + k + '="' + tap[k] + '"').join('') + ' aria-label="' + label + '"';
+  /* Ce que portent les boutons du micro de l'exercice et du tour de parole : le clic de ces écrans
+     lit data-mic. Le bouton « réessayer » (retryButton) porte celui qui lance l'écoute. */
+  const MIC_TAPS = { start: { mic: 'start' }, stop: { mic: 'stop' } };
+
+  /* Les attributs d'un bouton du micro : le data-* que lit le clic de l'écran (tapAttrs), et son
+     nom pour un lecteur d'écran. */
+  const tapAttrs = tap => Object.keys(tap).map(k => ' data-' + k + '="' + tap[k] + '"').join('');
+  const micAttrs = (tap, label) => tapAttrs(tap) + ' aria-label="' + label + '"';
 
   /* Ce que le panneau ajoute sur un écran qui note : recordPanel quand le micro ne peut pas écouter,
      la ligne « entendu » sous le score, et l'auto-évaluation sous une erreur. Le nazeggen ne note
@@ -423,7 +427,7 @@ NL.ex = (function () {
      `left` étant le nombre d'essais qui restent. */
   const TRIES = 3;
   const retryButton = (sp, label) => !sp.ok && sp.tries < TRIES
-    ? '<button class="btn btn-blue" data-mic="start">' + label(TRIES - sp.tries) + '</button>' : '';
+    ? '<button class="btn btn-blue"' + tapAttrs(MIC_TAPS.start) + '>' + label(TRIES - sp.tries) + '</button>' : '';
 
   /* Ce qui suit le score dans l'exercice : réessayer, puis s'évaluer. Trois refus (TRIES) : le
      micro n'entend peut-être simplement pas ce mot-là. Sans cette issue, l'élément serait redemandé

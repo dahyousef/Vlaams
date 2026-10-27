@@ -71,8 +71,12 @@ function stamp(kind, src, NL) {
 
 const failed = lines => lines.some(l => /^fail /.test(l));
 const writeJson = (file, v) => fs.writeFileSync(file, JSON.stringify(v, null, 2) + '\n');
-/* Les lignes de split.txt, « <lot> <lignes> » chacune. */
-const listed = list => fs.readFileSync(list, 'utf8').split('\n').filter(Boolean);
+/* Ce que liste le split.txt d'un dossier coupé : ses lignes, « <lot> <lignes> » chacune, et le
+   lot que nomme chacune. */
+function readSplitTxt(kindDir) {
+  const lines = fs.readFileSync(path.join(kindDir, 'split.txt'), 'utf8').split('\n').filter(Boolean);
+  return { lines, batches: lines.map(l => l.split(' ')[0]) };
+}
 
 /* Split : la source coupée en lots, une fois. Un dossier déjà coupé (split.txt) n'est pas
    récrit (alreadySplit). Un lot vide n'est pas écrit, et split.txt, écrit en dernier, ne
@@ -122,12 +126,18 @@ function split(repo, kindDir, ids) {
 
 /* Un dossier déjà coupé : rien n'est écrit, et ses lignes sont redites. Des ids nommés doivent
    être exactement les lignes de ses lots, dans n'importe quel ordre ; sinon une ligne fail dit
-   la différence. */
+   la différence. L'entrée d'un lot qui manque ou ne se lit pas est nommée par une ligne fail,
+   comme Check la nomme. */
 function alreadySplit(kindDir, keep) {
-  const name = path.basename(kindDir), lines = listed(path.join(kindDir, 'split.txt'));
+  const name = path.basename(kindDir), { lines, batches } = readSplitTxt(kindDir);
   if (!keep) return { ok: true, lines };
-  const held = [];
-  lines.forEach(l => JSON.parse(fs.readFileSync(path.join(kindDir, l.split(' ')[0], 'input.json'), 'utf8')).forEach(r => held.push(r.id)));
+  const held = [], unread = [];
+  batches.forEach(b => {
+    const file = b + '/input.json';
+    if (!fs.existsSync(path.join(kindDir, file))) unread.push('fail ' + file + ' -: missing');
+    else (readArray(kindDir, file, unread) || []).forEach(r => held.push(r.id));
+  });
+  if (unread.length) return { ok: false, lines: unread };
   const missing = Array.from(keep).filter(id => held.indexOf(id) < 0), unnamed = held.filter(id => !keep.has(id));
   if (!missing.length && !unnamed.length) return { ok: true, lines };
   return { ok: false, lines: ['fail ' + name + ' -: already split with other rows' +
@@ -344,7 +354,7 @@ function settle(id, got) {
 function readKind(repo, kindDir) {
   const name = path.basename(kindDir), list = path.join(kindDir, 'split.txt');
   if (!fs.existsSync(list)) return { name, kind: null, lines: ['fail ' + name + ' -: never split: run Split first'], rows: [] };
-  const batches = listed(list).map(l => l.split(' ')[0]);
+  const batches = readSplitTxt(kindDir).batches;
   const lines = [], rows = [];
   let kind = null;
   batches.forEach(b => {

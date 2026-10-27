@@ -23,6 +23,15 @@ const fresh = () => { NL.state.clearAll(); NL.content.refresh(); B.clock.set(T0)
 const { SCREENS } = require('./lib/screens');
 const { inZone, offsets } = require('./lib/zone');
 
+/* Une page à elle, aux minuteurs retenus, ouverte et sans minuteur en attente : ce qui suit n'y
+   avance que par P.tick(). */
+async function heldPage() {
+  const P = browser.open({ root: ROOT, seed: browser.SEED, byId: 'stub', timers: 'held' });
+  await new Promise(r => setImmediate(r));
+  while (P.waiting()) P.tick();
+  return P;
+}
+
 /* Ce qu'aucun écran ne doit montrer, quel que soit l'état. */
 function read(name, html, state) {
   const txt = text(html), where = name + ' (' + state + ')';
@@ -150,21 +159,22 @@ NL.state.open().then(async () => {
   /* ------------------------------------------------------------------ */
   console.log('\nLA SÉRIE');
   {
-    /* Jours locaux, comme NL.util.dayKey() les compte : tirés de l'horloge du test. */
-    const day = n => NL.util.dayKey(T0 + n * DAY);
+    /* La clé du jour local n jours avant l'horloge du test, comptés sur le calendrier comme
+       NL.util.daysBack() les compte, jamais n fois 24 heures (#105). */
+    const day = n => NL.util.dayKey(NL.util.daysBack(n));
     const streakOnHome = () => {
       const h = text(NL.screens.vandaag.render());
       return (h.match(new RegExp('(\\d+)\\s+(?:' + t.statStreak(1) + '|' + t.statStreak(2) + ')')) || [])[1];
     };
     fresh();
-    NL.state.setMeta({ lastDay: day(-10), streak: 2 });
+    NL.state.setMeta({ lastDay: day(10), streak: 2 });
     ok(streakOnHome() === '0', 'la série est coupée depuis dix jours mais l\'accueil lit « ' + streakOnHome() + ' jours d\'affilée »');
-    ok(NL.state.meta().streak === 2 && NL.state.meta().lastDay === day(-10), 'lire l\'accueil a modifié la série ou le dernier jour enregistrés');
-    NL.state.setMeta({ lastDay: day(-1), streak: 2 });
+    ok(NL.state.meta().streak === 2 && NL.state.meta().lastDay === day(10), 'lire l\'accueil a modifié la série ou le dernier jour enregistrés');
+    NL.state.setMeta({ lastDay: day(1), streak: 2 });
     ok(streakOnHome() === '2', 'étudié hier : l\'accueil devrait garder la série de 2, il lit « ' + streakOnHome() + ' »');
     NL.state.setMeta({ lastDay: day(0), streak: 2 });
     ok(streakOnHome() === '2', 'étudié aujourd\'hui : l\'accueil devrait garder la série de 2, il lit « ' + streakOnHome() + ' »');
-    NL.state.setMeta({ lastDay: day(-2), streak: 2 });
+    NL.state.setMeta({ lastDay: day(2), streak: 2 });
     ok(streakOnHome() === '0', 'avant-hier : la série est coupée, l\'accueil lit « ' + streakOnHome() + ' »');
     NL.state.setMeta({ lastDay: null, streak: 0 });
     ok(streakOnHome() === '0', 'jamais étudié : l\'accueil devrait lire 0');
@@ -473,9 +483,7 @@ NL.state.open().then(async () => {
        feuille des réglages qu'on faisait défiler revenait en haut, deux fois par toast. Le toast
        se pose et s'en va seul. La page lue est marquée d'un commentaire, qu'un rendu effacerait.
        Aux minuteurs retenus, le départ du toast attend P.tick(). */
-    const P = browser.open({ root: ROOT, seed: browser.SEED, byId: 'stub', timers: 'held' });
-    await new Promise(r => setImmediate(r));
-    while (P.waiting()) P.tick();
+    const P = await heldPage();
     P.NL.ui.go('vandaag'); P.NL.ui.openSheet('instellingen');
     const page = P.app.innerHTML + '<!--lue-->', t = P.NL.t;
     const shown = m => P.NL.ui.ifText(m, 'div', 'toast');
@@ -500,9 +508,7 @@ NL.state.open().then(async () => {
        avec : elle revenait en haut, et qui l'avait fait défiler jusqu'aux interrupteurs perdait
        sa place à chaque toucher (#103). Le faux #app pose une carte neuve, revenue en haut, à
        chaque rendu (test/lib/browser.js). Une autre feuille, ou la même rouverte, part du haut. */
-    const P = browser.open({ root: ROOT, seed: browser.SEED, byId: 'stub', timers: 'held' });
-    await new Promise(r => setImmediate(r));
-    while (P.waiting()) P.tick();
+    const P = await heldPage();
     const card = () => P.app.querySelector('.sheet-card');
     const top = () => (card() ? card().scrollTop + ' px' : 'no sheet');
     P.NL.ui.go('vandaag'); P.NL.ui.openSheet('instellingen');

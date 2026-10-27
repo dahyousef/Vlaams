@@ -145,7 +145,7 @@ function checkNote(row, input, ctx) {
     if (Array.from(s).length > NOTE_MAX) why.push('note.' + l + ' is ' + Array.from(s).length + ' characters: at most ' + NOTE_MAX);
     if (/[<\n\r"]/.test(s)) why.push('note.' + l + ' holds <, a newline or a straight quote "');
     const stray = strayQuotes(s, l);
-    if (stray) { why.push('note.' + stray); unread.push(l); }
+    if (stray) { why.push('note.' + l + ' ' + stray); unread.push(l); }
     q[l] = quotes(s, l);
     if (q[l].why) { why.push('note.' + l + ' has a quote mark without its pair, a quote inside a quote, or an empty quote'); unread.push(l); }
     const k = sentences(q[l].outside);

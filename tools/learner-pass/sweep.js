@@ -82,7 +82,7 @@ const SKIP = '[data-reset-yes], [data-import], [data-quit-yes]';
         const c = document.querySelector('.sheet-card');
         return c ? { title: c.querySelector('h3').textContent, top: Math.round(c.scrollTop) } : null;
       });
-      const was = await place();
+      const sheetBefore = await place();
       const before = await sig();
       const errsBefore = A.errors.length;
       try {
@@ -97,8 +97,8 @@ const SKIP = '[data-reset-yes], [data-import], [data-quit-yes]';
       await sleep(300);
       if (A.errors.length > errsBefore) problems.push(what + ': console ' + A.errors.slice(errsBefore).join(' | '));
       if ((await sig()) === before) problems.push(what + ': nothing changed');
-      const is = was ? await place() : null;
-      if (is && is.title === was.title && Math.abs(is.top - was.top) > 1) problems.push(what + ': the sheet scrolled to ' + was.top + ' px went to ' + is.top + ' px');
+      const sheetAfter = sheetBefore ? await place() : null;
+      if (sheetAfter && sheetAfter.title === sheetBefore.title && Math.abs(sheetAfter.top - sheetBefore.top) > 1) problems.push(what + ': the sheet scrolled to ' + sheetBefore.top + ' px went to ' + sheetAfter.top + ' px');
     }
   }
   const total = Object.keys(counts).reduce((s, k) => s + counts[k], 0);

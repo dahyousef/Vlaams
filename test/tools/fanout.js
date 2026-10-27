@@ -159,6 +159,21 @@ async function main() {
     'fail essai -: already split with other rows; in its batches but not named: bakker:w22'
   ] }, 'une ligne de ses lots qui n\'est pas nommée est refusée');
   same(seul(), seulAvant, 'un dossier déjà coupé n\'est pas récrit');
+  /* Des ids nommés sur un dossier déjà coupé dont l'entrée d'un lot ne se lit pas, ou manque :
+     une ligne fail nomme ce lot, sans lever ni rien écrire, comme Check nomme un fichier cassé. */
+  put(path.join(SEUL, 'een'), 'input.json', '[{');
+  const casse = run('split.js', [TMP, SEUL, 'thuis:w1', 'bakker:w22']);
+  ok(casse.code === 1 && casse.lines.length === 1 && /^fail een\/input\.json -: not JSON \(/.test(casse.lines[0]),
+    'une entrée de lot qui n\'est pas du JSON est nommée par une ligne fail : ' + JSON.stringify(casse));
+  same(text(path.join(SEUL, 'een', 'input.json')), '[{', 'une entrée qui ne se lit pas n\'est pas récrite');
+  put(path.join(SEUL, 'een'), 'input.json', seulAvant[1]);
+  fs.rmSync(path.join(SEUL, 'twee', 'input.json'));
+  let manque;
+  try { manque = kit.split(TMP, SEUL, ['thuis:w1', 'bakker:w22']); } catch (e) { manque = 'it threw: ' + e.message; }
+  same([manque, fs.existsSync(path.join(SEUL, 'twee', 'input.json'))], [{ ok: false, lines: ['fail twee/input.json -: missing'] }, false],
+    'une entrée de lot qui manque est nommée par une ligne fail, sans lever ni rien écrire');
+  put(path.join(SEUL, 'twee'), 'input.json', seulAvant[2]);
+  same(seul(), seulAvant, 'un dossier déjà coupé dont un lot ne se lit pas n\'est pas récrit');
 
   kindFile('mauvais', `module.exports = {
   stamp: [], fields: ['mot'], tables: [], check: () => [], merge: () => ({}),

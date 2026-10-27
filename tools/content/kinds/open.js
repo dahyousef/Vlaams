@@ -83,7 +83,10 @@ const label = (n, i) => 'need ' + (i + 1) + ' « ' + n.what.en + ' »';
    français et l'article anglais (lang.js l'excuse aussi). */
 function quoteRule(v, where, taught, dutch, names) {
   const q = { fr: quotes(v.fr, 'fr'), en: quotes(v.en, 'en') };
-  const bad = ['fr', 'en'].map(l => strayQuotes(v[l], l, '"') || q[l].why).filter(Boolean).map(r => where + ': ' + r);
+  const bad = ['fr', 'en'].map(l => {
+    const stray = strayQuotes(v[l], l, ['"']);
+    return stray ? l + ' ' + stray : q[l].why;
+  }).filter(Boolean).map(r => where + ': ' + r);
   if (bad.length) return bad;
   const out = [], fr = q.fr.quoted, en = q.en.quoted;
   if (fr.join('|') !== en.join('|')) out.push(where + ': fr quotes ' + JSON.stringify(fr) + ', en quotes ' + JSON.stringify(en) + ': both sides quote the same Dutch, in the same order');

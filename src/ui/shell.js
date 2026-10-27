@@ -4,7 +4,7 @@ NL.ui = (function () {
   'use strict';
   const U = NL.util, esc = U.esc, t = NL.t;
   let root = null;
-  let route = 'vandaag', arg = null, sheet = null, drawn = null, toastMsg = null, toastT = null;
+  let route = 'vandaag', arg = null, sheet = null, lastSheet = null, toastMsg = null, toastT = null;
 
   const I = {
     flame: '<svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5c2.2 3.4 1.2 5.1.2 6.3-.9 1.1-2 2-2 3.6a3.1 3.1 0 0 0 1.5 2.7c-.4-1.6.3-2.9 1.4-3.7.2 1.8 1.3 2.3 2.4 3.4a4.6 4.6 0 0 1 1.4 3.3A5.3 5.3 0 0 1 12 21.5a6 6 0 0 1-6-6c0-4.6 4.2-5.9 6-13Z"/></svg>',
@@ -89,12 +89,12 @@ NL.ui = (function () {
     /* La feuille redessinée telle quelle garde l'endroit où on l'avait fait défiler : un
        interrupteur, le thème, le rythme ou la langue la renvoyaient en haut (#103). Une autre
        feuille part du haut. */
-    const was = sheet && sheet === drawn ? root.querySelector('.sheet-card') : null;
-    const at = was ? was.scrollTop : 0;
+    const oldCard = sheet && sheet === lastSheet ? root.querySelector('.sheet-card') : null;
+    const at = oldCard ? oldCard.scrollTop : 0;
     root.innerHTML = html + (sheet ? sheetHtml() : '') + ifText(toastMsg, 'div', 'toast');
-    drawn = sheet;
-    const now = at ? root.querySelector('.sheet-card') : null;
-    if (now) now.scrollTop = at;
+    lastSheet = sheet;
+    const newCard = at ? root.querySelector('.sheet-card') : null;
+    if (newCard) newCard.scrollTop = at;
     if (S.after) S.after(arg);
   }
 
