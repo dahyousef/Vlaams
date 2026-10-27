@@ -184,6 +184,13 @@ Public repository:
      writes around its gap; the course's own sentences.
    - Expected: accepted; refused; still untaught; `AHEAD_BUDGET` falls to 61 and never rises on the way.
    - Tests: task 6, step 1 (`test/tools/fanout.js`, `test/tools/sources.js`, `test/content.js`).
+   - **Note, 26 October 2026 (#108).** « Zijt gij al zeventig? » is accepted from `tijd`, not at `ikengij`.
+     Task 6 teaches « zijt » at `ikengij`, the first unit that lists `g-gegij`, but « zeventig » is first
+     taught at `tijd`, the next unit, so at `ikengij` Check finds it ahead. Task 6's Why quotes the sentence
+     as the one Check refused at every unit before the task, and this condition took it as the example for
+     `ikengij`: that was the slip, and what ships is right. A sentence `ikengij` accepts is « Zijt gij
+     hier? »; `test/content.js` pins « zijt » at `ikengij` on the real course. The condition stays as it was
+     decided on 25 October.
 6. **One microphone panel, and its markup does not move.**
    - Condition: every state of the panel on the speak exercise, a conversation's turn and the nazeggen, 178
      in all; a copy of the panel left in a screen.
