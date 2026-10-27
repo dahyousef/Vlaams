@@ -76,6 +76,13 @@ const SKIP = '[data-reset-yes], [data-import], [data-quit-yes]';
         return top && (e === top || e.contains(top)) ? null : (top ? top.tagName + '.' + top.className + ' ' + (top.textContent || '').trim().slice(0, 30) : 'nothing');
       });
       if (hit) { problems.push(what + ' is covered, even centred, by ' + hit); continue; }
+      /* La feuille ouverte, par son titre, et l'endroit où on l'a fait défiler : un toucher qui la
+         redessine la laisse là (#103). */
+      const place = () => p.evaluate(() => {
+        const c = document.querySelector('.sheet-card');
+        return c ? { title: c.querySelector('h3').textContent, top: Math.round(c.scrollTop) } : null;
+      });
+      const was = await place();
       const before = await sig();
       const errsBefore = A.errors.length;
       try {
@@ -90,6 +97,8 @@ const SKIP = '[data-reset-yes], [data-import], [data-quit-yes]';
       await sleep(300);
       if (A.errors.length > errsBefore) problems.push(what + ': console ' + A.errors.slice(errsBefore).join(' | '));
       if ((await sig()) === before) problems.push(what + ': nothing changed');
+      const is = was ? await place() : null;
+      if (is && is.title === was.title && Math.abs(is.top - was.top) > 1) problems.push(what + ': the sheet scrolled to ' + was.top + ' px went to ' + is.top + ' px');
     }
   }
   const total = Object.keys(counts).reduce((s, k) => s + counts[k], 0);

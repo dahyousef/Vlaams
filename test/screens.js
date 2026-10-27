@@ -494,6 +494,34 @@ NL.state.open().then(async () => {
   }
 
   /* ------------------------------------------------------------------ */
+  console.log('\nLES RÉGLAGES — une feuille redessinée garde sa place');
+  {
+    /* Un interrupteur, le thème, le rythme et la langue redessinent la page, et la feuille ouverte
+       avec : elle revenait en haut, et qui l'avait fait défiler jusqu'aux interrupteurs perdait
+       sa place à chaque toucher (#103). Le faux #app pose une carte neuve, revenue en haut, à
+       chaque rendu (test/lib/browser.js). Une autre feuille, ou la même rouverte, part du haut. */
+    const P = browser.open({ root: ROOT, seed: browser.SEED, byId: 'stub', timers: 'held' });
+    await new Promise(r => setImmediate(r));
+    while (P.waiting()) P.tick();
+    const card = () => P.app.querySelector('.sheet-card');
+    const top = () => (card() ? card().scrollTop + ' px' : 'no sheet');
+    P.NL.ui.go('vandaag'); P.NL.ui.openSheet('instellingen');
+    [{ toggle: 'showFlemish' }, { toggle: 'autoplay' }, { toggle: 'sfx' }, { theme: 'dark' }, { pace: 'calme' }, { displayLang: 'fr' }].forEach((d, i) => {
+      const at = 400 + 40 * i, page = P.app.innerHTML;
+      card().scrollTop = at;
+      P.tap(d);
+      ok(P.app.innerHTML !== page, 'a tap on ' + JSON.stringify(d) + ' did not redraw the settings sheet');
+      ok(top() === at + ' px', 'a tap on ' + JSON.stringify(d) + ' in the settings sheet, scrolled to ' + at + ' px, left it at ' + top());
+    });
+    card().scrollTop = 600;
+    P.tap({ reset: '1' });
+    ok(top() === '0 px', 'the reset confirmation opened at ' + top() + ', where the settings sheet had been scrolled');
+    P.tap({ close: '1' }); P.NL.ui.openSheet('instellingen');
+    ok(top() === '0 px', 'the settings sheet, closed and opened again, opened at ' + top());
+    console.log('  les trois interrupteurs, le thème, le rythme et la langue redessinent la feuille à sa place ; une autre feuille, ou la même rouverte, part du haut');
+  }
+
+  /* ------------------------------------------------------------------ */
   console.log('\nCOPIER — la sauvegarde et le journal d’erreurs');
   {
     /* Les deux copies vont de la même façon : par le presse-papiers s'il existe, sinon par
