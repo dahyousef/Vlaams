@@ -386,7 +386,13 @@ NL.state.open().then(async () => {
      du fuseau, et leur nom tiré de la date seule, hors de tout fuseau. À Montréal,
      une date lue comme minuit UTC tombe la veille : chaque barre y portait le nom du
      jour d'avant. Chaque instant tourne dans son fuseau le temps de ses contrôles
-     (test/lib/zone.js). */
+     (test/lib/zone.js).
+     Chaque barre compte les révisions de sa date locale (#112). Sur les huit dates qui
+     finissent aujourd'hui, une révision à 00:30 et, à 23:30, un nombre propre à chaque
+     date : aucune barre ne porte le compte d'une voisine. Les heures se posent sur le
+     calendrier du fuseau par new Date(a, m, j, h, mn), sans NL.util, et jamais après
+     l'instant tenu. Datées en UTC, celles de 00:30 passeraient à Bruxelles sur la barre
+     de la veille, celles de 23:30 à Montréal sur celle du lendemain. */
   {
     const before = offsets();
     const U = NL.util;
@@ -394,23 +400,41 @@ NL.state.open().then(async () => {
     const named = key => key + ' ' + t.days[new Date(key + 'T00:00:00Z').getUTCDay()];
     const bars = () => [...NL.screens.meer.render().matchAll(/class="spark-col" title="(\d{4}-\d\d-\d\d) : \d+">[\s\S]*?<span>([^<]*)<\/span>/g)]
       .map(m => m[1] + ' ' + m[2]).join(', ');
-    fresh();
+    const counts = () => [...NL.screens.meer.render().matchAll(/class="spark-col" title="(\d{4}-\d\d-\d\d : \d+)"/g)]
+      .map(m => m[1]).join(', ');
+    const late = n => 9 - n;   // les révisions de 23:30, n dates avant aujourd'hui
+    function logDays(today, now) {
+      const it = all[0];
+      const review = (key, hour) => {
+        const [y, m, d] = key.split('-').map(Number);
+        NL.state.logReview({ id: it.id, t: Math.min(new Date(y, m - 1, d, hour, 30).getTime(), now), ok: true, stage: 1, kind: it.kind, ex: 'type' });
+      };
+      [7, 6, 5, 4, 3, 2, 1, 0].forEach(n => {
+        const key = back(today, n);
+        review(key, 0);
+        for (let k = 0; k < late(n); k++) review(key, 23);
+      });
+    }
     [
       ['Europe/Brussels', '25 October 2026, 23:30', '2026-10-25T22:30:00Z', '2026-10-25'],   // le jour de 25 heures
       ['Europe/Brussels', '27 October 2026, 23:30', '2026-10-27T22:30:00Z', '2026-10-27'],   // il est dans la semaine
       ['Europe/Brussels', '30 March 2026, 00:30', '2026-03-29T22:30:00Z', '2026-03-30'],     // le lendemain du jour de 23 heures
       ['America/Montreal', '25 October 2026, 18:30', '2026-10-25T22:30:00Z', '2026-10-25']   // à l'ouest de UTC
     ].forEach(([tz, when, at, today]) => inZone(tz, () => {
+      fresh();
       B.clock.set(Date.parse(at));
+      logDays(today, Date.parse(at));
       const want = [6, 5, 4, 3, 2, 1, 0].map(n => named(back(today, n))).join(', '), got = bars();
       ok(got === want, 'at ' + when + ' in ' + tz + ', the week chart reads « ' + got + ' », not « ' + want + ' »');
+      const wantN = [6, 5, 4, 3, 2, 1, 0].map(n => back(today, n) + ' : ' + (1 + late(n))).join(', '), gotN = counts();
+      ok(gotN === wantN, 'at ' + when + ' in ' + tz + ', with one review at 00:30 on each date and, at 23:30, ' + late(6) + ' on the oldest bar up to ' + late(0) + ' today, the week chart counts « ' + gotN + ' », not « ' + wantN + ' »');
       /* §12 de test/journey.js compte la série sur les jours que l'aide lui donne. */
       const said = typeof U.daysBack === 'function' ? [1, 3].map(n => U.dayKey(U.daysBack(n))).join(' and ') : 'no NL.util.daysBack';
       const meant = [1, 3].map(n => back(today, n)).join(' and ');
       ok(said === meant, 'at ' + when + ' in ' + tz + ', one and three days back, as §12 of test/journey.js counts them, are ' + said + ', not ' + meant);
     }));
     ok(offsets() === before, 'after the week chart block the rest of the suite runs at UTC offsets ' + offsets() + ' (January / July), not ' + before + ' as before it');
-    console.log('  Bruxelles, autour des deux changements d’heure : sept jours de suite ; Montréal : chaque barre sous le nom de son jour ; un et trois jours plus tôt, comme les compte la série');
+    console.log('  Bruxelles, autour des deux changements d’heure : sept jours de suite ; Montréal : chaque barre sous le nom de son jour ; chaque barre, les révisions de sa date locale ; un et trois jours plus tôt, comme les compte la série');
   }
 
   /* ------------------------------------------------------------------ */
