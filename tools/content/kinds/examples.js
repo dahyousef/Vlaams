@@ -102,7 +102,7 @@ function split(C, ctx) {
 function check(row, input, ctx) {
   const out = [], list = row.sentences;
   if (!Array.isArray(list) || list.length > 2 || list.some(d => !d || typeof d !== 'object' || Array.isArray(d))) return ['sentences is a list of 0 to 2 sentences'];
-  if (!list.length && !oneLine(row.skip)) out.push('a row with no sentence says why in skip, on one line');
+  if (!list.length && !oneLine(row.skip)) out.push('a row with no sentence says why in skip, on one line with no space at either end');
   if (list.length && 'skip' in row) out.push('skip is for a row with no sentence');
   if (!list.length) return out;
   const C = ctx.course(), src = C.byId(input.id);
@@ -115,7 +115,7 @@ function check(row, input, ctx) {
       out.push(at + ' has the fields ' + FIELDS.join(', ') + ' (and edited when a translation is not Tatoeba\'s), not ' + Object.keys(d).join(', '));
       return;
     }
-    if (![d.nl, d.gap, d.en, d.fr].every(oneLine)) { out.push(at + ': nl, gap, en and fr are each a string on one line'); return; }
+    if (![d.nl, d.gap, d.en, d.fr].every(oneLine)) { out.push(at + ': nl, gap, en and fr are each a string on one line with no space at either end'); return; }
     const s = T.nld.get(d.src);
     if (!(input.candidates || []).some(c => c.id === d.src) || !s) { out.push(at + ': src ' + d.src + ' is not one of the row\'s candidates'); return; }
     if (d.nl !== s.text) out.push(at + ': nl is not Tatoeba\'s sentence ' + d.src + ', « ' + s.text + ' »: a sentence is taken as Tatoeba writes it');
@@ -125,7 +125,7 @@ function check(row, input, ctx) {
       if (s[k].indexOf(id) < 0 || !t) { out.push(at + ': ' + l + 'Src ' + id + ' is not a translation Tatoeba links to ' + d.src); return; }
       if (d[l] !== t.text) changed.push(l + ' « ' + d[l] + ' » is not Tatoeba\'s ' + id + ', « ' + t.text + ' »');
     });
-    if (changed.length && !oneLine(d.edited)) changed.forEach(c => out.push(at + ': ' + c + ': take it as written, or say why in edited'));
+    if (changed.length && !oneLine(d.edited)) changed.forEach(c => out.push(at + ': ' + c + ': take it as written, or say why in edited, on one line with no space at either end'));
     if (!changed.length && 'edited' in d) out.push(at + ': edited is for a translation that is not Tatoeba\'s, and both are');
     RULES(d, at, src, C, ctx.repo).forEach(r => out.push(r));
   });

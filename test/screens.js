@@ -21,6 +21,16 @@ const { text } = require('./lib/langs');
 const put = (it, rung, due) => { NL.srs.seed(it, rung); const r = NL.state.rec(it.id); r.due = due; NL.state.setRec(r); };
 const fresh = () => { NL.state.clearAll(); NL.content.refresh(); B.clock.set(T0); };
 const { SCREENS } = require('./lib/screens');
+const { inZone, offsets } = require('./lib/zone');
+
+/* Une page à elle, aux minuteurs retenus, ouverte et sans minuteur en attente : ce qui suit n'y
+   avance que par P.tick(). */
+async function heldPage() {
+  const P = browser.open({ root: ROOT, seed: browser.SEED, byId: 'stub', timers: 'held' });
+  await new Promise(r => setImmediate(r));
+  while (P.waiting()) P.tick();
+  return P;
+}
 
 /* Ce qu'aucun écran ne doit montrer, quel que soit l'état. */
 function read(name, html, state) {
@@ -149,21 +159,22 @@ NL.state.open().then(async () => {
   /* ------------------------------------------------------------------ */
   console.log('\nLA SÉRIE');
   {
-    /* Jours locaux, comme NL.util.dayKey() les compte : tirés de l'horloge du test. */
-    const day = n => NL.util.dayKey(T0 + n * DAY);
+    /* La clé du jour local n jours avant l'horloge du test, comptés sur le calendrier comme
+       NL.util.daysBack() les compte, jamais n fois 24 heures (#105). */
+    const day = n => NL.util.dayKey(NL.util.daysBack(n));
     const streakOnHome = () => {
       const h = text(NL.screens.vandaag.render());
       return (h.match(new RegExp('(\\d+)\\s+(?:' + t.statStreak(1) + '|' + t.statStreak(2) + ')')) || [])[1];
     };
     fresh();
-    NL.state.setMeta({ lastDay: day(-10), streak: 2 });
+    NL.state.setMeta({ lastDay: day(10), streak: 2 });
     ok(streakOnHome() === '0', 'la série est coupée depuis dix jours mais l\'accueil lit « ' + streakOnHome() + ' jours d\'affilée »');
-    ok(NL.state.meta().streak === 2 && NL.state.meta().lastDay === day(-10), 'lire l\'accueil a modifié la série ou le dernier jour enregistrés');
-    NL.state.setMeta({ lastDay: day(-1), streak: 2 });
+    ok(NL.state.meta().streak === 2 && NL.state.meta().lastDay === day(10), 'lire l\'accueil a modifié la série ou le dernier jour enregistrés');
+    NL.state.setMeta({ lastDay: day(1), streak: 2 });
     ok(streakOnHome() === '2', 'étudié hier : l\'accueil devrait garder la série de 2, il lit « ' + streakOnHome() + ' »');
     NL.state.setMeta({ lastDay: day(0), streak: 2 });
     ok(streakOnHome() === '2', 'étudié aujourd\'hui : l\'accueil devrait garder la série de 2, il lit « ' + streakOnHome() + ' »');
-    NL.state.setMeta({ lastDay: day(-2), streak: 2 });
+    NL.state.setMeta({ lastDay: day(2), streak: 2 });
     ok(streakOnHome() === '0', 'avant-hier : la série est coupée, l\'accueil lit « ' + streakOnHome() + ' »');
     NL.state.setMeta({ lastDay: null, streak: 0 });
     ok(streakOnHome() === '0', 'jamais étudié : l\'accueil devrait lire 0');
@@ -368,6 +379,41 @@ NL.state.open().then(async () => {
   }
 
   /* ------------------------------------------------------------------ */
+  console.log('\nLA SEMAINE DE PLUS — sept jours du calendrier, chacun sous son nom');
+  /* Un jour se compte sur le calendrier local, jamais en 24 heures : à Bruxelles, le
+     dernier dimanche d'octobre dure 25 heures, le dernier dimanche de mars 23 (#105).
+     Les instants sont écrits en UTC ; les jours attendus, relevés sur le calendrier
+     du fuseau, et leur nom tiré de la date seule, hors de tout fuseau. À Montréal,
+     une date lue comme minuit UTC tombe la veille : chaque barre y portait le nom du
+     jour d'avant. Chaque instant tourne dans son fuseau le temps de ses contrôles
+     (test/lib/zone.js). */
+  {
+    const before = offsets();
+    const U = NL.util;
+    const back = (key, n) => new Date(Date.parse(key + 'T00:00:00Z') - n * DAY).toISOString().slice(0, 10);
+    const named = key => key + ' ' + t.days[new Date(key + 'T00:00:00Z').getUTCDay()];
+    const bars = () => [...NL.screens.meer.render().matchAll(/class="spark-col" title="(\d{4}-\d\d-\d\d) : \d+">[\s\S]*?<span>([^<]*)<\/span>/g)]
+      .map(m => m[1] + ' ' + m[2]).join(', ');
+    fresh();
+    [
+      ['Europe/Brussels', '25 October 2026, 23:30', '2026-10-25T22:30:00Z', '2026-10-25'],   // le jour de 25 heures
+      ['Europe/Brussels', '27 October 2026, 23:30', '2026-10-27T22:30:00Z', '2026-10-27'],   // il est dans la semaine
+      ['Europe/Brussels', '30 March 2026, 00:30', '2026-03-29T22:30:00Z', '2026-03-30'],     // le lendemain du jour de 23 heures
+      ['America/Montreal', '25 October 2026, 18:30', '2026-10-25T22:30:00Z', '2026-10-25']   // à l'ouest de UTC
+    ].forEach(([tz, when, at, today]) => inZone(tz, () => {
+      B.clock.set(Date.parse(at));
+      const want = [6, 5, 4, 3, 2, 1, 0].map(n => named(back(today, n))).join(', '), got = bars();
+      ok(got === want, 'at ' + when + ' in ' + tz + ', the week chart reads « ' + got + ' », not « ' + want + ' »');
+      /* §12 de test/journey.js compte la série sur les jours que l'aide lui donne. */
+      const said = typeof U.daysBack === 'function' ? [1, 3].map(n => U.dayKey(U.daysBack(n))).join(' and ') : 'no NL.util.daysBack';
+      const meant = [1, 3].map(n => back(today, n)).join(' and ');
+      ok(said === meant, 'at ' + when + ' in ' + tz + ', one and three days back, as §12 of test/journey.js counts them, are ' + said + ', not ' + meant);
+    }));
+    ok(offsets() === before, 'after the week chart block the rest of the suite runs at UTC offsets ' + offsets() + ' (January / July), not ' + before + ' as before it');
+    console.log('  Bruxelles, autour des deux changements d’heure : sept jours de suite ; Montréal : chaque barre sous le nom de son jour ; un et trois jours plus tôt, comme les compte la série');
+  }
+
+  /* ------------------------------------------------------------------ */
   console.log('\nQUOTA ATTEINT, DES RÉVISIONS DUES — l’accueil le dit');
   {
     fresh();
@@ -437,9 +483,7 @@ NL.state.open().then(async () => {
        feuille des réglages qu'on faisait défiler revenait en haut, deux fois par toast. Le toast
        se pose et s'en va seul. La page lue est marquée d'un commentaire, qu'un rendu effacerait.
        Aux minuteurs retenus, le départ du toast attend P.tick(). */
-    const P = browser.open({ root: ROOT, seed: browser.SEED, byId: 'stub', timers: 'held' });
-    await new Promise(r => setImmediate(r));
-    while (P.waiting()) P.tick();
+    const P = await heldPage();
     P.NL.ui.go('vandaag'); P.NL.ui.openSheet('instellingen');
     const page = P.app.innerHTML + '<!--lue-->', t = P.NL.t;
     const shown = m => P.NL.ui.ifText(m, 'div', 'toast');
@@ -455,6 +499,32 @@ NL.state.open().then(async () => {
     ok(P.app.innerHTML.indexOf(shown(t.exported)) >= 0, 'a render during a toast dropped it');
     P.tick();
     console.log('  le toast arrive, cède sa place et s’en va sans redessiner la feuille des réglages ; un rendu le garde');
+  }
+
+  /* ------------------------------------------------------------------ */
+  console.log('\nLES RÉGLAGES — une feuille redessinée garde sa place');
+  {
+    /* Un interrupteur, le thème, le rythme et la langue redessinent la page, et la feuille ouverte
+       avec : elle revenait en haut, et qui l'avait fait défiler jusqu'aux interrupteurs perdait
+       sa place à chaque toucher (#103). Le faux #app pose une carte neuve, revenue en haut, à
+       chaque rendu (test/lib/browser.js). Une autre feuille, ou la même rouverte, part du haut. */
+    const P = await heldPage();
+    const card = () => P.app.querySelector('.sheet-card');
+    const top = () => (card() ? card().scrollTop + ' px' : 'no sheet');
+    P.NL.ui.go('vandaag'); P.NL.ui.openSheet('instellingen');
+    [{ toggle: 'showFlemish' }, { toggle: 'autoplay' }, { toggle: 'sfx' }, { theme: 'dark' }, { pace: 'calme' }, { displayLang: 'fr' }].forEach((d, i) => {
+      const at = 400 + 40 * i, page = P.app.innerHTML;
+      card().scrollTop = at;
+      P.tap(d);
+      ok(P.app.innerHTML !== page, 'a tap on ' + JSON.stringify(d) + ' did not redraw the settings sheet');
+      ok(top() === at + ' px', 'a tap on ' + JSON.stringify(d) + ' in the settings sheet, scrolled to ' + at + ' px, left it at ' + top());
+    });
+    card().scrollTop = 600;
+    P.tap({ reset: '1' });
+    ok(top() === '0 px', 'the reset confirmation opened at ' + top() + ', where the settings sheet had been scrolled');
+    P.tap({ close: '1' }); P.NL.ui.openSheet('instellingen');
+    ok(top() === '0 px', 'the settings sheet, closed and opened again, opened at ' + top());
+    console.log('  les trois interrupteurs, le thème, le rythme et la langue redessinent la feuille à sa place ; une autre feuille, ou la même rouverte, part du haut');
   }
 
   /* ------------------------------------------------------------------ */

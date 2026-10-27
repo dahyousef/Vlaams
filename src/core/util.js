@@ -95,6 +95,10 @@ NL.util = (function () {
     return new Date(x.getTime() - x.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
   };
   const dayDiff = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000);
+  /* Le jour local n jours plus tôt, compté sur le calendrier et jamais en 24 heures :
+     à Bruxelles, le dernier dimanche d'octobre dure 25 heures, celui de mars 23 (#105).
+     La même heure, n dates plus tôt ; dayKey() en tire la clé, getDay() le nom du jour. */
+  const daysBack = n => { const x = new Date(); x.setDate(x.getDate() - n); return x; };
 
   const MIN = 60000, HOUR = 60 * MIN, DAY = 24 * HOUR;
   function ago(ms) {
@@ -107,5 +111,5 @@ NL.util = (function () {
 
   const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
 
-  return { esc, shuffle, sample, one, clamp, uniq, norm, words, tiles, bare, bareFr, lev, near, tolFor, typedOk, ratio, diffWords, dayKey, dayDiff, ago, debounce, MIN, HOUR, DAY };
+  return { esc, shuffle, sample, one, clamp, uniq, norm, words, tiles, bare, bareFr, lev, near, tolFor, typedOk, ratio, diffWords, dayKey, dayDiff, daysBack, ago, debounce, MIN, HOUR, DAY };
 })();

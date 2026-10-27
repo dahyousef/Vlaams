@@ -716,6 +716,10 @@ NL.util = (function () {
     return new Date(x.getTime() - x.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
   };
   const dayDiff = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000);
+  /* Le jour local n jours plus tôt, compté sur le calendrier et jamais en 24 heures :
+     à Bruxelles, le dernier dimanche d'octobre dure 25 heures, celui de mars 23 (#105).
+     La même heure, n dates plus tôt ; dayKey() en tire la clé, getDay() le nom du jour. */
+  const daysBack = n => { const x = new Date(); x.setDate(x.getDate() - n); return x; };
 
   const MIN = 60000, HOUR = 60 * MIN, DAY = 24 * HOUR;
   function ago(ms) {
@@ -728,7 +732,7 @@ NL.util = (function () {
 
   const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
 
-  return { esc, shuffle, sample, one, clamp, uniq, norm, words, tiles, bare, bareFr, lev, near, tolFor, typedOk, ratio, diffWords, dayKey, dayDiff, ago, debounce, MIN, HOUR, DAY };
+  return { esc, shuffle, sample, one, clamp, uniq, norm, words, tiles, bare, bareFr, lev, near, tolFor, typedOk, ratio, diffWords, dayKey, dayDiff, daysBack, ago, debounce, MIN, HOUR, DAY };
 })();
 </script>
 <script>
@@ -6695,26 +6699,22 @@ NL.ex = (function () {
      score, le mot à mot et ce que le micro a entendu ; quand le micro ne peut pas écouter, c'est
      recordPanel. Un appelant passe dans `opts` ce qui diffère d'un écran à l'autre ; ce qu'il omet
      est ce que fait cet exercice :
-       icon                   la taille du micro (34) ;
-       startAttrs, stopAttrs  les attributs des boutons qui lancent et arrêtent l'écoute
-                              (data-mic="start" et data-mic="stop", avec leur aria-label) ;
-       after(sp)              ce qui suit le score : l'action qui accepte et la règle qui fait
-                              réessayer (ici, réessayer jusqu'au troisième refus, puis s'évaluer) ;
-       graded                 false pour un écran qui ne note rien, le nazeggen : ni ligne
-                              « entendu », ni auto-évaluation, et un simple avis à la place de
-                              recordPanel. */
+       icon       la taille du micro (34) ;
+       taps       ce que portent les boutons qui lancent et arrêtent l'écoute, tel que le clic de
+                  l'écran le lit (MIC_TAPS) ; le panneau leur ajoute leur aria-label ;
+       after(sp)  ce qui suit le score : l'action qui accepte et la règle qui fait réessayer (ici,
+                  réessayer jusqu'au troisième refus, puis s'évaluer) ;
+       graded     false pour un écran qui ne note rien, le nazeggen : UNGRADED au lieu de GRADED. */
   function micPanel(sp, target, opts) {
-    const o = Object.assign({
+    const screen = Object.assign({
       icon: 34, graded: true, after: retryThenRate,
-      startAttrs: ' data-mic="start" aria-label="' + NL.t.speak + '"',
-      stopAttrs: ' data-mic="stop" aria-label="' + NL.t.stop + '"'
+      taps: MIC_TAPS
     }, opts);
+    const grading = screen.graded ? GRADED : UNGRADED;
     const blocked = NL.speech.listenBlocked();
-    if (blocked) {
-      return o.graded ? recordPanel(sp, target, blocked) : '<div class="mic-panel offline"><p class="mic-why">' + NL.t.micNoBrowser + '</p></div>';
-    }
+    if (blocked) return grading.blocked(sp, target, blocked);
     if (sp.phase === 'listening') {
-      return '<div class="mic-panel live"><button class="mic big listening"' + o.stopAttrs + '>' + ICON.mic(o.icon) + '</button>' +
+      return '<div class="mic-panel live"><button class="mic big listening"' + micAttrs(screen.taps.stop, NL.t.stop) + '>' + ICON.mic(screen.icon) + '</button>' +
         '<p class="mic-why">' + NL.t.micListening + '</p>' +
         NL.ui.ifText(sp.partial, 'p', 'heard', 'nl') + '</div>';
     }
@@ -6724,21 +6724,51 @@ NL.ex = (function () {
         '<span class="score-bar"><span style="width:' + sp.pct + '%"></span></span></div>' +
         '<p class="word-diff"' + NL.gloss.attr('nl') + '>' + sp.parts.map(p =>
           '<span class="' + (p.ok ? (p.close ? 'w-close' : 'w-ok') : 'w-no') + '">' + esc(p.word) + '</span>').join(' ') + '</p>' +
-        (o.graded && sp.heard ? '<p class="heard">' + NL.t.micHeard + ' &ldquo;<span' + NL.gloss.attr('nl') + '>' + esc(sp.heard) + '</span>&rdquo;</p>' : '') +
-        o.after(sp) + '</div>';
+        grading.heard(sp) + screen.after(sp) + '</div>';
     }
     /* Un refus s'affiche : sans ça, toucher le micro ne faisait rien, en silence. */
-    return '<div class="mic-panel"><button class="mic big"' + o.startAttrs + '>' + ICON.mic(o.icon) + '</button>' +
+    return '<div class="mic-panel"><button class="mic big"' + micAttrs(screen.taps.start, NL.t.speak) + '>' + ICON.mic(screen.icon) + '</button>' +
       '<p class="mic-why">' + (sp.error ? esc(micError(sp.error)) : NL.t.micTap) + '</p>' +
-      (o.graded && sp.error ? selfRate(sp) : '') + '</div>';
+      grading.afterError(sp) + '</div>';
   }
 
-  /* Ce qui suit le score dans l'exercice : réessayer, puis s'évaluer. Trois refus : le micro
-     n'entend peut-être simplement pas ce mot-là. Sans cette issue, l'élément serait redemandé
+  /* Ce que portent les boutons du micro de l'exercice et du tour de parole : le clic de ces écrans
+     lit data-mic. Le bouton « réessayer » (retryButton) porte celui qui lance l'écoute. */
+  const MIC_TAPS = { start: { mic: 'start' }, stop: { mic: 'stop' } };
+
+  /* Les attributs d'un bouton du micro : le data-* que lit le clic de l'écran (tapAttrs), et son
+     nom pour un lecteur d'écran. */
+  const tapAttrs = tap => Object.keys(tap).map(k => ' data-' + k + '="' + tap[k] + '"').join('');
+  const micAttrs = (tap, label) => tapAttrs(tap) + ' aria-label="' + label + '"';
+
+  /* Ce que le panneau ajoute sur un écran qui note : recordPanel quand le micro ne peut pas écouter,
+     la ligne « entendu » sous le score, et l'auto-évaluation sous une erreur. Le nazeggen ne note
+     rien : un simple avis à la place de recordPanel, et rien d'autre. */
+  const GRADED = {
+    blocked: recordPanel,
+    heard: sp => sp.heard ? '<p class="heard">' + NL.t.micHeard + ' &ldquo;<span' + NL.gloss.attr('nl') + '>' + esc(sp.heard) + '</span>&rdquo;</p>' : '',
+    afterError: sp => sp.error ? selfRate(sp) : ''
+  };
+  const UNGRADED = {
+    blocked: () => '<div class="mic-panel offline"><p class="mic-why">' + NL.t.micNoBrowser + '</p></div>',
+    heard: () => '',
+    afterError: () => ''
+  };
+
+  /* Réessayer après un essai manqué, tant qu'il en reste : l'exercice et le tour de parole d'une
+     conversation (scenario.js) suivent la même règle. `label(left)` donne le texte du bouton,
+     `left` étant le nombre d'essais qui restent. */
+  const TRIES = 3;
+  const retryButton = (sp, label) => !sp.ok && sp.tries < TRIES
+    ? '<button class="btn btn-blue"' + tapAttrs(MIC_TAPS.start) + '>' + label(TRIES - sp.tries) + '</button>' : '';
+
+  /* Ce qui suit le score dans l'exercice : réessayer, puis s'évaluer. Trois refus (TRIES) : le
+     micro n'entend peut-être simplement pas ce mot-là. Sans cette issue, l'élément serait redemandé
      chaque jour sans jamais monter. */
-  const retryThenRate = sp =>
-    (!sp.ok && sp.tries < 3 ? '<div class="mic-actions"><button class="btn btn-blue" data-mic="start">' + NL.t.micRetry(3 - sp.tries) + '</button></div>' : '') +
-    (!sp.ok && sp.tries >= 3 ? selfRate(sp) : '');
+  const retryThenRate = sp => {
+    const retry = retryButton(sp, NL.t.micRetry);
+    return retry ? '<div class="mic-actions">' + retry + '</div>' : sp.ok ? '' : selfRate(sp);
+  };
 
   /* No recogniser available. Record yourself instead and compare against the
      model — no service needed, works offline, works in Opera. Falls through to
@@ -7048,7 +7078,7 @@ NL.ex = (function () {
      NL.ui.ifProse, qui déclare nl-BE ce qu'elle cite. */
   const explanation = item => !item ? null : (item.kind === 'pattern' ? item.rule : item.note) || null;
 
-  return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, micPanel, wordScore, hereLine, rubric, explanation, accepted };
+  return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, micPanel, retryButton, wordScore, hereLine, rubric, explanation, accepted };
 })();
 </script>
 <script>
@@ -7058,7 +7088,7 @@ NL.ui = (function () {
   'use strict';
   const U = NL.util, esc = U.esc, t = NL.t;
   let root = null;
-  let route = 'vandaag', arg = null, sheet = null, toastMsg = null, toastT = null;
+  let route = 'vandaag', arg = null, sheet = null, lastSheet = null, toastMsg = null, toastT = null;
 
   const I = {
     flame: '<svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5c2.2 3.4 1.2 5.1.2 6.3-.9 1.1-2 2-2 3.6a3.1 3.1 0 0 0 1.5 2.7c-.4-1.6.3-2.9 1.4-3.7.2 1.8 1.3 2.3 2.4 3.4a4.6 4.6 0 0 1 1.4 3.3A5.3 5.3 0 0 1 12 21.5a6 6 0 0 1-6-6c0-4.6 4.2-5.9 6-13Z"/></svg>',
@@ -7140,7 +7170,15 @@ NL.ui = (function () {
     const html = full
       ? '<div class="screen full">' + noticeHtml + S.render(arg) + '</div>'
       : topbar() + '<main class="screen">' + noticeHtml + S.render(arg) + '</main>' + nav();
+    /* La feuille redessinée telle quelle garde l'endroit où on l'avait fait défiler : un
+       interrupteur, le thème, le rythme ou la langue la renvoyaient en haut (#103). Une autre
+       feuille part du haut. */
+    const oldCard = sheet && sheet === lastSheet ? root.querySelector('.sheet-card') : null;
+    const at = oldCard ? oldCard.scrollTop : 0;
     root.innerHTML = html + (sheet ? sheetHtml() : '') + ifText(toastMsg, 'div', 'toast');
+    lastSheet = sheet;
+    const newCard = at ? root.querySelector('.sheet-card') : null;
+    if (newCard) newCard.scrollTop = at;
     if (S.after) S.after(arg);
   }
 
@@ -8303,8 +8341,8 @@ NL.screens.sessie = (function () {
       NL.state.logs().forEach(l => { const d = U.dayKey(l.t); byDay[d] = (byDay[d] || 0) + 1; });
       const days = [];
       for (let i = 6; i >= 0; i--) {
-        const d = U.dayKey(Date.now() - i * U.DAY);
-        days.push({ d, n: byDay[d] || 0 });
+        const at = U.daysBack(i), d = U.dayKey(at);
+        days.push({ d, n: byDay[d] || 0, weekday: at.getDay() });
       }
       const maxN = Math.max(1, ...days.map(x => x.n));
 
@@ -8324,7 +8362,7 @@ NL.screens.sessie = (function () {
         '<section class="card"><div class="spark">' +
         days.map(x => '<div class="spark-col" title="' + x.d + ' : ' + x.n + '">' +
           '<div class="spark-bar" style="height:' + Math.max(4, x.n / maxN * 62) + 'px"></div>' +
-          '<span>' + t.days[new Date(x.d).getDay()] + '</span></div>').join('') +
+          '<span>' + t.days[x.weekday] + '</span></div>').join('') +
         '</div>' +
         '<div class="mini-stats">' +
         '<span><b>' + cp.met + '</b> ' + t.statMet + '</span>' +
@@ -8561,12 +8599,11 @@ NL.screens.sessie = (function () {
   }
 
   /* The speak exercise's microphone panel (NL.ex.micPanel), so the microphone always behaves the
-     same. A turn differs by what follows the score: a retry until the third try, and a button that
-     always accepts the turn and moves on. */
+     same. A turn differs by what follows the score: a retry until the third try, the exercise's rule
+     (NL.ex.retryButton), and a button that always accepts the turn and moves on. */
   const TURN = {
     icon: 32,
-    after: sp => '<div class="mic-actions">' +
-      (!sp.ok && sp.tries < 3 ? '<button class="btn btn-blue" data-mic="start">' + NL.t.replay + '</button>' : '') +
+    after: sp => '<div class="mic-actions">' + NL.ex.retryButton(sp, () => NL.t.replay) +
       '<button class="btn ' + (sp.ok ? 'btn-good' : 'btn-ghost') + '" data-act="accept">' + (sp.ok ? NL.t.next : NL.t.micAnyway) + '</button>' +
       '</div>'
   };
@@ -8666,7 +8703,7 @@ NL.screens.luisteren = (function () {
         '<p class="rev-nl"' + NL.gloss.attr('nl') + '>' + esc(c.be || c.nl) + '</p>' +
         '<p class="rev-en"' + NL.gloss.langAttr(c) + '>' + esc(NL.gloss.of(c)) + '</p>' +
         '<div class="listen-actions"><button class="btn btn-ghost" data-act="slow">' + NL.t.slow + '</button></div>' +
-        '</div>' + NL.ex.micPanel(sp, c.nl, shadow());
+        '</div>' + NL.ex.micPanel(sp, c.nl, SHADOW);
     }
 
     return '<div class="lesson">' +
@@ -8686,14 +8723,11 @@ NL.screens.luisteren = (function () {
   }
 
   /* Le panneau du micro de l'exercice « dire » (NL.ex.micPanel). Le nazeggen ne note rien : son
-     micro passe par data-act, et après le score il n'offre que de recommencer. Ses boutons portent
-     les noms de ceux de l'exercice, lus dans la langue du moment : d'où une fonction. */
-  const shadow = () => ({
-    icon: 32, graded: false,
-    startAttrs: ' data-act="mic" aria-label="' + NL.t.speak + '"',
-    stopAttrs: ' data-act="micstop" aria-label="' + NL.t.stop + '"',
+     micro passe par data-act, et après le score il n'offre que de recommencer. */
+  const SHADOW = {
+    icon: 32, graded: false, taps: { start: { act: 'mic' }, stop: { act: 'micstop' } },
     after: () => '<div class="mic-actions"><button class="btn btn-blue" data-act="mic">' + NL.t.replay + '</button></div>'
-  });
+  };
 
   function menu() {
     return '<div class="wrap">' +

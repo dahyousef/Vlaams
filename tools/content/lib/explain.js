@@ -30,8 +30,8 @@
 const path = require('path');
 const kaikki = require('../kaikki');
 const spelling = require(path.join(__dirname, '..', '..', '..', 'test', 'lib', 'spelling'));
-const { dutchWords, words } = require(path.join(__dirname, '..', '..', '..', 'test', 'lib', 'dutch'));
-const { QUOTES, oneLine, sig, untoken, quotes } = require(path.join(__dirname, '..', '..', '..', 'test', 'lib', 'text'));
+const { dutchWords, words, tokenFreeWords } = require(path.join(__dirname, '..', '..', '..', 'test', 'lib', 'dutch'));
+const { oneLine, sig, quotes, strayQuotes } = require(path.join(__dirname, '..', '..', '..', 'test', 'lib', 'text'));
 
 /* Ce que l'empreinte couvre : ce que le rédacteur lit et ce que Merge écrit. Merge écrit la
    note, donc la relancer après un succès refuse comme périmée chaque ligne dont elle a changé
@@ -144,8 +144,8 @@ function checkNote(row, input, ctx) {
     const s = n[l];
     if (Array.from(s).length > NOTE_MAX) why.push('note.' + l + ' is ' + Array.from(s).length + ' characters: at most ' + NOTE_MAX);
     if (/[<\n\r"]/.test(s)) why.push('note.' + l + ' holds <, a newline or a straight quote "');
-    const other = QUOTES[l === 'en' ? 'fr' : 'en'];
-    if (s.indexOf(other[0]) >= 0 || s.indexOf(other[1]) >= 0) { why.push('note.' + l + ' quotes with ' + QUOTES[l].join(' ') + ' only'); unread.push(l); }
+    const stray = strayQuotes(s, l);
+    if (stray) { why.push('note.' + l + ' ' + stray); unread.push(l); }
     q[l] = quotes(s, l);
     if (q[l].why) { why.push('note.' + l + ' has a quote mark without its pair, a quote inside a quote, or an empty quote'); unread.push(l); }
     const k = sentences(q[l].outside);
@@ -174,7 +174,7 @@ function checkNote(row, input, ctx) {
     if (bad.length) why.push('« ' + seg + ' » is quoted, but ' + list(bad) + ' is not Dutch that OpenTaal, flemish.tsv or this row knows: quotes hold Dutch only, a translation goes in parentheses');
   });
   const names = new Set([].concat(...Object.keys(T.NL.content.DEFAULTS).map(k => words(T.NL.content.DEFAULTS[k]))));
-  const bareIn = l => new Set(words(untoken(q[l].outside)).filter(w => w.length > 1 && T.dutch.has(w) && !names.has(w)));
+  const bareIn = l => new Set(tokenFreeWords(q[l].outside).filter(w => w.length > 1 && T.dutch.has(w) && !names.has(w)));
   const enBare = bareIn('en'), both = Array.from(bareIn('fr')).filter(w => enBare.has(w));
   if (both.length) why.push(list(both) + ' is Dutch of the course, outside quotes in fr and in en: quote it, or say it another way');
   return why;

@@ -151,8 +151,8 @@
       NL.state.logs().forEach(l => { const d = U.dayKey(l.t); byDay[d] = (byDay[d] || 0) + 1; });
       const days = [];
       for (let i = 6; i >= 0; i--) {
-        const d = U.dayKey(Date.now() - i * U.DAY);
-        days.push({ d, n: byDay[d] || 0 });
+        const at = U.daysBack(i), d = U.dayKey(at);
+        days.push({ d, n: byDay[d] || 0, weekday: at.getDay() });
       }
       const maxN = Math.max(1, ...days.map(x => x.n));
 
@@ -172,7 +172,7 @@
         '<section class="card"><div class="spark">' +
         days.map(x => '<div class="spark-col" title="' + x.d + ' : ' + x.n + '">' +
           '<div class="spark-bar" style="height:' + Math.max(4, x.n / maxN * 62) + 'px"></div>' +
-          '<span>' + t.days[new Date(x.d).getDay()] + '</span></div>').join('') +
+          '<span>' + t.days[x.weekday] + '</span></div>').join('') +
         '</div>' +
         '<div class="mini-stats">' +
         '<span><b>' + cp.met + '</b> ' + t.statMet + '</span>' +

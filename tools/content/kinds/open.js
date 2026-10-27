@@ -14,10 +14,10 @@
 const sequence = require('../../../test/lib/sequence');
 const spelling = require('../../../test/lib/spelling');
 /* Le néerlandais d'un texte se lit mot à mot comme test/lang.js le lit (6d), jetons ôtés :
-   words(untoken(s)), accents gardés. Ce n'est pas NL.util.words (fondé sur norm, qui ôte les
+   tokenFreeWords(s), accents gardés. Ce n'est pas NL.util.words (fondé sur norm, qui ôte les
    accents) : celui-ci sert à compter les mots d'une réponse, celui-là à lire le néerlandais cité. */
-const { words } = require('../../../test/lib/dutch');
-const { QUOTES, oneLine, untoken, quotes } = require('../../../test/lib/text');
+const { tokenFreeWords } = require('../../../test/lib/dutch');
+const { oneLine, quotes, strayQuotes } = require('../../../test/lib/text');
 
 /* Les phrases, trois par unité, dont le cadre se généralise (« Mag ik… », « Hoeveel… »,
    « Ik moet naar… »). Une phrase à jeton ({naam}…) n'en est pas : une tâche est la même pour
@@ -43,8 +43,6 @@ const MIN = [3, 12];
 
 const pair = v => !!v && typeof v === 'object' && !Array.isArray(v) && Object.keys(v).sort().join() === 'en,fr' &&
   ['fr', 'en'].every(l => oneLine(v[l]));
-/* Un côté qui écrit les guillemets de l'autre langue, ou le guillemet droit. */
-const strays = (s, l) => QUOTES[l === 'fr' ? 'en' : 'fr'].concat('"').some(m => s.indexOf(m) >= 0);
 
 /* Ce que Check lit du cours, une fois par cours : l'index de chaque unité, les mots enseignés
    jusqu'à chacune, la première unité de chaque forme (test/lib/sequence.js), l'orthographe
@@ -54,14 +52,14 @@ function facts(C, repo) {
   if (memo.has(C)) return memo.get(C);
   const units = C.RAW.units, taught = [], seen = new Set(), dutch = new Set();
   units.forEach(u => {
-    (u.words || []).concat(u.phrases || []).forEach(x => words(untoken(x.nl)).forEach(w => { seen.add(w); dutch.add(w); }));
+    (u.words || []).concat(u.phrases || []).forEach(x => tokenFreeWords(x.nl).forEach(w => { seen.add(w); dutch.add(w); }));
     taught.push([...seen].sort());
   });
   const D = C.NL.content.DEFAULTS;
   const f = {
     index: new Map(units.map((u, ui) => [u.id, ui])), taught, dutch,
     first: sequence.firstUnits(C.RAW), S: spelling.open(repo, C.NL),
-    names: new Set([].concat(...Object.keys(D).map(k => words(untoken(D[k])))))
+    names: new Set([].concat(...Object.keys(D).map(k => tokenFreeWords(D[k]))))
   };
   memo.set(C, f);
   return f;
@@ -85,15 +83,18 @@ const label = (n, i) => 'need ' + (i + 1) + ' « ' + n.what.en + ' »';
    français et l'article anglais (lang.js l'excuse aussi). */
 function quoteRule(v, where, taught, dutch, names) {
   const q = { fr: quotes(v.fr, 'fr'), en: quotes(v.en, 'en') };
-  const bad = ['fr', 'en'].map(l => [l, strays(v[l], l) ? l + ' quotes with ' + QUOTES[l].join(' ') + ' only' : q[l].why]).filter(x => x[1]).map(x => where + ': ' + x[1]);
+  const bad = ['fr', 'en'].map(l => {
+    const stray = strayQuotes(v[l], l, ['"']);
+    return stray ? l + ' ' + stray : q[l].why;
+  }).filter(Boolean).map(r => where + ': ' + r);
   if (bad.length) return bad;
   const out = [], fr = q.fr.quoted, en = q.en.quoted;
   if (fr.join('|') !== en.join('|')) out.push(where + ': fr quotes ' + JSON.stringify(fr) + ', en quotes ' + JSON.stringify(en) + ': both sides quote the same Dutch, in the same order');
-  fr.forEach(s => words(untoken(s)).filter(w => !taught.has(w) && !/^\d+$/.test(w)).forEach(w =>
+  fr.forEach(s => tokenFreeWords(s).filter(w => !taught.has(w) && !/^\d+$/.test(w)).forEach(w =>
     out.push(where + ': « ' + w + ' » is quoted, and the course has not taught it by this unit: a quote holds taught Dutch, and a translation goes in parentheses')));
   const digits = s => (s.match(/\d+/g) || []).sort().join(' ');
   if (digits(v.fr) !== digits(v.en)) out.push(where + ': fr has the numbers [' + digits(v.fr) + '], en [' + digits(v.en) + ']');
-  const bare = l => new Set(words(untoken(q[l].outside)));
+  const bare = l => new Set(tokenFreeWords(q[l].outside));
   const enBare = bare('en');
   [...bare('fr')].filter(w => enBare.has(w) && dutch.has(w) && !names.has(w) && w !== 'a').forEach(w =>
     out.push(where + ': « ' + w + ' » is Dutch the course has, written bare in fr and in en: quote it, or reword'));
@@ -105,21 +106,21 @@ function check(row, input, ctx) {
   const C = ctx.course(), F = facts(C, ctx.repo), U = C.NL.util;
   const ui = F.index.get(input.unit);
   const out = [];
-  if (!pair(row.ask)) out.push('ask is { "fr": …, "en": … }, each one line');
-  if (!oneLine(row.model)) out.push('model is one line of Dutch');
+  if (!pair(row.ask)) out.push('ask is { "fr": …, "en": … }, each one line with no space at either end');
+  if (!oneLine(row.model)) out.push('model is one line of Dutch with no space at either end');
   if (!Array.isArray(row.need) || row.need.length < 2 || row.need.length > 4) out.push('need is a list of 2 to 4 needs');
   if (out.length) return out;
   row.need.forEach((n, i) => {
     const at = 'need ' + (i + 1);
     if (!n || typeof n !== 'object' || Array.isArray(n)) { out.push(at + ' is an object'); return; }
     Object.keys(n).filter(k => KEYS.indexOf(k) < 0).forEach(k => out.push(at + ': unknown field ' + k));
-    if (!pair(n.what)) out.push(at + ': what is { "fr": …, "en": … }, each one line');
-    if (!oneLine(n.miss)) out.push(at + ': miss is one line of Dutch');
+    if (!pair(n.what)) out.push(at + ': what is { "fr": …, "en": … }, each one line with no space at either end');
+    if (!oneLine(n.miss)) out.push(at + ': miss is one line of Dutch with no space at either end');
     const how = ['rx', 'any', 'min'].filter(k => n[k] !== undefined);
     if (how.length !== 1) { out.push(at + ': exactly one of rx, any and min'); return; }
     if (n.rx !== undefined && (typeof n.rx !== 'string' || !n.rx)) out.push(at + ': rx is the source of a regular expression, a string');
     else if (typeof n.rx === 'string' && typeof regex(n.rx) === 'string') out.push(at + ': rx « ' + n.rx + ' » does not compile: ' + regex(n.rx));
-    if (n.any !== undefined && (!Array.isArray(n.any) || !n.any.length || !n.any.every(oneLine))) out.push(at + ': any is a list of words or runs of words');
+    if (n.any !== undefined && (!Array.isArray(n.any) || !n.any.length || !n.any.every(oneLine))) out.push(at + ': any is a list of words or runs of words, each with no space at either end');
     if (n.min !== undefined && !(Number.isInteger(n.min) && n.min >= MIN[0] && n.min <= MIN[1])) out.push(at + ': min is a whole number from ' + MIN[0] + ' to ' + MIN[1]);
     if (n.min !== undefined && pair(n.what) && ['fr', 'en'].some(l => (n.what[l].match(/\d+/g) || []).indexOf(String(n.min)) < 0)) out.push(at + ': its what names its number, ' + n.min + ', in fr and in en');
   });
@@ -154,10 +155,10 @@ function check(row, input, ctx) {
      est public. */
   const strings = [row.ask.fr, row.ask.en, row.model].concat(...row.need.map(n => [n.what.fr, n.what.en, n.miss].concat(n.any || [])));
   if (strings.some(s => /[{}]/.test(s))) out.push('a task holds no { } token');
-  strings.forEach(s => words(untoken(s)).filter(w => F.names.has(w)).forEach(w => out.push('« ' + w + ' » is a default name: a task holds no name of a learner, a town or a company')));
+  strings.forEach(s => tokenFreeWords(s).filter(w => F.names.has(w)).forEach(w => out.push('« ' + w + ' » is a default name: a task holds no name of a learner, a town or a company')));
 
   /* Les guillemets. */
-  const taught = new Set(F.taught[ui]), dutch = new Set([...F.dutch].concat(words(untoken(row.model))));
+  const taught = new Set(F.taught[ui]), dutch = new Set([...F.dutch].concat(tokenFreeWords(row.model)));
   quoteRule(row.ask, 'ask', taught, dutch, F.names).forEach(r => out.push(r));
   row.need.forEach((n, i) => quoteRule(n.what, 'need ' + (i + 1) + ' what', taught, dutch, F.names).forEach(r => out.push(r)));
   return out;
@@ -168,7 +169,7 @@ function check(row, input, ctx) {
 function checkVerdict(v, row, input, ctx) {
   if (v.verdict !== 'keep') return v.right === undefined ? [] : ['only a keep carries right'];
   const r = v.right;
-  if (!Array.isArray(r) || r.length !== 2 || !r.every(oneLine)) return ['a keep carries right: two right answers of the reader\'s own, each one line of Dutch'];
+  if (!Array.isArray(r) || r.length !== 2 || !r.every(oneLine)) return ['a keep carries right: two right answers of the reader\'s own, each one line of Dutch with no space at either end'];
   const C = ctx.course(), U = C.NL.util, task = taskOf(row), out = [];
   if (U.norm(r[0]) === U.norm(r[1])) out.push('the two right answers are the same answer');
   r.forEach((a, k) => {

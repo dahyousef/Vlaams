@@ -71,15 +71,22 @@ function stamp(kind, src, NL) {
 
 const failed = lines => lines.some(l => /^fail /.test(l));
 const writeJson = (file, v) => fs.writeFileSync(file, JSON.stringify(v, null, 2) + '\n');
+/* Ce que liste le split.txt d'un dossier coupé : ses lignes, « <lot> <lignes> » chacune, et le
+   lot que nomme chacune. */
+function readSplitTxt(kindDir) {
+  const lines = fs.readFileSync(path.join(kindDir, 'split.txt'), 'utf8').split('\n').filter(Boolean);
+  return { lines, batches: lines.map(l => l.split(' ')[0]) };
+}
 
 /* Split : la source coupée en lots, une fois. Un dossier déjà coupé (split.txt) n'est pas
-   récrit : ses lignes sont imprimées telles quelles. Un lot vide n'est pas écrit, et
-   split.txt, écrit en dernier, ne liste que les lots écrits. Des ids nommés ne gardent que
-   leurs lignes, dans le lot où le genre les met : c'est ainsi que quelques lignes déjà
-   fusionnées se récrivent. Un id que le genre ne coupe pas est refusé. */
+   récrit (alreadySplit). Un lot vide n'est pas écrit, et split.txt, écrit en dernier, ne
+   liste que les lots écrits. Des ids nommés ne gardent que leurs lignes, dans le lot où le
+   genre les met : c'est ainsi que quelques lignes déjà fusionnées se récrivent. Un id que le
+   genre ne coupe pas est refusé. */
 function split(repo, kindDir, ids) {
   const name = path.basename(kindDir), list = path.join(kindDir, 'split.txt');
-  if (fs.existsSync(list)) return { ok: true, lines: fs.readFileSync(list, 'utf8').split('\n').filter(Boolean) };
+  const keep = ids && ids.length ? new Set(ids) : null;
+  if (fs.existsSync(list)) return alreadySplit(kindDir, keep);
   let kind;
   try { kind = loadKind(repo, name); } catch (e) { return { ok: false, lines: ['fail ' + name + ' -: ' + e.message] }; }
   const C = course(repo);
@@ -100,7 +107,6 @@ function split(repo, kindDir, ids) {
       seen.set(r.id, b.batch);
     });
   });
-  const keep = ids && ids.length ? new Set(ids) : null;
   if (keep) keep.forEach(id => { if (!seen.has(id)) lines.push('fail ' + name + ' ' + id + ': not a row the kind\'s split cuts'); });
   if (failed(lines)) return { ok: false, lines };
   batches.map(b => keep ? { batch: b.batch, rows: b.rows.filter(r => keep.has(r.id)) } : b).filter(b => b.rows.length).forEach(b => {
@@ -116,6 +122,27 @@ function split(repo, kindDir, ids) {
   fs.mkdirSync(kindDir, { recursive: true });
   fs.writeFileSync(list, lines.map(l => l + '\n').join(''));
   return { ok: true, lines };
+}
+
+/* Un dossier déjà coupé : rien n'est écrit, et ses lignes sont redites. Des ids nommés doivent
+   être exactement les lignes de ses lots, dans n'importe quel ordre ; sinon une ligne fail dit
+   la différence. L'entrée d'un lot qui manque ou ne se lit pas est nommée par une ligne fail,
+   comme Check la nomme. */
+function alreadySplit(kindDir, keep) {
+  const name = path.basename(kindDir), { lines, batches } = readSplitTxt(kindDir);
+  if (!keep) return { ok: true, lines };
+  const held = [], unread = [];
+  batches.forEach(b => {
+    const file = b + '/input.json';
+    if (!fs.existsSync(path.join(kindDir, file))) unread.push('fail ' + file + ' -: missing');
+    else (readArray(kindDir, file, unread) || []).forEach(r => held.push(r.id));
+  });
+  if (unread.length) return { ok: false, lines: unread };
+  const missing = Array.from(keep).filter(id => held.indexOf(id) < 0), unnamed = held.filter(id => !keep.has(id));
+  if (!missing.length && !unnamed.length) return { ok: true, lines };
+  return { ok: false, lines: ['fail ' + name + ' -: already split with other rows' +
+    (missing.length ? '; named but not in its batches: ' + missing.join(' ') : '') +
+    (unnamed.length ? '; in its batches but not named: ' + unnamed.join(' ') : '')] };
 }
 
 /* Un fichier JSON du lot : un tableau, ou une ligne `fail`. */
@@ -150,7 +177,7 @@ function checkRow(file, row, input, kind, ctx, out) {
   kind.fields.forEach(f => { if (row[f] === undefined) out.push('fail ' + file + ' ' + row.id + ': missing field ' + f); });
   const known = KIT_FIELDS.concat(kind.fields, kind.optional);
   Object.keys(row).forEach(k => { if (known.indexOf(k) < 0) out.push('fail ' + file + ' ' + row.id + ': unknown field ' + k); });
-  if ('unsure' in row && !oneLine(row.unsure)) out.push('fail ' + file + ' ' + row.id + ': unsure is a reason on one line');
+  if ('unsure' in row && !oneLine(row.unsure)) out.push('fail ' + file + ' ' + row.id + ': unsure is a reason on one line with no space at either end');
   if (out.length > before) return;
   let reasons;
   try { reasons = kind.check(row, input, ctx); } catch (e) { reasons = ['the kind\'s check threw: ' + e.message]; }
@@ -327,7 +354,7 @@ function settle(id, got) {
 function readKind(repo, kindDir) {
   const name = path.basename(kindDir), list = path.join(kindDir, 'split.txt');
   if (!fs.existsSync(list)) return { name, kind: null, lines: ['fail ' + name + ' -: never split: run Split first'], rows: [] };
-  const batches = fs.readFileSync(list, 'utf8').split('\n').filter(Boolean).map(l => l.split(' ')[0]);
+  const batches = readSplitTxt(kindDir).batches;
   const lines = [], rows = [];
   let kind = null;
   batches.forEach(b => {

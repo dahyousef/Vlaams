@@ -161,12 +161,17 @@ function open(opts) {
   }
   const app = mkEl('div');
   /* #app pose du HTML à sa fin, et retire par sa classe un élément qui ne contient que du
-     texte : c'est ce que fait le toast (shell.js), qui ne redessine pas la page. */
-  app.insertAdjacentHTML = (where, h) => { if (where === 'beforeend') app.innerHTML += h; };
+     texte : c'est ce que fait le toast (shell.js), qui ne redessine pas la page.
+     La carte d'une feuille défile, comme la vraie : écrire innerHTML en pose une neuve, revenue
+     en haut ; ajouter ou retirer le toast ne la touche pas (#103). */
+  let html = '', cardTop = 0;
+  Object.defineProperty(app, 'innerHTML', { get: () => html, set: h => { html = h; cardTop = 0; } });
+  app.insertAdjacentHTML = (where, h) => { if (where === 'beforeend') html += h; };
   app.querySelector = sel => {
+    if (sel === '.sheet-card') return html.indexOf('class="sheet-card"') < 0 ? null : { get scrollTop() { return cardTop; }, set scrollTop(v) { cardTop = v; } };
     const m = /^\.([\w-]+)$/.exec(sel);
     const re = m && new RegExp('<(\\w+) class="' + m[1] + '">[^<]*</\\1>');
-    return re && re.test(app.innerHTML) ? { remove() { app.innerHTML = app.innerHTML.replace(re, ''); } } : null;
+    return re && re.test(html) ? { remove() { html = html.replace(re, ''); } } : null;
   };
   const fields = {};
   const events = [];

@@ -2,7 +2,9 @@
      node tools/content/split.js <dépôt> <dossier du genre> [<id>…]
    Le genre est le nom du dossier (…/drafts/flemish → tools/content/kinds/flemish.js).
    Des ids nommés ne coupent que leurs lignes. Imprime « <lot> <lignes> » par lot ; sur un
-   dossier déjà coupé, n'écrit rien et imprime ses lignes. */
+   dossier déjà coupé, n'écrit rien et imprime ses lignes, ou, si des ids nommés ne sont pas
+   exactement ceux de ses lots, une ligne fail qui dit la différence. Avec des ids nommés, une
+   ligne fail nomme aussi le lot dont l'entrée manque ou ne se lit pas. */
 const path = require('path');
 const kit = require('./lib/kit');
 
