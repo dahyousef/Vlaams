@@ -91,7 +91,7 @@ NL.screens.luisteren = (function () {
         '<p class="rev-nl"' + NL.gloss.attr('nl') + '>' + esc(c.be || c.nl) + '</p>' +
         '<p class="rev-en"' + NL.gloss.langAttr(c) + '>' + esc(NL.gloss.of(c)) + '</p>' +
         '<div class="listen-actions"><button class="btn btn-ghost" data-act="slow">' + NL.t.slow + '</button></div>' +
-        '</div>' + NL.ex.micPanel(sp, c.nl, shadow());
+        '</div>' + NL.ex.micPanel(sp, c.nl, SHADOW);
     }
 
     return '<div class="lesson">' +
@@ -111,14 +111,11 @@ NL.screens.luisteren = (function () {
   }
 
   /* Le panneau du micro de l'exercice « dire » (NL.ex.micPanel). Le nazeggen ne note rien : son
-     micro passe par data-act, et après le score il n'offre que de recommencer. Ses boutons portent
-     les noms de ceux de l'exercice, lus dans la langue du moment : d'où une fonction. */
-  const shadow = () => ({
-    icon: 32, graded: false,
-    startAttrs: ' data-act="mic" aria-label="' + NL.t.speak + '"',
-    stopAttrs: ' data-act="micstop" aria-label="' + NL.t.stop + '"',
+     micro passe par data-act, et après le score il n'offre que de recommencer. */
+  const SHADOW = {
+    icon: 32, graded: false, taps: { start: { act: 'mic' }, stop: { act: 'micstop' } },
     after: () => '<div class="mic-actions"><button class="btn btn-blue" data-act="mic">' + NL.t.replay + '</button></div>'
-  });
+  };
 
   function menu() {
     return '<div class="wrap">' +

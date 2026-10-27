@@ -214,12 +214,11 @@
   }
 
   /* The speak exercise's microphone panel (NL.ex.micPanel), so the microphone always behaves the
-     same. A turn differs by what follows the score: a retry until the third try, and a button that
-     always accepts the turn and moves on. */
+     same. A turn differs by what follows the score: a retry until the third try, the exercise's rule
+     (NL.ex.retryButton), and a button that always accepts the turn and moves on. */
   const TURN = {
     icon: 32,
-    after: sp => '<div class="mic-actions">' +
-      (!sp.ok && sp.tries < 3 ? '<button class="btn btn-blue" data-mic="start">' + NL.t.replay + '</button>' : '') +
+    after: sp => '<div class="mic-actions">' + NL.ex.retryButton(sp, () => NL.t.replay) +
       '<button class="btn ' + (sp.ok ? 'btn-good' : 'btn-ghost') + '" data-act="accept">' + (sp.ok ? NL.t.next : NL.t.micAnyway) + '</button>' +
       '</div>'
   };
