@@ -25,3 +25,11 @@ laptop follow without closing it.
 The cognate set follows the display language (ADR 0004), so it is recomputed at every switch,
 which is to say outside sessions only. After a switch the learner is told once where the
 reference sheets are; nothing about that notice is stored.
+
+## Amended 28 October 2026
+
+A listening set waits too, from its first line to its summary. It is now full-screen like a
+session, because its footer fell under the tab bar (#114), and the reasons above apply to it
+unchanged: the settings sheet cannot open there, so a change can only come from another device,
+and the set's answer options are built in the language it began in. The Listen menu is not part
+of the set: a change applies there at once.
