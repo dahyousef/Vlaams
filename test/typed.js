@@ -500,6 +500,15 @@ NL.state.open().then(() => {
         // le mot étranger est celui qui répond, pas un mot qui partage l’article de l’item
         if (task.odd) ok(U.bare(task.odd.nl) === E.answer(task), 'intrus keeps ' + say(U.bare(task.odd.nl)) + ' as its odd word, not the one that answers, ' + say(E.answer(task)));
         if (task.odd) ok(meanLine(v) === meanOf(task.odd), 'intrus shows ' + meanLine(v) + ', not the odd word’s meaning ' + meanOf(task.odd));
+        /* Le pied parle du mot étranger d'un bout à l'autre : « het perron » a une note et une forme
+           flamande, que le pied ne montrait qu'à tort (#115). */
+        if (task.odd) {
+          const line = k => (v.foot.match(new RegExp('<p class="' + k + '"[^>]*>[\\s\\S]*?</p>')) || [''])[0];
+          const note = NL.ui.ifProse(NL.ex.explanation(task.odd), 'p', 'v-note');
+          ok(line('v-note') === note, 'intrus on ' + say(nl) + ' explains with ' + say(line('v-note')) + ', not the odd word’s ' + say(note));
+          const be = NL.ex.hereLine(task.odd, [E.answer(task), null], false);
+          ok(line('v-be') === be, 'intrus on ' + say(nl) + ' reads ' + say(line('v-be')) + ' for « ' + t.hereThey + ' », not the odd word’s ' + say(be));
+        }
       } else ok(meanLine(v) === meanOf(it), ex + ' on ' + say(nl) + ' shows ' + meanLine(v) + ', not ' + meanOf(it));
       if (ex === 'cloze') ok(meanLine(v) !== meanOf(task.drill), 'cloze shows the meaning of its sentence, not of ' + say(nl));
       if (ex === 'dictation') {
@@ -509,6 +518,23 @@ NL.state.open().then(() => {
       }
       S.abandon();
     });
+
+    /* Le mot étranger de l'intrus est tiré au sort : celui-ci est fixé, « de zus », qui a un « On dit
+       aussi » que le pied doit dire, face à « het perron », qui n'en a pas (#115). */
+    {
+      fresh();
+      const it = find('het perron'), odd = find('de zus');
+      if (!ask(it, 'intrus', 1, 'article')) ok(false, 'setup: ' + say(it.nl) + ' is never asked in intrus');
+      else {
+        const task = S.peek().task;
+        task.odd = odd;
+        task.opts.find(o => o.ok).label = U.bare(odd.nl);
+        answer.wrong();
+        const v = verdict(it), also = text((v.foot.match(/<p class="v-also"[^>]*>[\s\S]*?<\/p>/) || [''])[0]);
+        ok(also === text(t.alsoSaid) + ' de zuster', 'intrus on « het perron », odd word « zus », reads ' + say(also) + ', not « ' + t.alsoSaid + ' de zuster »');
+        S.abandon();
+      }
+    }
     console.log('  sens           « once more / again », juste et faux ; sept exercices sur leurs champs, l’intrus, le texte à trou');
   }
 
