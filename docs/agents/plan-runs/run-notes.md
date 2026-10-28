@@ -6,7 +6,7 @@ Where they differ from a command in your brief, these notes win.
 ## Where you work
 
 - In the run's worktree, named in `<WS>/run.md`, and nowhere else. It lies inside the clone at
-  `%USERPROFILE%\dev\vlaams-phase-2`, whose own checkout stays on `main`: never read, write or run anything
+  `%USERPROFILE%\Desktop\Projects\Vlaams`, whose own checkout stays on `main`: never read, write or run anything
   outside the run's worktree.
 - `<WS>` is the run's workspace, `.superpowers/sdd/<plan name>/` inside the worktree, git-ignored. Scratch
   files (shell scripts, captured output, commit message files) go in `<WS>/tmp/`. Nothing stray under `src/`
