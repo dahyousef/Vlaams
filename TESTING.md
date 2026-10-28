@@ -268,4 +268,4 @@ test de placement, la dictée plus tôt, la série et le défi.
 ## Encore ouvert
 
 - Le contenu reste le plafond : 430 éléments, tous de niveau A1.
-- Un tiers du vocabulaire n'a pas encore de phrase d'exemple.
+- 8 mots sur 307 n'ont pas encore de phrase d'exemple (comptés le 28 octobre 2026).
