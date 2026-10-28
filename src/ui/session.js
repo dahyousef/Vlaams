@@ -414,6 +414,9 @@ NL.screens.sessie = (function () {
     const ok = L.phase === 'ok';
     const ans = ex.answer(c.task);
     const it = c.items[0];
+    /* L'intrus répond par un autre mot que l'élément : le pied parle de ce mot-là d'un bout à
+       l'autre, son sens, « Ici on dit », « On dit aussi » et son explication (#115). */
+    const shown = c.task.odd || it;
     /* Les paliers de la série se fêtent ; une faute d'une seule lettre se dit. */
     const note = ok ? (L.combo === 5 || L.combo === 10 || (L.combo > 10 && L.combo % 5 === 0) ? NL.t.comboMilestone(L.combo) : U.one(NL.t.praise))
       : L.close ? NL.t.almost
@@ -430,22 +433,21 @@ NL.screens.sessie = (function () {
     const same = s => U.norm(s) === U.norm(ans);
     const repeat = given != null && (same(given) || (it && it.kind === 'word' && same(U.bare(String(given).trim()))));
     const vl = c.ex === 'vlaams' && !repeat ? EX.hereLine(it, '', true) : '';
-    const be = vl || (c.ex === 'vlaams' || NL.state.meta().showFlemish !== false ? EX.hereLine(it, [ans, given], false) : '');
+    const be = vl || (c.ex === 'vlaams' || NL.state.meta().showFlemish !== false ? EX.hereLine(shown, [ans, given], false) : '');
     /* La langue de la réponse est un champ de l'exercice : du néerlandais, un sens dans sa langue,
        ou rien quand les deux se mêlent (les paires de « match »). */
     const ansLang = ex.answers === 'nl' ? NL.gloss.attr('nl') : ex.answers === 'gloss' ? NL.gloss.langAttr(it) : '';
     /* Un autre élément au même sens a été tapé : on dit quel mot était demandé. */
     const asked = ok && L.other ? '<p>' + NL.t.askedFor + ' <b' + ansLang + '>' + esc(ans) + '</b></p>' : '';
-    const also = it && it.also && it.also.length
-      ? '<p class="v-also">' + NL.t.alsoSaid + ' <span' + NL.gloss.attr('nl') + '>' + esc(it.also.join(', ')) + '</span></p>' : '';
+    const also = shown && shown.also && shown.also.length
+      ? '<p class="v-also">' + NL.t.alsoSaid + ' <span' + NL.gloss.attr('nl') + '>' + esc(shown.also.join(', ')) + '</span></p>' : '';
     /* Quand l'exercice pose et répond en néerlandais, la réponse ne dit pas ce que l'élément veut dire :
-       le pied le dit, dans la langue où il se lit, juste ou faux. L'intrus répond par un autre mot que
-       l'élément : c'est le sens de ce mot-là. */
-    const meant = ex.asks === 'nl' && ex.answers === 'nl' ? c.task.odd || it : null;
+       le pied le dit, dans la langue où il se lit, juste ou faux. */
+    const meant = ex.asks === 'nl' && ex.answers === 'nl' ? shown : null;
     const mean = meant ? '<p class="v-mean"' + NL.gloss.langAttr(meant) + '>' + esc(NL.gloss.of(meant)) + '</p>' : '';
     /* L'explication, sous le sens. « Remets dans l'ordre » montre déjà la règle du motif au-dessus
        de ses tuiles : le pied ne la redit pas. */
-    const explanation = c.ex === 'order' ? null : EX.explanation(it);
+    const explanation = c.ex === 'order' ? null : EX.explanation(shown);
     return '<div class="foot ' + (ok ? 'ok' : 'no') + '"><div class="foot-in">' +
       '<div class="verdict ' + (ok ? 'ok' : 'no') + '">' +
       '<span class="v-icon">' + (ok
