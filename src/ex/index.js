@@ -23,6 +23,15 @@ NL.ex = (function () {
   const flemish = (be, std) => (be && NL.state.meta().showFlemish !== false && U.norm(be) !== U.norm(std))
     ? '<span class="be-line"><span class="be-tag">' + NL.t.beTag + '</span><span' + NL.gloss.attr('nl') + '>' + esc(be) + '</span></span>' : '';
 
+  /* La raison de la forme flamande, sous elle, sur une carte qui montre déjà le sens : sans elle,
+     « merci » sous « dank u wel » se lit comme une traduction en double (#116). Rien quand la ligne
+     flamande ne se montre pas. Lue par NL.gloss, comme NL.ui.ifProse la lirait : les exercices se
+     dessinent sans l'interface (test/smoke.js). */
+  const beNote = (item, std) => {
+    const s = flemish(item.be, std) ? NL.gloss.of(explanation(item)) : '';
+    return s ? '<p class="be-note">' + NL.gloss.quoted(s) + '</p>' : '';
+  };
+
   /* `lang` : l'attribut de la langue des libellés, NL.gloss.attr('nl') pour du néerlandais, NL.gloss.langAttr pour des sens. */
   function optList(opts, L, phase, lang) {
     return '<div class="opts">' + opts.map((o, i) => {
@@ -345,7 +354,7 @@ NL.ex = (function () {
         sp.recState !== 'rec' && sp.recState !== 'done';
       const hush = untried ? '<div class="mic-actions"><button class="btn btn-ghost" data-quiet="1">' + NL.t.cantSpeak + '</button></div>' : '';
 
-      return '<div class="sentence prompt"><span' + NL.gloss.attr('nl') + '>' + esc(t.target) + '</span>' + flemish(t.item.be, t.target) + '</div>' +
+      return '<div class="sentence prompt"><span' + NL.gloss.attr('nl') + '>' + esc(t.target) + '</span>' + flemish(t.item.be, t.target) + beNote(t.item, t.target) + '</div>' +
         '<div class="gloss-line"' + NL.gloss.langAttr(t.item) + '>' + esc(t.prompt) + '</div>' +
         speakerRow(t.target, {}) + panel + hush;
     },
@@ -745,5 +754,5 @@ NL.ex = (function () {
      NL.ui.ifProse, qui déclare nl-BE ce qu'elle cite. */
   const explanation = item => !item ? null : (item.kind === 'pattern' ? item.rule : item.note) || null;
 
-  return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, micPanel, retryButton, wordScore, hereLine, rubric, explanation, accepted };
+  return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, beNote, micPanel, retryButton, wordScore, hereLine, rubric, explanation, accepted };
 })();

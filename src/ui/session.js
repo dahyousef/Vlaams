@@ -446,8 +446,9 @@ NL.screens.sessie = (function () {
     const meant = ex.asks === 'nl' && ex.answers === 'nl' ? shown : null;
     const mean = meant ? '<p class="v-mean"' + NL.gloss.langAttr(meant) + '>' + esc(NL.gloss.of(meant)) + '</p>' : '';
     /* L'explication, sous le sens. « Remets dans l'ordre » montre déjà la règle du motif au-dessus
-       de ses tuiles : le pied ne la redit pas. */
-    const explanation = c.ex === 'order' ? null : EX.explanation(shown);
+       de ses tuiles, et « Dis-le à voix haute » la note sous sa ligne flamande : le pied ne la redit pas. */
+    const onCard = c.ex === 'order' || (c.ex === 'speak' && !!EX.beNote(it, c.task.target));
+    const explanation = onCard ? null : EX.explanation(shown);
     return '<div class="foot ' + (ok ? 'ok' : 'no') + '"><div class="foot-in">' +
       '<div class="verdict ' + (ok ? 'ok' : 'no') + '">' +
       '<span class="v-icon">' + (ok
