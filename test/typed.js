@@ -561,6 +561,37 @@ NL.state.open().then(() => {
     console.log('  règle          g-present : sous la réponse du texte à trou et d’« Écris-le », pas redite après l’ordre');
   }
 
+  /* « Dis-le à voix haute » montre la forme flamande de l'élément sous le néerlandais : sans sa raison,
+     « merci » sous « dank u wel » se lit comme une traduction en double (#116). La note de l'élément
+     la suit sur la carte, dans la langue d'affichage, et le pied ne la redit pas. « C'est lequel ? »,
+     qui demande le sens, ne la montre pas avant la réponse : elle le donnerait. */
+  {
+    const noteOf = it => NL.ui.ifProse(NL.ex.explanation(it), 'p', 'be-note');
+    const card = () => { const html = B.app.innerHTML, at = html.indexOf('<div class="foot'); return at >= 0 ? html.slice(0, at) : html; };
+    [['dank u wel', 'en'], ['dank u wel', 'fr'], ['Mag ik het in het Nederlands proberen?', 'en'], ['Mag ik het in het Nederlands proberen?', 'fr']].forEach(([nl, lang]) => {
+      fresh();
+      NL.state.setMeta({ displayLang: lang }); NL.lang.apply();
+      const it = find(nl);
+      if (!ask(it, 'speak', 3, 'type')) { ok(false, 'setup: ' + say(nl) + ' is never asked aloud'); return; }
+      const note = noteOf(it), html = card();
+      const be = html.indexOf('<span class="be-line">'), at = html.indexOf(note);
+      ok(!!note && be >= 0 && at > be && html.indexOf('</div>', be) > at,
+        'the speak card of ' + say(nl) + ', in ' + lang + ', does not show ' + say(note) + ' under its « ' + t.beTag + ' » line: ' + text(html));
+      answer.wrong();
+      const v = verdict(it);
+      ok(v.foot.indexOf('class="v-note"') < 0 && card().split(note).length === 2,
+        'after the speak card of ' + say(nl) + ', in ' + lang + ', the note shows ' + (card().split(note).length - 1) + ' times on the card, and the panel reads « ' + v.text + ' »');
+      S.abandon();
+    });
+    fresh();
+    NL.state.setMeta({ displayLang: 'en' }); NL.lang.apply();
+    const it = find('dank u wel');
+    if (!ask(it, 'recall', 0, 'pick')) ok(false, 'setup: « dank u wel » is never asked in recall');
+    else ok(card().indexOf('be-note') < 0, 'recall on « dank u wel » shows its note before the answer: ' + text(card()));
+    S.abandon();
+    console.log('  ici on dit     sa raison sous la forme flamande de « Dis-le à voix haute », en anglais et en français ; pas avant la réponse de « C’est lequel ? »');
+  }
+
   console.log('\n' + checks + ' contrôles, ' + fails + ' en échec');
   process.exit(fails ? 1 : 0);
 }).catch(e => { console.log('FAIL: ' + (e && e.stack || e)); process.exit(1); });

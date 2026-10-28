@@ -200,6 +200,7 @@ h1,h2,h3,h4,h5{font-family:var(--display);font-weight:700;letter-spacing:-.02em;
 .gloss,.gloss-line{display:block;color:var(--ink-3);font-size:14px;margin-top:5px;font-weight:400}
 .gloss-line{margin:-14px 0 20px}
 .be-line{display:block;font-size:15px;color:var(--amber-deep);margin-top:6px;font-weight:500}
+.be-note{font-size:13px;font-weight:400;line-height:1.45;color:var(--ink-2);margin:4px 0 0;max-width:52ch}
 .be-tag{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;background:var(--amber-soft);
   color:var(--amber-deep);padding:2px 6px;border-radius:5px;margin-right:7px;vertical-align:1px}
 
@@ -6343,6 +6344,15 @@ NL.ex = (function () {
   const flemish = (be, std) => (be && NL.state.meta().showFlemish !== false && U.norm(be) !== U.norm(std))
     ? '<span class="be-line"><span class="be-tag">' + NL.t.beTag + '</span><span' + NL.gloss.attr('nl') + '>' + esc(be) + '</span></span>' : '';
 
+  /* La raison de la forme flamande, sous elle, sur une carte qui montre déjà le sens : sans elle,
+     « merci » sous « dank u wel » se lit comme une traduction en double (#116). Rien quand la ligne
+     flamande ne se montre pas. Lue par NL.gloss, comme NL.ui.ifProse la lirait : les exercices se
+     dessinent sans l'interface (test/smoke.js). */
+  const beNote = (item, std) => {
+    const s = flemish(item.be, std) ? NL.gloss.of(explanation(item)) : '';
+    return s ? '<p class="be-note">' + NL.gloss.quoted(s) + '</p>' : '';
+  };
+
   /* `lang` : l'attribut de la langue des libellés, NL.gloss.attr('nl') pour du néerlandais, NL.gloss.langAttr pour des sens. */
   function optList(opts, L, phase, lang) {
     return '<div class="opts">' + opts.map((o, i) => {
@@ -6665,7 +6675,7 @@ NL.ex = (function () {
         sp.recState !== 'rec' && sp.recState !== 'done';
       const hush = untried ? '<div class="mic-actions"><button class="btn btn-ghost" data-quiet="1">' + NL.t.cantSpeak + '</button></div>' : '';
 
-      return '<div class="sentence prompt"><span' + NL.gloss.attr('nl') + '>' + esc(t.target) + '</span>' + flemish(t.item.be, t.target) + '</div>' +
+      return '<div class="sentence prompt"><span' + NL.gloss.attr('nl') + '>' + esc(t.target) + '</span>' + flemish(t.item.be, t.target) + beNote(t.item, t.target) + '</div>' +
         '<div class="gloss-line"' + NL.gloss.langAttr(t.item) + '>' + esc(t.prompt) + '</div>' +
         speakerRow(t.target, {}) + panel + hush;
     },
@@ -7065,7 +7075,7 @@ NL.ex = (function () {
      NL.ui.ifProse, qui déclare nl-BE ce qu'elle cite. */
   const explanation = item => !item ? null : (item.kind === 'pattern' ? item.rule : item.note) || null;
 
-  return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, micPanel, retryButton, wordScore, hereLine, rubric, explanation, accepted };
+  return { registry: R, get: id => R[id] || R.pick, ICON, speakerRow, flemish, beNote, micPanel, retryButton, wordScore, hereLine, rubric, explanation, accepted };
 })();
 </script>
 <script>
@@ -7950,8 +7960,9 @@ NL.screens.sessie = (function () {
     const meant = ex.asks === 'nl' && ex.answers === 'nl' ? shown : null;
     const mean = meant ? '<p class="v-mean"' + NL.gloss.langAttr(meant) + '>' + esc(NL.gloss.of(meant)) + '</p>' : '';
     /* L'explication, sous le sens. « Remets dans l'ordre » montre déjà la règle du motif au-dessus
-       de ses tuiles : le pied ne la redit pas. */
-    const explanation = c.ex === 'order' ? null : EX.explanation(shown);
+       de ses tuiles, et « Dis-le à voix haute » la note sous sa ligne flamande : le pied ne la redit pas. */
+    const onCard = c.ex === 'order' || (c.ex === 'speak' && !!EX.beNote(it, c.task.target));
+    const explanation = onCard ? null : EX.explanation(shown);
     return '<div class="foot ' + (ok ? 'ok' : 'no') + '"><div class="foot-in">' +
       '<div class="verdict ' + (ok ? 'ok' : 'no') + '">' +
       '<span class="v-icon">' + (ok
