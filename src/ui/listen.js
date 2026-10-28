@@ -170,6 +170,9 @@ NL.screens.luisteren = (function () {
 
   return {
     render,
+    /* Une série, et son bilan, se dessinent comme une séance : en plein écran, avec leur bouton
+       retour et leur rail. Sous la barre des onglets, leur pied sortait de l'écran (#114). */
+    full: () => !!S,
     click(el, d) {
       if (d.act === 'begrijpen' || d.act === 'nazeggen') { begin(d.act); NL.ui.render(); return; }
       if (d.act === 'menu') { S = null; NL.ui.render(); return; }

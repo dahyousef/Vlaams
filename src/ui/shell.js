@@ -77,11 +77,16 @@ NL.ui = (function () {
 
   function render() {
     applyTheme();
-    /* Un changement de langue n'entre jamais en pleine séance ni en pleine conversation. */
-    if (!LANG_WAITS[route]) NL.lang.applyAndTell();
     const S = NL.screens[route] || NL.screens.vandaag;
-    const full = !!FULLSCREEN[route];
-    const note = LANG_WAITS[route] ? '' : NL.lang.notice();
+    /* Un écran peut prendre tout l'écran seulement par moments : « Écouter » le fait pendant une
+       série et son bilan, et garde ses barres au menu (#114). Il tient alors comme une séance. */
+    const lesson = !!(S.full && S.full());
+    /* Un changement de langue n'entre jamais en pleine séance, en pleine conversation ni en pleine
+       série, et son avis attend avec lui (ADR 0009). */
+    const waits = !!LANG_WAITS[route] || lesson;
+    if (!waits) NL.lang.applyAndTell();
+    const full = !!FULLSCREEN[route] || lesson;
+    const note = waits ? '' : NL.lang.notice();
     const noticeHtml = note ? '<div class="notice"><p>' + esc(note) + '</p></div>' : '';
     const html = full
       ? '<div class="screen full">' + noticeHtml + S.render(arg) + '</div>'
