@@ -322,6 +322,47 @@ NL.state.open().then(async () => {
   }
 
   /* ------------------------------------------------------------------ */
+  /* Le menu d'« Écouter » garde la barre du haut et les onglets. Une série en cours, et son bilan,
+     prennent l'écran comme une séance : sinon le pied de l'exercice, « Je ne sais pas » puis
+     « Continuer », tombe sous les onglets, hors de l'écran du téléphone (#114). */
+  console.log('\nÉCOUTER EN PLEIN ÉCRAN');
+  {
+    fresh();
+    const L = NL.screens.luisteren, page = () => B.app.innerHTML, tap = d => L.click({ dataset: {} }, d);
+    const full = () => page().indexOf('<div class="screen full">') >= 0;
+    const bars = () => page().indexOf('<nav class="nav">') >= 0 || page().indexOf('<main class="screen">') >= 0;
+    const menu = where => ok(!full() && bars(), where + ', the Listen menu loses its top bar and tab bar');
+    NL.ui.go('luisteren');
+    menu('opened');
+    ['begrijpen', 'nazeggen'].forEach(mode => {
+      NL.ui.go('luisteren'); tap({ act: mode });
+      ok(full() && !bars(), mode + ': a running set is drawn between the top bar and the tab bar, so its footer falls under the tab bar');
+      for (let k = 0; k < 20 && page().indexOf('data-act="menu"') < 0; k++) {
+        if (page().indexOf('data-act="giveup"') >= 0) tap({ act: 'giveup' });
+        tap({ act: 'next' });
+      }
+      ok(page().indexOf('data-act="menu"') >= 0, mode + ': the set never reached its summary, the check is hollow');
+      ok(full() && !bars(), mode + ': the summary is drawn between the top bar and the tab bar');
+      tap({ act: 'menu' });
+      menu(mode + ', back from the summary');
+      tap({ act: mode });
+      tap({ act: 'exit' });
+      menu(mode + ', left mid-set');
+    });
+    /* En plein écran, une série tient comme une séance : une langue changée sur un autre appareil
+       attend sa sortie, et son avis avec elle, qui sinon repousserait le pied hors de l'écran (ADR 0009). */
+    NL.state.setMeta({ displayLang: 'en' }); NL.ui.go('luisteren');
+    tap({ act: 'begrijpen' });
+    NL.state.setMeta({ displayLang: 'fr' }); NL.ui.render();
+    ok(NL.t.next === NL.tables.en.next && page().indexOf('class="notice"') < 0,
+      'a language changed mid-set applies inside the running set' + (page().indexOf('class="notice"') >= 0 ? ', and its notice pushes the footer down' : ''));
+    tap({ act: 'exit' });
+    ok(NL.t.next === NL.tables.fr.next && page().indexOf('class="notice"') >= 0, 'leaving the set, the language changed mid-set is not applied and told');
+    NL.state.setMeta({ displayLang: 'en' }); NL.ui.go('vandaag'); NL.ui.go('luisteren');
+    console.log('  le menu avec ses barres ; Comprendre et Répéter, en cours et au bilan, en plein écran ; une langue changée attend la sortie');
+  }
+
+  /* ------------------------------------------------------------------ */
   console.log('\nCE QUI A CASSÉ SUR CET APPAREIL');
   {
     fresh(); NL.errlog.clear();
