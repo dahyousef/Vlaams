@@ -15,3 +15,13 @@ Spring AI as a runtime backend — for a conversational tutor, or to grade free 
 deferred, not rejected. It turned out not to be needed for graded free production, which is
 judged offline by a rubric of stated requirements. If a tutor is ever wanted, a Supabase
 Edge Function would serve it at a fraction of a JVM's cost and cold-start.
+
+## Amended 28 October 2026
+
+The factory is the Node content kit in `tools/content/`, not a Spring Boot tool. Phase 3 built
+the course's content with it, and phase 4 keeps it (D11, 25 October 2026). Spring Boot is out
+of this project, and so is Spring AI: the reason above that it is worth real experience no
+longer applies here, and its use as a runtime backend, “deferred, not rejected” above, is
+rejected. If a tutor is ever wanted, it is a Supabase Edge Function. What this decision
+protects is unchanged: the factory is run, never deployed, and the page that reaches the
+browser has no dependencies.

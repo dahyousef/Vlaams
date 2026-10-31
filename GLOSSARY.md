@@ -100,6 +100,12 @@ _Avoid_: speak, speaking drill, oral exercise, dis-le
 One sitting of exercises, bounded by a maximum number of items.
 _Avoid_: lesson, round, séance
 
+**Listening set**:
+A run of lines from the scenarios, read aloud one after another for the learner to understand
+or to repeat, from the first line to its summary. It is not a session: no item's progress
+changes in it.
+_Avoid_: lesson, round, série
+
 **Place**:
 One of the positions a session has to fill, taken by one item however many exercises that
 item leads to.
