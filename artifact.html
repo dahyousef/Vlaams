@@ -2060,8 +2060,8 @@ NL.srs = (function () {
   /* Un élément rencontré revient une fois dans la même séance : il coûte donc
      deux exercices. Au-delà de la moitié des places, la séance doublerait. */
   const NEW_MAX = BASE_SIZE / 2;
-  const RETIRE_AT = 200 * DAY;
-  const MAX_INTERVAL = 365 * DAY;   // au-delà, l'élément est acquis, pas oublié      // au-delà, l'élément sort du paquet quotidien
+  const RETIRE_AT = 200 * DAY;      // au-delà, l'élément sort du paquet quotidien
+  const MAX_INTERVAL = 365 * DAY;   // au-delà, l'élément est acquis, pas oublié
 
   /* Tous les mots ne méritent pas la même montée. Le vocabulaire compris est
      toujours plus large que le vocabulaire produit : on comprend 4 000 mots, on
@@ -2481,7 +2481,7 @@ NL.srs = (function () {
     const reserve = Math.min(unmet.length, base, Math.max(NEW_MIN, Math.ceil(base * NEW_SHARE)));
     let nDue = Math.min(due.length, places - reserve);
     let nNew = Math.min(unmet.length, Math.max(reserve, Math.min(NEW_MAX, Math.floor((places + reserve - nDue) / 2))));
-    /* Les règles de grammaire sont neuf parmi quatre cents : sans siège garanti,
+    /* Les règles de grammaire sont une poignée dans tout le cours : sans siège garanti,
        une semaine entière peut passer sans en revoir une. */
     const pick = n => {
       const pats = due.filter(it => it.kind === 'pattern').slice(0, Math.min(2, n));
