@@ -185,6 +185,7 @@ NL.tables.fr = {
   wordsAdd: 'Ajouter un mot à moi',
   wordsNothing: 'Rien encore. Fais une session et ça apparaît ici.',
   wordsNoResult: 'Rien trouvé.',
+  wordsMore: n => '… et ' + n + ' de plus : précise ta recherche.',
   wordsMineNone: 'Aucun mot à toi pour l’instant. Ajoute-en un avec le bouton ci-dessus.',
   wordsSearch: 'Rechercher…',
   wordsAll: 'tous', wordsWeak: 'fragiles', wordsStrong: 'produits', wordsMine: 'à moi',

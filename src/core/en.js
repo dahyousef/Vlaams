@@ -184,6 +184,7 @@ NL.tables.en = {
   wordsAdd: 'Add a word of my own',
   wordsNothing: 'Nothing yet. Do a session and it will show up here.',
   wordsNoResult: 'Nothing found.',
+  wordsMore: n => '… and ' + n + ' more: narrow your search.',
   wordsMineNone: 'No words of your own yet. Add one with the button above.',
   wordsSearch: 'Search…',
   wordsAll: 'all', wordsWeak: 'shaky', wordsStrong: 'produced', wordsMine: 'mine',

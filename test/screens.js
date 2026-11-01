@@ -173,6 +173,28 @@ NL.state.open().then(async () => {
   }
 
   /* ------------------------------------------------------------------ */
+  /* Une recherche lit tout le cours, et chaque touche redessine la page : une lettre trouvait 831
+     lignes, plus d'une demi-seconde par touche sur un téléphone lent (mesuré sur Edge, processeur
+     divisé par six). La liste s'arrête, et dit ce qu'elle tait. */
+  console.log('\nCHERCHER DANS TOUT LE COURS');
+  {
+    fresh();
+    NL.ui.go('woorden');
+    const search = q => { NL.screens.woorden.input({ id: 'wsearch', value: q }); return B.app.innerHTML; };
+    const rows = page => page.split('class="vrow"').length - 1;
+    const said = page => { const m = /and (\d+) more: narrow your search/.exec(text(page)); return m ? +m[1] : 0; };
+    const U = NL.util, found = q => NL.content.allItems().filter(it => [it.nl, it.be, NL.gloss.of(it, 'fr'), NL.gloss.of(it, 'en')].some(s => !!s && U.norm(s).indexOf(q) >= 0)).length;
+    const wide = search('a');
+    ok(rows(wide) === 60, 'a one-letter search drew ' + rows(wide) + ' rows, where 60 are the most it should draw');
+    ok(60 + said(wide) === found('a'), 'a one-letter search finds ' + found('a') + ' items: the page draws ' + rows(wide) + ' and announces ' + said(wide) + ' more');
+    const narrow = search('ka');
+    ok(rows(narrow) === found('ka') && rows(narrow) > 0 && rows(narrow) < 60, 'a narrow search drew ' + rows(narrow) + ' rows of the ' + found('ka') + ' it finds');
+    ok(!said(narrow), 'a search that shows everything it found still says there is more');
+    search('');
+    console.log('  « a » : ' + rows(wide) + ' lignes, et ' + said(wide) + ' de plus annoncées ; « ka » : ' + rows(narrow) + ' lignes');
+  }
+
+  /* ------------------------------------------------------------------ */
   console.log('\nLA SÉANCE — plus de rangée de repères, et un score qui se compte');
   {
     fresh();
