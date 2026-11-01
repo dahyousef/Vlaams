@@ -2929,6 +2929,10 @@ NL.sync = (function () {
   const QKEY = 'vlaams/outbox';
   const OWNER = 'vlaams/owner';
   const PAGE = 1000;
+  /* Ce qui range chaque table lue par pages : sa clé, sans le compte. Sans ORDER BY, Postgres ne
+     promet aucun ordre d'une requête à l'autre : deux pages peuvent se chevaucher et laisser une
+     ligne de côté, et le cours fait plus d'une page de fiches. */
+  const PAGE_ORDER = { srs_records: ['item_id'], custom_words: ['id'], review_log: ['t', 'item_id'] };
   const LOG_DAYS = 62;            // deux mois : ce que l'écran des fautes relit
 
   let client = null, user = null;
@@ -3134,6 +3138,7 @@ NL.sync = (function () {
     for (let from = 0; ; from += PAGE) {
       let q = client.from(table).select('*').eq('user_id', user.id);
       if (filter) q = filter(q);
+      PAGE_ORDER[table].forEach(col => { q = q.order(col); });
       const { data, error } = await q.range(from, from + PAGE - 1);
       if (error) throw error;
       rows.push.apply(rows, data || []);
