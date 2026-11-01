@@ -20,6 +20,8 @@
 const fs = require('fs'), path = require('path');
 const kaikki = require('../kaikki');
 const spelling = require(path.join(__dirname, '..', '..', '..', 'test', 'lib', 'spelling'));
+const dehetTable = require(path.join(__dirname, '..', '..', '..', 'test', 'lib', 'dehet'));
+const { literal: lit } = require('../lib/table');
 const { oneLine, sig } = require(path.join(__dirname, '..', '..', '..', 'test', 'lib', 'text'));
 
 /* Les 22 unités (phase 4, D10, approuvées les 28 et 31 octobre 2026), dans l'ordre du cours. target
@@ -127,12 +129,7 @@ const memo = new WeakMap();
 function tools(ctx) {
   if (!memo.has(ctx)) {
     const C = ctx.course(), NL = C.NL, U = NL.util;
-    const dehet = new Map();
-    fs.readFileSync(path.join(ctx.repo, 'test', 'data', 'dehet.tsv'), 'utf8').split('\n').forEach(l => {
-      if (!l || l[0] === '#') return;
-      const [w, g] = l.split('\t');
-      if (w && g) dehet.set(w, g.trim());
-    });
+    const dehet = dehetTable.load(ctx.repo);
     const others = C.sources.filter(s => !OWN.has(s.unit));
     const keyOf = s => (s.kind === 'word' ? U.norm(U.bare(s.nl)) : U.norm(s.nl));
     let senses = null;
@@ -220,7 +217,6 @@ function check(row, input, ctx) {
 /* Le texte du lexique : l'en-tête, puis chaque unité de UNITS qui a des mots pris, dans l'ordre, ses
    mots dans l'ordre des places. Les chaînes s'écrivent entre apostrophes droites, échappées ; l'icône
    en séquence \u{…}, comme les lexiques écrits à la main. */
-const lit = s => '\'' + String(s).replace(/\\/g, '\\\\').replace(/'/g, '\\\'') + '\'';
 const pair = g => '{ fr: ' + lit(g.fr) + ', en: ' + lit(g.en) + ' }';
 const icon = s => '\'' + Array.from(s).map(c => '\\u{' + c.codePointAt(0).toString(16).toUpperCase() + '}').join('') + '\'';
 const HEADER = [

@@ -1593,6 +1593,20 @@ module.exports = {
     same(runWd('merge.js', [WD, E2W]), { code: 1, lines: ['fail words -: test/data/ids.tsv pins wonen:w1 to « de douche », and Merge writes « de stoel » there'] }, 'Merge refuse un autre mot sous un id épinglé');
     same([text(LEX), text(IDS)], [lexAfter, idsAfter], 'refusée pour un id épinglé, Merge n\'a rien écrit');
     put(WONEN, 'draft.json', wonenDraft);
+    /* Ce que Merge refuse encore avant d'écrire : un mot que le cours a pris depuis Split, et une unité du
+       lexique que plus aucune ligne prise n'écrit (il est récrit entier). */
+    throws(() => K.write([slotOf('vragen:s00', DAG.nl, 'vragen')], ctxW), /^vragen:s00 « dag » is already an item of the course, overleven:w2: the course moved since Split$/,
+      'Merge refuse une ligne qui redit un élément du cours');
+    throws(() => K.write([slotOf('vragen:s00', 'wie', 'vragen')], { repo: WD, course: () => CM }), /^lexicon\.a1c\.js holds the unit wonen, and no taken row writes it: Merge rewrites the file whole$/,
+      'Merge refuse de récrire un lexique dont une unité n\'a plus de ligne prise');
+    /* Les fins de ligne du lexique et d'ids.tsv sont gardées, et une dernière ligne sans fin de ligne n'en colle pas deux. */
+    const lf = s => s.replace(/\r\n/g, '\n'), crlf = s => lf(s).replace(/\n/g, '\r\n');
+    fs.writeFileSync(LEX, crlf(lexAfter));
+    fs.writeFileSync(IDS, crlf(lf(idsAfter).split('\n').filter(Boolean).slice(0, -1).join('\n')));
+    same(runWd('merge.js', [WD, E2W]), { code: 0, lines: ['ok words 4 taken, 0 dropped', 'ok lexicon.a1c.js 4 words in 2 units', 'ok ids.tsv 1 added'] }, 'Merge relancée complète ids.tsv sans fin de ligne');
+    same([text(LEX), text(IDS)], [crlf(lexAfter), crlf(idsAfter)], 'le lexique et ids.tsv gardent leurs fins de ligne \r\n, sans mélange');
+    fs.writeFileSync(LEX, lexAfter);
+    fs.writeFileSync(IDS, idsAfter);
     /* Ce que le mainteneur lit d'une place : son unité, et le mot écrit (task 3 : un genre sans table). */
     const readingW = require(path.join(WD, 'tools', 'content', 'lib', 'reading'));
     same(readingW.every(WD, E2WS, 'words').lines.slice(2, 7), ['4 rows: 4 taken, 0 dropped.', '', '- `vragen` (vragen:s00) — Questions et petits mots · Questions and small words', '  - kept by the first reader',
