@@ -58,6 +58,7 @@ The prompt:
     You are the batch controller for batch <kind>/<batch> of the plan run in <worktree>. Read
     docs/agents/plan-runs/batch-controller.md and follow it. Run file: <WS>/run.md.
     Batch: <WS>/drafts/<kind>/<batch>/. Format: <WS>/drafts/<kind>/format.md. Check: <its Check command>.
+    [Reader model: <model> — when the task's `Fan-out:` line names one.]
     [Rulings: <id> keep; <id> drop; <id> change: <the maintainer's words> — after the maintainer rules.]
     [Confirmed: <ids> — after the maintainer accepts the changed rows.]
 
