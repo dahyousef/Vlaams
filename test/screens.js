@@ -169,6 +169,12 @@ NL.state.open().then(async () => {
     ok(B.scrolls.length === 0, 'redrawing the Path in place moved the page: ' + B.scrolls.join(', '));
     ok(entering('woorden') === 'window 0', 'entering the Library did « ' + B.scrolls.join(', ') + ' », not the top of the page');
     NL.ui.go('vandaag');
+    /* Précédent : le hash change sans passer par go(), l'écran s'ouvre pareil. */
+    B.ctx.location.hash = '#leerpad';
+    B.scrolls.length = 0;
+    B.listeners.hashchange.forEach(f => f());
+    ok(NL.ui.route === 'leerpad' && B.scrolls.join(', ') === 'window 0, .unit-card.now start', 'Back to the Path did « ' + B.scrolls.join(', ') + ' » on ' + NL.ui.route);
+    NL.ui.go('vandaag');
     console.log('  parcours : le haut à l\'unité 1, puis « ' + at.id + ' » ; un autre écran : le haut');
   }
 

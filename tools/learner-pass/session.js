@@ -115,7 +115,7 @@ async function playSession(page, label, opts) {
     log.push(entry);
     if (stuck > 5) break;
   }
-  if (step === MAX_CARDS) log.push({ step, ex: 'session', mode: 'cap', answer: '', result: 'DID NOT END after ' + MAX_CARDS + ' cards' });
+  if (step === MAX_CARDS && await p.evaluate(() => NL.ui.route) === 'sessie') log.push({ step, ex: 'session', mode: 'cap', answer: '', result: 'DID NOT END after ' + MAX_CARDS + ' cards' });
   await sleep(200);
   await shot(p, label + '-end', true);
   const endText = await p.evaluate(() => document.querySelector('main, #app, body').innerText.slice(0, 600));

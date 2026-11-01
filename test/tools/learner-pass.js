@@ -42,10 +42,13 @@ function fakeSession(cards) {
   ok(said.length === 1, 'a session that never ends: the pass stopped after ' + never.log.length + ' cards and reported ' + said.length + ' problem(s)');
   const ended = await playSession(fakeSession(3), 'fin', {});
   ok(ended.log.length === 3 && !ended.log.some(e => STUCK.test(e.result)), 'a session of 3 cards: ' + ended.log.length + ' cards logged, or a problem reported on an ending session');
+  const exact = await playSession(fakeSession(120), 'exact', {});
+  ok(!exact.log.some(e => STUCK.test(e.result)), 'a session that ends on its 120th card was reported as not ending');
   console.log('  jamais finie : ' + never.log.length + ' lignes, dont ' + said.length + ' qui le dit ; finie : ' + ended.log.length + ' cartes');
 
   const sweep = fs.readFileSync(path.join(ROOT, 'tools', 'learner-pass', 'sweep.js'), 'utf8');
-  ok(!/i < Math\.min\(n,/.test(sweep), 'sweep.js stops at a fixed number of tappable things, and says nothing about the rest');
+  ok(/const n = await p\.evaluate\([^\n]*\.length, \[CAND, SKIP\]\);/.test(sweep) && /for \(let i = 0; i < n; i\+\+\)/.test(sweep) && !/Math\.(min|max)\(/.test(sweep),
+    'sweep.js must walk every tappable thing: the count is the whole list, the loop runs to it, and no Math.min caps it');
 
   console.log('\n' + checks + ' checks, ' + (fails ? fails + ' FAILED' : 'LEARNER PASS TOOLS OK'));
   process.exit(fails ? 1 : 0);

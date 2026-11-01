@@ -34,11 +34,16 @@ NL.ui = (function () {
     route = to; arg = a == null ? null : a; sheet = null;
     try { location.hash = '#' + to + (a ? '/' + a : ''); } catch (e) {}
     render();
+    arrive();
+  }
+
+  /* Un écran qui s'ouvre, par un toucher comme par Précédent. C'est la fenêtre qui défile, pas
+     .screen : sans cela, un écran s'ouvre à la hauteur où le précédent défilait. Après elle,
+     l'écran qui s'ouvre ailleurs qu'en haut le fait lui-même : une fois, en y entrant, jamais à
+     chaque dessin. */
+  function arrive() {
     const b = document.querySelector('.screen');
     if (b) b.scrollTop = 0;
-    /* C'est la fenêtre qui défile, pas .screen : sans cela, un écran s'ouvre à la hauteur où le
-       précédent défilait. Après elle, l'écran qui s'ouvre ailleurs qu'en haut le fait lui-même :
-       une fois, en y entrant, jamais à chaque dessin. */
     window.scrollTo(0, 0);
     const S = NL.screens[route];
     if (S && S.entered) S.entered(arg);
@@ -425,7 +430,7 @@ NL.ui = (function () {
 
     window.addEventListener('hashchange', () => {
       const h = fromHash();
-      if (h && h.r !== route) { route = h.r; arg = h.a; render(); }
+      if (h && h.r !== route) { route = h.r; arg = h.a; render(); arrive(); }
     });
   }
 

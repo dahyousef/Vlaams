@@ -27,6 +27,7 @@
      B.tap(d)        un clic sur un élément dont le dataset est d, tel que le shell le reçoit
      B.fields        la valeur de chaque champ qu'un écran lit (B.fields['add-nl'] = '…') — si `byId` vaut 'stub'
      B.events        les gestes faits sur ces champs, dans l'ordre (« select <id> ») — si `byId` vaut 'stub'
+     B.scrolls       le journal des défilements : « window <y> », et « .unit-card.now <block> » pour l'unité en cours
      B.clock         l'horloge : now(), set(ms), advance(ms) — si `now` est donné
      B.spoken        ce que la synthèse vocale a prononcé — si `voices` est donné
      B.tick()        la fin du tour : les minuteurs mis de côté partent — si `timers` vaut 'held'
