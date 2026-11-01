@@ -41,7 +41,9 @@ const textAndLabels = html => text(String(html).replace(/\s(aria-label|placehold
    reçoit le HTML de l'écran. Deux navigateurs partis de la même graine visitent les
    mêmes états : la différence entre leurs textes est une vraie différence. */
 const { SCREENS } = require('./lib/screens');
-function views(B, visit) {
+/* `whole` : les séances montrent tout le cours à chaque échelon, et le contrôle échoue si elles n'y
+   arrivent plus. C'est plus long : seul le contrôle qui lit le texte de chaque élément le demande. */
+function views(B, visit, whole) {
   const NL = B.NL, S = NL.screens.sessie, answer = require('./lib/answer')(B);
   const html = () => B.app.innerHTML;
   /* Des échéances fixes et toutes différentes : l'ordre d'une séance ne doit rien à l'horloge. */
@@ -115,8 +117,8 @@ function views(B, visit) {
   for (let r = 0; r <= 6; r++) {
     fresh();
     const all = builtIn();
-    /* Le budget du jour (120) coupe cette boucle, et le plus en retard est servi d'abord, c'est-à-dire le
-       dernier posé. Les tâches ouvertes (échelons 4 et 6) ne viennent que des éléments de open.phrases : on
+    /* Le budget du jour (120) coupe cette boucle, sauf en `whole`, et le plus en retard est servi d'abord,
+       c'est-à-dire le dernier posé. Les tâches ouvertes (échelons 4 et 6) ne viennent que des éléments de open.phrases : on
        les pose en dernier, donc ils sont servis les premiers, puis le cours depuis son début, pour que ce
        que la boucle montre ne dépende pas de ce que les dernières unités ajoutent. */
     const hasOpen = it => !!(NL.content.byDutch['open.phrases'] || {})[it.nl];
@@ -124,6 +126,7 @@ function views(B, visit) {
     const shown = new Set();
     let sessions = 0;
     while (shown.size < all.length && sessions++ < 80) {
+      if (whole) NL.state.setMeta({ exDay: null, exToday: 0 });
       if (!S.begin('vandaag')) break;
       NL.ui.go('sessie');
       let quit = false, turns = 0;
@@ -139,6 +142,7 @@ function views(B, visit) {
       }
       S.abandon();
     }
+    if (whole) ok(shown.size === all.length, 'les séances de l’échelon ' + r + ' montrent ' + shown.size + ' éléments sur ' + all.length);
   }
 }
 
@@ -479,7 +483,7 @@ function langChecks() {
               }
               const m = textAndLabels(h).match(OTHER[l]);
               if (m && !hits.has(m[0])) hits.set(m[0], n);
-            });
+            }, true);
             hits.forEach((n, w) => ok(false, '5f (' + l + ') : « ' + w + ' » à l\'écran (vue ' + n + ')'));
           });
         };
