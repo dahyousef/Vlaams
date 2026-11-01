@@ -1237,7 +1237,7 @@ module.exports = {
     C.sources.filter(s => !s.note).forEach(s => { notesFixed[s.nl] = { fr: 'Une note d’essai.', en: 'A trial note.' }; });
     notesFixed[HUIS] = null;
     table.update(path.join(EX, 'src', 'content', 'notes.js'), notesFixed);
-    const EXTRACT =path.join(EX, '.cache', 'kaikki', 'belgian.tsv');
+    const EXTRACT = path.join(EX, '.cache', 'kaikki', 'belgian.tsv');
     fs.mkdirSync(path.dirname(EXTRACT), { recursive: true });
     fs.writeFileSync(EXTRACT, '# kaikki/nl.jsonl sha256 ' + cache.PINS['kaikki/nl.jsonl'].sha256 + '\ngemeentehuis\tnoun\tBelgium\t(essai)\n');
     const CE = course(EX), NLE = CE.NL;
