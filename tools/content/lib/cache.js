@@ -19,7 +19,7 @@ const { spawnSync } = require('child_process');
 
 const TATOEBA = 'https://downloads.tatoeba.org/exports/';
 const PINS = {
-  'kaikki/nl.jsonl': { url: 'https://kaikki.org/dictionary/Dutch/kaikki.org-dictionary-Dutch.jsonl', date: '2026-10-22', bytes: 256173778, sha256: '00c8ee4a95169bb1ec0ac9b495d43dc7746a1e59e9a44914bae8909f9f167121' },
+  'kaikki/nl.jsonl': { url: 'https://kaikki.org/dictionary/Dutch/kaikki.org-dictionary-Dutch.jsonl', date: '2026-11-01', bytes: 257235436, sha256: '42aaed451d9997e358290e68b0ff723235e2cc2a683edd1d273759d70cef9776' },
   'tatoeba/eng_sentences_detailed.tsv': { url: TATOEBA + 'per_language/eng/eng_sentences_detailed.tsv.bz2', date: '2026-10-22', bytes: 198805928, sha256: '411dc55ab184c29a052602290faccd19a4090a3d35009b8edc0513caf4f214f5' },
   'tatoeba/fra_sentences_detailed.tsv': { url: TATOEBA + 'per_language/fra/fra_sentences_detailed.tsv.bz2', date: '2026-10-22', bytes: 76072652, sha256: '81932e9066423e226442b23a06b893af71eb8dc0514b140ef74dd54cb0f6bb18' },
   'tatoeba/nld-eng_links.tsv': { url: TATOEBA + 'per_language/nld/nld-eng_links.tsv.bz2', date: '2026-10-22', bytes: 2744785, sha256: '6fc7aa1b58b40d9a661113fc05f26a9ca21989330bf0e737eaa32e4be264c6ac' },
