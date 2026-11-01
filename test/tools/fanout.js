@@ -364,7 +364,7 @@ async function main() {
   same(kit.settle('x', Object.assign({ 'retry-review.json': v('dispute: b'), 'rulings.json': ruled('keep', true) }, disputed)), { row: R, from: 'retry' },
     'keep du mainteneur : la reprise, s\'il y en a une');
   same(kit.settle('x', Object.assign({ 'rulings.json': ruled('keep', true) }, sent)), { row: D, from: 'draft' }, 'keep du mainteneur : sinon le brouillon');
-  same(kit.settle('x', Object.assign({ 'rulings.json': ruled('drop', true) }, sent)), { drop: true }, 'drop : rien');
+  same(kit.settle('x', Object.assign({ 'rulings.json': ruled('drop', true) }, sent)), { drop: true, dropped: D }, 'drop : rien à prendre, et la ligne reste à lire');
   same(kit.settle('x', Object.assign({ 'rulings.json': ruled('change', true), 'change.json': [K] }, sent)), { row: K, from: 'change' }, 'change confirmé : la ligne de change.json');
   same(kit.settle('x', Object.assign({ 'rulings.json': ruled('change', false), 'change.json': [K] }, sent)), { why: 'change not confirmed' }, 'un changement non confirmé n\'est pas pris');
   same(kit.settle('x', Object.assign({ 'rulings.json': ruled('change', true) }, sent)), { why: 'change.json has no row' }, 'un changement sans ligne n\'est pas pris');
@@ -545,6 +545,59 @@ async function main() {
   same(run('fetch.js', []).code, 1, 'fetch.js sans dépôt dit son usage');
   ok(text(path.join(ROOT, '.gitignore')).split(/\r?\n/).indexOf('.cache/') >= 0, '.gitignore n\'ignore pas .cache/ : les données téléchargées entreraient dans le dépôt');
   console.log('  cache          dossier, serveur local, redirection, bzip2, tar');
+
+  /* ==================================================== une source hors du cours, et les ids nommés */
+  {
+    /* Un genre peut donner lui-même la source de ses lignes (sourceOf) : ici une table, sans copies ;
+       le genre words donne une unité à venir. Le kit lit la source par lui, et le split du genre
+       reçoit les ids nommés (ctx.ids), ou null. */
+    kindFile('unite', `/* Le genre d'essai de test/tools/fanout.js dont la source n'est pas un élément du cours. */
+const UNITS = { x: { nl: 'x', fr: 'l’unité x', en: 'unit x', n: 1 } };
+module.exports = {
+  stamp: [s => s.n],
+  fields: ['mot'],
+  tables: [],
+  sourceOf: (C, id) => UNITS[id.split(':')[0]],
+  split: (C, ctx) => [{ batch: 'x', rows: ['x:s00', 'x:s01'].map(id => ({ id, asked: ctx.ids })) }],
+  check: row => (row.mot === 'ok' || row.mot === 'doute' ? [] : ['mot is not ok']),
+  forMaintainer: row => (row.mot === 'doute' ? 'à voir' : ''),
+  merge: () => ({}),
+  write: taken => ['ok unite.txt ' + taken.map(x => x.id).join(' ')]
+};
+`);
+    const UX = path.join(TMP, 'drafts', 'unite'), XB = path.join(UX, 'x');
+    same(run('split.js', [TMP, UX]), { code: 0, lines: ['x 2'] }, 'Split coupe les lignes d\'une source hors du cours');
+    const xin = f => (fs.existsSync(f) ? JSON.parse(text(f)) : null);
+    const xrows = xin(path.join(XB, 'input.json')) || [];
+    same(xrows, [{ id: 'x:s00', stamp: kit.stamp(kit.loadKind(TMP, 'unite'), { nl: 'x', n: 1 }, C.NL), copies: [], asked: null }, { id: 'x:s01', stamp: (xrows[0] || {}).stamp, copies: [], asked: null }],
+      'une ligne d\'entrée : l\'empreinte de la source que le genre donne, aucune copie, et le split a reçu ids null');
+    const UN = path.join(TMP, 'nommes', 'unite');
+    same([run('split.js', [TMP, UN, 'x:s01']), (xin(path.join(UN, 'x', 'input.json')) || []).map(r => [r.id, r.asked])],
+      [{ code: 0, lines: ['x 1'] }, [['x:s01', ['x:s01']]]], 'le split d\'un genre reçoit les ids nommés');
+    fs.mkdirSync(XB, { recursive: true });
+    put(XB, 'draft.json', xrows.map(r => ({ id: r.id, stamp: r.stamp, mot: 'ok' })));
+    put(XB, 'review.json', xrows.map(r => ({ id: r.id, verdict: 'keep' })));
+    same(run('check.js', [XB]), { code: 0, lines: ['ok input.json 2 rows', 'ok draft.json 2 rows', 'ok review.json 2 keep, 0 dispute'] }, 'Check lit un lot dont la source est hors du cours');
+    same(run('merge.js', [TMP, UX]), { code: 0, lines: ['ok unite 2 taken, 0 dropped', 'ok unite.txt x:s00 x:s01'] }, 'Merge lit la source par le genre et, sans table, n\'écrit que ce que write écrit');
+    const readingU = require(path.join(LIB, 'reading'));
+    same(readingU.every(TMP, TMP, 'unite').lines.slice(0, 7), ['# unite: every row', '', '2 rows: 2 taken, 0 dropped.', '', '- `x` (x:s00) — l’unité x · unit x', '  - kept by the first reader', '  - row: {"mot":"ok"}'],
+      'l\'outil de lecture lit la source par le genre, et sous une ligne d\'un genre sans table, ce qu\'elle écrit');
+    /* Une ligne écartée par le mainteneur montre aussi ce qu'elle écrivait. */
+    const UDW = path.join(TMP, 'ecartee'), UD = path.join(UDW, 'drafts', 'unite'), UDX = path.join(UD, 'x');
+    run('split.js', [TMP, UD, 'x:s01']);
+    fs.mkdirSync(UDX, { recursive: true });
+    const udRows = xin(path.join(UDX, 'input.json')) || [];
+    put(UDX, 'draft.json', udRows.map(r => ({ id: r.id, stamp: r.stamp, mot: 'doute' })));
+    put(UDX, 'review.json', udRows.map(r => ({ id: r.id, verdict: 'for maintainer: à voir' })));
+    put(UDX, 'disputes.md', '## x:s01\nSource: x\nRow: doute\nFirst reader: for maintainer: à voir\n');
+    put(UDX, 'rulings.json', [{ id: 'x:s01', ruling: 'drop', words: 'pas celui-là', confirmed: true, date: '2026-10-22' }]);
+    same(readingU.every(TMP, UDW, 'unite').lines.slice(2), ['1 rows: 0 taken, 1 dropped.', '', '- `x` (x:s01) — l’unité x · unit x', '  - ruled drop on 2026-10-22: pas celui-là', '  - row: {"mot":"doute"}'],
+      'une ligne écartée d\'un genre sans table montre ce qu\'elle écrivait');
+    /* course() donne les unités du cours, et une par son id. */
+    same([C.units && C.units.map(u => u.id).join(' '), C.byUnit && C.byUnit('overleven').n, C.byUnit && C.byUnit('x')], [C.RAW.units.map(u => u.id).join(' '), 1, undefined],
+      'C.units : les unités du cours dans l\'ordre ; C.byUnit en lit une, et rien pour une unité qu\'il n\'a pas');
+    console.log('  source du genre sourceOf, ctx.ids : Split, Check, Merge, lecture');
+  }
 
   /* ==================================================== le genre flemish */
   {
@@ -1177,7 +1230,14 @@ async function main() {
     fixed[HALLO] = 'hey, salut';
     fixed[HUIS] = null;
     table.update(BE, fixed);
-    const EXTRACT = path.join(EX, '.cache', 'kaikki', 'belgian.tsv');
+    /* Le genre explanations ne coupe que les sources sans note : dans la copie, chaque source en a une
+       (une note d'essai pour celles que le vrai cours laisse sans, les mots neufs d'une fusion récente),
+       sauf « het gemeentehuis », dont la note est ôtée. */
+    const notesFixed = {};
+    C.sources.filter(s => !s.note).forEach(s => { notesFixed[s.nl] = { fr: 'Une note d’essai.', en: 'A trial note.' }; });
+    notesFixed[HUIS] = null;
+    table.update(path.join(EX, 'src', 'content', 'notes.js'), notesFixed);
+    const EXTRACT =path.join(EX, '.cache', 'kaikki', 'belgian.tsv');
     fs.mkdirSync(path.dirname(EXTRACT), { recursive: true });
     fs.writeFileSync(EXTRACT, '# kaikki/nl.jsonl sha256 ' + cache.PINS['kaikki/nl.jsonl'].sha256 + '\ngemeentehuis\tnoun\tBelgium\t(essai)\n');
     const CE = course(EX), NLE = CE.NL;
@@ -1201,8 +1261,15 @@ async function main() {
       'Split de explanations-be coupe des lots be-words et be-phrases : ' + JSON.stringify(beSplit));
     same([total(perKind('word')), total(perKind('phrase'))], [be.filter(s => s.kind === 'word').length, be.filter(s => s.kind === 'phrase').length],
       'les mots et les phrases de explanations-be, chacun une fois');
-    const want = CE.RAW.units.map(u => [u.id, rest.filter(s => s.unit === u.id).length]).filter(x => x[1]).map(x => x.join(' '));
-    same(runEx('split.js', [EX, RD]), { code: 0, lines: want }, 'Split de explanations coupe un lot par unité');
+    /* Le genre explanations ne coupe que les sources sans note (une ici), et celles que Split nomme. */
+    const unnoted = rest.filter(s => !s.note);
+    same(unnoted.map(s => s.id), ['thuis:w12'], 'une seule source de explanations est sans note');
+    const want = CE.RAW.units.map(u => [u.id, unnoted.filter(s => s.unit === u.id).length]).filter(x => x[1]).map(x => x.join(' '));
+    same(runEx('split.js', [EX, RD]), { code: 0, lines: want }, 'Split de explanations coupe un lot par unité, des seules sources sans note');
+    same(want, ['thuis 1'], 'un seul lot, d\'une ligne : les sources qui ont leur note ne sont pas recoupées');
+    const RD2 = path.join(EX, 'nommes', 'explanations');
+    same(runEx('split.js', [EX, RD2, 'overleven:w2', 'thuis:w12']), { code: 0, lines: ['overleven 1', 'thuis 1'] },
+      'nommée, une source qui a sa note est coupée aussi (#106)');
     const rowIn = (dir, id) => {
       const b = text(path.join(dir, 'split.txt')).split('\n').filter(Boolean).map(l => l.split(' ')[0])
         .find(x => JSON.parse(text(path.join(dir, x, 'input.json'))).some(r => r.id === id));
@@ -1219,7 +1286,7 @@ async function main() {
       nl: HUIS, kind: 'word', unit: 'thuis', be: null, meaning: NLE.gloss.meaning(huis),
       note: huis.note || null, also: [], siblings: [], vlaams: false, right: null, labelled: ['noun (Belgium): (essai)']
     }, 'une ligne de explanations : sans forme flamande ni exercice, et les sens belges que l\'extrait donne au mot');
-    same(rowIn(RD, 'overleven:w2').siblings.map(s => s.nl), ['de dag'], 'les frères de sens d\'une source sont dans sa ligne');
+    same(rowIn(RD2, 'overleven:w2').siblings.map(s => s.nl), ['de dag'], 'les frères de sens d\'une source sont dans sa ligne');
 
     /* Check : la note, ses langues et ses citations. */
     const KB = require(path.join(EX, 'tools', 'content', 'kinds', 'explanations-be'));

@@ -5,7 +5,8 @@
      const X = require('../lib/explain');
      X.kind('be')        le genre explanations-be : un lot be-words et un lot be-phrases, coupés par
                          unités entières au-delà de MAX lignes
-     X.kind('rest')      le genre explanations : un lot par unité, dans l'ordre du cours
+     X.kind('rest')      le genre explanations : un lot par unité, dans l'ordre du cours, des seules
+                         sources sans note (les mots neufs), et de celles que Split nomme (ctx.ids)
      X.flemish(src, NL)  vrai quand l'élément est du genre explanations-be
      X.chunks(name, rows)  des lignes en lots de MAX au plus, sans couper une unité
 
@@ -106,7 +107,11 @@ function split(part) {
       return ['word', 'phrase'].reduce((acc, k) =>
         acc.concat(chunks('be-' + k + 's', mine.filter(s => s.kind === k).map(s => rowOf(s, C, belgian)))), []);
     }
-    return C.RAW.units.map(u => ({ batch: u.id, rows: mine.filter(s => s.unit === u.id).map(s => rowOf(s, C, belgian)) }));
+    /* Les seules sources sans note : les mots que le genre words vient de fondre. Une source qui a
+       sa note ne se récrit qu'en la nommant (#106). */
+    const named = new Set(ctx.ids || []);
+    const cut = mine.filter(s => !s.note || named.has(s.id));
+    return C.RAW.units.map(u => ({ batch: u.id, rows: cut.filter(s => s.unit === u.id).map(s => rowOf(s, C, belgian)) }));
   };
 }
 

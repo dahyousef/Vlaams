@@ -93,7 +93,10 @@ The scripts' contract, which their tasks' tests check:
   redrafted, by a fan-out task whose Split names them. Given ids on a kind folder that already has batches,
   it prints their lines only when those batches hold exactly the named rows, in any order; otherwise it
   prints one `fail` line naming the difference (named rows its batches lack, rows they hold that were not
-  named) and exits 1.
+  named) and exits 1. A kind's `split(C, ctx)` receives the named ids as `ctx.ids` (null when none), so a
+  kind that cuts only its new rows (`explanations` cuts the sources without a note) still cuts a named row. A
+  kind may give its rows' source itself, `sourceOf(C, id)` (by default `C.byId(id)`, an item of the course):
+  the `words` kind gives a unit to come, so its rows exist before their words do.
 - **Check** `<batch folder>` checks every file the folder holds, by `batch-controller.md`'s table: a draft has
   one row per input row, same ids and stamps, in the format's fields, `unsure` allowed; a retry or a change
   has one row per id it answers, and no other; a review has one verdict per row it reads, `keep` or
