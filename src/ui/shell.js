@@ -36,6 +36,12 @@ NL.ui = (function () {
     render();
     const b = document.querySelector('.screen');
     if (b) b.scrollTop = 0;
+    /* C'est la fenêtre qui défile, pas .screen : sans cela, un écran s'ouvre à la hauteur où le
+       précédent défilait. Après elle, l'écran qui s'ouvre ailleurs qu'en haut le fait lui-même :
+       une fois, en y entrant, jamais à chaque dessin. */
+    window.scrollTo(0, 0);
+    const S = NL.screens[route];
+    if (S && S.entered) S.entered(arg);
   }
 
   function fromHash() {

@@ -151,6 +151,28 @@ NL.state.open().then(async () => {
   }
 
   /* ------------------------------------------------------------------ */
+  /* Trente-quatre cartes font plusieurs écrans. Le parcours s'ouvre sur l'unité en cours, et tout
+     autre écran en haut, pas à la hauteur où le précédent défilait : c'est la fenêtre qui défile.
+     Un écran redessiné sur place ne bouge pas : on y lit peut-être autre chose. */
+  console.log("\nOÙ S'OUVRE UN ÉCRAN");
+  {
+    fresh();
+    const entering = route => { B.scrolls.length = 0; NL.ui.go(route); return B.scrolls.join(', '); };
+    ok(entering('leerpad') === 'window 0', 'at unit 1, entering the Path did « ' + B.scrolls.join(', ') + ' », not the top of the page');
+    NL.content.allItems().slice(0, 500).forEach(it => put(it, 2, T0 + DAY));
+    NL.content.refresh();
+    const at = NL.content.courseProgress().current;
+    ok(at && at.id !== NL.content.units[0].id, 'the 500 items seeded should put the learner past unit 1');
+    ok(entering('leerpad') === 'window 0, .unit-card.now start', 'past unit 1, entering the Path did « ' + B.scrolls.join(', ') + ' », not the current unit');
+    B.scrolls.length = 0;
+    NL.ui.render();
+    ok(B.scrolls.length === 0, 'redrawing the Path in place moved the page: ' + B.scrolls.join(', '));
+    ok(entering('woorden') === 'window 0', 'entering the Library did « ' + B.scrolls.join(', ') + ' », not the top of the page');
+    NL.ui.go('vandaag');
+    console.log('  parcours : le haut à l\'unité 1, puis « ' + at.id + ' » ; un autre écran : le haut');
+  }
+
+  /* ------------------------------------------------------------------ */
   console.log('\nLA SÉANCE — plus de rangée de repères, et un score qui se compte');
   {
     fresh();

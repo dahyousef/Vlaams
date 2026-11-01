@@ -561,7 +561,7 @@ h1,h2,h3,h4,h5{font-family:var(--display);font-weight:700;letter-spacing:-.02em;
 .pips{align-items:center;gap:4px}
 .pips b{font-family:var(--mono);font-size:9.5px;font-weight:600;letter-spacing:.1em;
   text-transform:uppercase;color:var(--ink-3);margin-left:5px}
-.unit-card.now{border-color:var(--amber);border-width:1.5px;position:relative}
+.unit-card.now{border-color:var(--amber);border-width:1.5px;position:relative;scroll-margin-top:76px}
 .now-tag{position:absolute;top:-9px;left:16px;background:var(--amber);color:#231202;
   font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
   padding:3px 9px;border-radius:6px}
@@ -8576,6 +8576,12 @@ NL.ui = (function () {
     render();
     const b = document.querySelector('.screen');
     if (b) b.scrollTop = 0;
+    /* C'est la fenêtre qui défile, pas .screen : sans cela, un écran s'ouvre à la hauteur où le
+       précédent défilait. Après elle, l'écran qui s'ouvre ailleurs qu'en haut le fait lui-même :
+       une fois, en y entrant, jamais à chaque dessin. */
+    window.scrollTo(0, 0);
+    const S = NL.screens[route];
+    if (S && S.entered) S.entered(arg);
   }
 
   function fromHash() {
@@ -9779,6 +9785,13 @@ NL.screens.sessie = (function () {
           '</section>';
       });
       return html + '</div>';
+    },
+    /* L'unité en cours peut être à des écrans du haut. À la première, le texte du haut se lit encore. */
+    entered() {
+      const cp = NL.content.courseProgress();
+      if (!cp.current || cp.current.id === NL.content.units[0].id) return;
+      const card = document.querySelector('.unit-card.now');
+      if (card) card.scrollIntoView({ block: 'start' });
     },
     click(el, d) {
       if (d.unit) { NL.screens.sessie.begin(d.unit); NL.ui.go('sessie'); return; }

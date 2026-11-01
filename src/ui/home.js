@@ -126,6 +126,13 @@
       });
       return html + '</div>';
     },
+    /* L'unité en cours peut être à des écrans du haut. À la première, le texte du haut se lit encore. */
+    entered() {
+      const cp = NL.content.courseProgress();
+      if (!cp.current || cp.current.id === NL.content.units[0].id) return;
+      const card = document.querySelector('.unit-card.now');
+      if (card) card.scrollIntoView({ block: 'start' });
+    },
     click(el, d) {
       if (d.unit) { NL.screens.sessie.begin(d.unit); NL.ui.go('sessie'); return; }
       if (d.act === 'gram') {
