@@ -96,7 +96,11 @@ The scripts' contract, which their tasks' tests check:
   named) and exits 1. A kind's `split(C, ctx)` receives the named ids as `ctx.ids` (null when none), so a
   kind that cuts only its new rows (`explanations` cuts the sources without a note) still cuts a named row. A
   kind may give its rows' source itself, `sourceOf(C, id)` (by default `C.byId(id)`, an item of the course):
-  the `words` kind gives a unit to come, so its rows exist before their words do.
+  the `words` kind gives a unit to come, so its rows exist before their words do. That kind is the one
+  exception to a named Split: its `split` ignores `ctx.ids` and cuts only the units the course lacks, so a
+  named row of a merged unit is refused. A merged word changes by Merging its unit's rows again from the
+  workspace that drafted them, and never to another Dutch word, because `write` refuses a changed word at
+  a pinned id; with that workspace gone, it has no path yet.
 - **Check** `<batch folder>` checks every file the folder holds, by `batch-controller.md`'s table: a draft has
   one row per input row, same ids and stamps, in the format's fields, `unsure` allowed; a retry or a change
   has one row per id it answers, and no other; a review has one verdict per row it reads, `keep` or

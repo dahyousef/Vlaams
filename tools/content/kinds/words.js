@@ -111,7 +111,9 @@ const sourceOf = (C, id) => {
 };
 
 /* Split : un lot par unité de UNITS que le cours n'a pas encore, une ligne par place. Après Merge,
-   les unités fondues sont dans le cours : un second Split ne coupe rien pour elles. */
+   les unités fondues sont dans le cours : un second Split ne coupe rien pour elles, même nommé. Ce
+   genre ignore ctx.ids, et le kit refuse un id qu'il ne coupe pas : une ligne fondue ne se récrit pas
+   par un Split nommé (docs/agents/plan-runs/design-sitting.md). */
 function split(C) {
   const have = new Set(C.units.map(u => u.id));
   return UNITS.filter(u => !have.has(u.id)).map(u => ({
