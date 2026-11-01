@@ -33,6 +33,8 @@ node test/tools/fanout.js "$ROOT"
 # Les sources externes du kit (tools/content/kaikki.js, tools/content/tatoeba.js), sur des
 # fichiers faits par la suite.
 node test/tools/sources.js "$ROOT"
+# Les outils de la passe d'apprenant, sans navigateur : une passe qui s'arrête en route le dit.
+node test/tools/learner-pass.js "$ROOT"
 
 # Une voix et un navigateur par ligne : c'est là que vivent les vrais problèmes.
 for c in "nl-BE OPR" "nl-NL OPR" "none OPR" "nl-BE EDG" "nl-NL EDG" "none EDG" "nl-BE IOS" "nl-BE SAF"; do
