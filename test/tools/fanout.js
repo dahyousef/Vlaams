@@ -37,6 +37,15 @@ fs.mkdirSync(KINDS, { recursive: true });
 const kindFile = (name, text) => fs.writeFileSync(path.join(KINDS, name + '.js'), text);
 const text = f => fs.readFileSync(f, 'utf8');
 const put = (dir, file, v) => fs.writeFileSync(path.join(dir, file), typeof v === 'string' ? v : JSON.stringify(v, null, 2) + '\n');
+/* Le cours d'une copie de fixture tel qu'il était avant la tranche des unités 13 à 34 : le lexique vidé par
+   l'écrivain du genre words sans ligne, et les lignes de ces unités ôtées de ids.tsv. Le kit se teste sur
+   ses propres exemples, pas sur le cours que la fusion change ; les nombres attendus ne bougent pas avec lui. */
+const beforeWords = dir => {
+  const K = require(path.join(dir, 'tools', 'content', 'kinds', 'words'));
+  const own = new Set(K.UNITS.map(u => u.id)), ids = path.join(dir, 'test', 'data', 'ids.tsv');
+  fs.writeFileSync(path.join(dir, 'src', 'content', 'lexicon.a1c.js'), K.lexicon([]).map(l => l + '\n').join(''));
+  fs.writeFileSync(ids, text(ids).split(/\r?\n/).filter(l => l && !own.has(l.split(':')[0])).map(l => l + '\n').join(''));
+};
 /* Un outil du kit, lancé comme un agent le lance : ses lignes et son code de sortie. */
 const run = (script, args) => {
   const r = spawnSync(process.execPath, [path.join(TMP, 'tools', 'content', script)].concat(args), { encoding: 'utf8' });
@@ -609,6 +618,7 @@ module.exports = {
     const spelling = require('../lib/spelling');
     const FR = path.join(TMP, 'flamand');
     ['build.sh', 'src', 'test/lib', 'test/data', 'tools'].forEach(p => fs.cpSync(path.join(ROOT, p), path.join(FR, p), { recursive: true }));
+    beforeWords(FR);
     const runFr = (script, args) => {
       const r = spawnSync(process.execPath, [path.join(FR, 'tools', 'content', script)].concat(args), { encoding: 'utf8' });
       return { code: r.status, lines: (r.stdout || '').split(/\r?\n/).filter(Boolean) };
@@ -793,6 +803,7 @@ module.exports = {
        contient : les outils se lancent donc depuis celui-ci. */
     const EX = path.join(TMP, 'exemples');
     ['build.sh', 'src', 'test/lib', 'test/data', 'tools', 'docs/attribution'].forEach(p => fs.cpSync(path.join(ROOT, p), path.join(EX, p), { recursive: true }));
+    beforeWords(EX);
     const runEx = (script, args) => {
       const r = spawnSync(process.execPath, [path.join(EX, 'tools', 'content', script)].concat(args), { encoding: 'utf8' });
       return { code: r.status, lines: (r.stdout || '').split(/\r?\n/).filter(Boolean) };
@@ -1038,6 +1049,7 @@ module.exports = {
        outils se lancent donc depuis celui-ci. Les lignes écrites ici sont faites à la main. */
     const OP = path.join(TMP, 'open');
     ['build.sh', 'src', 'test/lib', 'test/data', 'tools'].forEach(p => fs.cpSync(path.join(ROOT, p), path.join(OP, p), { recursive: true }));
+    beforeWords(OP);
     const runOp = (script, args) => {
       const r = spawnSync(process.execPath, [path.join(OP, 'tools', 'content', script)].concat(args), { encoding: 'utf8' });
       return { code: r.status, lines: (r.stdout || '').split(/\r?\n/).filter(Boolean) };
@@ -1219,6 +1231,7 @@ module.exports = {
        n'en a pas. */
     const EX = path.join(TMP, 'explications');
     ['build.sh', 'src', 'test/lib', 'test/data', 'tools'].forEach(p => fs.cpSync(path.join(ROOT, p), path.join(EX, p), { recursive: true }));
+    beforeWords(EX);
     const X = require(path.join(EX, 'tools', 'content', 'lib', 'explain'));
     const runEx = (script, args) => {
       const r = spawnSync(process.execPath, [path.join(EX, 'tools', 'content', script)].concat(args), { encoding: 'utf8' });
@@ -1387,8 +1400,8 @@ module.exports = {
       'decoy « Ik leer het, hè. » is 16 characters: 22 to 50, the length of the answer « Ik ben Nederlands aan het leren, hè. » give or take 40% or two letters, whichever is more',
       'decoy « Ik leer het, hè. » is further from the Dutch than the answer: 0.35, at least 0.76'
     ]], 'un leurre a la longueur de la réponse, à 40 % ou à deux lettres près');
-    same([rule('ikengij:w1', { decoys: ['je', 'jou'] }), rule('ikengij:w1', { decoys: ['je', 'kat'] })],
-      [[], ['decoy « kat » is further from the Dutch than the answer: 0.00, at least 0.33']],
+    same([rule('ikengij:w1', { decoys: ['je', 'jou'] }), rule('ikengij:w1', { decoys: ['je', 'zqz'] })],
+      [[], ['decoy « zqz » is further from the Dutch than the answer: 0.00, at least 0.33']],
       'une réponse de trois lettres a ses fautes : une forme courte du même pronom passe, un mot sans rapport non');
     const N = { fr: GOOD[0], en: GOOD[1] };
     same([KB.readWhole(line('overleven:w0', N), HALLO_IN), KB.readWhole(Object.assign(line('overleven:w0', N), { also: ['dag'] }), HALLO_IN),
@@ -1466,6 +1479,7 @@ module.exports = {
     same(lexica.filter(f => text(path.join(ROOT, 'build.sh')).split(/\r?\n/).indexOf('src/content/' + f) < 0), [], 'le SRC de build.sh nomme chaque lexique de src/content');
     const WD = path.join(TMP, 'mots');
     ['build.sh', 'src', 'test/lib', 'test/data', 'tools'].forEach(p => fs.cpSync(path.join(ROOT, p), path.join(WD, p), { recursive: true }));
+    beforeWords(WD);
     const runWd = (script, args) => {
       const r = spawnSync(process.execPath, [path.join(WD, 'tools', 'content', script)].concat(args), { encoding: 'utf8' });
       return { code: r.status, lines: (r.stdout || '').split(/\r?\n/).filter(Boolean) };
@@ -1477,12 +1491,7 @@ module.exports = {
       'tafel\tnoun\tde\ttable', 'toch\tadv\t\tstill | anyway', 'waarom\tadv\t\twhy', 'wie\tpron\t\twho'
     ].join('\n') + '\n');
     const K = require(path.join(WD, 'tools', 'content', 'kinds', 'words'));
-    /* Le cours de la copie sans les unités de UNITS, quoi que le vrai cours en tienne déjà (une fusion du
-       genre) : le lexique vidé, et leurs lignes ôtées de ids.tsv. */
     const LEX = path.join(WD, 'src', 'content', 'lexicon.a1c.js'), IDS = path.join(WD, 'test', 'data', 'ids.tsv');
-    const own = new Set(K.UNITS.map(u => u.id));
-    fs.writeFileSync(LEX, K.lexicon([]).map(l => l + '\n').join(''));
-    fs.writeFileSync(IDS, text(IDS).split(/\r?\n/).filter(l => l && !own.has(l.split(':')[0])).map(l => l + '\n').join(''));
     const CW = course(WD), NLW = CW.NL;
 
     /* Les 22 unités : leurs ids, leurs numéros, leurs cibles, chacune ses deux noms et ses deux présentations. */
@@ -1587,6 +1596,15 @@ module.exports = {
     same(runWd('merge.js', [WD, E2W]), { code: 0, lines: ['ok words 4 taken, 0 dropped', 'ok lexicon.a1c.js 4 words in 2 units', 'ok ids.tsv 0 added'] },
       'relancée, Merge récrit le même lexique et n\'ajoute rien à ids.tsv');
     same([text(LEX), text(IDS)], [lexAfter, idsAfter], 'le lexique et ids.tsv sont les mêmes octet pour octet');
+    /* Un mot déjà fondu n'est pas « le cours » : la relance ne compare l'anglais d'une ligne qu'au cours hors UNITS.
+       « de tafel » écrit ici « who », que « wie » (vragen) a déjà fondu, sans français ni néerlandais en commun :
+       Check ne l'a pas vu au premier Merge, la relance ne le refuse pas non plus. */
+    const WONEN0 = path.join(E2W, 'wonen'), draft0 = text(path.join(WONEN0, 'draft.json'));
+    put(WONEN0, 'draft.json', JSON.parse(draft0).map(r => (r.id === 'wonen:s00' ? Object.assign(r, { en: 'who' }) : r)));
+    same(runWd('merge.js', [WD, E2W]), { code: 0, lines: ['ok words 4 taken, 0 dropped', 'ok lexicon.a1c.js 4 words in 2 units', 'ok ids.tsv 0 added'] },
+      'relancée, Merge ne prend pas ses propres mots fondus pour le cours dans la garde de l’anglais');
+    put(WONEN0, 'draft.json', draft0);
+    fs.writeFileSync(LEX, lexAfter);
     /* Un autre mot sous un id déjà épinglé : refusé avant toute écriture. */
     const wonenDraft = text(path.join(WONEN, 'draft.json'));
     put(WONEN, 'draft.json', JSON.parse(wonenDraft).map(r => (r.id === 'wonen:s10' ? Object.assign(r, { nl: 'de stoel', fr: 'la chaise', en: 'chair', evidence: 'wiktionary:stoel' }) : r)));

@@ -134,7 +134,7 @@ function tools(ctx) {
     const keyOf = s => (s.kind === 'word' ? U.norm(U.bare(s.nl)) : U.norm(s.nl));
     let senses = null;
     memo.set(ctx, {
-      C, NL, dehet,
+      C, NL, dehet, others,
       S: spelling.open(ctx.repo, NL),
       /* L'élément du cours, hors des unités de UNITS, dont le néerlandais sans article est celui-là. */
       itemOf: nl => others.find(s => keyOf(s) === U.norm(U.bare(nl))) || null,
@@ -208,7 +208,7 @@ function check(row, input, ctx) {
   if ((row.pos === 'verb' || G.wordClass(item, 'fr') === 'verb') && !/^to\s+\S/i.test(row.en)) why.push('a verb\'s en starts with « to »');
   if (row.art && /^(the|an|a)\s/i.test(row.en)) why.push('a noun\'s en takes no article');
   if (sig(row.fr) !== sig(row.en)) why.push('fr and en hold different digits or {…} tokens');
-  T.C.sources.filter(s => s.id !== row.id && G.sameMeaning(item, s) && !G.sameSense(item, s)).forEach(s => {
+  T.others.filter(s => G.sameMeaning(item, s) && !G.sameSense(item, s)).forEach(s => {
     why.push('en shares a sense with ' + s.id + ' « ' + s.nl + ' » (' + s.en + '), which shares no French sense and no Dutch: give one of them another English, or the French they share');
   });
   return why;

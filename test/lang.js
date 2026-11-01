@@ -115,7 +115,12 @@ function views(B, visit) {
   for (let r = 0; r <= 6; r++) {
     fresh();
     const all = builtIn();
-    all.forEach(it => put(it, r));
+    /* Le budget du jour (120) coupe cette boucle, et le plus en retard est servi d'abord, c'est-à-dire le
+       dernier posé. Les tâches ouvertes (échelons 4 et 6) ne viennent que des éléments de open.phrases : on
+       les pose en dernier, donc ils sont servis les premiers, puis le cours depuis son début, pour que ce
+       que la boucle montre ne dépende pas de ce que les dernières unités ajoutent. */
+    const hasOpen = it => !!(NL.content.byDutch['open.phrases'] || {})[it.nl];
+    all.filter(hasOpen).concat(all.filter(it => !hasOpen(it))).reverse().forEach(it => put(it, r));
     const shown = new Set();
     let sessions = 0;
     while (shown.size < all.length && sessions++ < 80) {
@@ -512,7 +517,7 @@ function langAttrFind(B, each) {
      on ne l'écarte que dans un passage qui se déclare français (ou anglais) ET dont le texte est un texte français
      (ou anglais) du cours. Un élément néerlandais qui montre « merci » sans lang="nl-BE" est une faute. */
   const gloss = { fr: new Set(), en: new Set() };
-  tree.visit(NL.content, (v, key) => { if ((key === 'fr' || key === 'en') && typeof v === 'string') gloss[key].add(U.norm(v)); });
+  tree.visit(NL.content, (v, key) => { if ((key === 'fr' || key === 'en') && typeof v === 'string') { gloss[key].add(U.norm(v)); if (key === 'fr') gloss.fr.add(U.norm(U.bareFr(v))); } });
   ['fr', 'en'].forEach(l => tree.visit(NL.tables[l], v => { if (typeof v === 'string') gloss[l].add(U.norm(v)); }));
   ok(dutch.size > 100, '6 : trop peu de mots néerlandais à chercher (' + dutch.size + ')');
   /* La table des sons compare un son à une lettre française, en gras et nue (6d.8) : « le u de tu »
@@ -905,16 +910,12 @@ const REFERENCE_TABLES = ['loans', 'sounds', 'faux', 'fauxEn'];
    « constructor » ou « toString » n'y est pas listé. */
 const QUOTE_OK = Object.assign(Object.create(null), {
   pardon: 'le nord pour excuseer, dans la note d’un choix de la conversation du train',
-  lijn: '« De Lijn », les bus flamands, dans la présentation de l’unité du trajet',
   jam: 'le nord pour de confituur, dans sa note d’emprunt',
   vrachtwagen: 'l’écrit pour de camion, dans sa note d’emprunt',
-  vork: 'le standard pour de fourchet, dans sa note d’emprunt',
   bijgevoegd: 'le nord pour « in bijlage », dans une note de la fiche des mails',
   werke: 'werken tel qu’il se dit, n final tombé, dans la table des sons',
   lope: 'lopen tel qu’il se dit, n final tombé, dans la table des sons',
   uiteindelijk: 'ce que veut dire eventually, dans le piège de eventueel',
-  eigenlijk: 'ce que veut dire actually, dans le piège de actueel',
-  dun: 'ce que veut dire slim (mince), dans le piège de slim',
   slank: 'ce que veut dire slim (svelte), dans le piège de slim',
   zeldzaam: 'ce que veut dire rare, dans le piège de raar',
   merk: '« het merk », ce que veut dire brand (une marque), dans le piège de de brand',
@@ -934,7 +935,8 @@ const SHARED_OK = Object.assign(Object.create(null), {
   direct: '« Être direct », “Being direct”, dans une note de la conversation sur les délais',
   t: 'la lettre t, nommée de même en français et en anglais, dans les notes de « Dat was plezant. », « Wat betekent dat? », « acht » et « komen »',
   s: 'la lettre s, nommée de même en français et en anglais, dans la note de « Niks speciaals, en bij u? »',
-  o: 'la lettre o, nommée de même en français et en anglais, dans la note de « goedkoop »'
+  o: 'la lettre o, nommée de même en français et en anglais, dans la note de « goedkoop »',
+  film: 'un film se regarde, en français comme en anglais, dans la note de « kijken »'
 });
 /* Ce que la table des sons met en gras sans le déclarer néerlandais : la lettre ou le mot auquel elle
    compare un son, français (une fois, le w anglais), avec la raison (D5). Le reste de son gras est

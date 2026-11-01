@@ -437,3 +437,608 @@ weekend:p7	Ik heb er geen goesting in.
 weekend:p8	Een goed weekend nog!
 weekend:p9	Tot maandag.
 g-perfect-intro	Ik heb dit weekend gewandeld.
+vragen:w0	wie
+vragen:w1	waarom
+vragen:w2	wanneer
+vragen:w3	welke
+vragen:w4	maar
+vragen:w5	want
+vragen:w6	omdat
+vragen:w7	als
+vragen:w8	toen
+vragen:w9	nu
+vragen:w10	hoe
+vragen:w11	wat
+vragen:w12	of
+vragen:w13	daarom
+vragen:w14	alleen
+vragen:w15	en
+vragen:w16	waar
+vragen:w17	geen
+vragen:w18	dat
+vragen:w19	dan
+vragen:w20	ergens
+vragen:w21	terwijl
+vragen:w22	nergens
+vragen:w23	hoelang
+vragen:w24	overal
+vragen:w25	eigenlijk
+vragen:w26	meteen
+vragen:w27	zodat
+vragen:w28	zeker
+vragen:w29	wel
+kunnen:w0	kunnen
+kunnen:w1	moeten
+kunnen:w2	willen
+kunnen:w3	mogen
+kunnen:w4	zullen
+kunnen:w5	laten
+kunnen:w6	weten
+kunnen:w7	kennen
+kunnen:w8	denken
+kunnen:w9	hopen
+kunnen:w10	geloven
+kunnen:w11	snappen
+kunnen:w12	vergeten
+kunnen:w13	onthouden
+kunnen:w14	durven
+kunnen:w15	hoeven
+kunnen:w16	lukken
+kunnen:w17	beloven
+kunnen:w18	menen
+kunnen:w19	twijfelen
+kunnen:w20	kiezen
+kunnen:w21	besluiten
+kunnen:w22	verwachten
+kunnen:w23	kloppen
+kunnen:w24	bedoelen
+doen:w0	doen
+doen:w1	maken
+doen:w2	nemen
+doen:w3	geven
+doen:w4	krijgen
+doen:w5	brengen
+doen:w6	halen
+doen:w7	zitten
+doen:w8	staan
+doen:w9	liggen
+doen:w10	lopen
+doen:w11	wachten
+doen:w12	beginnen
+doen:w13	stoppen
+doen:w14	vragen
+doen:w15	antwoorden
+doen:w16	schrijven
+doen:w17	gebruiken
+doen:w18	openen
+doen:w19	sluiten
+doen:w20	stappen
+doen:w21	blijven
+doen:w22	bewaren
+doen:w23	zien
+doen:w24	vertellen
+doen:w25	luisteren
+doen:w26	verliezen
+doen:w27	leggen
+doen:w28	zetten
+doen:w29	tonen
+mensen:w0	hem
+mensen:w1	haar
+mensen:w2	zich
+mensen:w3	iemand
+mensen:w4	iets
+mensen:w5	niets
+mensen:w6	elkaar
+mensen:w7	zelf
+mensen:w8	de vader
+mensen:w9	de moeder
+mensen:w10	de jongen
+mensen:w11	het meisje
+mensen:w12	de oom
+mensen:w13	de tante
+mensen:w14	de opa
+mensen:w15	de oma
+mensen:w16	de tiener
+mensen:w17	de baby
+mensen:w18	de meneer
+mensen:w19	de mevrouw
+mensen:w20	de gast
+mensen:w21	de neef
+mensen:w22	de nicht
+mensen:w23	de schoonmoeder
+mensen:w24	de ex
+mensen:w25	de nonkel
+mensen:w26	mezelf
+mensen:w27	jezelf
+mensen:w28	ieder
+mensen:w29	de dame
+hoeveel:w0	meer
+hoeveel:w1	erg
+hoeveel:w2	echt
+hoeveel:w3	vaak
+hoeveel:w4	ooit
+hoeveel:w5	steeds
+hoeveel:w6	bijna
+hoeveel:w7	toch
+hoeveel:w8	dus
+hoeveel:w9	weinig
+hoeveel:w10	alle
+hoeveel:w11	zelden
+hoeveel:w12	veel
+hoeveel:w13	te
+hoeveel:w14	heel
+hoeveel:w15	nogal
+hoeveel:w16	helemaal
+hoeveel:w17	ongeveer
+hoeveel:w18	allemaal
+hoeveel:w19	minder
+hoeveel:w20	de keer
+hoeveel:w21	dikwijls
+hoeveel:w22	de helft
+hoeveel:w23	nog
+hoeveel:w24	elke
+hoeveel:w25	enkele
+hoeveel:w26	sommige
+hoeveel:w27	meerdere
+hoeveel:w28	regelmatig
+hoeveel:w29	hoeveel
+waar:w0	in
+waar:w1	op
+waar:w2	met
+waar:w3	van
+waar:w4	uit
+waar:w5	over
+waar:w6	door
+waar:w7	zonder
+waar:w8	onder
+waar:w9	achter
+waar:w10	tussen
+waar:w11	naast
+waar:w12	voor
+waar:w13	na
+waar:w14	bij
+waar:w15	naar
+waar:w16	tegen
+waar:w17	boven
+waar:w18	beneden
+waar:w19	rond
+landen:w0	het land
+landen:w1	de taal
+landen:w2	België
+landen:w3	Nederland
+landen:w4	Frankrijk
+landen:w5	Duitsland
+landen:w6	het woord
+landen:w7	de zin
+landen:w8	de vraag
+landen:w9	het antwoord
+landen:w10	het woordenboek
+landen:w11	Wallonië
+landen:w12	Brussel
+landen:w13	Duits
+landen:w14	Luxemburg
+landen:w15	Spanje
+landen:w16	Italië
+landen:w17	Engeland
+landen:w18	Europa
+landen:w19	Vlaanderen
+landen:w20	Vlaams
+landen:w21	vertalen
+landen:w22	de grens
+landen:w23	het buitenland
+landen:w24	de Belg
+eten:w0	de groenten
+eten:w1	het fruit
+eten:w2	het vlees
+eten:w3	de vis
+eten:w4	de melk
+eten:w5	de eieren
+eten:w6	de appel
+eten:w7	de thee
+eten:w8	de wijn
+eten:w9	het bier
+eten:w10	de suiker
+eten:w11	het zout
+eten:w12	de soep
+eten:w13	de rijst
+eten:w14	de aardappel
+eten:w15	de tomaat
+eten:w16	de wortel
+eten:w17	de ajuin
+eten:w18	de kip
+eten:w19	de worst
+eten:w20	de pizza
+eten:w21	de salade
+eten:w22	de saus
+eten:w23	het ijs
+eten:w24	de koek
+eten:w25	de chocolade
+eten:w26	het sap
+eten:w27	de cola
+eten:w28	het ontbijt
+eten:w29	het avondmaal
+eten:w30	de pasta
+eten:w31	de limonade
+eten:w32	de pannenkoek
+eten:w33	de peper
+eten:w34	de komkommer
+cafe:w0	de ober
+cafe:w1	bestellen
+cafe:w2	de rekening
+cafe:w3	het dessert
+cafe:w4	vegetarisch
+cafe:w5	het menu
+cafe:w6	de fooi
+cafe:w7	het servet
+cafe:w8	het bestek
+cafe:w9	het glas
+cafe:w10	de fles
+cafe:w11	het bord
+cafe:w12	de vork
+cafe:w13	de lepel
+cafe:w14	het mes
+cafe:w15	het terras
+cafe:w16	de drank
+cafe:w17	de reservatie
+cafe:w18	het voorgerecht
+cafe:w19	het hoofdgerecht
+kleren:w0	de schoenen
+kleren:w1	de broek
+kleren:w2	de jas
+kleren:w3	de trui
+kleren:w4	het hemd
+kleren:w5	rood
+kleren:w6	blauw
+kleren:w7	groen
+kleren:w8	zwart
+kleren:w9	geel
+kleren:w10	dragen
+kleren:w11	wit
+kleren:w12	grijs
+kleren:w13	bruin
+kleren:w14	de hoed
+kleren:w15	de pyjama
+kleren:w16	de rok
+kleren:w17	het kleed
+kleren:w18	de kousen
+kleren:w19	de muts
+kleren:w20	de sjaal
+kleren:w21	de handschoenen
+kleren:w22	de laarzen
+kleren:w23	de riem
+kleren:w24	oranje
+kleren:w25	roze
+kleren:w26	paars
+kleren:w27	aandoen
+kleren:w28	uitdoen
+kleren:w29	de pet
+wonen:w0	de tafel
+wonen:w1	de stoel
+wonen:w2	het bed
+wonen:w3	de kast
+wonen:w4	het raam
+wonen:w5	de lamp
+wonen:w6	de zetel
+wonen:w7	de frigo
+wonen:w8	poetsen
+wonen:w9	opruimen
+wonen:w10	het plafond
+wonen:w11	de muur
+wonen:w12	de vloer
+wonen:w13	de trap
+wonen:w14	het tapijt
+wonen:w15	de wasmachine
+wonen:w16	de kelder
+wonen:w17	de zolder
+wonen:w18	de douche
+wonen:w19	de spiegel
+wonen:w20	het gordijn
+wonen:w21	de plank
+wonen:w22	de verwarming
+wonen:w23	de oven
+wonen:w24	afwassen
+wonen:w25	stofzuigen
+wonen:w26	verhuizen
+wonen:w27	het kussen
+wonen:w28	de gang
+wonen:w29	het dak
+kalender:w0	januari
+kalender:w1	februari
+kalender:w2	maart
+kalender:w3	april
+kalender:w4	mei
+kalender:w5	juni
+kalender:w6	juli
+kalender:w7	augustus
+kalender:w8	september
+kalender:w9	oktober
+kalender:w10	november
+kalender:w11	december
+kalender:w12	de zomer
+kalender:w13	de winter
+kalender:w14	de lente
+kalender:w15	de herfst
+kalender:w16	de verjaardag
+kalender:w17	Kerstmis
+kalender:w18	Nieuwjaar
+kalender:w19	Pasen
+kalender:w20	eerste
+kalender:w21	tweede
+kalender:w22	vierde
+kalender:w23	jarig
+kalender:w24	vorig
+kalender:w25	de datum
+kalender:w26	de feestdag
+kalender:w27	Sinterklaas
+kalender:w28	de vakantie
+kalender:w29	het seizoen
+kalender:w30	de kalender
+kalender:w31	vieren
+kalender:w32	derde
+kalender:w33	het feest
+kalender:w34	Allerheiligen
+stad:w0	de post
+stad:w1	de bank
+stad:w2	de bibliotheek
+stad:w3	de politie
+stad:w4	het plein
+stad:w5	de markt
+stad:w6	het museum
+stad:w7	oversteken
+stad:w8	de hoek
+stad:w9	het centrum
+stad:w10	het gebouw
+stad:w11	het stadhuis
+stad:w12	de kapper
+stad:w13	de brug
+stad:w14	het voetpad
+stad:w15	de toren
+stad:w16	het fietspad
+stad:w17	het verkeerslicht
+stad:w18	de rotonde
+stad:w19	de parking
+stad:w20	het zwembad
+stad:w21	het park
+stad:w22	het zebrapad
+stad:w23	de bushalte
+stad:w24	de wijk
+stad:w25	de supermarkt
+stad:w26	het kruispunt
+stad:w27	het loket
+stad:w28	de buurt
+stad:w29	de inwoner
+vrijetijd:w0	de muziek
+vrijetijd:w1	de film
+vrijetijd:w2	het boek
+vrijetijd:w3	lezen
+vrijetijd:w4	zwemmen
+vrijetijd:w5	spelen
+vrijetijd:w6	dansen
+vrijetijd:w7	zingen
+vrijetijd:w8	de sport
+vrijetijd:w9	de hobby
+vrijetijd:w10	het concert
+vrijetijd:w11	het theater
+vrijetijd:w12	fietsen
+vrijetijd:w13	de cinema
+vrijetijd:w14	tekenen
+vrijetijd:w15	de foto
+vrijetijd:w16	de fuif
+vrijetijd:w17	het spel
+vrijetijd:w18	het café
+vrijetijd:w19	sporten
+vrijetijd:w20	voetballen
+vrijetijd:w21	uitgaan
+vrijetijd:w22	de uitstap
+vrijetijd:w23	de wandeling
+vrijetijd:w24	gamen
+vrijetijd:w25	de kermis
+vrijetijd:w26	het strand
+vrijetijd:w27	de televisie
+vrijetijd:w28	schilderen
+vrijetijd:w29	kamperen
+gevoel:w0	blij
+gevoel:w1	boos
+gevoel:w2	bang
+gevoel:w3	trots
+gevoel:w4	gelukkig
+gevoel:w5	triestig
+gevoel:w6	leuk
+gevoel:w7	mooi
+gevoel:w8	interessant
+gevoel:w9	moeilijk
+gevoel:w10	gemakkelijk
+gevoel:w11	belangrijk
+gevoel:w12	verdrietig
+gevoel:w13	zenuwachtig
+gevoel:w14	tevreden
+gevoel:w15	nieuwsgierig
+gevoel:w16	jammer
+gevoel:w17	saai
+gevoel:w18	raar
+gevoel:w19	lelijk
+gevoel:w20	verlegen
+gevoel:w21	jaloers
+gevoel:w22	eenzaam
+gevoel:w23	kalm
+gevoel:w24	stom
+gevoel:w25	missen
+gevoel:w26	spijtig
+gevoel:w27	lachen
+gevoel:w28	wenen
+gevoel:w29	de mening
+beschrijven:w0	groot
+beschrijven:w1	klein
+beschrijven:w2	kort
+beschrijven:w3	snel
+beschrijven:w4	langzaam
+beschrijven:w5	zwaar
+beschrijven:w6	licht
+beschrijven:w7	vol
+beschrijven:w8	leeg
+beschrijven:w9	sterk
+beschrijven:w10	proper
+beschrijven:w11	smal
+beschrijven:w12	kapot
+beschrijven:w13	nieuw
+beschrijven:w14	stil
+beschrijven:w15	luid
+beschrijven:w16	scherp
+beschrijven:w17	glad
+beschrijven:w18	ruim
+beschrijven:w19	hoog
+beschrijven:w20	laag
+beschrijven:w21	dik
+beschrijven:w22	dun
+beschrijven:w23	breed
+beschrijven:w24	recht
+beschrijven:w25	zacht
+beschrijven:w26	hard
+beschrijven:w27	donker
+beschrijven:w28	droog
+beschrijven:w29	plat
+school:w0	de juf
+school:w1	de meester
+school:w2	de klas
+school:w3	de les
+school:w4	het huiswerk
+school:w5	de opvang
+school:w6	de crèche
+school:w7	studeren
+school:w8	de directeur
+school:w9	de leerling
+school:w10	de toets
+school:w11	de leerkracht
+school:w12	het schrift
+school:w13	het potlood
+school:w14	de pen
+school:w15	het examen
+school:w16	rekenen
+school:w17	het diploma
+school:w18	het speelgoed
+school:w19	de kleuter
+school:w20	de klasgenoot
+school:w21	het rapport
+school:w22	de speeltijd
+school:w23	de schaar
+school:w24	de tekening
+afspraak:w0	bellen
+afspraak:w1	de gsm
+afspraak:w2	het bericht
+afspraak:w3	afzeggen
+afspraak:w4	verplaatsen
+afspraak:w5	de agenda
+afspraak:w6	beschikbaar
+afspraak:w7	doorverbinden
+afspraak:w8	het scherm
+afspraak:w9	terugbellen
+afspraak:w10	de telefoon
+afspraak:w11	het telefoonnummer
+afspraak:w12	opnemen
+afspraak:w13	ophangen
+afspraak:w14	de lijn
+afspraak:w15	het gesprek
+afspraak:w16	de lader
+afspraak:w17	de batterij
+afspraak:w18	doorgeven
+afspraak:w19	uitnodigen
+afspraak:w20	de uitnodiging
+afspraak:w21	bereiken
+afspraak:w22	de sms
+afspraak:w23	bevestigen
+afspraak:w24	de boodschap
+team:w0	het team
+team:w1	de feedback
+team:w2	de pauze
+team:w3	het contract
+team:w4	het loon
+team:w5	de opleiding
+team:w6	de refter
+team:w7	het bedrijf
+team:w8	de computer
+team:w9	de printer
+team:w10	de opdracht
+team:w11	de taak
+team:w12	de stagiair
+team:w13	de werkplek
+team:w14	de afdeling
+team:w15	de werkgever
+team:w16	vergaderen
+team:w17	het personeel
+team:w18	bespreken
+team:w19	samenwerken
+team:w20	de ploeg
+team:w21	het bureau
+team:w22	de factuur
+team:w23	de werknemer
+team:w24	het overleg
+reis:w0	de reis
+reis:w1	het hotel
+reis:w2	de koffer
+reis:w3	het vliegtuig
+reis:w4	de luchthaven
+reis:w5	het paspoort
+reis:w6	de zee
+reis:w7	de kust
+reis:w8	reserveren
+reis:w9	de boot
+reis:w10	de kamer
+reis:w11	de gids
+reis:w12	de taxi
+reis:w13	de receptie
+reis:w14	de douane
+reis:w15	de toerist
+reis:w16	de bagage
+reis:w17	de rugzak
+reis:w18	het eiland
+reis:w19	de berg
+reis:w20	de stad
+reis:w21	de vlucht
+reis:w22	bezoeken
+reis:w23	de tent
+reis:w24	de camping
+reis:w25	vliegen
+reis:w26	logeren
+reis:w27	reizen
+reis:w28	inpakken
+reis:w29	de haven
+natuur:w0	de hond
+natuur:w1	de kat
+natuur:w2	het paard
+natuur:w3	de vogel
+natuur:w4	de boom
+natuur:w5	de bloem
+natuur:w6	het bos
+natuur:w7	de rivier
+natuur:w8	de koe
+natuur:w9	het varken
+natuur:w10	de natuur
+natuur:w11	de lucht
+natuur:w12	het konijn
+natuur:w13	het schaap
+natuur:w14	het gras
+natuur:w15	de ster
+natuur:w16	de maan
+natuur:w17	de wolk
+natuur:w18	het dier
+natuur:w19	de plant
+natuur:w20	de eend
+natuur:w21	het blad
+natuur:w22	de vlinder
+natuur:w23	de muis
+natuur:w24	de steen
+spoed:w0	de spoed
+spoed:w1	de ambulance
+spoed:w2	de brandweer
+spoed:w3	het ongeval
+spoed:w4	gebroken
+spoed:w5	de verpleger
+spoed:w6	de brand
+spoed:w7	de huisarts
+spoed:w8	bloeden
+spoed:w9	het verband
+spoed:w10	de pleister
+spoed:w11	allergisch
+spoed:w12	gevaarlijk
+spoed:w13	de hulp
+spoed:w14	de tandarts
