@@ -22,8 +22,8 @@ Your dispatch names the run file and the commit to verify. In the worktree named
        git diff --quiet -- index.html artifact.html && git checkout -- index.html artifact.html
        git status --short -- index.html artifact.html >> "<WS>/tmp/suite.txt"
 
-   and run `sh "<WS>/tmp/verify.sh"` in the background, then wait for it to finish: the suite can take about
-   fifteen minutes, past the ten a foreground command may run.
+   and run `sh "<WS>/tmp/verify.sh"` in the background, then wait for it to finish: the suite can take more than
+   half an hour, past the ten a foreground command may run.
    Its third line puts back `index.html` and `artifact.html` when the suite's rebuild differs from the commit
    in line endings only (`core.autocrlf`). A real difference stays, and the check below fails on it.
 4. Read the last 40 lines of `<WS>/tmp/suite.txt`.

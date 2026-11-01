@@ -29,7 +29,7 @@ repository by default, and exits 1 with one `PROBLEM:` line per fault.
 | `node tools/learner-pass/corners.js` | listening (Comprendre, Répéter), the baker conversation, the challenge | `LISTENING, CONVERSATION AND CHALLENGE PLAY THROUGH` |
 | `node tools/learner-pass/sweep.js` | every tappable thing on 16 screens: one that changes nothing, one a finger cannot reach, a sheet that jumps from where it was scrolled, overflow at 390 px, console errors | `EVERY TAP DOES SOMETHING` |
 
-`days.js` takes about two minutes, `corners.js` one, `sweep.js` about four. Screenshots of
+`days.js` takes about two minutes, `corners.js` half a minute, `sweep.js` about four. Screenshots of
 each step go to `shots/` (ignored): look at them, as a learner would see the screens.
 
 ## Reading a fault
