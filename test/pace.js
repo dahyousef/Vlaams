@@ -4,6 +4,7 @@
    et le contenu épuisé au jour 27. */
 const browser = require('./lib/browser');
 const { offsets } = require('./lib/zone');
+const grow = require('./lib/grow');
 const ROOT = process.argv[2];
 const DAYS = Number(process.argv[3] || 400);
 const T0 = Date.parse('2026-01-05T08:00:00Z');
@@ -15,6 +16,10 @@ const MODE = process.argv.slice(4);
    ne tourne après lui qui devrait retrouver le sien. */
 const DRIFT = MODE.indexOf('drift') >= 0;
 if (DRIFT) process.env.TZ = 'Europe/Brussels';
+/* Le cinquième, une seule séance par jour aussi, apprend un cours de 1 160 éléments : les
+   unités du cours recopiées (test/lib/grow.js), poussées avant le premier build(). La séance
+   doit suivre l'arriéré (ADR 0007) : il reste sous les trois quarts du cours. */
+const GROOT = MODE.indexOf('groot') >= 0, GROOT_ITEMS = 1160;
 
 let fails = 0, checks = 0, unjudged = 0;
 const ok = (c, m) => { checks++; if (!c) { console.log('   ✗ ' + m); fails++; } };
@@ -29,10 +34,10 @@ const okLong = (c, m) => {
   if (!c) console.log('   · non jugé, il faut au moins ' + HORIZON + ' jours : ' + m);
 };
 const P = (l, v) => console.log('  ' + String(l).padEnd(38) + v);
-const B = browser.open({
+const B = browser.open(Object.assign({
   root: ROOT, seed: browser.SEED, now: T0, ua: 'Chrome/120 OPR/106', blobs: true, byId: 'stub',
   voices: [{ name: 'Bart', lang: 'nl-BE' }]
-});
+}, GROOT ? { prepare: NL => grow(NL, GROOT_ITEMS) } : {}));
 const NL = B.NL, U = NL.util, RAND = B.random;
 const answer = require('./lib/answer')(B);
 const MIN = 60000, DAY = 86400000;
@@ -256,6 +261,10 @@ NL.state.open().then(() => {
   P('dont premières rencontres', (recog - late) + '%');
   P('production (parler, écrire, ouvert)', (pc('speak') + pc('type') + pc('open')) + '%');
   P('arriéré maximum', maxBacklog);
+  /* Le cours grossi : la séance suit l'arriéré, qui reste sous les trois quarts du cours.
+     Mesuré ici sur 200 jours, une séance par jour, 85 % de bonnes réponses, 1 190 éléments :
+     999 quand la séance avait 22 places fixes, 763 depuis qu'elle suit l'arriéré. */
+  if (GROOT) ok(maxBacklog <= Math.floor(total * 0.75), 'l’arriéré monte à ' + maxBacklog + ' éléments sur ' + total + ' : la séance ne suit pas l’arriéré (ADR 0007)');
 
   console.log('\nMÉLANGE DES TYPES');
   console.log('='.repeat(70));

@@ -26,7 +26,7 @@ n'y a qu'une seule liste. Il faut Node et un `sh` (sous Windows, celui de Git).
 | `tools/fanout.js` | Le kit de répartition (`tools/content/`), dans une copie du dépôt et sans réseau : le cours tel que les outils le lisent, l'empreinte d'une source, Split, Check et Merge sur un genre d'essai (refus, reprise, ligne écartée, relance refusée comme périmée, un Split d'ids nommés qui ne coupe que leurs lignes et refuse, sans rien écrire, un id que le genre ne coupe pas ou, sur un dossier déjà coupé, des ids autres que les lignes de ses lots, ou un lot dont l'entrée manque ou ne se lit pas), le rédacteur des tables (littéraux, tri, en-tête, fins de ligne, et chaque table du cours relue dans sa forme), le cache épinglé (un dossier, un serveur local), l'outil de lecture ; puis chaque vrai genre, sur le cours tel qu'il est : son découpage, chacune de ses règles sur une ligne juste et une ligne fausse (tout texte d'une ligne refusé avec un blanc devant ou derrière, ou un `\r`), et un Merge de bout en bout (`flemish`, `examples` et `examples-gen`, `open`, les deux genres d'explications) |
 | `tools/sources.js` | Les sources externes du kit, sur des fichiers que la suite écrit avec leur épingle : l'extrait des sens belges du Wiktionnaire (`tools/content/kaikki.js`) et le classement des phrases de Tatoeba (`tools/content/tatoeba.js`), avec l'ordre du cours qu'il lit (`sequence.firstUnits`) ; rien n'est téléchargé |
 | `journey.js` | Le parcours complet d'un utilisateur, pour une voix et un navigateur donnés |
-| `pace.js` | 200 jours simulés, pour quatre apprenants (budget épuisé chaque jour ; une seule séance par jour ; une seule séance, dont une sur cinq là où l’on ne peut pas parler ; une seule séance, commencée à 21 h puis vingt minutes plus tôt chaque jour jusqu’à 7 h, et qui remonte, à l’heure de Bruxelles) : charge quotidienne, variété, exigence — aucune journée sans élément nouveau tant qu’il en reste, des éléments laissés à un jour qui reviennent le lendemain, y compris les jours où la séance commence plus tôt que la veille, un élément du premier jour demandé à voix haute en dix jours et jamais après trois semaines, l’échelon de l’écrit passé en écrivant, et « je ne peux pas parler » qui ne note rien, ne coûte rien et ne fait rien sauter. L’horloge avance pendant la journée. Sous trente jours, ce qui ne se juge que sur la durée (le lendemain, la première demande à voix haute, une séance sans parler qui croise un exercice à voix haute, la fréquence d’un élément, l’étalement) dit « non jugé » et n’est pas un problème : la suite lance aussi un seul jour, comme les tâches d’un plan |
+| `pace.js` | 200 jours simulés, pour cinq apprenants (budget épuisé chaque jour ; une seule séance par jour ; une seule séance, dont une sur cinq là où l’on ne peut pas parler ; une seule séance, commencée à 21 h puis vingt minutes plus tôt chaque jour jusqu’à 7 h, et qui remonte, à l’heure de Bruxelles ; une seule séance, sur un cours grossi à 1 160 éléments par `test/lib/grow.js`, où l’arriéré doit rester sous les trois quarts du cours : la séance suit l’arriéré, ADR 0007) : charge quotidienne, variété, exigence — aucune journée sans élément nouveau tant qu’il en reste, des éléments laissés à un jour qui reviennent le lendemain, y compris les jours où la séance commence plus tôt que la veille, un élément du premier jour demandé à voix haute en dix jours et jamais après trois semaines, l’échelon de l’écrit passé en écrivant, et « je ne peux pas parler » qui ne note rien, ne coûte rien et ne fait rien sauter. L’horloge avance pendant la journée. Sous trente jours, ce qui ne se juge que sur la durée (le lendemain, la première demande à voix haute, une séance sans parler qui croise un exercice à voix haute, la fréquence d’un élément, l’étalement) dit « non jugé » et n’est pas un problème : la suite lance aussi un seul jour, comme les tâches d’un plan |
 
 `journey.js` tourne huit fois : trois voix (flamande, néerlandaise du nord,
 aucune) sous Opera et Edge, plus Chrome et Safari sur iPhone. Les tests sont
@@ -61,6 +61,11 @@ dérive en revoyait encore 27 sur 772, tous venus des jours où il commençait
 plus tard, et aucun des 521 des jours où il commençait plus tôt : son compte
 global seul n'aurait rien vu. Ce qu'il garde, c'est un lendemain qui ne dépend
 pas de l'heure à laquelle on commence.
+
+L'apprenant du grand cours (`groot`) voit ce que 430 éléments ne montrent pas :
+l'arriéré d'un cours de phase 4. Sur 1 190 éléments et 200 jours, une séance de
+22 places fixes le laissait monter à 999 ; la séance qui suit l'arriéré (ADR 0007)
+le tient à 763, sous les trois quarts du cours qu'il exige.
 
 Chaque bug corrigé laisse un test qui échoue sur l'ancien code ; une correction
 faite à plusieurs endroits, un test qui échoue à chacun.
@@ -213,7 +218,11 @@ ne voit ni une séance qui passe minuit, ni plusieurs séances à des heures qui
 changent, ni des heures au hasard, ni un jour sauté. En deux cents jours, il ne
 traverse que le passage à l'heure d'été du 29 mars ; celui d'octobre, c'est
 `engine.js` qui le vérifie. Et comme tous les apprenants simulés, il n'oublie
-rien : il répond juste 85 fois sur 100, quoi qu'il arrive.
+rien : il répond juste 85 fois sur 100, quoi qu'il arrive. L'apprenant du grand
+cours apprend des copies : ses 1 190 éléments sont les 430 du cours, repris avec
+un suffixe (`test/lib/grow.js`), de même difficulté et des mêmes types d'exercice.
+Il voit l'arriéré que la séance doit suivre, pas ce que des mots nouveaux feraient
+au mélange des types ni à la charge d'une journée.
 
 Le barème de la réponse libre lit les lettres au-delà de l'ASCII par le regard
 arrière des regex. Un navigateur qui ne le connaît pas (Safari avant 16.4) note
