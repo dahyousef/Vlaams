@@ -42,7 +42,7 @@ NL.tables.fr = {
 
   /* --- parcours --- */
   pathEyebrow: 'Parcours',
-  pathTitle: 'Le niveau A1, en douze unités',
+  pathTitle: n => 'Le niveau A1, en ' + n + ' unités',
   pathBody: 'Les unités alimentent le planificateur en nouvelles matières. Tu ne dois pas finir une unité pour ouvrir la suivante : elle s’ouvre d’elle-même quand l’essentiel de la précédente a été vu.',
   courseCounts: (met, produce, total) => met + ' rencontrés sur ' + total + ', dont ' + produce + ' que tu sais produire.',
   unitCounts: (met, produce, total) => met + ' rencontrés sur ' + total + ' · ' + produce + ' que tu sais produire',

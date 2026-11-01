@@ -949,7 +949,7 @@ NL.tables.fr = {
 
   /* --- parcours --- */
   pathEyebrow: 'Parcours',
-  pathTitle: 'Le niveau A1, en douze unités',
+  pathTitle: n => 'Le niveau A1, en ' + n + ' unités',
   pathBody: 'Les unités alimentent le planificateur en nouvelles matières. Tu ne dois pas finir une unité pour ouvrir la suivante : elle s’ouvre d’elle-même quand l’essentiel de la précédente a été vu.',
   courseCounts: (met, produce, total) => met + ' rencontrés sur ' + total + ', dont ' + produce + ' que tu sais produire.',
   unitCounts: (met, produce, total) => met + ' rencontrés sur ' + total + ' · ' + produce + ' que tu sais produire',
@@ -1351,7 +1351,7 @@ NL.tables.en = {
 
   /* --- parcours --- */
   pathEyebrow: 'Path',
-  pathTitle: 'Level A1, in twelve units',
+  pathTitle: n => 'Level A1, in ' + n + ' units',
   pathBody: 'The units feed the scheduler with new material. You do not have to finish one unit to open the next: it opens by itself once most of the previous one has been seen.',
   courseCounts: (met, produce, total) => met + ' met out of ' + total + ', of which ' + produce + ' you can produce.',
   unitCounts: (met, produce, total) => met + ' met out of ' + total + ' · ' + produce + ' you can produce',
@@ -9756,7 +9756,7 @@ NL.screens.sessie = (function () {
       let html = '<div class="wrap">' +
         '<section class="card lead slim">' +
         '<span class="eyebrow">' + t.pathEyebrow + '</span>' +
-        '<h1>' + t.pathTitle + '</h1>' +
+        '<h1>' + t.pathTitle(NL.content.units.length) + '</h1>' +
         '<p>' + t.pathBody + '</p>' +
         '<p class="muted small">' + t.courseCounts(cp.met, cp.produce, cp.total) + '</p>' +
         '</section>';

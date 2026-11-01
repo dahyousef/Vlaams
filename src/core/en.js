@@ -41,7 +41,7 @@ NL.tables.en = {
 
   /* --- parcours --- */
   pathEyebrow: 'Path',
-  pathTitle: 'Level A1, in twelve units',
+  pathTitle: n => 'Level A1, in ' + n + ' units',
   pathBody: 'The units feed the scheduler with new material. You do not have to finish one unit to open the next: it opens by itself once most of the previous one has been seen.',
   courseCounts: (met, produce, total) => met + ' met out of ' + total + ', of which ' + produce + ' you can produce.',
   unitCounts: (met, produce, total) => met + ' met out of ' + total + ' · ' + produce + ' you can produce',

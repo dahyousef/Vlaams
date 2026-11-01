@@ -94,7 +94,7 @@
       let html = '<div class="wrap">' +
         '<section class="card lead slim">' +
         '<span class="eyebrow">' + t.pathEyebrow + '</span>' +
-        '<h1>' + t.pathTitle + '</h1>' +
+        '<h1>' + t.pathTitle(NL.content.units.length) + '</h1>' +
         '<p>' + t.pathBody + '</p>' +
         '<p class="muted small">' + t.courseCounts(cp.met, cp.produce, cp.total) + '</p>' +
         '</section>';

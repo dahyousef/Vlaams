@@ -131,6 +131,26 @@ NL.state.open().then(async () => {
   }
 
   /* ------------------------------------------------------------------ */
+  /* Le titre du parcours compte les cartes que l'écran montre, dans les deux langues : il a dit
+     « douze » au-dessus de 34 cartes, et aucune suite ne le lisait. L'anglais en dernier : ce qui
+     suit tourne en anglais. */
+  console.log('\nLE TITRE DU PARCOURS');
+  {
+    fresh();
+    const titles = ['fr', 'en'].map(l => {
+      NL.state.setMeta({ displayLang: l }); NL.lang.apply();
+      const page = NL.screens.leerpad.render();
+      const title = text((page.match(/<h1>[\s\S]*?<\/h1>/) || [''])[0]);
+      const cards = page.split('<section class="unit-card').length - 1;
+      const said = title.match(/\b\d+\b/g) || [];
+      ok(said.length === 1 && +said[0] === cards, 'in ' + l + ', the Path title « ' + title + ' » does not count the ' + cards + ' unit cards on the screen');
+      ok(!/douze|twelve/i.test(title), 'in ' + l + ', the Path title still spells out the old size: « ' + title + ' »');
+      return '« ' + title + ' » sur ' + cards + ' cartes';
+    });
+    console.log('  ' + titles.join(' ; '));
+  }
+
+  /* ------------------------------------------------------------------ */
   console.log('\nLA SÉANCE — plus de rangée de repères, et un score qui se compte');
   {
     fresh();
