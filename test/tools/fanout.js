@@ -1452,6 +1452,157 @@ module.exports = {
     console.log('  explanations   ' + beSplit.lines.length + ' + ' + want.length + ' lots, ' + be.length + ' + ' + rest.length + ' lignes ; la note et ses citations, les « on dit aussi », les leurres ; Merge');
   }
 
+  /* ==================================================== le genre words */
+  {
+    /* tools/content/kinds/words.js dans un dépôt à lui sous la copie, avec test/data (l'orthographe et
+       de / het) et un extrait des sens du Wiktionnaire fait ici, de quelques lignes, sous la vraie
+       épingle. Sa source est une unité à venir : le cours de la copie n'en a aucune, et Split coupe
+       les 22. check.js lit le dépôt qui le contient : les outils se lancent depuis celui-ci. */
+    const { oneLine } = require('../lib/text');
+    /* Chaque lexique est chargé par la page (SRC de build.sh) et par test/smoke.js, qui a sa propre liste : un
+       lexique oublié de l'une d'elles reste vert tant qu'il est vide. */
+    const lexica = [...new Set(fs.readdirSync(path.join(ROOT, 'src', 'content')).filter(f => /^lexicon\..*\.js$/.test(f)).concat('lexicon.a1c.js'))];
+    same(lexica.filter(f => text(path.join(ROOT, 'test', 'smoke.js')).indexOf('\'src/content/' + f + '\'') < 0), [], 'la liste de test/smoke.js nomme chaque lexique de src/content');
+    same(lexica.filter(f => text(path.join(ROOT, 'build.sh')).split(/\r?\n/).indexOf('src/content/' + f) < 0), [], 'le SRC de build.sh nomme chaque lexique de src/content');
+    const WD = path.join(TMP, 'mots');
+    ['build.sh', 'src', 'test/lib', 'test/data', 'tools'].forEach(p => fs.cpSync(path.join(ROOT, p), path.join(WD, p), { recursive: true }));
+    const runWd = (script, args) => {
+      const r = spawnSync(process.execPath, [path.join(WD, 'tools', 'content', script)].concat(args), { encoding: 'utf8' });
+      return { code: r.status, lines: (r.stdout || '').split(/\r?\n/).filter(Boolean) };
+    };
+    const SENSES = path.join(WD, '.cache', 'kaikki', 'senses.tsv');
+    fs.mkdirSync(path.dirname(SENSES), { recursive: true });
+    fs.writeFileSync(SENSES, '# kaikki/nl.jsonl sha256 ' + cache.PINS['kaikki/nl.jsonl'].sha256 + '\n' + [
+      'België\tname\thet\tBelgium', 'douche\tnoun\tde\tshower', 'januari\tnoun\t\tJanuary', 'kunnen\tverb\t\tto be able', 'stoel\tnoun\tde\tchair',
+      'tafel\tnoun\tde\ttable', 'toch\tadv\t\tstill | anyway', 'waarom\tadv\t\twhy', 'wie\tpron\t\twho'
+    ].join('\n') + '\n');
+    const K = require(path.join(WD, 'tools', 'content', 'kinds', 'words'));
+    /* Le cours de la copie sans les unités de UNITS, quoi que le vrai cours en tienne déjà (une fusion du
+       genre) : le lexique vidé, et leurs lignes ôtées de ids.tsv. */
+    const LEX = path.join(WD, 'src', 'content', 'lexicon.a1c.js'), IDS = path.join(WD, 'test', 'data', 'ids.tsv');
+    const own = new Set(K.UNITS.map(u => u.id));
+    fs.writeFileSync(LEX, K.lexicon([]).map(l => l + '\n').join(''));
+    fs.writeFileSync(IDS, text(IDS).split(/\r?\n/).filter(l => l && !own.has(l.split(':')[0])).map(l => l + '\n').join(''));
+    const CW = course(WD), NLW = CW.NL;
+
+    /* Les 22 unités : leurs ids, leurs numéros, leurs cibles, chacune ses deux noms et ses deux présentations. */
+    same([K.UNITS.length, K.UNITS.map(u => u.n).join(' '), K.UNITS.reduce((s, u) => s + u.target, 0), new Set(K.UNITS.map(u => u.id)).size],
+      [22, Array.from({ length: 22 }, (x, k) => 13 + k).join(' '), 605, 22], '22 unités, numérotées de 13 à 34, 605 places, chacune son id');
+    ok(K.UNITS.every(u => ['fr', 'en'].every(l => oneLine(u.name[l]) && oneLine(u.blurb[l])) && oneLine(u.nlName) && u.icon && ['beide', 'leven', 'werk'].indexOf(u.track) >= 0 &&
+      u.samples.length <= u.target && !CW.units.some(x => x.id === u.id)), 'chaque unité a ses noms, ses présentations, son icône, sa voie, au plus autant de témoins que de places, et n\'est pas encore dans le cours');
+    same(K.sourceOf(CW, 'wonen:s03'), Object.assign({}, K.UNITS[10], { nl: 'wonen', fr: 'Aménager la maison', en: 'Furnishing the house' }), 'la source d\'une place est son unité, dont nl est l\'id, fr et en ses noms');
+    ok(K.sourceOf(CW, 'zzz:s00') === undefined, 'une place d\'une unité inconnue n\'a pas de source');
+
+    /* Split : un lot par unité, autant de lignes que de places ; une ligne porte sa place et son témoin. */
+    const KW = path.join(WD, 'drafts', 'words');
+    same(runWd('split.js', [WD, KW]), { code: 0, lines: K.UNITS.map(u => u.id + ' ' + u.target) }, 'Split coupe un lot par unité, une ligne par place');
+    const rowW = (dir, id) => JSON.parse(text(path.join(dir, id.split(':')[0], 'input.json'))).find(r => r.id === id);
+    same(rowW(KW, 'wonen:s00'), { id: 'wonen:s00', stamp: kit.stamp(K, K.sourceOf(CW, 'wonen:s00'), NLW), copies: [], unit: 'wonen', n: 23, nlName: 'Het huis inrichten',
+      name: { fr: 'Aménager la maison', en: 'Furnishing the house' }, target: 30, slot: 0, sample: 'de tafel' }, 'une ligne d\'entrée : sa place, son unité et le mot du mainteneur');
+    same([rowW(KW, 'wonen:s29').sample, rowW(KW, 'wonen:s29').slot, rowW(KW, 'vragen:s09').sample], [null, 29, 'nu'], 'une place sans témoin en a null');
+
+    /* Check : chaque règle, sur une ligne juste et une ligne fausse. */
+    const ctxW = { repo: WD, course: () => CW };
+    const TAFEL = { nl: 'de tafel', fr: 'la table', en: 'table', art: 'de', pos: 'noun', evidence: 'wiktionary:tafel' };
+    const WIE = { nl: 'wie', fr: 'qui', en: 'who', art: null, pos: 'pron', evidence: 'wiktionary:wie' };
+    const at = (id, row) => K.check(Object.assign({ id }, row), rowW(KW, id), ctxW);
+    const wrong = (id, base, more) => at(id, Object.assign({}, base, more));
+    same([at('wonen:s00', TAFEL), at('vragen:s00', WIE), at('wonen:s10', { nl: 'de douche', fr: 'la douche', en: 'shower', art: 'de', pos: 'noun', evidence: 'course' }),
+      at('kalender:s00', { nl: 'januari', fr: 'janvier', en: 'January', art: null, pos: 'name', evidence: 'wiktionary:januari' })],
+    [[], [], [], []], 'une ligne juste passe : un nom avec son article, un pronom, une preuve course, un nom sans article (name)');
+    same(K.forMaintainer({ evidence: 'course' }) + '|' + K.forMaintainer(TAFEL), 'evidence course|', 'une preuve course va au mainteneur');
+    same([wrong('wonen:s00', TAFEL, { nl: ' de tafel' }), wrong('wonen:s00', TAFEL, { fr: '' }), wrong('wonen:s00', TAFEL, { art: 'een' }), wrong('wonen:s00', TAFEL, { pos: 'nom' }),
+      wrong('wonen:s00', TAFEL, { evidence: 'wiktionary' })], [
+      ['nl is a text on one line with no space at either end'], ['fr is a text on one line with no space at either end'], ['art is de, het or null'],
+      ['pos is one of noun, name, verb, adj, adv, pron, prep, conj, num, other'], ['evidence is wiktionary:<lemma> or course']
+    ], 'la forme des six champs');
+    same(wrong('wonen:s00', TAFEL, { nl: 'de taffel' }), ['« taffel » is not Dutch that OpenTaal or flemish.tsv knows: pick another word, or say in unsure why the course needs this one',
+      '« taffel » is not in test/data/dehet.tsv, so test/dehet.js would refuse it after Merge: pick another word, or say in unsure why the course needs this one',
+      'this slot writes the sample « de tafel », not « de taffel »', 'nl does not use the lemma « tafel »'], 'l\'orthographe, de / het, le témoin de la place, et le lemme que nl emploie');
+    same([wrong('wonen:s00', TAFEL, { art: null }), wrong('wonen:s00', TAFEL, { nl: 'tafel' }), wrong('wonen:s00', TAFEL, { nl: 'het tafel', art: 'het' }),
+      wrong('wonen:s10', { nl: 'de zqzq', fr: 'le zq', en: 'zq', art: 'de', pos: 'noun', evidence: 'course' }, {}).slice(1)], [
+      ['a noun carries its article: art is de or het'], ['nl starts with its article « de »'], ['« het tafel »: test/data/dehet.tsv says « de »'],
+      ['« zqzq » is not in test/data/dehet.tsv, so test/dehet.js would refuse it after Merge: pick another word, or say in unsure why the course needs this one']
+    ], 'un nom porte son article, celui de dehet.tsv, et un nom que la table ignore est refusé');
+    same([wrong('vragen:s00', WIE, { art: 'de' }), wrong('vragen:s00', WIE, { nl: 'de wie' })],
+      [['art is null for a word that is not a noun'], ['a word that is not a noun carries no article: nl is « wie »']],
+      'un mot qui n\'est pas un nom n\'a pas d\'article');
+    const DAG = CW.byId('overleven:w2');
+    same(wrong('vragen:s10', WIE, { nl: DAG.nl, fr: DAG.fr, en: DAG.en, pos: 'other', evidence: 'course' }),
+      ['« ' + DAG.nl + ' » is already an item of the course, overleven:w2 « ' + DAG.nl + ' »: a new word never repeats an existing item\'s Dutch'], 'un mot que le cours a déjà est refusé');
+    same([wrong('wonen:s00', TAFEL, { evidence: 'wiktionary:tafels' }), wrong('wonen:s00', TAFEL, { evidence: 'wiktionary:toch' }), wrong('vragen:s00', WIE, { pos: 'adv' })], [
+      ['« tafels » is not an entry of the pinned Wiktionary extract (.cache/kaikki/senses.tsv): cite the lemma as the extract spells it, or evidence course'],
+      ['« toch » is « adv » in the extract, not noun', 'nl does not use the lemma « toch »'], ['« wie » is « pron » in the extract, not adv']
+    ], 'la preuve : un lemme de l\'extrait, de la même nature, que nl emploie');
+    same([wrong('kunnen:s00', { nl: 'kunnen', fr: 'pouvoir', en: 'can', art: null, pos: 'verb', evidence: 'wiktionary:kunnen' }, {}),
+      wrong('wonen:s00', TAFEL, { en: 'the table' }), wrong('wonen:s00', TAFEL, { fr: '2 tables' }), wrong('vragen:s10', WIE, { nl: 'hoezo', fr: 'bonjour', en: 'hi', evidence: 'course' })], [
+      ['a verb\'s en starts with « to »'], ['a noun\'s en takes no article'], ['fr and en hold different digits or {…} tokens'],
+      ['en shares a sense with overleven:w2 « dag » (hi / bye), which shares no French sense and no Dutch: give one of them another English, or the French they share']
+    ], 'les gardes de test/content.js sur l\'anglais : « to », pas d\'article, mêmes chiffres, pas de sens anglais partagé sans le français');
+    same([wrong('wonen:s00', TAFEL, { fr: 'l\'table' }), wrong('wonen:s00', TAFEL, { fr: 'la "table"' }), wrong('wonen:s00', TAFEL, { nl: 'de tafel"' }).filter(w => /^nl writes/.test(w)),
+      at('wonen:s10', { nl: 'de douche', fr: 'l’eau de la douche', en: 'shower', art: 'de', pos: 'noun', evidence: 'course' })], [
+      ['fr writes the typographic apostrophe « ’ » and no straight quote'], ['fr writes the typographic apostrophe « ’ » and no straight quote'],
+      ['nl writes the typographic apostrophe « ’ » and no straight quote'], []
+    ], 'le français et le néerlandais écrivent l\'apostrophe typographique, et aucun guillemet droit');
+    fs.renameSync(SENSES, SENSES + '.old');
+    same(K.check(Object.assign({ id: 'wonen:s00' }, TAFEL), rowW(KW, 'wonen:s00'), { repo: WD, course: () => CW }), ['.cache/kaikki/senses.tsv is missing: run node tools/content/kaikki.js .'],
+      'sans extrait, Check dit la commande à lancer');
+    fs.renameSync(SENSES + '.old', SENSES);
+
+    /* De bout en bout : quatre places de deux unités, nommées à Split, rédigées et relues, check.js,
+       Merge (refusée tant que deux places écrivent le même mot), le lexique et ids.tsv récrits, Merge
+       relancée à l'identique, et un second Split qui ne coupe plus ces unités. */
+    const E2WS = path.join(WD, 'bout-en-bout'), E2W = path.join(E2WS, 'drafts', 'words');
+    same(runWd('split.js', [WD, E2W, 'vragen:s00', 'vragen:s10', 'wonen:s00', 'wonen:s10']), { code: 0, lines: ['vragen 2', 'wonen 2'] }, 'Split nommé coupe quatre places');
+    const ROWS = {
+      'vragen:s00': WIE,
+      'vragen:s10': { nl: 'toch', fr: 'quand même', en: 'anyway', art: null, pos: 'adv', evidence: 'wiktionary:toch' },
+      'wonen:s00': TAFEL,
+      'wonen:s10': { nl: 'toch', fr: 'pourtant', en: 'still', art: null, pos: 'adv', evidence: 'wiktionary:toch' }
+    };
+    ['vragen', 'wonen'].forEach(b => {
+      const dir = path.join(E2W, b), inp = JSON.parse(text(path.join(dir, 'input.json')));
+      put(dir, 'draft.json', inp.map(r => Object.assign({ id: r.id, stamp: r.stamp }, ROWS[r.id])));
+      put(dir, 'review.json', inp.map(r => ({ id: r.id, verdict: 'keep' })));
+      same(runWd('check.js', [dir]).code, 0, 'le lot ' + b + ', rédigé et relu, passe');
+    });
+    const lexBefore = text(LEX), idsBefore = text(IDS);
+    same(runWd('merge.js', [WD, E2W]), { code: 1, lines: ['fail words -: wonen:s10 and vragen:s10 both write « toch »: one word, one slot'] }, 'Merge refuse deux places qui écrivent le même mot');
+    same([text(LEX), text(IDS)], [lexBefore, idsBefore], 'refusée, Merge n\'écrit rien');
+    const slotOf = (id, nl, unit) => ({ id, row: { nl }, input: { unit } });
+    throws(() => K.write([slotOf('vragen:s10', 'toch', 'vragen'), slotOf('vragen:s11', 'de douche', 'vragen'), slotOf('wonen:s10', 'toch', 'wonen'), slotOf('wonen:s11', 'de douche', 'wonen')], ctxW),
+      /^wonen:s10 and vragen:s10 both write « toch »; wonen:s11 and vragen:s11 both write « de douche »: one word, one slot$/, 'Merge nomme chaque mot écrit deux fois, d\'un coup');
+    const WONEN = path.join(E2W, 'wonen');
+    put(WONEN, 'draft.json', JSON.parse(text(path.join(WONEN, 'draft.json'))).map(r => (r.id === 'wonen:s10' ? Object.assign(r, { nl: 'de douche', fr: 'la douche', en: 'shower', art: 'de', pos: 'noun', evidence: 'wiktionary:douche' }) : r)));
+    same(runWd('merge.js', [WD, E2W]), { code: 0, lines: ['ok words 4 taken, 0 dropped', 'ok lexicon.a1c.js 4 words in 2 units', 'ok ids.tsv 4 added'] },
+      'Merge écrit le lexique et ids.tsv, et le dit');
+    const lexAfter = text(LEX), idsAfter = text(IDS);
+    ok(lexAfter.indexOf('W(\'de tafel\', { fr: \'la table\', en: \'table\' }, \'de\')') > 0 && lexAfter.indexOf('W(\'wie\', { fr: \'qui\', en: \'who\' })') > 0 &&
+      lexAfter.indexOf('id: \'vragen\', n: 13,') < lexAfter.indexOf('id: \'wonen\', n: 23,'), 'le lexique écrit chaque mot comme lexicon.a1b.js, les unités dans l\'ordre');
+    same(text(IDS).slice(idsBefore.length).split(/\r?\n/).filter(Boolean), ['vragen:w0\twie', 'vragen:w1\ttoch', 'wonen:w0\tde tafel', 'wonen:w1\tde douche'],
+      'ids.tsv gagne une ligne par mot, numérotés sans trou dans l\'ordre des places');
+    const CM = course(WD);
+    same([CM.units.length, CM.byUnit('wonen').words.map(w => w.nl), CM.byUnit('vragen').n, CM.byUnit('wonen').phrases, CM.byUnit('wonen').grammar],
+      [14, ['de tafel', 'de douche'], 13, [], []], 'le cours relu a ses deux unités nouvelles, leurs mots, sans phrase ni grammaire');
+    same(runWd('merge.js', [WD, E2W]), { code: 0, lines: ['ok words 4 taken, 0 dropped', 'ok lexicon.a1c.js 4 words in 2 units', 'ok ids.tsv 0 added'] },
+      'relancée, Merge récrit le même lexique et n\'ajoute rien à ids.tsv');
+    same([text(LEX), text(IDS)], [lexAfter, idsAfter], 'le lexique et ids.tsv sont les mêmes octet pour octet');
+    /* Un autre mot sous un id déjà épinglé : refusé avant toute écriture. */
+    const wonenDraft = text(path.join(WONEN, 'draft.json'));
+    put(WONEN, 'draft.json', JSON.parse(wonenDraft).map(r => (r.id === 'wonen:s10' ? Object.assign(r, { nl: 'de stoel', fr: 'la chaise', en: 'chair', evidence: 'wiktionary:stoel' }) : r)));
+    same(runWd('merge.js', [WD, E2W]), { code: 1, lines: ['fail words -: test/data/ids.tsv pins wonen:w1 to « de douche », and Merge writes « de stoel » there'] }, 'Merge refuse un autre mot sous un id épinglé');
+    same([text(LEX), text(IDS)], [lexAfter, idsAfter], 'refusée pour un id épinglé, Merge n\'a rien écrit');
+    put(WONEN, 'draft.json', wonenDraft);
+    /* Ce que le mainteneur lit d'une place : son unité, et le mot écrit (task 3 : un genre sans table). */
+    const readingW = require(path.join(WD, 'tools', 'content', 'lib', 'reading'));
+    same(readingW.every(WD, E2WS, 'words').lines.slice(2, 7), ['4 rows: 4 taken, 0 dropped.', '', '- `vragen` (vragen:s00) — Questions et petits mots · Questions and small words', '  - kept by the first reader',
+      '  - row: {"nl":"wie","fr":"qui","en":"who","art":null,"pos":"pron","evidence":"wiktionary:wie"}'], 'l\'outil de lecture montre le mot d\'une place, et son unité');
+    same(readingW.list(WD, E2WS).lines.filter(l => /^ {2}- row: /.test(l)).length, 4, 'la liste du contrôle du contenu aussi');
+    same(runWd('split.js', [WD, path.join(WD, 'apres', 'words')]), { code: 0, lines: K.UNITS.filter(u => u.id !== 'vragen' && u.id !== 'wonen').map(u => u.id + ' ' + u.target) },
+      'un second Split ne coupe plus les unités fondues');
+    console.log('  words          ' + K.UNITS.length + ' unités, ' + K.UNITS.reduce((s, u) => s + u.target, 0) + ' places ; chaque règle, Merge de bout en bout, relancée, second Split');
+  }
+
   /* ==================================================== 9. l'outil de lecture
      Un bloc : ses noms ne croisent pas ceux des sections que d'autres tâches ajoutent. */
   {
