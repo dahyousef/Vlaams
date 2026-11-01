@@ -40,7 +40,7 @@ Docs follow the course's new size (task 9), and a learner pass plays the branch 
 - The maintainer's decisions D9–D18, taken at the phase 4 design sitting (25–31 October 2026), stated below.
 - The unit list approved at the gate on 28 and 31 October 2026, in task 4's `UNITS`.
 - ADR 0005 (amended), ADR 0007, ADR 0009; `GLOSSARY.md`.
-- The tickets, sub-issues of #12: `{T-ceiling}` (tasks 1, 1b) and `{T-words}` (tasks 2–8). Each task names its own.
+- The tickets, sub-issues of #12: `#122` (tasks 1, 1b) and `#123` (tasks 2–8). Each task names its own.
 
 ## The maintainer's decisions (25–31 October 2026)
 
@@ -107,10 +107,11 @@ What is still not proved:
   that pull request is merged by the maintainer.
 - **Mode: one session** (D16): 11 tasks, two of them fan-out, one gate.
 - **Who rules.** The run controller, on the maintainer's behalf, logging each ruling in the ledger's Rulings (D19; as
-  the follow-ups-2 run's D4). So the plan runs as one session, with its drafting lane.
+  the follow-ups-2 run's D4). So the plan runs as one session, with its drafting lane. Wherever a brief or the
+  kit says the maintainer rules a row or answers a gate, the run controller does (`one-session.md`'s « on their word »
+  included). The reading list stays the maintainer's to read after the run (D15).
 - **Gate 10.** Answered by the run controller, and every confirmed fault is fixed in the run (D19; task 10, `Then:`).
-- **Tickets.** Two sub-issues of #12, filed on the maintainer's word after the plan is approved: `{T-ceiling}` and
-  `{T-words}`; the placeholders are replaced in the plan and the briefs at set-up.
+- **Tickets.** Two sub-issues of #12, filed on the maintainer's word on 1 November 2026: #122 and #123.
 - **The kaikki extract.** kaikki.org rewrites its file without notice: on 1 November 2026 the 22 October pin no longer
   matched (the file changed on 25 October), and no copy of the old bytes survives. So task 2 re-pins to the file
   downloaded on 1 November (257 MB), kept in the clone's git-ignored `.superpowers/sdd/phase-4-design/kaikki-2026-11-01/`.
@@ -204,15 +205,15 @@ Public repository:
 ## Run order
 
 ```
-1. The session follows the backlog (D18) — engine — {T-ceiling} — waits none
-1b. Pace's fifth learner, groot: a course of 1,160 items — mechanical — {T-ceiling} — waits 1
-2. The kaikki senses extract — mechanical — {T-words} — waits none
-3. The kit: a kind's rows may come from a unit, and a kind's split sees its ids — mechanical — {T-words} — waits 2
-4. The words kind, and an empty lexicon.a1c.js — mechanical — {T-words} — waits 3
-5. FAN words — fan-out — {T-words} — waits 2, 3, 4
-6. Merge words — mechanical — {T-words} — waits 5
-7. FAN explanations, the new words — fan-out — {T-words} — waits 3, 6
-8. Merge explanations — mechanical — {T-words} — waits 7
+1. The session follows the backlog (D18) — engine — #122 — waits none
+1b. Pace's fifth learner, groot: a course of 1,160 items — mechanical — #122 — waits 1
+2. The kaikki senses extract — mechanical — #123 — waits none
+3. The kit: a kind's rows may come from a unit, and a kind's split sees its ids — mechanical — #123 — waits 2
+4. The words kind, and an empty lexicon.a1c.js — mechanical — #123 — waits 3
+5. FAN words — fan-out — #123 — waits 2, 3, 4
+6. Merge words — mechanical — #123 — waits 5
+7. FAN explanations, the new words — fan-out — #123 — waits 3, 6
+8. Merge explanations — mechanical — #123 — waits 7
 9. Docs: the course's new size, the lexicon the kit writes, the learner pass's browser — mechanical — none — waits 8
 10. GATE: a learner pass in a real browser — gate — none — waits 1, 1b, 6, 8, 9
 ```
@@ -292,7 +293,7 @@ Left out of this plan, for the maintainer:
 
 ### Task 1: The session follows the backlog (D18)
 Class: engine
-Ticket: {T-ceiling}
+Ticket: #122
 Promises: none
 Why: decision D18 (2026-10-31, « Go with 30 seats »), ADR 0007's second option: the reserved share never
 yields, and the budget follows the backlog. Today `compose()` has 22 places whatever the backlog, so with the
@@ -689,7 +690,7 @@ Notes:
 - [ ] **Step 5: Commit.**
   ```
   git add src/core/srs.js index.html artifact.html test/engine.js test/lib/grow.js test/journey.js GLOSSARY.md README.md TESTING.md
-  git commit -m "feat(engine): a session has 30 base places and one more review place per 40 items due, eleven at most; the reserved share stays on the base ({T-ceiling})"
+  git commit -m "feat(engine): a session has 30 base places and one more review place per 40 items due, eleven at most; the reserved share stays on the base (#122)"
   ```
 
 Done when:
@@ -706,7 +707,7 @@ Done when:
 
 ### Task 1b: Pace's fifth learner, groot: a course of 1,160 items
 Class: mechanical
-Ticket: {T-ceiling}
+Ticket: #122
 Promises: none
 Why: decision D18 asks for « a 1,160-item check in `test/pace.js` » beside the engine change: the backlog
 that task 1 drains only exists at phase 4's size, and no suite saw it (handoff.md measured it with throwaway
@@ -925,7 +926,7 @@ Notes:
 - [ ] **Step 3: Commit.**
   ```
   git add test/pace.js test/run-all.sh TESTING.md
-  git commit -m "test(pace): a fifth learner, groot, learns a course of 1,160 items and its backlog stays under three quarters of the course ({T-ceiling})"
+  git commit -m "test(pace): a fifth learner, groot, learns a course of 1,160 items and its backlog stays under three quarters of the course (#122)"
   ```
 
 Done when:
@@ -939,7 +940,7 @@ Done when:
 
 ### Task 2: The kaikki senses extract
 Class: mechanical
-Ticket: {T-words}
+Ticket: #123
 Promises: none
 Why: D12 (2026-10-25): the new words' meanings come from kaikki.org's Wiktionary extract, already pinned in
 the kit (`tools/content/lib/cache.js`, `kaikki/nl.jsonl`, 257 MB, sha256-pinned), and are read by two readers
@@ -1318,7 +1319,7 @@ Notes:
 - [ ] **Step 6: Commit.**
   ```
   git add tools/content/lib/cache.js tools/content/kaikki.js test/tools/sources.js ATTRIBUTION.md TESTING.md
-  git commit -m "feat(tools): kaikki.js writes a second extract, senses.tsv, one line per entry with its gender and glosses, and kaikki.senses() reads it ({T-words})"
+  git commit -m "feat(tools): kaikki.js writes a second extract, senses.tsv, one line per entry with its gender and glosses, and kaikki.senses() reads it (#123)"
   ```
 
 Done when:
@@ -1331,7 +1332,7 @@ Done when:
 
 ### Task 3: The kit: a kind's rows may come from a unit, and a kind's split sees its ids
 Class: mechanical
-Ticket: {T-words}
+Ticket: #123
 Promises: none
 Why: D9 and D12: the 22 new units' words enter the course through the kit (`tools/content/`), as every
 content row of phase 3 did, and the kit today refuses a row whose id is not an item: Split looks each row's
@@ -1743,7 +1744,7 @@ Notes:
 - [ ] **Step 5: Commit.**
   ```
   git add tools/content/lib/kit.js tools/content/lib/course.js tools/content/lib/explain.js tools/content/lib/reading.js docs/agents/plan-runs/design-sitting.md test/tools/fanout.js
-  git commit -m "feat(tools): a kind may give its rows' source (sourceOf), its split sees the ids Split was given, and explanations cuts only the sources without a note ({T-words})"
+  git commit -m "feat(tools): a kind may give its rows' source (sourceOf), its split sees the ids Split was given, and explanations cuts only the sources without a note (#123)"
   ```
 
 Done when:
@@ -1757,7 +1758,7 @@ Done when:
 
 ### Task 4: The words kind, and an empty lexicon.a1c.js
 Class: mechanical
-Ticket: {T-words}
+Ticket: #123
 Promises: none
 Why: D9 (one tranche finishing A1: about 400–600 new words in new units) and D12 (meanings from the pinned
 Wiktionary extract, read by two readers like every kind). The 22 units were approved on 2026-10-28 and 31
@@ -2411,7 +2412,7 @@ Notes:
 - [ ] **Step 5: Commit.**
   ```
   git add tools/content/kinds/words.js src/content/lexicon.a1c.js build.sh index.html artifact.html test/smoke.js test/content.js TESTING.md test/tools/fanout.js
-  git commit -m "feat(tools): the words kind cuts the 22 new units into slots, checks each word and writes lexicon.a1c.js and ids.tsv; an empty lexicon.a1c.js is built ({T-words})"
+  git commit -m "feat(tools): the words kind cuts the 22 new units into slots, checks each word and writes lexicon.a1c.js and ids.tsv; an empty lexicon.a1c.js is built (#123)"
   ```
 
 Done when:
@@ -2426,7 +2427,7 @@ Done when:
 
 ### Task 5: FAN words
 Class: fan-out
-Ticket: {T-words}
+Ticket: #123
 Kind: words
 Drafting after: 2, 3, 4
 Split: node tools/content/split.js . "<WS>/drafts/words"
@@ -2539,7 +2540,7 @@ ruled `keep` has its ruling replaced by a `drop`: the latest ruling holds. Then 
 
 ### Task 6: Merge words
 Class: mechanical
-Ticket: {T-words}
+Ticket: #123
 Merges: words
 Promises: none
 Why: D9 (one tranche finishing A1). Task 5's drafters, its readers and the maintainer have settled every row of
@@ -2931,7 +2932,7 @@ Notes:
 - [ ] **Step 9: Commit.**
   ```
   git add src/content/lexicon.a1c.js test/data/ids.tsv index.html artifact.html test/content.js test/lang.js test/tools/fanout.js
-  git commit -m "feat(content): the 22 new units' words, merged by the words kind into lexicon.a1c.js and ids.tsv, their missing explanations pinned ({T-words})"
+  git commit -m "feat(content): the 22 new units' words, merged by the words kind into lexicon.a1c.js and ids.tsv, their missing explanations pinned (#123)"
   ```
 
 Done when:
@@ -2947,7 +2948,7 @@ Done when:
 
 ### Task 7: FAN explanations: the new words' notes
 Class: fan-out
-Ticket: {T-words}
+Ticket: #123
 Kind: explanations
 Drafting after: 3, 6
 Split: node tools/content/split.js . "<WS>/drafts/explanations"
@@ -3034,7 +3035,7 @@ The example is the note of a row whose `nl` is « de frigo » and whose `labelle
 
 ### Task 8: Merge explanations: the new words' notes
 Class: mechanical
-Ticket: {T-words}
+Ticket: #123
 Merges: explanations
 Promises: none
 Why: D9, and the phase 3 decisions 8a and 8b. Task 7's drafters, its readers and the maintainer have settled
@@ -3238,7 +3239,7 @@ Notes:
 - [ ] **Step 9: Commit.**
   ```
   git add test/content.js src/content/notes.js src/content/also.js index.html artifact.html
-  git commit -m "feat(content): every new word's note and « on dit aussi » forms merged; every item must have its explanation in both languages again ({T-words})"
+  git commit -m "feat(content): every new word's note and « on dit aussi » forms merged; every item must have its explanation in both languages again (#123)"
   ```
   If step 2 changed `TESTING.md`, or step 7 changed `test/lang.js`, add them to the `git add` line.
 
