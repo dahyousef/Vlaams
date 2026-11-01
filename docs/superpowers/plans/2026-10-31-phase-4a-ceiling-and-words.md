@@ -57,7 +57,7 @@ Docs follow the course's new size (task 9), and a learner pass plays the branch 
 | D17 | A Tatoeba sentence with one translation is kept; the drafter writes the other (plan 4c). | — |
 | D18 | The session follows the backlog: 30 places, one review place more per 40 items due, up to 41; the reserved share on the 30. « Go with 30 seats », 31 Oct, after the measurements below. Reopens the 18 Oct « 7 new a session » call on the maintainer's own word. | 1, 1b |
 | D19 | The run controller rules on the maintainer's behalf and answers gate 10. Every fault the gate confirms is fixed in the run, not only filed. What can be tested before drafting is tested first. « Yes, test everything fix everything », « Both », 1 Nov. | set-up, 10 |
-| D20 | Cost: FAN words starts with one pilot batch, and FAN explanations' readers run on Sonnet, one batch compared against Opus. Word readers stay on Opus. « Go with sonnet reader, start in a new session », 1 Nov. | 5, 7 |
+| D20 | Cost: FAN explanations' readers run on Sonnet, one batch compared against Opus. Word readers stay on Opus. No pilot batch. « Go with sonnet reader, start in a new session », « No batch pilot », 1 Nov. | 7 |
 
 Measured for D18 (throwaway copy of `test/pace.js`, one session a day, 600 days, backlog = items due at dawn):
 
@@ -125,13 +125,9 @@ What is still not proved:
   Merge sees it. The set-up writes a Rulings line allowing the run controller, for this one reason, to change one
   verdict in a `review.json` (or `retry-review.json`) to `dispute` and dispatch the batch controller again (task 5, its
   Why). A maintainer's `drop` cannot settle a row a reader kept.
-- **The pilot (D20).** FAN words dispatches only its smallest batch, `spoed` (15 slots), first. When its row is `accepted`,
-  a `haiku` agent, description `measure`, reports the batch's weighted tokens and its disputed rows into a Rulings line; the
-  maintainer gets it as one line of news, with the cost it implies for the 44 batches. If the format caused the disputes,
-  the run controller fixes `drafts/words/format.md` with the smallest change (its example row still passing Check) before the
-  other 21 batches. The run does not wait for the maintainer here.
 - **Explanation readers on Sonnet (D20).** FAN explanations' readers and second readers run on `sonnet`: the run file's
-  `Fan-out:` line says so, and the batch's dispatch carries it. `spoed` goes first; then a background subagent on `opus`,
+  `Fan-out:` line says so, and the batch's dispatch carries it. Batches run in the usual order, none waiting. When `spoed` is
+  `accepted`, a background subagent on `opus`,
   description `batch explanations/spoed`, reads the same `draft.json` as `reader.md` says, its output
   `<WS>/tmp/opus-review-spoed.json`, outside the batch. If it disputes a row the Sonnet reader kept for a fault of meaning
   or of language, the other batches go back to `opus`, with a Rulings line saying so.
@@ -241,7 +237,6 @@ Mode: one session
 Fan-out: task 5 — kind words — after 2, 3, 4 — Split: node tools/content/split.js . "<WS>/drafts/words" — Check: node tools/content/check.js "<WS>/drafts/words/<batch>" — merged by task 6
 Fan-out: task 7 — kind explanations — after 3, 6 — Split: node tools/content/split.js . "<WS>/drafts/explanations" — Check: node tools/content/check.js "<WS>/drafts/explanations/<batch>" — merged by task 8 — reader model: sonnet
 Gate: task 10 — after 1, 1b, 6, 8, 9 — show: export LEARNER_PASS_CHANNEL=msedge; echo "## days"; node tools/learner-pass/days.js . 2>&1; echo "## corners"; node tools/learner-pass/corners.js . 2>&1; echo "## sweep"; node tools/learner-pass/sweep.js . 2>&1 — ask: « Did the learner pass print a `PROBLEM:` line in <WS>/tmp/gate-10.md? » The run controller answers it, as task 10's Ask says (D19). — answer to: Rulings
-Pilot: task 5 starts with batch spoed alone, and task 7 with batch spoed, compared against an opus reader: « Set-up decisions » of the plan, « The pilot » and « Explanation readers on Sonnet ».
 Learner pass: gate 10 plays the branch's last commit. If a closing task or a gate fix changes src/ after the gate's show, run that show again into <WS>/tmp/gate-10-closing.md before the final report, answer it as the gate's ask says, and give the maintainer both paths.
 ```
 
@@ -2462,8 +2457,6 @@ stand-in meanings; « triestig » alone is not in it, so its row is `evidence: c
 1b run beside the drafting and touch no content; no task between this one and task 6 changes `UNITS`, which the
 stamp covers (a unit's number, English name and target).
 
-**The pilot.** Batch `spoed` runs alone first (D20, « Set-up decisions »).
-
 **A word written in two batches.** Check reads one row at a time, so two batches can each keep the same word, and
 it surfaces only at Merge: task 6's Merge names every such pair in one line, `fail words -: <id> and <id> both write
 « <word> »; …: one word, one slot`, and writes nothing. A maintainer's `drop` in `rulings.json` cannot settle a row
@@ -2968,7 +2961,7 @@ Drafting after: 3, 6
 Split: node tools/content/split.js . "<WS>/drafts/explanations"
 Check: node tools/content/check.js "<WS>/drafts/explanations/<batch>"
 Merged by: task 8
-Why: Its readers run on `sonnet`, `spoed` first, compared against one `opus` reader (D20, « Set-up decisions »). D9 (one tranche finishing A1), and the phase 3 decisions 8a and 8b that every word and phrase explains
+Why: Its readers run on `sonnet`, and `spoed` is also read by one `opus` reader (D20, « Set-up decisions »). D9 (one tranche finishing A1), and the phase 3 decisions 8a and 8b that every word and phrase explains
 itself in French and in English. Task 6 merged the 22 new units' words (about 605; the count is what its
 Merge printed), none with a note; it pinned `test/content.js`'s count of unexplained items to their number
 (`UNEXPLAINED_BUDGET`, both ways, as `AHEAD_BUDGET` is: call 6), so the suite is green while this kind drafts,
