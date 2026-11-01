@@ -1,5 +1,5 @@
 /* Un cours plus grand que le vrai, pour ce qui ne se voit qu'à l'échelle : la séance qui
-   suit l'arriéré (ADR 0007), un arriéré de mille éléments. Des copies des unités du cours,
+   suit l'arriéré (ADR 0007). Des copies des unités du cours,
    mots et phrases avec un suffixe qui les garde uniques (« hallo zz1q0 » : groupe 1, unité 0),
    sans grammaire ni scénario, poussées sur NL.content.units jusqu'à ce que le cours compte au
    moins `target` éléments, comptés comme build() les compte (un mot ou une phrase par genre

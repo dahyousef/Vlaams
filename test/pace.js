@@ -16,9 +16,9 @@ const MODE = process.argv.slice(4);
    ne tourne après lui qui devrait retrouver le sien. */
 const DRIFT = MODE.indexOf('drift') >= 0;
 if (DRIFT) process.env.TZ = 'Europe/Brussels';
-/* Le cinquième, une seule séance par jour aussi, apprend un cours de 1 160 éléments : les
-   unités du cours recopiées (test/lib/grow.js), poussées avant le premier build(). La séance
-   doit suivre l'arriéré (ADR 0007) : il reste sous les trois quarts du cours. */
+/* Le cinquième, une seule séance par jour aussi, apprend un cours grossi à au moins 1 160
+   éléments (1 192 comptés) : les unités du cours recopiées (test/lib/grow.js), poussées avant
+   le premier build(). Le vrai cours en compte 1 035 : celui-ci regarde un peu au-delà. */
 const GROOT = MODE.indexOf('groot') >= 0, GROOT_ITEMS = 1160;
 
 let fails = 0, checks = 0, unjudged = 0;
@@ -261,10 +261,15 @@ NL.state.open().then(() => {
   P('dont premières rencontres', (recog - late) + '%');
   P('production (parler, écrire, ouvert)', (pc('speak') + pc('type') + pc('open')) + '%');
   P('arriéré maximum', maxBacklog);
-  /* Le cours grossi : la séance suit l'arriéré, qui reste sous les trois quarts du cours.
-     Mesuré ici sur 200 jours, une séance par jour, 85 % de bonnes réponses, 1 190 éléments :
-     999 quand la séance avait 22 places fixes, 763 depuis qu'elle suit l'arriéré. */
-  if (GROOT) ok(maxBacklog <= Math.floor(total * 0.75), 'l’arriéré monte à ' + maxBacklog + ' éléments sur ' + total + ' : la séance ne suit pas l’arriéré (ADR 0007)');
+  /* La séance suit l'arriéré (ADR 0007) : il reste sous les trois quarts du cours, chez tout
+     apprenant à une séance par jour. Mesuré sur 200 jours, 85 % de bonnes réponses : 621 sur
+     1 035 et 754 sur 1 192 depuis qu'elle le suit ; 857 et 993 quand elle avait 22 places fixes.
+     Ce plafond ne juge qu'un cours rencontré à temps. Sur 1 398 éléments, tout est rencontré le
+     jour 155, et 22 places fixes montent encore à 1 158 : le plafond le voit. Sur 1 580, tout
+     n'est rencontré que le jour 175, et 22 places fixes restent à 1 160, sous les trois quarts :
+     le plafond ne voit plus rien. Passé le jour 155, c'est donc la simulation qu'il faut allonger. */
+  if (ONE_A_DAY) ok(maxBacklog <= Math.floor(total * 0.75), 'l’arriéré monte à ' + maxBacklog + ' éléments sur ' + total + ' : la séance ne suit pas l’arriéré (ADR 0007)');
+  if (ONE_A_DAY && DAYS >= 200) ok(exhausted && exhausted <= 155, (exhausted ? 'tout n’est rencontré que le jour ' + exhausted + ', après le jour 155' : 'tout n’est pas encore rencontré au jour ' + DAYS) + ' : ' + DAYS + ' jours ne suffisent plus pour que le plafond de l’arriéré juge ce cours, il faut allonger la simulation');
 
   console.log('\nMÉLANGE DES TYPES');
   console.log('='.repeat(70));

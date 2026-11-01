@@ -44,8 +44,8 @@ done
 # Cinq apprenants : celui qui épuise le budget du jour, celui qui ne fait
 # qu'une séance, celui qui, une séance sur cinq, ne peut pas parler, celui
 # dont la séance commence chaque jour vingt minutes plus tôt, de 21 h à 7 h,
-# puis remonte, et celui qui, une séance par jour, apprend un cours de 1 160
-# éléments. Le défaut d'octobre ne se voyait que chez le deuxième. Le
+# puis remonte, et celui qui, une séance par jour, apprend un cours grossi à
+# 1 160 éléments. Le défaut d'octobre ne se voyait que chez le deuxième. Le
 # quatrième voit ce qu'aucun autre ne voit : un lendemain qui dépendrait de
 # l'heure à laquelle on commence (#32). Le cinquième voit l'arriéré que la
 # séance doit suivre (ADR 0007) : son pic tombe avant le jour 200.
