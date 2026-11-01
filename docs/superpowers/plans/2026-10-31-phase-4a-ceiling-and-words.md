@@ -56,6 +56,7 @@ Docs follow the course's new size (task 9), and a learner pass plays the branch 
 | D16 | Phase 4 is several small plans, each one session with its drafting lane; content plans one after another. | set-up |
 | D17 | A Tatoeba sentence with one translation is kept; the drafter writes the other (plan 4c). | — |
 | D18 | The session follows the backlog: 30 places, one review place more per 40 items due, up to 41; the reserved share on the 30. « Go with 30 seats », 31 Oct, after the measurements below. Reopens the 18 Oct « 7 new a session » call on the maintainer's own word. | 1, 1b |
+| D19 | The run controller rules on the maintainer's behalf and answers gate 10. Every fault the gate confirms is fixed in the run, not only filed. What can be tested before drafting is tested first. « Yes, test everything fix everything », « Both », 1 Nov. | set-up, 10 |
 
 Measured for D18 (throwaway copy of `test/pace.js`, one session a day, 600 days, backlog = items due at dawn):
 
@@ -76,16 +77,23 @@ suite ended `TOUTE LA SUITE EST PASSÉE` after tasks 1b (327 s), 6 (335 s), 8 (3
 word in Edge: 5 min 40 s, no `PROBLEM:` line, all three closing lines, 282 taps on 16 screens. The replay fixed seven
 places in this text, none of them changing a decision.
 
-What it could not prove:
-- **The real words.** The merges ran on 6 hand words in 2 units, not about 605 in 22. Counts that come from rows are
-  written as what Merge prints. `AHEAD_BUDGET` will rise (32 of the 240 sample words already appear in earlier
-  sentences), and `test/lang.js`'s guards may need a word's exception: both are read in task 6.
-- **The drafting lane.** No drafter, reader or batch controller ran, and the 256 MB Wiktionary extract was not fetched;
-  tiny extracts under the real pin stood in. The set-up fetches it, so its first real read is task 5's first Check.
-- **One guard with little margin.** `test/smoke.js` asks that 75 % of word questions offer two wrong options of the same
-  kind; the course stands at 76 % today, 74–78 % across seeds. Loading all 240 sample words with stand-in meanings gave
-  79 % at the suite's seed and 77–82 % on `SEED=1` to `4`, so the words should help it, but two verbs alone took a small
-  set to 74 %. Task 6 stops and reports if it fails.
+Then the parts of the drafting lane that could be tested without drafters were (D19), on a copy with the real Wiktionary
+file and all 240 sample words, with stand-in meanings. That found what hand rows could not, all fixed in this text:
+- **The pin was stale.** The set-up's fetch would have failed on its first line (task 2 now re-pins; 239 of the 240
+  samples are in the real extract, all 240 pass the real Check, and « triestig » goes to a ruling, `evidence: course`).
+- **`test/lang.js` turned red at task 6.** Its walk of the sessions stops at the day's budget and starts from the course's
+  end, so the new words crowded out the open tasks: `byDutch.ask, byDutch.what jamais montré(s)` (task 6, step 6).
+- **A test's example of a wrong answer became a course word**, « kat » (same step).
+- **The suite outgrew the verifier's limit.** Measured with 605 stand-in words it takes about 14 and a half minutes, past
+  the ten a foreground command may run. The kit's commit before this plan's run moves the verifier to the background.
+
+The whole suite then passed on that copy with 239 words merged (8 min 32 s), `AHEAD_BUDGET` at 109.
+
+What is still not proved:
+- **The other 366 words and the real meanings.** No drafter, reader or batch controller ran. `AHEAD_BUDGET` will rise
+  past 109, and `test/lang.js`'s exceptions may move: both are read in task 6.
+- **One guard with some margin.** `test/smoke.js` asks that 75 % of word questions offer two wrong options of the same
+  kind; the course stands at 76 % today. With the 239 words it stood at 81 %. Task 6 stops and reports if it fails.
 - **The session on a real backlog.** D18's numbers are simulations at a fixed rate of right answers; the learner's check
   after plan 4d is what judges it.
 
@@ -98,15 +106,17 @@ What it could not prove:
   a draft pull request from `phase-4a` into `phase-4`, never into `main`. Plan 4b's branch is cut from `phase-4` once
   that pull request is merged by the maintainer.
 - **Mode: one session** (D16): 11 tasks, two of them fan-out, one gate.
-- **Who rules.** {to be ruled by the maintainer at set-up: the run controller on their behalf, as in the follow-ups-2
-  run (its D4), or the maintainer. The plan is written for the first; the second runs in sittings and loses the
-  drafting lane.}
-- **Gate 10.** {to be ruled: answered by the run controller as follow-ups-2's D8 said, or by the maintainer.}
+- **Who rules.** The run controller, on the maintainer's behalf, logging each ruling in the ledger's Rulings (D19; as
+  the follow-ups-2 run's D4). So the plan runs as one session, with its drafting lane.
+- **Gate 10.** Answered by the run controller, and every confirmed fault is fixed in the run (D19; task 10, `Then:`).
 - **Tickets.** Two sub-issues of #12, filed on the maintainer's word after the plan is approved: `{T-ceiling}` and
   `{T-words}`; the placeholders are replaced in the plan and the briefs at set-up.
-- **The kaikki extract.** The pinned `kaikki/nl.jsonl` (256 MB) is not on this desktop: before task 5's first Check (task 7's Split reads the same run's `belgian.tsv`),
-  the set-up runs `node tools/content/fetch.js . kaikki/nl.jsonl` then `node tools/content/kaikki.js .` once, in the
-  run's worktree (`.cache/` is git-ignored). Tatoeba is not needed by this plan.
+- **The kaikki extract.** kaikki.org rewrites its file without notice: on 1 November 2026 the 22 October pin no longer
+  matched (the file changed on 25 October), and no copy of the old bytes survives. So task 2 re-pins to the file
+  downloaded on 1 November (257 MB), kept in the clone's git-ignored `.superpowers/sdd/phase-4-design/kaikki-2026-11-01/`.
+  Once task 2 is committed and before task 5's first Check (task 7's Split reads the same run's `belgian.tsv`), the
+  run controller runs, once, in the run's worktree: `node tools/content/fetch.js . kaikki/nl.jsonl --from ../../../.superpowers/sdd/phase-4-design/kaikki-2026-11-01`
+  then `node tools/content/kaikki.js .` (`.cache/` is git-ignored). Tatoeba is not needed by this plan.
 - **The learner pass** needs its package (`npm ci --ignore-scripts` in `tools/learner-pass/`) and a browser. This
   desktop has Edge, not Chrome: task 9 makes the channel an environment variable, and gate 10's Show sets it.
 - **A word written in two batches.** With 605 slots drafted in 22 batches it will probably happen, and only task 6's
@@ -151,6 +161,8 @@ Budgets and the build:
 - `test/content.js`'s pinned budgets move only as a task says, with the measured number and the cause in a comment:
   `AHEAD_BUDGET` in task 6 (revealed borrowings), `UNEXPLAINED_BUDGET` set in task 6 and back to 0 in task 8.
 - After changing anything under `src/`, run `sh build.sh` and commit `index.html` and `artifact.html` with it.
+- From task 6 on, `sh test/run-all.sh` takes about 15 minutes, past the ten a foreground command may run: run it in the
+  background, into a file, and wait for it to finish.
 
 Public repository:
 - No personal data in a tracked file; the person is « the maintainer ». Content personalises through `{naam}`,
@@ -216,8 +228,8 @@ only after task 6's commit, since its Split reads the merged lexicon at HEAD.
 Mode: one session
 Fan-out: task 5 — kind words — after 2, 3, 4 — Split: node tools/content/split.js . "<WS>/drafts/words" — Check: node tools/content/check.js "<WS>/drafts/words/<batch>" — merged by task 6
 Fan-out: task 7 — kind explanations — after 3, 6 — Split: node tools/content/split.js . "<WS>/drafts/explanations" — Check: node tools/content/check.js "<WS>/drafts/explanations/<batch>" — merged by task 8
-Gate: task 10 — after 1, 1b, 6, 8, 9 — show: export LEARNER_PASS_CHANNEL=msedge; echo "## days"; node tools/learner-pass/days.js . 2>&1; echo "## corners"; node tools/learner-pass/corners.js . 2>&1; echo "## sweep"; node tools/learner-pass/sweep.js . 2>&1 — ask: « Did the learner pass print a `PROBLEM:` line in <WS>/tmp/gate-10.md? » <the set-up's ruling on who answers: that branch of task 10's Ask, the other dropped> — answer to: Rulings
-Learner pass: gate 10 plays the branch's last commit. If a closing task changes src/ after the gate's show, run that show again into <WS>/tmp/gate-10-closing.md before the final report, answer it as the gate's ask says, and give the maintainer both paths.
+Gate: task 10 — after 1, 1b, 6, 8, 9 — show: export LEARNER_PASS_CHANNEL=msedge; echo "## days"; node tools/learner-pass/days.js . 2>&1; echo "## corners"; node tools/learner-pass/corners.js . 2>&1; echo "## sweep"; node tools/learner-pass/sweep.js . 2>&1 — ask: « Did the learner pass print a `PROBLEM:` line in <WS>/tmp/gate-10.md? » The run controller answers it, as task 10's Ask says (D19). — answer to: Rulings
+Learner pass: gate 10 plays the branch's last commit. If a closing task or a gate fix changes src/ after the gate's show, run that show again into <WS>/tmp/gate-10-closing.md before the final report, answer it as the gate's ask says, and give the maintainer both paths.
 ```
 
 The Show is an `sh` line: the run controller runs it from a `.sh` file, as `run-notes.md` says for anything beyond a
@@ -236,8 +248,8 @@ plain command.
    cuts one row per slot of a unit (its target); the drafter fills each slot, the sample words first. Check judges a
    word; Merge judges the set (no word twice across batches).
 4. **Where a meaning's evidence comes from (task 4).** `evidence: wiktionary:<lemma>` names the extract's lemma;
-   `course` is for a Flemish word the extract lacks (« frigo », « gsm », « plezant » are in it), and goes to the
-   maintainer by rule.
+   `course` is for a Flemish word the extract lacks (« frigo », « gsm », « plezant » are in it, « triestig », a sample, is not), and
+   goes to a ruling.
 5. **`AHEAD_BUDGET` rises (task 6).** A word an earlier unit's example sentence already used becomes « ahead » the
    moment a later unit teaches it: the borrowing was there, uncounted. Task 6 sets the budget to the measured count
    with the cause in its comment and lists the sentences in its return; plan 4c, which writes sentences, may lower it.
@@ -259,11 +271,22 @@ plain command.
     at least 10 per kind, so 61 rows of 605 per kind. No task changes the tool: the sample is twice what D15 asked,
     the safer error. Lowering it is one line, on the maintainer's word.
 
+11. **The Wiktionary pin moves (task 2).** The old file's bytes are gone, so the 22 October pin cannot be honoured. The new
+    extract differs from the old on 10 lines of `belgian.tsv`'s 953 senses, none lost (9 added, one label changed from
+    Flanders to Belgium). The file stays beside the design notes because kaikki.org may rewrite it again before the run.
+12. **`test/lang.js`'s walk starts from the course's beginning (task 6).** It served the last units first; it now serves
+    the first, so what it shows no longer depends on what later units add. Resetting the day's budget instead would show
+    every item, but would multiply the suite's slowest file by about eight.
+13. **The suite gets slow (task 9).** About 14 and a half minutes at 1,035 items, measured: `test/journey.js`, run eight
+    times, went from about 10 s to 41 s each, `test/lang.js` from about 40 s to 2 and a half minutes. Nothing is trimmed in
+    this plan; the verifier runs it in the background, and plan 4d may look at the journeys.
+
 Left out of this plan, for the maintainer:
 - **ADR 0007's amendment**, saying which of its two options D18 took and why (the measurements above).
 - **The 18 October ruling « 7 new a session »**, which D18 replaces: the #12 comment that records it gets a line.
 - **Tickets' labels**: both carry `needs-triage`.
 - **Phrases, grammar, sentences, Flemish forms, explanations of Flemish forms** for the new units: plans 4b–4d.
+- **Tatoeba's pins** are stale too (its files changed on 31 October): plan 4c re-pins them, as task 2 does here.
 
 ## The run
 
@@ -730,8 +753,8 @@ Notes:
 - **The guard stays at 80.** A probe copy of `pace.js` with the guard at 200 counted the exercises each
   session served on the grown course over 200 days: 67 at most, no session over 80.
 - **Time.** The `groot` run takes about 1 min 30 s on this machine (the other learners 30–50 s each): the
-  whole suite grows by that much. `CLAUDE.md:24` and `docs/agents/plan-runs/verifier.md:25` say « three to six
-  minutes »: the proof's whole suite took 6 min 13 s with other work beside it, so those lines stay.
+  whole suite grows by that much. `CLAUDE.md:24` says « three to six
+  minutes » (the verifier's line already says fifteen, from the kit's commit): true after this task (6 min 13 s with other work beside it); task 9 changes `CLAUDE.md`'s, once the course has grown.
 - **The proof.** These steps ran on a copy of `2a86861` with task 1 committed. Step 2 printed `arriéré maximum
   763`, `éléments au catalogue 1190` and `11 vérifications, AUCUN PROBLÈME` (1 min 28 s); step 2b printed
   the ✗ line above and `11 vérifications, 1 PROBLÈME(S)`; the last command of step 2b printed the three
@@ -919,7 +942,7 @@ Class: mechanical
 Ticket: {T-words}
 Promises: none
 Why: D12 (2026-10-25): the new words' meanings come from kaikki.org's Wiktionary extract, already pinned in
-the kit (`tools/content/lib/cache.js`, `kaikki/nl.jsonl`, 256 MB, sha256-pinned), and are read by two readers
+the kit (`tools/content/lib/cache.js`, `kaikki/nl.jsonl`, 257 MB, sha256-pinned), and are read by two readers
 like every kind. Today `tools/content/kaikki.js` writes one extract of that file, `.cache/kaikki/belgian.tsv`:
 the senses Wiktionary labels Belgian or Flemish, which the `flemish` kind's Check reads to verify a
 `wiktionary:<lemma>` evidence. The `words` kind (task 4) needs the same for any word: that a lemma exists, with
@@ -941,6 +964,7 @@ and the reading differs on purpose: `build-dehet.js` adds a sense's tags to what
 `gender()` reads the tags only when `head_templates` gives no gender.
 
 Files:
+- Modify: `tools/content/lib/cache.js` (the pin of `kaikki/nl.jsonl`, line 22)
 - Modify: `tools/content/kaikki.js` (whole file: the header comment, `extract()`, `belgian()`, and the new
   `gender()`, `write()`, `read()`, `senses()`, `report()`)
 - Modify: `test/tools/sources.js` (the constants after `EXTRACT`, line 35; section « 1. kaikki », lines 45–96)
@@ -959,11 +983,11 @@ Notes:
   a `feminine` tag on goesting's second sense (the fallback), and a `|` in tab's second gloss, so the 9 entries
   cover every gender rule and the scrubbing. That second gloss also makes a second Belgian sense of tab, so
   `belgian.tsv` now has 8 senses, not 7.
-- **No network, no 256 MB file.** The suite writes its own 9-entry dump under a pin it computes; nothing is
+- **No network, no 257 MB file.** The suite writes its own 9-entry dump under a pin it computes; nothing is
   downloaded. The real `.cache/kaikki/nl.jsonl` is fetched in the run's worktree at set-up (header, « The kaikki
   extract »).
 - **The command's success path is not run by the suite, so it has no red.** `node tools/content/kaikki.js <repo>`
-  reads the real pin (`cache.PINS`), and that file is 256 MB: the test runs its two failures (`run('kaikki.js', …)`)
+  reads the real pin (`cache.PINS`), and that file is 257 MB: the test runs its two failures (`run('kaikki.js', …)`)
   and checks the lines it prints through `kaikki.report()`, and `kaikki.extract()` with the test's own pin. The
   set-up's run on the real file is the first time the whole command runs.
 - **The proof.** These steps ran on a copy of `2a86861`. Before the task `node test/tools/sources.js .` ended
@@ -1268,17 +1292,40 @@ Notes:
   38 contrôles, SOURCES CONFORMES
   ```
 
-- [ ] **Step 5: Commit.**
+- [ ] **Step 5: The new pin.** kaikki.org rewrote its file on 25 October, so the pin no longer matches anything that can be
+  fetched (call 11). The new file is kept outside the tree. Run, from the run's worktree:
   ```
-  git add tools/content/kaikki.js test/tools/sources.js ATTRIBUTION.md TESTING.md
+  node tools/content/fetch.js . kaikki/nl.jsonl --from ../../../.superpowers/sdd/phase-4-design/kaikki-2026-11-01
+  ```
+  Expected: exit 1 and `fail kaikki/nl.jsonl: sha256 42aaed451d99…, pinned 00c8ee4a9516… on 2026-10-22: the source changed, and the pin is to redo in a task`.
+  In `tools/content/lib/cache.js`, replace
+  ```
+  date: '2026-10-22', bytes: 256173778, sha256: '00c8ee4a95169bb1ec0ac9b495d43dc7746a1e59e9a44914bae8909f9f167121'
+  ```
+  with
+  ```
+  date: '2026-11-01', bytes: 257235436, sha256: '42aaed451d9997e358290e68b0ff723235e2cc2a683edd1d273759d70cef9776'
+  ```
+  Run the same command again, then `node tools/content/kaikki.js .` and `node test/tools/sources.js .`. Expected:
+  ```
+  ok kaikki/nl.jsonl 257235436 bytes, sha256 42aaed451d99…
+  ok .cache/kaikki/belgian.tsv 953 senses, 849 lemmas
+  ok .cache/kaikki/senses.tsv 146771 entries
+  38 contrôles, SOURCES CONFORMES
+  ```
+  If the folder holds no `nl.jsonl`, stop and report it: the pin cannot be proved without the file.
+
+- [ ] **Step 6: Commit.**
+  ```
+  git add tools/content/lib/cache.js tools/content/kaikki.js test/tools/sources.js ATTRIBUTION.md TESTING.md
   git commit -m "feat(tools): kaikki.js writes a second extract, senses.tsv, one line per entry with its gender and glosses, and kaikki.senses() reads it ({T-words})"
   ```
 
 Done when:
 - `node test/tools/sources.js .` prints `38 contrôles, SOURCES CONFORMES`; on the old `kaikki.js` the same file
   printed the `FAIL: extract compte …` line and crashed on the missing `senses.tsv`.
-- `node tools/content/kaikki.js <repo>` (not run here: the pinned file is not in the tree) would print
-  `ok .cache/kaikki/belgian.tsv <n> senses, <m> lemmas` then `ok .cache/kaikki/senses.tsv <k> entries`.
+- `tools/content/fetch.js` accepts the kept file under the new pin, and `node tools/content/kaikki.js .` prints
+  `ok .cache/kaikki/belgian.tsv 953 senses, 849 lemmas` then `ok .cache/kaikki/senses.tsv 146771 entries`.
 - `ATTRIBUTION.md` names both extracts and says what each one verifies; `TESTING.md`'s `tools/sources.js` row
   names the second.
 
@@ -2394,10 +2441,11 @@ by the unit's id, one row per slot: `vragen 30`, `kunnen 25`, `doen 30`, `mensen
 its unit (id, number, Dutch name, French and English names, target), its slot number and its `sample`: the
 maintainer's word for that slot, or null. The drafter fills every slot with one word. Check (task 4) verifies
 spelling, articles, the sample, the evidence and the English guards; what no script can check is under Reader
-focus. Before the first Check, the run has fetched the pinned file and written both extracts in the worktree
-(`node tools/content/fetch.js . kaikki/nl.jsonl`, 256 MB, then `node tools/content/kaikki.js .`): without
+focus. Before the first Check, the run has copied the pinned file and written both extracts in the worktree
+(« Set-up decisions », « The kaikki extract »): without
 `.cache/kaikki/senses.tsv`, Check prints `.cache/kaikki/senses.tsv is missing: run node tools/content/kaikki.js .`
-on every row whose evidence is `wiktionary:…` (a row with `evidence: course` never reads the extract). Tasks 1 and
+on every row whose evidence is `wiktionary:…` (a row with `evidence: course` never reads the extract). All 240 samples passed Check against the real extract with
+stand-in meanings; « triestig » alone is not in it, so its row is `evidence: course` and goes to a ruling. Tasks 1 and
 1b run beside the drafting and touch no content; no task between this one and task 6 changes `UNITS`, which the
 stamp covers (a unit's number, English name and target).
 
@@ -2522,7 +2570,9 @@ Files:
 - Modify (the build writes them): `index.html`, `artifact.html`
 - Modify: `test/content.js` (the « explications » block, lines 151–157)
 - Modify, only if step 4 says so: `test/content.js` (`AHEAD_BUDGET`, line 201)
-- Modify, only if step 6 says so: `test/lang.js` (`QUOTE_OK`, line 906; `SHARED_OK`, line 925; `QUOTE_BUDGET`)
+- Modify: `test/lang.js` (the walk of the sessions, line 118; only if step 6 says so, `QUOTE_OK`, line 906; `SHARED_OK`,
+  line 925; `QUOTE_BUDGET`)
+- Modify: `test/tools/fanout.js` (« une réponse de trois lettres », lines 1390–1391)
 - Create, outside the repository: `<WS>/tmp/ahead.js`, `<WS>/tmp/frontier.js`
 - Test: `node test/content.js .`, then the whole suite, `sh test/run-all.sh`
 
@@ -2797,11 +2847,36 @@ Notes:
   ```
   A `PROBLÈME` line and exit 1: stop and report it.
 
-- [ ] **Step 6: `test/lang.js`, its three guards, and the suites that read the course.**
+- [ ] **Step 6: `test/lang.js`, its three guards, and the suites that read the course.** First two edits that do not
+  depend on what Merge wrote. `test/lang.js`'s walk stops at the day's budget and serves the oldest due first, the last
+  units until now, so the new words would crowd out the open tasks (with 239 words merged, measured:
+  `6d : byDutch.ask, byDutch.what jamais montré(s), le contrôle est creux`). In `test/lang.js`, replace
   ```
+      all.forEach(it => put(it, r));
+  ```
+  with
+  ```
+      /* Le budget du jour coupe cette boucle, et le plus ancien est servi d'abord : le cours se lit depuis
+         son début, pour que ce qu'elle montre ne dépende pas de ce que les dernières unités ajoutent. */
+      all.slice().reverse().forEach(it => put(it, r));
+  ```
+  And in `test/tools/fanout.js` « kat », the example of an unrelated decoy, is now a course word (`natuur`'s sample): replace
+  ```
+      same([rule('ikengij:w1', { decoys: ['je', 'jou'] }), rule('ikengij:w1', { decoys: ['je', 'kat'] })],
+        [[], ['decoy « kat » is further from the Dutch than the answer: 0.00, at least 0.33']],
+  ```
+  with
+  ```
+      same([rule('ikengij:w1', { decoys: ['je', 'jou'] }), rule('ikengij:w1', { decoys: ['je', 'zqz'] })],
+        [[], ['decoy « zqz » is further from the Dutch than the answer: 0.00, at least 0.33']],
+  ```
+  Any other `fanout.js` failure `decoy « <w> » is an answer the course accepts` from a test's own word is the same: give
+  the test a word no course can hold, `zq…`. Then:
+  ```
+  node test/tools/fanout.js .
   node test/lang.js .
   ```
-  Expected: exit 0 and `LANGUE CONFORME`, with `néerlandais nu <793 + u> champs lus en deux langues` (each new
+  Expected: `506 contrôles, KIT CONFORME`, then exit 0 and `LANGUE CONFORME`, with `néerlandais nu <793 + u> champs lus en deux langues` (each new
   unit adds its blurb). The new words and blurbs grow the course's Dutch, which `test/lang.js` reads through
   `dutchWords`. That can trip three guards. Each one's fix is in `test/lang.js` and nowhere else:
   - `6d : « <w> » est du néerlandais du cours, son exception est de trop`, often beside
@@ -2835,7 +2910,7 @@ Notes:
   two verbs, « kunnen » and « moeten », were added). Stop and report the line to the run controller; the threshold
   is not lowered in this task.
 
-- [ ] **Step 7: The whole suite.**
+- [ ] **Step 7: The whole suite.** In the background, into a file (about 15 minutes):
   ```
   sh test/run-all.sh
   ```
@@ -2855,10 +2930,9 @@ Notes:
 
 - [ ] **Step 9: Commit.**
   ```
-  git add src/content/lexicon.a1c.js test/data/ids.tsv index.html artifact.html test/content.js
+  git add src/content/lexicon.a1c.js test/data/ids.tsv index.html artifact.html test/content.js test/lang.js test/tools/fanout.js
   git commit -m "feat(content): the 22 new units' words, merged by the words kind into lexicon.a1c.js and ids.tsv, their missing explanations pinned ({T-words})"
   ```
-  Add `test/lang.js` to the `git add` if step 6 changed it.
 
 Done when:
 - `src/content/lexicon.a1c.js` and `test/data/ids.tsv` hold what one successful run of Merge wrote, the run
@@ -3149,7 +3223,7 @@ Notes:
 
   A `citations hors du néerlandais du cours` failure, or any other failure: stop and report it.
 
-- [ ] **Step 8: The full suite.**
+- [ ] **Step 8: The full suite.** In the background, into a file (about 15 minutes):
   ```
   sh test/run-all.sh
   ```
@@ -3351,6 +3425,14 @@ Notes:
   - `docs/superpowers/plans/2026-10-31-phase-4a-ceiling-and-words.md` — the phase 4a plan: the
     session follows the backlog (D18), and the 22 new units' words through the kit's `words` kind
   ```
+  and replace
+  ```
+  The suite takes three to six minutes. While working, run the one file you are changing, for
+  ```
+  with
+  ```
+  The suite takes about fifteen minutes. While working, run the one file you are changing, for
+  ```
 
 - [ ] **Step 5: `GLOSSARY.md`.** Under « The course », find the end of « Sibling »,
   ```
@@ -3406,7 +3488,8 @@ Notes:
   ```
   Expected: the first prints nothing and exits 0. The second prints `1`. The third lists exactly `README.md`, `TESTING.md`,
   `CLAUDE.md`, `GLOSSARY.md`, `tools/learner-pass/common.js` and `tools/learner-pass/README.md`. The suite stays
-  green (the refactor and the prose touch nothing it reads): the fourth ends `TOUTE LA SUITE EST PASSÉE`. Then,
+  green (the refactor and the prose touch nothing it reads): the fourth, run in the background into a file, ends
+  `TOUTE LA SUITE EST PASSÉE`. Then,
   in a `.sh` file, `grep -n "430\|Douze\|12 unités" README.md TESTING.md` prints three lines, all in `TESTING.md`
   (measured with tasks 1 to 8 applied): the two paragraphs task 1b wrote on the `groot` learner, whose « 430
   éléments » and « les 430 du cours » are the real course that learner's 1 190 items copy (they stay), at lines 65
@@ -3438,7 +3521,7 @@ Class: gate
 Ticket: none
 After: 1, 1b, 6, 8, 9
 Show: export LEARNER_PASS_CHANNEL=msedge; echo "## days"; node tools/learner-pass/days.js . 2>&1; echo "## corners"; node tools/learner-pass/corners.js . 2>&1; echo "## sweep"; node tools/learner-pass/sweep.js . 2>&1
-Ask: « Did the learner pass print a `PROBLEM:` line in <WS>/tmp/gate-10.md? » Who answers it is the set-up's Rulings line on gate 10 (« Set-up decisions »): either the run controller, on the maintainer's behalf, as follow-ups-2's D8 said (no `PROBLEM:` line: the answer is « nothing »; otherwise, dispatch one background subagent on `sonnet`, description `task 10`, to confirm each `PROBLEM:` line by hand as `tools/learner-pass/README.md` (« Reading a fault ») says, returning at most 10 lines, one per `PROBLEM:` line, `harness` or `app` and why; file each `app` line as a ticket with `gh issue create --parent 12 --label needs-triage`; the answer is each line's verdict and the tickets' numbers), or the maintainer, told with the path and a push notification, whose word is the answer.
+Ask: « Did the learner pass print a `PROBLEM:` line in <WS>/tmp/gate-10.md? » The run controller answers it, on the maintainer's behalf (D19): no `PROBLEM:` line and every script's closing line: the answer is « nothing »; otherwise, dispatch one background subagent on `sonnet`, description `task 10`, to confirm each line by hand as `tools/learner-pass/README.md` (« Reading a fault ») says, returning at most 10 lines, one per line, `harness` or `app` and why; the answer is each line's verdict and what became of it (`Then:`).
 Answer to: Rulings
 Why: on 25 October 2026 the maintainer asked for a hands-on learner pass in a real browser before every
 learner's check, and the follow-ups-2 run's gate 8 ran one, answered by the run controller for them (its D8).
@@ -3503,18 +3586,22 @@ run controller answered), and the gate `done`:
   carries stderr into the file with `2>&1`; on the proof, with the package absent, the file held three
   `Cannot find module 'playwright-core'` errors and no `PROBLEM:` line). A script with no closing line
   (`THE STUDY DAYS PLAY THROUGH`, `LISTENING, CONVERSATION AND CHALLENGE PLAY THROUGH`,
-  `EVERY TAP DOES SOMETHING`) is a fault to confirm: answered as a `PROBLEM:` line is, by the same subagent or the maintainer,
+  `EVERY TAP DOES SOMETHING`) is a fault to confirm: answered as a `PROBLEM:` line is, by the same subagent,
   and reported with the script's last lines.
-- **`PROBLEM:` lines, answered by the run controller.** The subagent the ask names confirms each by hand. A
-  `harness` line (a trap the README lists, or another the subagent shows) goes in the Rulings line with its
-  reason. An `app` line is filed by the run controller with `gh issue create --parent 12 --label needs-triage`
-  (`docs/agents/issue-tracker.md`), titled for what a learner meets, its body the `PROBLEM:` line, the
-  subagent's reason and the screenshot's path; its number goes in the Rulings line. Nothing is fixed in this
-  run.
-- **`PROBLEM:` lines, answered by the maintainer.** The run controller tells them the path and each
-  `PROBLEM:` line, with a push notification, and waits. Their answer names each line `harness` or `app`, or
-  asks for the subagent's reading first; each `app` line is filed as above, on their word, and nothing is fixed
-  in this run.
-- **A `closing` task changes `src/` after the gate.** The run file's `Learner pass:` line says it: Show runs
+- **`PROBLEM:` lines: every confirmed fault is fixed in this run (D19).** The subagent the ask names confirms each by
+  hand. A `harness` line that is a trap the README lists, or another the subagent shows, goes in the Rulings line with its
+  reason. A fault in the app, or in the pass itself, is filed by the run controller with `gh issue create --parent 12
+  --label needs-triage` (`docs/agents/issue-tracker.md`), titled for what a learner meets, its body the `PROBLEM:` line,
+  the subagent's reason and the screenshot's path. Then a background subagent on `opus`, description `task 10`, writes
+  `<WS>/briefs/task-10-fix-<k>.md` in the kit's brief form (`design-sitting.md`), its ticket that issue, its `Class:`
+  `engine` if it touches `src/core/srs.js` and `mechanical` otherwise, its first step a test that fails on the old code. The
+  run controller adds a Status row `10-fix-<k>` and runs it through the loop like any task. Once the last row is `done`,
+  Show runs again into `<WS>/tmp/gate-10-fix-<k>.md` and is answered the same way; the gate stays `in progress` until
+  a Show is clean. Each issue closes with its fix's commit.
+- **A fault whose fix needs a decision this plan, #12 or an ADR does not hold** (what a screen should say or do, a change
+  to scheduling or grading, anything stored) is not fixed by the run: its issue stays open, the run controller tells the
+  maintainer the line with a push notification, and the final report names it. After three rounds of Show without a
+  clean one, the run stops and tells the maintainer the same way.
+- **A `closing` task or a gate fix changes `src/` after the gate.** The run file's `Learner pass:` line says it: Show runs
   again into `<WS>/tmp/gate-10-closing.md` before the final report, and is answered the same way. The
   maintainer gets both paths, and the draft pull request's description carries both results.
