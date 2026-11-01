@@ -277,4 +277,4 @@ test de placement, la dictée plus tôt, la série et le défi.
 ## Encore ouvert
 
 - Le contenu reste le plafond : 1035 éléments, tous de niveau A1 ; les unités 13 à 34 n'ont encore que leurs mots.
-- 613 mots sur 912 n'ont pas encore de phrase d'exemple (comptés le 1 novembre 2026) : les 8 d'octobre, et les 605 mots des unités 13 à 34, dont les phrases viennent avec un plan suivant de la phase 4.
+- 613 mots sur 912 n'ont pas encore de phrase d'exemple (comptés le 1er novembre 2026) : les 8 d'octobre, et les 605 mots des unités 13 à 34, dont les phrases viennent avec un plan suivant de la phase 4.
