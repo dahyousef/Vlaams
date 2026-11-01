@@ -21,7 +21,7 @@ under `src/`, run `sh build.sh` and commit both.
 goes in that list or it never runs. `TESTING.md` says what each suite covers — and what
 the suite cannot see.
 
-The suite takes three to six minutes. While working, run the one file you are changing, for
+The suite takes about fifteen minutes. While working, run the one file you are changing, for
 example `node test/engine.js .`. A new suite loads the app through
 `test/lib/browser.js` and answers exercises through `test/lib/answer.js`, as a learner
 would. Grading through `NL.srs.grade()` directly is for `test/engine.js`, the scheduler's
@@ -86,7 +86,10 @@ the maintainer answers, runs in sittings.
   (`open`), `notes.js` and `also.js` (`explanations-be`, `explanations`), and `decoys.js`
   (`explanations-be`). Each is keyed by an item's Dutch as its first listing writes it,
   tokens unfilled. Change an entry through its kind's rows, not by hand: a hand edit leaves
-  no row behind it, and the next Merge of that item writes over it.
+  no row behind it, and the next Merge of that item writes over it. The `words` kind's Merge
+  (`tools/content/kinds/words.js`) writes a seventh file whole, `src/content/lexicon.a1c.js`:
+  the units 13 to 34 and their words, from its `UNITS` and the accepted rows; and it appends
+  the new words' lines to `test/data/ids.tsv`. The same rule: a word changes through its rows.
 
 ## Decisions already taken
 
@@ -105,6 +108,8 @@ sub-issues. `GLOSSARY.md` holds the vocabulary it uses.
   plan, implemented. Its last sections record why the engine is as it is
 - `docs/superpowers/plans/2026-10-22-phase-3-content-to-b1.md` — the phase 3 plan: the
   content kit (`tools/content/`) and the kinds that took the course to B1
+- `docs/superpowers/plans/2026-10-31-phase-4a-ceiling-and-words.md` — the phase 4a plan: the
+  session follows the backlog (D18), and the 22 new units' words through the kit's `words` kind
 - `docs/CONSTATS-2026-10-06.md` — what a week of real study found, and how it was found
 - `TESTING.md` — how this app is tested
 - `ATTRIBUTION.md` — where the Dutch reference data comes from, and why it imposes no licence

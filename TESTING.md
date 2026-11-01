@@ -248,7 +248,7 @@ pas par le contrôle d'orthographe.
 ## Le passage complet du 30 septembre 2026
 
 Un passage à la main dans un vrai navigateur, sur un build local : test de
-placement (48 questions, les 12 unités), environ 540 exercices couvrant les 12
+placement (48 questions, les 12 unités d'alors), environ 540 exercices couvrant les 12
 unités et les 14 types, les 6 scénarios, les deux modes d'écoute, « Mes mots »,
 les 8 antisèches, le docteur audio, tous les réglages, la sauvegarde, la remise
 à zéro, le clavier, le thème sombre, et chaque écran à 375 px de large.
@@ -276,5 +276,5 @@ test de placement, la dictée plus tôt, la série et le défi.
 
 ## Encore ouvert
 
-- Le contenu reste le plafond : 430 éléments, tous de niveau A1.
-- 8 mots sur 307 n'ont pas encore de phrase d'exemple (comptés le 28 octobre 2026).
+- Le contenu reste le plafond : 1035 éléments, tous de niveau A1 ; les unités 13 à 34 n'ont encore que leurs mots.
+- 613 mots sur 912 n'ont pas encore de phrase d'exemple (comptés le 1 novembre 2026) : les 8 d'octobre, et les 605 mots des unités 13 à 34, dont les phrases viennent avec un plan suivant de la phase 4.

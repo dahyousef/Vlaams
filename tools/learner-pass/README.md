@@ -14,7 +14,8 @@ scoring, while that suite was green.
 ## Setup
 
 Once: `npm install` in this folder. It installs `playwright-core` only, which drives the
-Chrome already installed on the machine (`channel: 'chrome'`); it downloads no browser.
+Chrome already installed on the machine (`channel: 'chrome'`), or Edge when
+`LEARNER_PASS_CHANNEL=msedge` is set (any Playwright channel name works); it downloads no browser.
 Nothing here is part of the app, the build or CI.
 
 ## Run

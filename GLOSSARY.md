@@ -172,6 +172,11 @@ a meaning the two share in the learner's native language. Unlike an alias, each 
 keeps its own progress.
 _Avoid_: synonym, equivalent, variant
 
+**Slot**:
+A place for one word in a new unit, cut by the kit's `words` kind before the word exists and
+filled by a drafter; a unit's target is its number of slots. Not a session's place.
+_Avoid_: place, gap, vacancy
+
 ### Who the learner is
 
 **Display language**:

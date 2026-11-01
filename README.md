@@ -88,7 +88,7 @@ hébergé, et **copier/coller** qui marche partout.
 | Écran | À quoi il sert |
 | --- | --- |
 | **Aujourd'hui** | L'écran par défaut, et le seul dont tu as besoin la plupart des jours. Une seule action, environ quinze minutes. |
-| **Parcours** | Douze unités A1 avec les explications de grammaire. Chaque carte d'unité dit combien d'éléments il reste à rencontrer avant que la suivante s'ouvre. Alimente le planificateur. |
+| **Parcours** | Trente-quatre unités A1 : les douze premières avec leurs explications de grammaire, les vingt-deux suivantes avec leurs mots d'abord. Chaque carte d'unité dit combien d'éléments il reste à rencontrer avant que la suivante s'ouvre. Alimente le planificateur. |
 | **Parler** | Six jeux de rôle. Tu choisis ta réplique puis tu la dis. |
 | **Écouter** | Du flamand à vitesse réelle sans texte, plus du shadowing. |
 | **Plus** | Tes mots, les antisèches, standard/flamand, le français caché, les sons, les familles de de/het, le docteur audio. |
@@ -256,7 +256,7 @@ SUPABASE_URL=https://xxxx.supabase.co SUPABASE_ANON_KEY=... sh build.sh
 
 ```
 src/core/     util  fr (toute l'interface)  state (IndexedDB)  srs  speech  audio  sync (Supabase)  errlog (journal d'erreurs local)
-src/content/  lexicon.a1  lexicon.a1b  grammar  reference  scenarios  index
+src/content/  lexicon.a1  lexicon.a1b  lexicon.a1c (écrit par le kit)  grammar  reference  scenarios  index
 src/ex/       les types d'exercices, derrière une seule interface
 src/ui/       shell  session  home  scenario  listen  library  doctor  account  mistakes
 styles.css    le système de design
@@ -314,7 +314,7 @@ survit dans le build.
 
 ## État
 
-**Livré** : interface et contenu en français de Belgique (12 unités, 430
+**Livré** : interface et contenu en français de Belgique (34 unités, 1035
 éléments, 6 scénarios, 8 antisèches, 9 règles) ; docteur audio et
 enregistre-et-compare pour Opera ; sauvegarde export/import ; personnalisation
 prénom/commune/employeur.
@@ -325,7 +325,8 @@ déverrouillage par frontière contiguë, deux comptes, rencontrés et produits,
 quatre nouveaux types d'exercice — l'intrus, corrige l'erreur, standaard of
 Vlaams, réponse libre notée sur rubrique.
 
-**À venir** : le contenu est encore le plafond. 430 éléments s'épuisent vers le
-jour 40. La suite, dans l'ordre : noyau de 1 200 mots par fréquence avec les
-situations intégrées, 400 expressions figées, écrans *Lezen* et *Missions*,
-textes gradués et écoute longue, puis A2 → B2.
+**À venir** : les unités 13 à 34 n'ont encore que leurs mots. La suite, dans
+l'ordre : leurs règles de grammaire et leurs conversations, leurs phrases et
+leurs exemples, leurs formes flamandes (les autres plans de la phase 4), les
+écrans *Lezen* et *Missions*, les textes gradués et l'écoute longue, puis
+A2 → B2.
