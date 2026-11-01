@@ -8,7 +8,6 @@
 const browser = require('./lib/browser');
 const { inZone, offsets } = require('./lib/zone');
 const { dueReviews } = require('./lib/seed');
-const grow = require('./lib/grow');
 const ROOT = process.argv[2];
 const T0 = Date.parse('2026-10-05T08:00:00Z');
 const MIN = 60000, HOUR = 3600000, DAY = 86400000;
@@ -269,13 +268,12 @@ NL.state.open().then(async () => {
      avec l'arriéré. Trente places de base ; dès quarante éléments dus, une de plus par
      quarante, onze au plus (41 places). La réserve se calcule sur les trente : neuf
      nouveaux, quel que soit l'arriéré. Une unité travaillée à part suit la même règle sur
-     ses seuls dus. Le cours est plus petit que ces arriérés : la règle se lit sur une page à part, dont
-     le cours est grossi à mille éléments (test/lib/grow.js) et où rien d'autre ne change. */
+     ses seuls dus. La règle se lit sur une page à part, où rien d'autre ne change. */
   {
-    const G = browser.open({ root: ROOT, seed: browser.SEED, now: T0, ua: browser.UA.OPR, byId: 'stub', prepare: X => grow(X, 1000) });
+    const G = browser.open({ root: ROOT, seed: browser.SEED, now: T0, ua: browser.UA.OPR, byId: 'stub' });
     await G.NL.state.open();
-    const X = G.NL, grown = X.content.allItems().length;
-    ok(grown >= 1000, 'the grown course holds ' + grown + ' items, fewer than 1,000');
+    const X = G.NL, size = X.content.allItems().length;
+    ok(size >= 1000, 'the course holds ' + size + ' items, fewer than the 1,000 due this block needs');
     /* n éléments dus, et ce que compose() en fait. */
     const backlog = (n, src) => { X.state.clearAll(); dueReviews(X, n, T0); return X.srs.compose(src || 'vandaag'); };
     [[39, 30], [40, 31], [440, 41], [1000, 41]].forEach(([n, places]) => {
