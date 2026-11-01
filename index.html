@@ -2057,7 +2057,7 @@ NL.srs = (function () {
   'use strict';
   const { clamp, DAY, HOUR, dayKey } = NL.util;
 
-  const MAX_TASKS = 30;             // les places de base d'une séance : un élément par place
+  const BASE_SIZE = 30;             // les places de base d'une séance : un élément par place
   const MAX_STAGE = 6;
   const PRODUCE = 4;                // l'échelon de l'écrit est passé : l'élément se produit
   /* La part de chaque séance réservée à ce qui n'a jamais été rencontré. Sans
@@ -2072,7 +2072,7 @@ NL.srs = (function () {
   const BACKLOG_STEP = 40, EXTRA_MAX = 11;
   /* Un élément rencontré revient une fois dans la même séance : il coûte donc
      deux exercices. Au-delà de la moitié des places, la séance doublerait. */
-  const NEW_MAX = MAX_TASKS / 2;
+  const NEW_MAX = BASE_SIZE / 2;
   const RETIRE_AT = 200 * DAY;
   const MAX_INTERVAL = 365 * DAY;   // au-delà, l'élément est acquis, pas oublié      // au-delà, l'élément sort du paquet quotidien
 
@@ -2479,15 +2479,15 @@ NL.srs = (function () {
     const uid = source && source !== 'vandaag' ? source : null;
     /* Travailler une unité précise est un choix : le budget du jour ne la bride pas. */
     const left = uid ? Infinity : budgetLeft();
-    const base = Math.min(MAX_TASKS, left);
+    const base = Math.min(BASE_SIZE, left);
     if (base <= 0) return { due: [], fresh: [], left };
 
     let due = dueItems(now);
     if (uid) due = due.filter(it => it.unit === uid);
     if (opts && opts.quiet) due = due.filter(it => !needsVoice(it) && !(opts.without && opts.without.has(it.id)));
     const extra = Math.min(EXTRA_MAX, Math.floor(due.length / BACKLOG_STEP));
-    const places = Math.min(MAX_TASKS + extra, left);
-    const unmet = freshItems(MAX_TASKS, uid);
+    const places = Math.min(BASE_SIZE + extra, left);
+    const unmet = freshItems(BASE_SIZE, uid);
 
     /* La réserve sort AVANT que les révisions remplissent le reste, et elle
        disparaît d'elle-même quand il ne reste rien à rencontrer. */
@@ -2586,7 +2586,7 @@ NL.srs = (function () {
   }
 
   return {
-    RUNGS, STEP, PACE, MAX_STAGE, MAX_TASKS, PRODUCE, NEW_SHARE, NEW_MIN, NEW_MAX, TIER_MAX, RETIRE_AT,
+    RUNGS, STEP, PACE, MAX_STAGE, BASE_SIZE, PRODUCE, NEW_SHARE, NEW_MIN, NEW_MAX, TIER_MAX, RETIRE_AT,
     maxRung, pace, exerciseFor, firstAloud, needsVoice, supports, grade, seed, isSeen, stageOf, atTop,
     dueItems, counts, fold, freshItems, compose, plan, unitSpan, mistakes, recOf, budgetLeft, spend,
     SECOND_GAP, apart, lace
@@ -7549,7 +7549,7 @@ NL.screens.sessie = (function () {
   const U = NL.util, esc = U.esc, EX = NL.ex;
   let L = null;
 
-  const MAX_TASKS = NL.srs.MAX_TASKS;
+  const BASE_SIZE = NL.srs.BASE_SIZE;
 
   function blankTurn() {
     return { sel: null, picked: [], input: '', close: false, other: false, matchSel: null, matchGone: [], matchBad: null, speech: { phase: 'idle', tries: 0, selfRated: null } };
@@ -7682,7 +7682,7 @@ NL.screens.sessie = (function () {
      l'échelon où il se trouve. Comme le défi, elle ne compte pas dans le budget
      du jour qu'elle n'a pas à attendre, et ses réponses sont de vraies révisions. */
   function startMistakes() {
-    const items = NL.srs.mistakes().slice(0, MAX_TASKS).map(x => x.item);
+    const items = NL.srs.mistakes().slice(0, BASE_SIZE).map(x => x.item);
     const queue = spread(build(items, []), NL.state.meta().lastEx || null);
     if (!queue.length) { L = null; return false; }
     L = Object.assign(blankTurn(), {
@@ -9073,7 +9073,7 @@ NL.screens.fouten = (function () {
       '<h1>' + (list.length ? t.missTitle(list.length) : t.missEyebrow) + '</h1>' +
       '<p>' + (list.length ? t.missBody : t.missNone) + '</p>' +
       (list.length ? '<button class="btn btn-primary" data-act="start">' +
-        t.missStart(Math.min(list.length, NL.srs.MAX_TASKS)) + '</button>' : '') +
+        t.missStart(Math.min(list.length, NL.srs.BASE_SIZE)) + '</button>' : '') +
       '</section>';
 
     list.slice(0, SHOWN).forEach(x => {

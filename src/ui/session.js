@@ -5,7 +5,7 @@ NL.screens.sessie = (function () {
   const U = NL.util, esc = U.esc, EX = NL.ex;
   let L = null;
 
-  const MAX_TASKS = NL.srs.MAX_TASKS;
+  const BASE_SIZE = NL.srs.BASE_SIZE;
 
   function blankTurn() {
     return { sel: null, picked: [], input: '', close: false, other: false, matchSel: null, matchGone: [], matchBad: null, speech: { phase: 'idle', tries: 0, selfRated: null } };
@@ -138,7 +138,7 @@ NL.screens.sessie = (function () {
      l'échelon où il se trouve. Comme le défi, elle ne compte pas dans le budget
      du jour qu'elle n'a pas à attendre, et ses réponses sont de vraies révisions. */
   function startMistakes() {
-    const items = NL.srs.mistakes().slice(0, MAX_TASKS).map(x => x.item);
+    const items = NL.srs.mistakes().slice(0, BASE_SIZE).map(x => x.item);
     const queue = spread(build(items, []), NL.state.meta().lastEx || null);
     if (!queue.length) { L = null; return false; }
     L = Object.assign(blankTurn(), {

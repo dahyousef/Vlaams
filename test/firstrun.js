@@ -29,18 +29,19 @@ NL.state.open().then(() => {
   ok(NL.speech.listenBlocked() === 'browser', 'Opera should report no recogniser');
   ok(NL.speech.capability().id === 'self' || NL.speech.capability().id === 'compare', 'Opera speech capability should be compare or self');
 
-  /* « -3 à revoir » : le total de la séance est plafonné à MAX_TASKS, le nombre
+  /* « -3 à revoir » : le total de la séance est borné par les places de base, le nombre
      de nouveaux ne l'était pas, et l'écran soustrayait l'un de l'autre. Sur une
-     base vide, les nouveaux dépassent toujours le plafond : c'est ici que ça se
+     base vide, rien n'est dû : les places de base bornent la séance, et c'est ici que ça se
      voit. */
   console.log('\nPLAN DU JOUR');
   {
     const p0 = NL.srs.plan();
     console.log('  base vide        ' + p0.due + ' à revoir + ' + p0.fresh + ' nouveaux = ' + p0.total);
     ok(p0.fresh > 0, 'a blank account should have new material: ' + JSON.stringify(p0));
+    ok(p0.fresh === 15, 'a blank account should meet 15 new items (half the base places): ' + JSON.stringify(p0));
     ok(p0.due >= 0 && p0.fresh >= 0, 'negative figures on the home screen: ' + JSON.stringify(p0));
     ok(p0.due + p0.fresh === p0.total, 'the two halves must add up to the total: ' + JSON.stringify(p0));
-    ok(p0.total <= NL.srs.MAX_TASKS, 'session longer than the cap: ' + JSON.stringify(p0));
+    ok(p0.total <= NL.srs.BASE_SIZE, 'a blank account, nothing due: session longer than the base places: ' + JSON.stringify(p0));
 
     NL.srs.spend(NL.srs.pace().cap * 2);          // journée déjà bien remplie
     const p1 = NL.srs.plan();

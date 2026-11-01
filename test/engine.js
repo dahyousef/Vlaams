@@ -269,7 +269,7 @@ NL.state.open().then(async () => {
      avec l'arriéré. Trente places de base ; dès quarante éléments dus, une de plus par
      quarante, onze au plus (41 places). La réserve se calcule sur les trente : neuf
      nouveaux, quel que soit l'arriéré. Une unité travaillée à part suit la même règle sur
-     ses seuls dus. Le cours n'a que 430 éléments : la règle se lit sur une page à part, dont
+     ses seuls dus. Le cours est plus petit que ces arriérés : la règle se lit sur une page à part, dont
      le cours est grossi à mille éléments (test/lib/grow.js) et où rien d'autre ne change. */
   {
     const G = browser.open({ root: ROOT, seed: browser.SEED, now: T0, ua: browser.UA.OPR, byId: 'stub', prepare: X => grow(X, 1000) });
@@ -282,12 +282,34 @@ NL.state.open().then(async () => {
       const c = backlog(n), held = c.due.length + c.fresh.length;
       console.log('  ' + String(n).padStart(4) + ' dus : ' + c.due.length + ' révisions + ' + c.fresh.length + ' rencontres = ' + held + ' places');
       ok(held === places, n + ' items due: the session holds ' + held + ' items, not ' + places + ' (30 base places, one more per 40 due, 11 at most)');
-      if (n === 40 || n === 440) ok(c.fresh.length === RESERVED, n + ' items due: ' + c.fresh.length + ' new, not the reserve of ' + RESERVED + ' computed on the 30 base places');
+      ok(c.fresh.length === RESERVED, n + ' items due: ' + c.fresh.length + ' new, not the reserve of ' + RESERVED + ' computed on the 30 base places');
     });
-    /* Une unité travaillée à part : ses dus seuls comptent. Tout le cours dû, « tijd » a 52. */
-    const u = backlog(430, 'tijd');
-    console.log('  unité tijd, 52 dus : ' + u.due.length + ' révisions + ' + u.fresh.length + ' rencontres');
-    ok(u.due.length + u.fresh.length === 31, 'a unit session with 52 items due holds ' + (u.due.length + u.fresh.length) + ' items, not 31');
+    /* Une unité travaillée à part : ses dus seuls comptent. Tout le cours dû, on compte ceux de « tijd ». */
+    const c = backlog(X.content.allItems().length, 'tijd');
+    const inUnit = X.srs.dueItems().filter(it => it.unit === 'tijd').length;
+    console.log('  unité tijd, ' + inUnit + ' dus : ' + c.due.length + ' révisions + ' + c.fresh.length + ' rencontres');
+    ok(inUnit >= 40 && inUnit < 80, 'the unit holds ' + inUnit + ' items due, the check needs 40 to 79');
+    ok(c.due.length + c.fresh.length === 31, 'a unit session with ' + inUnit + ' items due holds ' + (c.due.length + c.fresh.length) + ' items, not 31');
+    /* L'annonce dit ce que la séance contient : tout dû et rien à rencontrer, 41 + 0 ; cent dus, 23 + 9. */
+    const everything = backlog(X.content.allItems().length), pEvery = X.srs.plan();
+    ok(everything.due.length === 41 && everything.fresh.length === 0 && pEvery.total === 41,
+      'every item due, nothing unmet: ' + everything.due.length + ' reviews + ' + everything.fresh.length + ' new, announced ' + pEvery.total + ', not 41 + 0');
+    const hundred = backlog(100), pHundred = X.srs.plan();
+    ok(hundred.due.length === 23 && hundred.fresh.length === RESERVED && pHundred.total === 32,
+      '100 items due: ' + hundred.due.length + ' reviews + ' + hundred.fresh.length + ' new, announced ' + pHundred.total + ', not 23 + 9 = 32');
+  }
+  /* « Je ne peux pas parler » : les places se comptent sur les éléments que la séance peut servir.
+     25 dus à dire, 35 à écrire : 60 dus, mais 35 seulement servables sans parler (21 + 9, pas 22 + 9). */
+  {
+    const words = NL.content.allItems().filter(i => isWord(i) && !i.cognate);
+    fresh();
+    words.slice(0, 25).forEach(it => put(it, 3, T0 - 2 * DAY));
+    words.slice(25, 60).forEach(it => put(it, 2, T0 - DAY));
+    const held = c => c.due.length + c.fresh.length;
+    const quiet = NL.srs.compose('vandaag', undefined, { quiet: true }), loud = NL.srs.compose('vandaag');
+    ok(held(quiet) === 30, 'without speaking, 35 items can be written: the session holds ' + held(quiet) + ', not 30 (21 reviews + 9 new)');
+    ok(held(loud) === 31, 'with 60 items due, the session holds ' + held(loud) + ', not 31 (22 reviews + 9 new)');
+    console.log('  sans parler : ' + quiet.due.length + ' révisions + ' + quiet.fresh.length + ' rencontres ; en parlant : ' + loud.due.length + ' + ' + loud.fresh.length);
   }
 
   /* ------------------------------------------------------------------ */

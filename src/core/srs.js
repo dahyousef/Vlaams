@@ -6,7 +6,7 @@ NL.srs = (function () {
   'use strict';
   const { clamp, DAY, HOUR, dayKey } = NL.util;
 
-  const MAX_TASKS = 30;             // les places de base d'une séance : un élément par place
+  const BASE_SIZE = 30;             // les places de base d'une séance : un élément par place
   const MAX_STAGE = 6;
   const PRODUCE = 4;                // l'échelon de l'écrit est passé : l'élément se produit
   /* La part de chaque séance réservée à ce qui n'a jamais été rencontré. Sans
@@ -21,7 +21,7 @@ NL.srs = (function () {
   const BACKLOG_STEP = 40, EXTRA_MAX = 11;
   /* Un élément rencontré revient une fois dans la même séance : il coûte donc
      deux exercices. Au-delà de la moitié des places, la séance doublerait. */
-  const NEW_MAX = MAX_TASKS / 2;
+  const NEW_MAX = BASE_SIZE / 2;
   const RETIRE_AT = 200 * DAY;
   const MAX_INTERVAL = 365 * DAY;   // au-delà, l'élément est acquis, pas oublié      // au-delà, l'élément sort du paquet quotidien
 
@@ -428,15 +428,15 @@ NL.srs = (function () {
     const uid = source && source !== 'vandaag' ? source : null;
     /* Travailler une unité précise est un choix : le budget du jour ne la bride pas. */
     const left = uid ? Infinity : budgetLeft();
-    const base = Math.min(MAX_TASKS, left);
+    const base = Math.min(BASE_SIZE, left);
     if (base <= 0) return { due: [], fresh: [], left };
 
     let due = dueItems(now);
     if (uid) due = due.filter(it => it.unit === uid);
     if (opts && opts.quiet) due = due.filter(it => !needsVoice(it) && !(opts.without && opts.without.has(it.id)));
     const extra = Math.min(EXTRA_MAX, Math.floor(due.length / BACKLOG_STEP));
-    const places = Math.min(MAX_TASKS + extra, left);
-    const unmet = freshItems(MAX_TASKS, uid);
+    const places = Math.min(BASE_SIZE + extra, left);
+    const unmet = freshItems(BASE_SIZE, uid);
 
     /* La réserve sort AVANT que les révisions remplissent le reste, et elle
        disparaît d'elle-même quand il ne reste rien à rencontrer. */
@@ -535,7 +535,7 @@ NL.srs = (function () {
   }
 
   return {
-    RUNGS, STEP, PACE, MAX_STAGE, MAX_TASKS, PRODUCE, NEW_SHARE, NEW_MIN, NEW_MAX, TIER_MAX, RETIRE_AT,
+    RUNGS, STEP, PACE, MAX_STAGE, BASE_SIZE, PRODUCE, NEW_SHARE, NEW_MIN, NEW_MAX, TIER_MAX, RETIRE_AT,
     maxRung, pace, exerciseFor, firstAloud, needsVoice, supports, grade, seed, isSeen, stageOf, atTop,
     dueItems, counts, fold, freshItems, compose, plan, unitSpan, mistakes, recOf, budgetLeft, spend,
     SECOND_GAP, apart, lace
