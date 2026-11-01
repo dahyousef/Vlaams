@@ -112,6 +112,10 @@ function view(screen, arg) {
       else NL.srs.seed(it, round % (NL.srs.MAX_STAGE + 1));
     });
     NL.state.allRecs().forEach(r => { r.due = 0; NL.state.setRec(r); });
+    /* Each round is a day of its own: the day's budget starts again. With everything due, a
+       session has forty places, and three of them spent the 120 of one day before the rungs
+       that speak were reached. */
+    NL.state.setMeta({ exDay: null, exToday: 0 });
     if (!S.begin('vandaag')) continue;
     let turns = 0;
     while (turns++ < 40) {

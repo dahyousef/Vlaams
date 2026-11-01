@@ -108,11 +108,14 @@ _Avoid_: lesson, round, série
 
 **Place**:
 One of the positions a session has to fill, taken by one item however many exercises that
-item leads to.
+item leads to. A session has thirty base places; the backlog adds review places to them, one
+per forty items due, eleven at most.
 _Avoid_: slot, seat, position
 
 **Reserved share**:
-The places of a session kept for items never met, set aside before due items fill the rest.
+The places of a session kept for items never met: thirty per cent of the base places, never
+fewer than four, set aside before due items fill the rest. The places the backlog adds give
+it nothing.
 _Avoid_: quota, allowance, new-item slots
 
 **Reinforcement**:

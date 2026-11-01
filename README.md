@@ -97,10 +97,12 @@ hébergé, et **copier/coller** qui marche partout.
 ## Le budget quotidien
 
 Un plafond dur : **120 exercices par jour, environ 25 minutes** au rythme Normal.
-Une part de chaque séance est réservée aux éléments jamais rencontrés : trente
-pour cent des places, et jamais moins de quatre. Elle est prélevée avant que les
-révisions ne remplissent le reste, et ne rétrécit pas, tant qu'il reste du
-nouveau à rencontrer. Une seule fonction décide du contenu d'une séance
+Une séance a trente places de base, et l'arriéré lui en ajoute : une place de
+révision de plus par quarante éléments dus, onze au plus. Une part de chaque
+séance est réservée aux éléments jamais rencontrés : trente pour cent des places
+de base, et jamais moins de quatre. Elle est prélevée avant que les révisions ne
+remplissent le reste, et ne rétrécit pas, tant qu'il reste du nouveau à
+rencontrer. Une seule fonction décide du contenu d'une séance
 (`NL.srs.compose()`), et l'écran d'accueil l'interroge elle aussi (ADR 0007).
 Ce qui déborde attend, et ne s'affiche jamais comme un arriéré.
 

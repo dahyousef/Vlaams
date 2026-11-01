@@ -6,14 +6,19 @@ NL.srs = (function () {
   'use strict';
   const { clamp, DAY, HOUR, dayKey } = NL.util;
 
-  const MAX_TASKS = 22;             // les places d'une séance : un élément par place
+  const MAX_TASKS = 30;             // les places de base d'une séance : un élément par place
   const MAX_STAGE = 6;
   const PRODUCE = 4;                // l'échelon de l'écrit est passé : l'élément se produit
   /* La part de chaque séance réservée à ce qui n'a jamais été rencontré. Sans
      elle, les révisions finissent par occuper toutes les places et plus rien de
      neuf n'arrive. Elle se calcule sur la SÉANCE, jamais sur le budget du jour :
-     le budget vaut plusieurs séances, et en réserver 30 % dépasserait la séance. */
+     le budget vaut plusieurs séances, et en réserver 30 % dépasserait la séance.
+     Et sur les places de BASE, jamais sur celles que l'arriéré ajoute (compose()) :
+     la part ne cède pas devant l'arriéré, et ne gonfle pas avec lui (ADR 0007). */
   const NEW_SHARE = 0.3, NEW_MIN = 4;
+  /* Ce que l'arriéré ajoute aux places de base : une place de révision de plus par
+     BACKLOG_STEP éléments dus, EXTRA_MAX au plus (30 + 11 = 41 places). */
+  const BACKLOG_STEP = 40, EXTRA_MAX = 11;
   /* Un élément rencontré revient une fois dans la même séance : il coûte donc
      deux exercices. Au-delà de la moitié des places, la séance doublerait. */
   const NEW_MAX = MAX_TASKS / 2;
@@ -413,22 +418,29 @@ NL.srs = (function () {
        opts     { quiet, without } : une séance où l'on ne peut pas parler laisse
                 attendre ce qui ne peut être que dit, et ne reprend pas les
                 éléments (`without`, un Set d'identifiants) qu'elle contient déjà
-       → { due, fresh, left }   deux listes d'éléments, et le budget restant */
+       → { due, fresh, left }   deux listes d'éléments, et le budget restant
+     La séance suit l'arriéré (ADR 0007, sa seconde option : la part réservée ne
+     cède pas, c'est le budget qui suit). Trente places de base ; une place de
+     révision de plus par quarante éléments dus, onze au plus (41 places). La
+     réserve se calcule sur les places de base : neuf nouveaux, quel que soit
+     l'arriéré. Une unité travaillée à part suit la même règle sur ses dus. */
   function compose(source, now, opts) {
     const uid = source && source !== 'vandaag' ? source : null;
     /* Travailler une unité précise est un choix : le budget du jour ne la bride pas. */
     const left = uid ? Infinity : budgetLeft();
-    const places = Math.min(MAX_TASKS, left);
-    if (places <= 0) return { due: [], fresh: [], left };
+    const base = Math.min(MAX_TASKS, left);
+    if (base <= 0) return { due: [], fresh: [], left };
 
     let due = dueItems(now);
     if (uid) due = due.filter(it => it.unit === uid);
     if (opts && opts.quiet) due = due.filter(it => !needsVoice(it) && !(opts.without && opts.without.has(it.id)));
+    const extra = Math.min(EXTRA_MAX, Math.floor(due.length / BACKLOG_STEP));
+    const places = Math.min(MAX_TASKS + extra, left);
     const unmet = freshItems(MAX_TASKS, uid);
 
     /* La réserve sort AVANT que les révisions remplissent le reste, et elle
        disparaît d'elle-même quand il ne reste rien à rencontrer. */
-    const reserve = Math.min(unmet.length, places, Math.max(NEW_MIN, Math.ceil(places * NEW_SHARE)));
+    const reserve = Math.min(unmet.length, base, Math.max(NEW_MIN, Math.ceil(base * NEW_SHARE)));
     let nDue = Math.min(due.length, places - reserve);
     let nNew = Math.min(unmet.length, Math.max(reserve, Math.min(NEW_MAX, Math.floor((places + reserve - nDue) / 2))));
     /* Les règles de grammaire sont neuf parmi quatre cents : sans siège garanti,

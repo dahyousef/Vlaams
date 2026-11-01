@@ -7,12 +7,15 @@
    est invisible. */
 const browser = require('./lib/browser');
 const { inZone, offsets } = require('./lib/zone');
+const { dueReviews } = require('./lib/seed');
+const grow = require('./lib/grow');
 const ROOT = process.argv[2];
 const T0 = Date.parse('2026-10-05T08:00:00Z');
 const MIN = 60000, HOUR = 3600000, DAY = 86400000;
 /* Ce que la spécification promet, écrit ici plutôt que relu dans le code : au
-   moins 30 % des 22 places d'une séance, et jamais moins de quatre, vont au neuf. */
-const FEW = 4, RESERVED = Math.max(FEW, Math.ceil(22 * 0.3));
+   moins 30 % des 30 places de base d'une séance, et jamais moins de quatre, vont au
+   neuf ; les places que l'arriéré ajoute n'en donnent pas (ADR 0007). */
+const FEW = 4, RESERVED = Math.max(FEW, Math.ceil(30 * 0.3));
 
 let fails = 0, checks = 0;
 const ok = (c, m) => { checks++; if (!c) { console.log('  FAIL: ' + m); fails++; } };
@@ -54,7 +57,7 @@ function play(right) {
   return served;
 }
 
-NL.state.open().then(() => {
+NL.state.open().then(async () => {
   NL.content.refresh();
   NL.ui.go('sessie');
   const units = NL.content.units;
@@ -234,7 +237,7 @@ NL.state.open().then(() => {
     const reviews = served.filter(x => !x.unmet && !x.second && !x.retry && x.ex !== 'match').length;
     console.log('  200 éléments dus : ' + reviews + ' révisions, ' + news + ' rencontres');
     ok(news >= RESERVED, 'with 200 items due, a session met only ' + news + ' new item(s)');
-    ok(reviews + news <= NL.srs.MAX_TASKS, 'the session holds ' + (reviews + news) + ' items, more than its ' + NL.srs.MAX_TASKS + ' places');
+    ok(reviews + news === 35, 'with 200 items due, the session holds ' + (reviews + news) + ' items, not 35: the 30 base places and one more per 40 due');
 
     /* La réserve survit au rabotage : presque plus de budget, et pourtant du neuf. */
     fresh();
@@ -250,13 +253,41 @@ NL.state.open().then(() => {
     NL.srs.spend(5);
     ok(NL.srs.plan().total === 0, 'a spent day budget still offers a session');
 
-    /* Plus rien à rencontrer : la réserve disparaît, les révisions prennent tout. */
+    /* Plus rien à rencontrer : la réserve disparaît, les révisions prennent tout —
+       les trente places, et celle que soixante éléments dus ajoutent. */
     fresh();
     all.forEach((it, i) => put(it, 3, i < 60 ? T0 - DAY : T0 + 30 * DAY));
     const full = NL.srs.compose('vandaag');
-    ok(full.fresh.length === 0 && full.due.length === NL.srs.MAX_TASKS,
+    ok(full.fresh.length === 0 && full.due.length === 31,
       'with nothing left to meet, the session holds ' + full.due.length + ' reviews and ' + full.fresh.length + ' new');
     console.log('  plus rien à rencontrer : ' + full.due.length + ' révisions, ' + full.fresh.length + ' rencontre');
+  }
+
+  /* ------------------------------------------------------------------ */
+  console.log('\nLA SÉANCE SUIT L’ARRIÉRÉ — une place de révision de plus par quarante éléments dus');
+  /* ADR 0007, sa seconde option : la part réservée ne cède pas, c'est la séance qui grandit
+     avec l'arriéré. Trente places de base ; dès quarante éléments dus, une de plus par
+     quarante, onze au plus (41 places). La réserve se calcule sur les trente : neuf
+     nouveaux, quel que soit l'arriéré. Une unité travaillée à part suit la même règle sur
+     ses seuls dus. Le cours n'a que 430 éléments : la règle se lit sur une page à part, dont
+     le cours est grossi à mille éléments (test/lib/grow.js) et où rien d'autre ne change. */
+  {
+    const G = browser.open({ root: ROOT, seed: browser.SEED, now: T0, ua: browser.UA.OPR, byId: 'stub', prepare: X => grow(X, 1000) });
+    await G.NL.state.open();
+    const X = G.NL, grown = X.content.allItems().length;
+    ok(grown >= 1000, 'the grown course holds ' + grown + ' items, fewer than 1,000');
+    /* n éléments dus, et ce que compose() en fait. */
+    const backlog = (n, src) => { X.state.clearAll(); dueReviews(X, n, T0); return X.srs.compose(src || 'vandaag'); };
+    [[39, 30], [40, 31], [440, 41], [1000, 41]].forEach(([n, places]) => {
+      const c = backlog(n), held = c.due.length + c.fresh.length;
+      console.log('  ' + String(n).padStart(4) + ' dus : ' + c.due.length + ' révisions + ' + c.fresh.length + ' rencontres = ' + held + ' places');
+      ok(held === places, n + ' items due: the session holds ' + held + ' items, not ' + places + ' (30 base places, one more per 40 due, 11 at most)');
+      if (n === 40 || n === 440) ok(c.fresh.length === RESERVED, n + ' items due: ' + c.fresh.length + ' new, not the reserve of ' + RESERVED + ' computed on the 30 base places');
+    });
+    /* Une unité travaillée à part : ses dus seuls comptent. Tout le cours dû, « tijd » a 52. */
+    const u = backlog(430, 'tijd');
+    console.log('  unité tijd, 52 dus : ' + u.due.length + ' révisions + ' + u.fresh.length + ' rencontres');
+    ok(u.due.length + u.fresh.length === 31, 'a unit session with 52 items due holds ' + (u.due.length + u.fresh.length) + ' items, not 31');
   }
 
   /* ------------------------------------------------------------------ */
