@@ -208,11 +208,12 @@ NL.screens.sessie = (function () {
     if (!c || c.ex !== 'speak' || L.phase !== 'ask') return;
     NL.speech.abort(); NL.speech.clearRecording();
     L.quiet = true;
-    /* Le bilan dira combien d'exercices parlés sont gardés pour la séance suivante. */
-    L.putOff = (L.putOff || 0) + L.queue.slice(L.at).filter(x => x.ex === 'speak').length;
     const head = L.queue.slice(0, L.at), rest = L.queue.slice(L.at);
-    /* Une reprise ou un second exercice ne libère aucune place : son élément a déjà été servi. */
+    /* Une reprise ou un second exercice ne libère aucune place et n'est pas gardé : son
+       élément a déjà été servi, et revient de toute façon le lendemain. */
     const spoken = rest.filter(x => x.ex === 'speak' && !x.retry && !x.second).length;
+    /* Le bilan dira combien d'exercices parlés sont gardés pour la séance suivante. */
+    L.putOff = (L.putOff || 0) + spoken;
     /* Le second exercice d'un élément qui ne peut être que dit part avec son
        exercice parlé : servi sans parler, il le ferait monter par écrit sans
        qu'il ait jamais été dit. Rien ne le remplace : la séance raccourcit
@@ -475,16 +476,24 @@ NL.screens.sessie = (function () {
       '</div></div></div>';
   }
 
+  /* Ce que le bilan dit de la voix. Le bouton touché sur une reprise ou un second exercice,
+     sans rien de dit : rien n'est gardé, et ces exercices viennent d'être refusés. Il ne reste
+     alors rien à en dire, surtout pas qu'ils arriveront plus tard. */
+  const voiceLine = () => {
+    const kept = L.putOff > 0 ? NL.t.doneSpokenKept(L.putOff) : '';
+    if (L.spoken > 0) return NL.t.doneSpoken(L.spoken) + (kept ? ' ' + kept : '');
+    return kept || (L.quiet ? '' : NL.t.doneNoSpoken);
+  };
+
   function done() {
     const mins = Math.max(1, Math.round((Date.now() - L.started) / 60000));
     const m = NL.state.meta();
     if (L.source === 'defi') return defiDone(mins);
+    const voice = voiceLine();
     return '<div class="lesson"><div class="lesson-body"><div class="stage done-stage">' +
       '<div class="done-mark">' + (L.wrong === 0 ? '\u{1F3AF}' : '\u{2713}') + '</div>' +
       '<h2>' + (L.wrong === 0 ? NL.t.doneFlawless : NL.t.doneOk) + '</h2>' +
-      '<p class="done-sub">' + (L.spoken > 0
-        ? NL.t.doneSpoken(L.spoken) + (L.putOff > 0 ? ' ' + NL.t.doneSpokenKept(L.putOff) : '')
-        : L.putOff > 0 ? NL.t.doneSpokenKept(L.putOff) : NL.t.doneNoSpoken) + '</p>' +
+      (voice ? '<p class="done-sub">' + voice + '</p>' : '') +
       '<div class="tally">' +
       box('+' + L.xp, NL.t.tallyXp, 'gold') + box(L.right + '/' + (L.right + L.wrong), NL.t.tallyRight, 'blue') +
       box(m.streak, NL.t.tallyDays(m.streak), 'green') + box(mins + 'm', NL.t.tallyTime, '') +
