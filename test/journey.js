@@ -160,7 +160,11 @@ function view(screen, arg) {
       if (c.ex !== 'match') ok(after.indexOf('foot ok') >= 0 || after.indexOf('foot no') >= 0, c.ex + ' gave no verdict');
       if (c.ex !== 'match') ok(after.indexOf('foot no') < 0, c.ex + ' rejected a correct answer');
       if (GIVES.indexOf(c.ex) >= 0 || (c.ex === 'speak' && !NL.speech.listenBlocked())) {
-        ok(!/<p><b[^>]*>/.test(after), c.ex + ' prints the right answer just given again, in bold');
+        /* L'option de « recall » a pu laisser tomber une précision (#129) : le pied la rend, et ne
+           redit le sens que dans ce cas-là. */
+        const dropped = c.ex === 'recall' && task.opts.filter(o => o.ok)[0].label !== ex.answer(task);
+        if (dropped) ok(after.indexOf('>' + U.esc(ex.answer(task)) + '</b></p>') >= 0, 'recall does not give back the precision its option dropped: ' + ex.answer(task));
+        else ok(!/<p><b[^>]*>/.test(after), c.ex + ' prints the right answer just given again, in bold');
         unrepeated++;
       }
       ok(!/\d\s?%/.test(text(after)), c.ex + ' shows a percentage after the answer');

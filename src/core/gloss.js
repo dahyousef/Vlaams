@@ -62,6 +62,36 @@ NL.gloss = (function () {
   const senses = (item, l) => has(item, l)
     ? bare(item, l).split(/\s*\/\s*/).map(U.norm).filter(Boolean) : [];
 
+  /* Un sens sans ses précisions : « neuf (le nombre) » se lit « neuf ». */
+  const plain = s => String(s).replace(/\s*\([^)]*\)/g, '').trim();
+
+  /* Ce que disent deux textes de sens, précisions tombées : « café (le lieu) / le bistrot » et « café »
+     disent la même chose à qui les lit côte à côte. */
+  const readings = s => plain(s).split(/\s*\/\s*/).map(U.norm).filter(Boolean);
+  function shareSense(a, b) {
+    const rb = readings(b);
+    return readings(a).some(x => rb.indexOf(x) >= 0);
+  }
+  const sameOption = (a, b, l) => shareSense(bare(a, l), bare(b, l));
+
+  /* Le néerlandais se lit dans ce texte : même rapport pour un mot transparent et pour une option. */
+  const looksLike = (item, w, s) => U.ratio(U.bare(item.nl), w === 'en' ? s.replace(/^to\s+(?=\S)/i, '') : s) > 0.62;
+  /* Une précision française ne change pas ce à quoi le mot ressemble : « le serveur (informatique) »
+     reste le mot de « server ». L'anglais garde la sienne : « half (before the hour) » est un faux ami. */
+  const cognateIn = (item, w) => looksLike(item, w, w === 'en' ? bare(item, 'en') : plain(bare(item, 'fr')));
+
+  /* Un sens parmi les options de « recall ». La précision qui le termine dit lequel à qui cherche le
+     mot ; face au néerlandais elle n'a rien à départager, et l'option seule à en porter se choisirait
+     sans connaître le mot. Le pied la montre. Elle reste dans trois cas : elle dit lequel de plusieurs
+     sens (« pouvoir / savoir (faire) »), elle ne termine pas le sens (« I am forty (years old). »,
+     un mot à soi), ou le mot sans elle se lirait comme son néerlandais sans le traduire : « half ». */
+  function option(item, l) {
+    const w = l || langOf(item), s = bare(item, w);
+    if (s.indexOf('/') >= 0) return s;
+    const cut = s.replace(/^(.*\S)\s*\([^()]*\)\s*$/, '$1');
+    return cut !== s && item.kind === 'word' && looksLike(item, w, cut) && !cognateIn(item, w) ? s : cut;
+  }
+
   /* Même sens pour la note et les frères : un sens français commun, ou le même
      néerlandais sans article. C'est la règle d'avant, et le français seul y décide. */
   function sameSense(a, b) {
@@ -77,7 +107,7 @@ NL.gloss = (function () {
   }
 
   /* Des mots français qui finissent comme un infinitif sans en être un. */
-  const NOT_VERBS = ['hier', 'entre', 'contre', 'propre'];
+  const NOT_VERBS = ['hier', 'entre', 'contre', 'propre', 'Flandre'];
 
   /* La nature du mot, grossièrement : « oui » face à « sorry / spreken / ja » se
      résout sans connaître le mot, parce qu'un verbe ne répond pas à « oui ». */
@@ -85,7 +115,7 @@ NL.gloss = (function () {
     if (x.kind !== 'word') return x.kind;
     if (x.art) return 'noun';
     const w = l || langOf(x);
-    const first = bare(x, w).split(/\s*\/\s*/)[0];
+    const first = plain(bare(x, w)).split(/\s*\/\s*/)[0];
     if (w === 'en') {
       if (/^to\s+\S/.test(first) && /en$/.test(U.bare(x.nl))) return 'verb';
       return 'other';
@@ -95,12 +125,7 @@ NL.gloss = (function () {
   }
 
   /* Un mot transparent : son néerlandais ressemble à son sens, dans la langue lue. */
-  function cognate(item) {
-    if (item.kind !== 'word') return false;
-    const w = langOf(item);
-    const g = w === 'en' ? bare(item, 'en').replace(/^to\s+(?=\S)/i, '') : bare(item, 'fr');
-    return U.ratio(U.bare(item.nl), g) > 0.62;
-  }
+  const cognate = item => item.kind === 'word' && cognateIn(item, langOf(item));
 
   /* Une prose du cours qui porte des exemples en néerlandais : <span class="ex">, et toute balise
      class="nl" (<i class="nl">Morgen ik ga</i>), est du néerlandais, et le dit à un lecteur d'écran.
@@ -123,5 +148,5 @@ NL.gloss = (function () {
   const mark = (open, inner, close) => open + '<span' + attr('nl') + '>' + inner + '</span>' + close;
   const quoted = x => U.esc(of(x)).replace(QUOTES, (m, a, q, b, c, r, d) => a !== undefined ? mark(a, q, b) : mark(c, r, d));
 
-  return { LANGS, TAGS, prose, quoted, use, current, other, has, langOf, tag, attr, langAttr, of, meaning, pair, bare, senses, sameSense, sameMeaning, wordClass, cognate };
+  return { LANGS, TAGS, prose, quoted, use, current, other, has, langOf, tag, attr, langAttr, of, meaning, pair, bare, senses, option, shareSense, sameOption, sameSense, sameMeaning, wordClass, cognate };
 })();

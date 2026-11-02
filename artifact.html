@@ -788,6 +788,36 @@ NL.gloss = (function () {
   const senses = (item, l) => has(item, l)
     ? bare(item, l).split(/\s*\/\s*/).map(U.norm).filter(Boolean) : [];
 
+  /* Un sens sans ses précisions : « neuf (le nombre) » se lit « neuf ». */
+  const plain = s => String(s).replace(/\s*\([^)]*\)/g, '').trim();
+
+  /* Ce que disent deux textes de sens, précisions tombées : « café (le lieu) / le bistrot » et « café »
+     disent la même chose à qui les lit côte à côte. */
+  const readings = s => plain(s).split(/\s*\/\s*/).map(U.norm).filter(Boolean);
+  function shareSense(a, b) {
+    const rb = readings(b);
+    return readings(a).some(x => rb.indexOf(x) >= 0);
+  }
+  const sameOption = (a, b, l) => shareSense(bare(a, l), bare(b, l));
+
+  /* Le néerlandais se lit dans ce texte : même rapport pour un mot transparent et pour une option. */
+  const looksLike = (item, w, s) => U.ratio(U.bare(item.nl), w === 'en' ? s.replace(/^to\s+(?=\S)/i, '') : s) > 0.62;
+  /* Une précision française ne change pas ce à quoi le mot ressemble : « le serveur (informatique) »
+     reste le mot de « server ». L'anglais garde la sienne : « half (before the hour) » est un faux ami. */
+  const cognateIn = (item, w) => looksLike(item, w, w === 'en' ? bare(item, 'en') : plain(bare(item, 'fr')));
+
+  /* Un sens parmi les options de « recall ». La précision qui le termine dit lequel à qui cherche le
+     mot ; face au néerlandais elle n'a rien à départager, et l'option seule à en porter se choisirait
+     sans connaître le mot. Le pied la montre. Elle reste dans trois cas : elle dit lequel de plusieurs
+     sens (« pouvoir / savoir (faire) »), elle ne termine pas le sens (« I am forty (years old). »,
+     un mot à soi), ou le mot sans elle se lirait comme son néerlandais sans le traduire : « half ». */
+  function option(item, l) {
+    const w = l || langOf(item), s = bare(item, w);
+    if (s.indexOf('/') >= 0) return s;
+    const cut = s.replace(/^(.*\S)\s*\([^()]*\)\s*$/, '$1');
+    return cut !== s && item.kind === 'word' && looksLike(item, w, cut) && !cognateIn(item, w) ? s : cut;
+  }
+
   /* Même sens pour la note et les frères : un sens français commun, ou le même
      néerlandais sans article. C'est la règle d'avant, et le français seul y décide. */
   function sameSense(a, b) {
@@ -803,7 +833,7 @@ NL.gloss = (function () {
   }
 
   /* Des mots français qui finissent comme un infinitif sans en être un. */
-  const NOT_VERBS = ['hier', 'entre', 'contre', 'propre'];
+  const NOT_VERBS = ['hier', 'entre', 'contre', 'propre', 'Flandre'];
 
   /* La nature du mot, grossièrement : « oui » face à « sorry / spreken / ja » se
      résout sans connaître le mot, parce qu'un verbe ne répond pas à « oui ». */
@@ -811,7 +841,7 @@ NL.gloss = (function () {
     if (x.kind !== 'word') return x.kind;
     if (x.art) return 'noun';
     const w = l || langOf(x);
-    const first = bare(x, w).split(/\s*\/\s*/)[0];
+    const first = plain(bare(x, w)).split(/\s*\/\s*/)[0];
     if (w === 'en') {
       if (/^to\s+\S/.test(first) && /en$/.test(U.bare(x.nl))) return 'verb';
       return 'other';
@@ -821,12 +851,7 @@ NL.gloss = (function () {
   }
 
   /* Un mot transparent : son néerlandais ressemble à son sens, dans la langue lue. */
-  function cognate(item) {
-    if (item.kind !== 'word') return false;
-    const w = langOf(item);
-    const g = w === 'en' ? bare(item, 'en').replace(/^to\s+(?=\S)/i, '') : bare(item, 'fr');
-    return U.ratio(U.bare(item.nl), g) > 0.62;
-  }
+  const cognate = item => item.kind === 'word' && cognateIn(item, langOf(item));
 
   /* Une prose du cours qui porte des exemples en néerlandais : <span class="ex">, et toute balise
      class="nl" (<i class="nl">Morgen ik ga</i>), est du néerlandais, et le dit à un lecteur d'écran.
@@ -849,7 +874,7 @@ NL.gloss = (function () {
   const mark = (open, inner, close) => open + '<span' + attr('nl') + '>' + inner + '</span>' + close;
   const quoted = x => U.esc(of(x)).replace(QUOTES, (m, a, q, b, c, r, d) => a !== undefined ? mark(a, q, b) : mark(c, r, d));
 
-  return { LANGS, TAGS, prose, quoted, use, current, other, has, langOf, tag, attr, langAttr, of, meaning, pair, bare, senses, sameSense, sameMeaning, wordClass, cognate };
+  return { LANGS, TAGS, prose, quoted, use, current, other, has, langOf, tag, attr, langAttr, of, meaning, pair, bare, senses, option, shareSense, sameOption, sameSense, sameMeaning, wordClass, cognate };
 })();
 </script>
 <script>
@@ -3719,7 +3744,7 @@ NL.content.units = NL.content.units || [];
       W('de planning', { fr: 'le planning', en: 'schedule' }, 'de'),
       W('de omgeving', { fr: 'l’environnement', en: 'environment' }, 'de'),
       W('de databank', { fr: 'la base de données', en: 'database' }, 'de'),
-      W('de server', { fr: 'le serveur informatique', en: 'server' }, 'de'),
+      W('de server', { fr: 'le serveur (informatique)', en: 'server' }, 'de'),
       W('de mail', { fr: 'le mail', en: 'email' }, 'de'),
       W('het verslag', { fr: 'le compte rendu', en: 'report' }, 'het'),
       W('het thuiswerk', { fr: 'le télétravail', en: 'working from home' }, 'het'),
@@ -7870,7 +7895,7 @@ NL.ex = (function () {
      éléments qui n'ont rien dans cette langue. */
   function others(item, n, field) {
     const lang = NL.gloss.langOf(item);
-    const label = x => field === 'gloss' ? NL.gloss.bare(x, lang) : U.bare(x.nl);
+    const label = x => field === 'gloss' ? NL.gloss.option(x, lang) : U.bare(x.nl);
     const cls = NL.gloss.wordClass(item, lang);
     const target = label(item), tn = U.norm(target), len = target.length;
 
@@ -7889,7 +7914,8 @@ NL.ex = (function () {
        synonyme, ni une réponse que l'un des deux accepte : « dag » face à
        « bonjour » ne doit pas offrir « hallo » comme faux. */
     const mine = accepted(item);
-    pool = pool.filter(x => U.norm(label(x)) !== tn && !NL.gloss.sameMeaning(x, item) && !accepts(mine, x) && !accepts(accepted(x), item));
+    pool = pool.filter(x => U.norm(label(x)) !== tn && !NL.gloss.sameMeaning(x, item) && !accepts(mine, x) && !accepts(accepted(x), item)
+      && !(field === 'gloss' && NL.gloss.sameOption(x, item, lang)));
 
     const score = x => {
       const s = label(x);
@@ -7906,8 +7932,16 @@ NL.ex = (function () {
     /* On garde le peloton de tête puis on tire dedans : proche sans être
        toujours le même trio pour un mot donné. */
     const ranked = U.shuffle(pool).sort((a, b) => score(b) - score(a));
-    const short = ranked.slice(0, Math.max(n, Math.min(ranked.length, n * 3)));
-    return U.uniq(U.sample(short, n).map(label)).slice(0, n);
+    const labels = U.uniq(ranked.map(label));
+    const head = labels.slice(0, Math.max(n, Math.min(labels.length, n * 3)));
+    if (field !== 'gloss') return U.sample(head, n);
+    /* Deux leurres qui disent la même chose s'écartent sans connaître le mot : « quand / alors » à côté
+       de « si / quand / comme ». On tire en sautant ce qu'un leurre déjà tiré dit, le reste du classement
+       servant de réserve, et une carte qui n'a rien d'autre garde ses quatre options. */
+    const order = U.shuffle(head).concat(labels.slice(head.length));
+    const drawn = [];
+    order.forEach(l => { if (drawn.length < n && !drawn.some(d => NL.gloss.shareSense(d, l))) drawn.push(l); });
+    return drawn.concat(order.filter(l => drawn.indexOf(l) < 0).slice(0, n - drawn.length));
   }
   function bankFor(sentence, item, extra) {
     const right = U.tiles(sentence);
@@ -7964,7 +7998,7 @@ NL.ex = (function () {
     asks: 'nl', answers: 'gloss',
     given: chosenLabel,
     build(item) {
-      const opts = U.shuffle([{ label: NL.gloss.bare(item), ok: true }].concat(
+      const opts = U.shuffle([{ label: NL.gloss.option(item), ok: true }].concat(
         others(item, 3, 'gloss').map(l => ({ label: l, ok: false }))));
       return { type: 'recall', item, opts };
     },
