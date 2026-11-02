@@ -2860,6 +2860,21 @@ NL.speech = (function () {
   }
 
   /* ---------------- scoring ---------------- */
+  /* A voice has no spaces: the recogniser writes « hoe lang » or « hoelang » as it
+     pleases. What it heard is respaced as the target writes it, and only when the
+     letters match exactly: two heard words that are one target word, or one heard
+     word that is two target words in a row. */
+  function respaced(heard, target) {
+    const S = words(heard), T = words(target), out = [];
+    for (let i = 0; i < S.length; i++) {
+      const two = T.findIndex((t, j) => j + 1 < T.length && t + T[j + 1] === S[i]);
+      if (i + 1 < S.length && T.indexOf(S[i] + S[i + 1]) >= 0) out.push(S[i] + S[++i]);
+      else if (two >= 0) out.push(T[two], T[two + 1]);
+      else out.push(S[i]);
+    }
+    return out.join(' ');
+  }
+
   /* Scores the best of the alternatives the recogniser offered, so a single
      misheard word does not sink an otherwise correct sentence. */
   function score(heardList, target) {
@@ -2867,9 +2882,10 @@ NL.speech = (function () {
     if (!cands.length) return { pct: 0, parts: diffWords('', target), heard: '', pass: false };
     let best = null;
     cands.forEach(h => {
-      const parts = diffWords(h, target);
+      const said = respaced(h, target);
+      const parts = diffWords(said, target);
       const hit = parts.filter(p => p.ok).length;
-      const extra = Math.max(0, words(h).length - words(target).length);
+      const extra = Math.max(0, words(said).length - words(target).length);
       const pct = Math.round(Math.max(0, hit / Math.max(1, parts.length) - extra * 0.06) * 100);
       if (!best || pct > best.pct) best = { pct, parts, heard: h };
     });

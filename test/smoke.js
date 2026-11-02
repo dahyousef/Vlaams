@@ -861,6 +861,21 @@ NL.state.open().then(() => {
     ok(r.pass === want, 'scoring "' + label + '" gave ' + r.pct + '% pass=' + r.pass + ', wanted ' + want);
     console.log('  ' + label.padEnd(14) + r.pct + '%  ' + (r.pass ? 'pass' : 'fail'));
   });
+  /* La voix n'a pas de blancs : le reconnaisseur écrit « hoe lang » ou « hoelang » à son gré, et
+     celui qui a bien dit la phrase n'en est pas responsable (#128). Seuls des mots qui, collés,
+     font exactement le mot attendu comptent pour lui. */
+  [['hoe lang duurt het', 'Hoelang duurt het?', true, 'heard in two'],
+   ['hoelang duurt het', 'Hoelang duurt het?', true, 'heard in one'],
+   ['hoe lang', 'hoelang', true, 'the word alone'],
+   ['hoever is het', 'Hoe ver is het?', true, 'joined by ear'],
+   ['hoe laat duurt het', 'Hoelang duurt het?', false, 'another word'],
+   ['lang duurt het', 'Hoelang duurt het?', false, 'half the word'],
+   ['hoe duurt het', 'Hoelang duurt het?', false, 'other half']].forEach(([said, target, want, label]) => {
+    const r = NL.speech.score([said], target);
+    ok(r.pass === want, 'scoring "' + said + '" for "' + target + '" gave ' + r.pct + '% pass=' + r.pass + ', wanted ' + want);
+    ok(!want || r.pct === 100, 'scoring "' + said + '" for "' + target + '" passes at ' + r.pct + '%: the screen would show it as a partial match');
+    console.log('  ' + label.padEnd(14) + r.pct + '%  ' + (r.pass ? 'pass' : 'fail'));
+  });
 
   console.log('\nPROGRESS');
   const before = NL.content.unitProgress('overleven');
