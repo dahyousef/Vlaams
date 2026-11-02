@@ -497,7 +497,7 @@ NL.state.open().then(() => {
       S.abandon();
       return v;
     };
-    const need = (id, i) => NL.gloss.of(NL.content.openTasks[id].need[i].what);
+    const need = (id, i) => NL.gloss.of(NL.content.byId(id).open.need[i].what);
     const meets = (id, input, i, yes, why) => {
       const v = wrote(id, input);
       if (!v) return;
@@ -507,6 +507,10 @@ NL.state.open().then(() => {
     meets('g-present', 'Ik ben een kind van zes jaar.', 1, false, '« in » inside « kind » is not a place');
     meets('g-present', 'Ik werk in een ziekenhuis in Brussel.', 1, true, '« in » is a whole word there');
     meets('g-perfect-intro', 'Gisteravond heb ik een nieuwe app op mijn gsm geïnstalleerd.', 1, true, '« geïnstalleerd » is one word, « ï » a letter');
+    /* Le cours écrit « hoelang » (#128) et l'apprenant peut encore l'écrire en deux mots : la tâche
+       libre compte les deux pour la durée, sans le verbe qui les rattraperait. */
+    meets('onderweg:p4', 'Hoelang is de rit naar Brussel?', 0, true, '« hoelang » in one word asks about the duration');
+    meets('onderweg:p4', 'Hoe lang is de rit naar Brussel?', 0, true, '« hoe lang » in two words asks it too');
 
     /* Un besoin posé le temps de quelques réponses, puis remis : aucune tâche du cours
        ne montre ces deux cas-ci. */
