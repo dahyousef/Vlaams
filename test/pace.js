@@ -262,8 +262,10 @@ NL.state.open().then(() => {
   P('production (parler, écrire, ouvert)', (pc('speak') + pc('type') + pc('open')) + '%');
   P('arriéré maximum', maxBacklog);
   /* La séance suit l'arriéré (ADR 0007) : il reste sous les trois quarts du cours, chez tout
-     apprenant à une séance par jour. Mesuré sur 200 jours, 85 % de bonnes réponses : 621 sur
-     1 035 et 754 sur 1 192 depuis qu'elle le suit ; 857 et 993 quand elle avait 22 places fixes.
+     apprenant à une séance par jour. Mesuré sur 200 jours, 85 % de bonnes réponses : autour de
+     650 sur 1 035 (plafond 776) et un peu moins de 800 sur 1 192 (plafond 894) depuis qu'elle le
+     suit ; 857 et 993 quand elle avait 22 places fixes. Ces pics bougent de quelques dizaines dès
+     que le contenu change : c'est le plafond qui est exigé.
      Ce plafond ne juge qu'un cours rencontré à temps. Sur 1 398 éléments, tout est rencontré le
      jour 155, et 22 places fixes montent encore à 1 158 : le plafond le voit. Sur 1 580, tout
      n'est rencontré que le jour 175, et 22 places fixes restent à 1 160, sous les trois quarts :

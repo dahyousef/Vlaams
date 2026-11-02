@@ -202,7 +202,7 @@ NL.state.open().then(() => {
      employait un de leurs mots avant qu'il soit enseigné. Le plan 4c, qui écrit leurs phrases, peut le baisser. */
   const AHEAD_BUDGET = 129;
   ok(ahead <= AHEAD_BUDGET, ahead + ' phrases d’exemple empruntent du vocabulaire à une unité ultérieure, budget ' + AHEAD_BUDGET +
-    ' — baisser le budget quand on en corrige, jamais le lever');
+    ' — baisser le budget quand on en corrige, jamais le lever (sa seule hausse, de 61 à 129, comptait des emprunts qui existaient déjà : les unités 13–34 les ont révélés)');
   ok(ahead >= AHEAD_BUDGET, 'seulement ' + ahead + ' phrases empruntent en avant : baisser AHEAD_BUDGET à ' + ahead + ' pour verrouiller le gain');
   console.log('  séquence        ' + ahead + ' / ' + sentences + ' phrases empruntent en avant (budget ' + AHEAD_BUDGET + ')');
 

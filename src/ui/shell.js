@@ -46,7 +46,7 @@ NL.ui = (function () {
     if (b) b.scrollTop = 0;
     window.scrollTo(0, 0);
     const S = NL.screens[route];
-    if (S && S.entered) S.entered(arg);
+    if (S && S.entered) S.entered();
   }
 
   function fromHash() {

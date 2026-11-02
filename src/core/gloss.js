@@ -125,7 +125,9 @@ NL.gloss = (function () {
   }
 
   /* Un mot transparent : son néerlandais ressemble à son sens, dans la langue lue. */
-  const cognate = item => item.kind === 'word' && cognateIn(item, langOf(item));
+  function cognate(item) {
+    return item.kind === 'word' && cognateIn(item, langOf(item));
+  }
 
   /* Une prose du cours qui porte des exemples en néerlandais : <span class="ex">, et toute balise
      class="nl" (<i class="nl">Morgen ik ga</i>), est du néerlandais, et le dit à un lecteur d'écran.

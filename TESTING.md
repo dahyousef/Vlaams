@@ -65,9 +65,11 @@ pas de l'heure à laquelle on commence.
 
 L'arriéré d'un cours de phase 4 se voit désormais sur le vrai cours : sur ses 1 035
 éléments et 200 jours, une séance de 22 places fixes le laissait monter à 857 ; la
-séance qui suit l'arriéré (ADR 0007) le tient à 621, sous les trois quarts du cours
-qu'exige chaque apprenant à une séance par jour. L'apprenant du grand cours (`groot`)
-regarde un peu au-delà : 993 contre 754 sur 1 192 éléments.
+séance qui suit l'arriéré (ADR 0007) le tient autour de 650, sous les trois quarts du
+cours (776) qu'exige chaque apprenant à une séance par jour. L'apprenant du grand cours
+(`groot`) regarde un peu au-delà : 993 contre un peu moins de 800 sur 1 192 éléments
+(plafond 894). Ces pics bougent de quelques dizaines dès que le contenu change : c'est
+le plafond qui est exigé, pas le chiffre.
 
 Ce plafond a une limite, et `pace.js` la dit : il ne juge qu'un cours rencontré à
 temps. Sur 1 580 éléments, 200 jours ne suffisent plus : 22 places fixes restent à
@@ -196,10 +198,13 @@ werken »). Restent donc invérifiés : l'article devant un **autre** nom à
 l'intérieur d'une phrase d'exemple, l'idiome, et le registre.
 
 Certains de ces contrôles portent un budget plutôt qu'une exigence de zéro, parce
-que le contenu actuel enfreint déjà la règle : 61 phrases d'exemple empruntent du
+que le contenu actuel enfreint déjà la règle : 129 phrases d'exemple empruntent du
 vocabulaire à une unité ultérieure, et 3 échelons n'ont aucun exercice possible.
 Un budget ne peut que baisser, et chacun échoue aussi quand le compte passe
-dessous, pour que le gain soit verrouillé. Les leurres, les explications et les
+dessous, pour que le gain soit verrouillé. Une seule exception, le premier : il est
+monté de 61 à 129 avec les unités 13–34, sans qu'aucune phrase change. Ces phrases
+employaient déjà des mots que le cours n'enseignait nulle part, un emprunt que rien ne
+comptait ; les unités, en les enseignant plus tard, l'ont révélé. Les leurres, les explications et les
 guillemets n'en ont plus : `content.js` exige que chaque élément de « Comment le
 dit-on ici ? » ait ses leurres et chaque élément son explication en français et
 en anglais (la note d'un mot ou d'une phrase, la règle d'un motif), et
