@@ -152,7 +152,7 @@ ok(/`VERIFIER: fail — a suite still runs`/.test(verLine) && /`VERIFIER: fail �
 ok(/No `exit=` line, `exit=0` without that line[^.]*, or `exit=129`, `130`, `137` or `143`[^.]*commit\. Run step 1's `--running` check/.test(verLine), 'une suite qu\'on a tuée n\'est pas un échec du code, et le vérificateur regarde si elle tourne encore');
 // Tuée depuis Windows (taskkill /F, mesuré le 2026-11-02), une suite rend exit=0 sans sa dernière ligne : exit=0 seul serait un faux succès.
 const lastEcho = fs.readFileSync(path.join(ROOT, 'test/run-all.sh'), 'utf8').trim().split('\n').pop().replace(/^echo "|"$/g, '');
-ok(verLine.indexOf('Pass: `exit=0`, the line `' + lastEcho + '` before it') >= 0, 'verifier.md ne compte un succès qu\'avec la dernière ligne de run-all.sh');
+ok(verLine.indexOf('Pass: `exit=0`, the line `' + lastEcho + '` just above it') >= 0, 'verifier.md ne compte un succès qu\'avec la dernière ligne de run-all.sh');
 // Un test qui plante (134, 139) arrête la suite aussi, mais c'est un résultat : `suite cut off` la relancerait sans rien corriger.
 ok(!/above 128/.test(verLine), 'verifier.md ne prend pas le plantage d\'un test pour une coupure');
 ok(!/kill -0/.test(verLine), 'verifier.md n\'a qu\'une façon de regarder, utilisable depuis PowerShell');

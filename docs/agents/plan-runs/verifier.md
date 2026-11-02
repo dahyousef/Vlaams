@@ -35,7 +35,7 @@ Your dispatch names the run file and the commit to verify. In the worktree named
    line puts back `index.html` and `artifact.html` when the suite's rebuild differs from the commit in line endings
    only (`core.autocrlf`). A real difference stays, and the check below fails on it.
 4. Read the last 40 lines of `<WS>/tmp/suite.txt`.
-   - Pass: `exit=0`, the line `TOUTE LA SUITE EST PASSÉE` before it, and no line after it naming `index.html` or
+   - Pass: `exit=0`, the line `TOUTE LA SUITE EST PASSÉE` just above it, and no line after it naming `index.html` or
      `artifact.html`.
    - No `exit=` line, `exit=0` without that line (what a force-kill from Windows leaves), or `exit=129`, `130`, `137`
      or `143` (the signals that stop a process from outside): it was killed or goes on without its shell, which says
