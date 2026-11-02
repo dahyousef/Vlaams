@@ -149,12 +149,23 @@ function alreadySplit(kindDir, keep) {
     (unnamed.length ? '; in its batches but not named: ' + unnamed.join(' ') : '')] };
 }
 
-/* Un fichier JSON du lot : un tableau, ou une ligne `fail`. Il se décode d'abord, strictement : lu en 'utf8', un
-   octet invalide devient U+FFFD, que JSON.parse prend pour du texte. `ignoreBOM` garde la marque d'ordre, que
-   JSON.parse refuse : un décodeur ordinaire l'enlèverait en silence. */
+/* Le texte d'un fichier du lot, ou une ligne `fail`. Il se décode strictement : lu en 'utf8', un octet invalide
+   devient U+FFFD, que JSON.parse prend pour du texte. `ignoreBOM` garde la marque d'ordre, que JSON.parse refuse :
+   un décodeur ordinaire l'enlèverait en silence. Un U+FFFD déjà là, tel quel ou en échappement, est un caractère
+   perdu par une conversion, jamais un texte du cours. */
+function readText(dir, file, out) {
+  let bytes, text;
+  try { bytes = fs.readFileSync(path.join(dir, file)); } catch (e) { out.push('fail ' + file + ' -: cannot be read (' + e.code + ')'); return null; }
+  try { text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes); } catch (e) { out.push('fail ' + file + ' -: not UTF-8'); return null; }
+  if (/�|\\ufffd/i.test(text)) { out.push('fail ' + file + ' -: holds U+FFFD, a character lost in a conversion'); return null; }
+  return text;
+}
+
+/* Un fichier JSON du lot : un tableau, ou une ligne `fail`. */
 function readArray(dir, file, out) {
-  let text, v;
-  try { text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(fs.readFileSync(path.join(dir, file))); } catch (e) { out.push('fail ' + file + ' -: not UTF-8'); return null; }
+  const text = readText(dir, file, out);
+  if (text === null) return null;
+  let v;
   try { v = JSON.parse(text); } catch (e) { out.push('fail ' + file + ' -: not JSON (' + e.message.split('\n')[0] + ')'); return null; }
   if (!Array.isArray(v)) { out.push('fail ' + file + ' -: not a JSON array'); return null; }
   if (v.some(x => !x || typeof x !== 'object' || Array.isArray(x) || typeof x.id !== 'string')) { out.push('fail ' + file + ' -: an entry is not an object with an id'); return null; }
@@ -282,7 +293,9 @@ function readBatch(repo, batchDir) {
   const disputed = ids(id => /^dispute: /.test(verdictOf('review.json', id)));
   step('disputes.md', disputed.length ? ['review.json', 'retry-review.json'] : ['review.json'], out => {
     const want = ids(id => /^for maintainer: /.test(verdictOf('review.json', id)) || /^(dispute|for maintainer): /.test(verdictOf('retry-review.json', id)));
-    const secs = sections(fs.readFileSync(path.join(batchDir, 'disputes.md'), 'utf8')), seen = new Set();
+    const text = readText(batchDir, 'disputes.md', out);
+    if (text === null) return null;
+    const secs = sections(text), seen = new Set();
     secs.forEach(s => {
       if (seen.has(s.id)) out.push('fail disputes.md ' + s.id + ': two sections');
       seen.add(s.id);
