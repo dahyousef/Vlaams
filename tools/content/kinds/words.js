@@ -1,7 +1,7 @@
 /* Le genre words : les mots des unités que le cours n'a pas encore (UNITS, les 22 unités de la
    phase 4). La tâche « FAN words » du plan en écrit les lignes ; ce module les coupe, les vérifie et
    les fond (tools/content/lib/kit.js). Sa source n'est pas un élément du cours mais une unité à
-   venir (sourceOf) : une ligne est une place, « <unité>:s<k> », que le rédacteur remplit d'un mot.
+   venir (sourceOf) : une ligne est un slot, « <unité>:s<k> », que le rédacteur remplit d'un mot.
    Une ligne écrite porte six champs :
      nl        le mot tel que le cours l'écrit : un nom avec son article (« de tafel »), un verbe à
                l'infinitif, le reste nu
@@ -14,7 +14,7 @@
                course              une forme que l'extrait n'a pas et qu'un collègue flamand dit : la
                                    ligne va au mainteneur
    Merge n'écrit aucune table : son write récrit src/content/lexicon.a1c.js entier, depuis UNITS et
-   les lignes prises dans l'ordre des places (les places écartées ne laissent pas de trou), et ajoute
+   les lignes prises dans l'ordre des slots (les slots écartés ne laissent pas de trou), et ajoute
    à test/data/ids.tsv une ligne par mot. L'empreinte ne couvre rien que Merge écrive : relancée, elle
    récrit le même fichier. Les lignes imprimées sont en anglais, comme celles du kit. */
 const fs = require('fs'), path = require('path');
@@ -25,8 +25,8 @@ const { literal: lit } = require('../lib/table');
 const { oneLine, sig } = require(path.join(__dirname, '..', '..', '..', 'test', 'lib', 'text'));
 
 /* Les 22 unités (phase 4, D10, approuvées les 28 et 31 octobre 2026), dans l'ordre du cours. target
-   est le nombre de places, pas un compte ; samples, les mots du mainteneur, qui prennent les
-   premières places. */
+   est le nombre de slots, pas un compte ; samples, les mots du mainteneur, qui prennent les
+   premiers slots. */
 const UNITS = [
   { id: 'vragen', n: 13, nlName: 'Vragen', name: { fr: 'Questions et petits mots', en: 'Questions and small words' }, track: 'beide', icon: '❓', target: 30,
     blurb: { fr: 'Les mots qui posent une question, et ceux qui lient deux idées : parce que, mais, quand.', en: 'The words that ask a question, and those that join two ideas: because, but, when.' },
@@ -101,7 +101,7 @@ const EVIDENCE = /^(wiktionary:\S(.*\S)?|course)$/;
 const LEXICON = path.join('src', 'content', 'lexicon.a1c.js');
 const IDS = path.join('test', 'data', 'ids.tsv');
 
-/* La source d'une place : son unité, telle que UNITS l'écrit, dont nl est l'id, et fr et en ses noms
+/* La source d'un slot : son unité, telle que UNITS l'écrit, dont nl est l'id, et fr et en ses noms
    (l'outil de lecture les montre ; l'empreinte ne les lit pas). L'unité n'est pas encore dans le cours
    quand Split coupe ; elle y est après Merge, et l'empreinte ne change pas. */
 const unitOf = id => UNITS.find(u => u.id === id.split(':')[0]);
@@ -110,7 +110,7 @@ const sourceOf = (C, id) => {
   return u ? Object.assign({}, u, { nl: u.id, fr: u.name.fr, en: u.name.en }) : undefined;
 };
 
-/* Split : un lot par unité de UNITS que le cours n'a pas encore, une ligne par place. Après Merge,
+/* Split : un lot par unité de UNITS que le cours n'a pas encore, une ligne par slot. Après Merge,
    les unités fondues sont dans le cours : un second Split ne coupe rien pour elles, même nommé. Ce
    genre ignore ctx.ids, et le kit refuse un id qu'il ne coupe pas : une ligne fondue ne se récrit pas
    par un Split nommé (docs/agents/plan-runs/design-sitting.md). */
@@ -187,8 +187,8 @@ function check(row, input, ctx) {
     if (m) why.push('a word that is not a noun carries no article: nl is « ' + m[2] + ' »');
   }
 
-  /* Un mot nouveau ne redit pas le néerlandais d'un élément du cours (contrainte du plan), et une
-     place qui a son mot-témoin l'écrit, sauf si le cours a déjà ce mot (le rédacteur le dit dans unsure). */
+  /* Un mot nouveau ne redit pas le néerlandais d'un élément du cours (contrainte du plan), et un
+     slot qui a son mot-témoin l'écrit, sauf si le cours a déjà ce mot (le rédacteur le dit dans unsure). */
   const had = T.itemOf(row.nl);
   if (had) why.push('« ' + row.nl + ' » is already an item of the course, ' + had.id + ' « ' + had.nl + ' »: a new word never repeats an existing item\'s Dutch');
   if (input.sample && !T.itemOf(input.sample) && U.norm(U.bare(input.sample)) !== key) why.push('this slot writes the sample « ' + input.sample + ' », not « ' + row.nl + ' »');
@@ -217,7 +217,7 @@ function check(row, input, ctx) {
 }
 
 /* Le texte du lexique : l'en-tête, puis chaque unité de UNITS qui a des mots pris, dans l'ordre, ses
-   mots dans l'ordre des places. Les chaînes s'écrivent entre apostrophes droites, échappées ; l'icône
+   mots dans l'ordre des slots. Les chaînes s'écrivent entre apostrophes droites, échappées ; l'icône
    en séquence \u{…}, comme les lexiques écrits à la main. */
 const pair = g => '{ fr: ' + lit(g.fr) + ', en: ' + lit(g.en) + ' }';
 const icon = s => '\'' + Array.from(s).map(c => '\\u{' + c.codePointAt(0).toString(16).toUpperCase() + '}').join('') + '\'';
@@ -251,7 +251,7 @@ function lexicon(units) {
 /* Merge : refuse deux lignes prises qui écrivent le même mot (elle les nomme toutes : chaque lot n'a vu que
    les siennes), une qui redit un élément du cours (le cours a pu bouger depuis Split), et une qu'ids.tsv
    épingle à un autre mot, le tout avant d'écrire ;
-   puis récrit le lexique entier, dans l'ordre des places, et ajoute à ids.tsv une ligne par mot
+   puis récrit le lexique entier, dans l'ordre des slots, et ajoute à ids.tsv une ligne par mot
    nouveau. Le lexique peut déjà tenir ces unités (Merge relancée) : il est récrit à l'identique, et
    ids.tsv n'ajoute rien, ses lignes disant les mêmes mots. */
 function write(taken, ctx) {

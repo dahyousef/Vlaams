@@ -9,7 +9,7 @@ const { dutchWords, words } = require('./lib/dutch');
 const spelling = require('./lib/spelling');
 const { text, joined, runs, count, argsOf } = require('./lib/langs');
 const { fakeSupabase } = require('./lib/supabase');
-const { dueReviews } = require('./lib/seed');
+const { dueReviews, budgetAnew } = require('./lib/seed');
 const ROOT = process.argv[2] || path.join(__dirname, '..');
 let fails = 0, checks = 0;
 const ok = (c, m) => { checks++; if (!c) { console.log('  FAIL: ' + m); fails++; } };
@@ -126,7 +126,7 @@ function views(B, visit, whole) {
     const shown = new Set();
     let sessions = 0;
     while (shown.size < all.length && sessions++ < 80) {
-      if (whole) NL.state.setMeta({ exDay: null, exToday: 0 });
+      if (whole) budgetAnew(NL);
       if (!S.begin('vandaag')) break;
       NL.ui.go('sessie');
       let quit = false, turns = 0;

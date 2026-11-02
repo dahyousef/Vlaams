@@ -3,6 +3,7 @@
    anything that throws, renders empty, or contradicts itself. */
 const browser = require('./lib/browser');
 const { text } = require('./lib/langs');
+const { budgetAnew } = require('./lib/seed');
 const ROOT = process.argv[2];
 const VOICE = process.argv[3] || 'nl-BE';
 const BROWSER = process.argv[4] || 'OPR';
@@ -115,7 +116,7 @@ function view(screen, arg) {
     /* Each round is a day of its own: the day's budget starts again. With everything due, a
        session has forty places, and three of them spent the 120 of one day before the rungs
        that speak were reached. */
-    NL.state.setMeta({ exDay: null, exToday: 0 });
+    budgetAnew(NL);
     if (!S.begin('vandaag')) continue;
     let turns = 0;
     while (turns++ < 40) {

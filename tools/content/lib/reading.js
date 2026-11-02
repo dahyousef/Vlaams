@@ -78,8 +78,8 @@ const fieldsOf = row => {
 };
 
 /* Une ligne lue : sa source, pourquoi elle est là, puis ce que chaque table du genre tient
-   sous son néerlandais, ou ce que la ligne écrit quand le genre n'a pas de table (le mot d'une
-   place du genre words, même écartée), et le doute du rédacteur s'il en a dit un. */
+   sous son néerlandais, ou ce que la ligne écrit quand le genre n'a pas de table (le mot d'un
+   slot du genre words, même écarté), et le doute du rédacteur s'il en a dit un. */
 function block(x, k, G, also) {
   const why = (x.whole ? [x.whole] : []).concat([settled(x)], also || []);
   const out = [heading(x.src, G, x.input.id), '  - ' + why.join('; ')];

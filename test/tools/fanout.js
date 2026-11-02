@@ -602,9 +602,8 @@ module.exports = {
     put(UDX, 'rulings.json', [{ id: 'x:s01', ruling: 'drop', words: 'pas celui-là', confirmed: true, date: '2026-10-22' }]);
     same(readingU.every(TMP, UDW, 'unite').lines.slice(2), ['1 rows: 0 taken, 1 dropped.', '', '- `x` (x:s01) — l’unité x · unit x', '  - ruled drop on 2026-10-22: pas celui-là', '  - row: {"mot":"doute"}'],
       'une ligne écartée d\'un genre sans table montre ce qu\'elle écrivait');
-    /* course() donne les unités du cours, et une par son id. */
-    same([C.units && C.units.map(u => u.id).join(' '), C.byUnit && C.byUnit('overleven').n, C.byUnit && C.byUnit('x')], [C.RAW.units.map(u => u.id).join(' '), 1, undefined],
-      'C.units : les unités du cours dans l\'ordre ; C.byUnit en lit une, et rien pour une unité qu\'il n\'a pas');
+    /* course() donne les unités du cours. */
+    same(C.units && C.units.map(u => u.id).join(' '), C.RAW.units.map(u => u.id).join(' '), 'C.units : les unités du cours dans l\'ordre');
     console.log('  source du genre sourceOf, ctx.ids : Split, Check, Merge, lecture');
   }
 
@@ -1496,19 +1495,19 @@ module.exports = {
 
     /* Les 22 unités : leurs ids, leurs numéros, leurs cibles, chacune ses deux noms et ses deux présentations. */
     same([K.UNITS.length, K.UNITS.map(u => u.n).join(' '), K.UNITS.reduce((s, u) => s + u.target, 0), new Set(K.UNITS.map(u => u.id)).size],
-      [22, Array.from({ length: 22 }, (x, k) => 13 + k).join(' '), 605, 22], '22 unités, numérotées de 13 à 34, 605 places, chacune son id');
+      [22, Array.from({ length: 22 }, (x, k) => 13 + k).join(' '), 605, 22], '22 unités, numérotées de 13 à 34, 605 slots, chacune son id');
     ok(K.UNITS.every(u => ['fr', 'en'].every(l => oneLine(u.name[l]) && oneLine(u.blurb[l])) && oneLine(u.nlName) && u.icon && ['beide', 'leven', 'werk'].indexOf(u.track) >= 0 &&
-      u.samples.length <= u.target && !CW.units.some(x => x.id === u.id)), 'chaque unité a ses noms, ses présentations, son icône, sa voie, au plus autant de témoins que de places, et n\'est pas encore dans le cours');
-    same(K.sourceOf(CW, 'wonen:s03'), Object.assign({}, K.UNITS[10], { nl: 'wonen', fr: 'Aménager la maison', en: 'Furnishing the house' }), 'la source d\'une place est son unité, dont nl est l\'id, fr et en ses noms');
-    ok(K.sourceOf(CW, 'zzz:s00') === undefined, 'une place d\'une unité inconnue n\'a pas de source');
+      u.samples.length <= u.target && !CW.units.some(x => x.id === u.id)), 'chaque unité a ses noms, ses présentations, son icône, sa voie, au plus autant de témoins que de slots, et n\'est pas encore dans le cours');
+    same(K.sourceOf(CW, 'wonen:s03'), Object.assign({}, K.UNITS[10], { nl: 'wonen', fr: 'Aménager la maison', en: 'Furnishing the house' }), 'la source d\'un slot est son unité, dont nl est l\'id, fr et en ses noms');
+    ok(K.sourceOf(CW, 'zzz:s00') === undefined, 'un slot d\'une unité inconnue n\'a pas de source');
 
-    /* Split : un lot par unité, autant de lignes que de places ; une ligne porte sa place et son témoin. */
+    /* Split : un lot par unité, autant de lignes que de slots ; une ligne porte son slot et son témoin. */
     const KW = path.join(WD, 'drafts', 'words');
-    same(runWd('split.js', [WD, KW]), { code: 0, lines: K.UNITS.map(u => u.id + ' ' + u.target) }, 'Split coupe un lot par unité, une ligne par place');
+    same(runWd('split.js', [WD, KW]), { code: 0, lines: K.UNITS.map(u => u.id + ' ' + u.target) }, 'Split coupe un lot par unité, une ligne par slot');
     const rowW = (dir, id) => JSON.parse(text(path.join(dir, id.split(':')[0], 'input.json'))).find(r => r.id === id);
     same(rowW(KW, 'wonen:s00'), { id: 'wonen:s00', stamp: kit.stamp(K, K.sourceOf(CW, 'wonen:s00'), NLW), copies: [], unit: 'wonen', n: 23, nlName: 'Het huis inrichten',
-      name: { fr: 'Aménager la maison', en: 'Furnishing the house' }, target: 30, slot: 0, sample: 'de tafel' }, 'une ligne d\'entrée : sa place, son unité et le mot du mainteneur');
-    same([rowW(KW, 'wonen:s29').sample, rowW(KW, 'wonen:s29').slot, rowW(KW, 'vragen:s09').sample], [null, 29, 'nu'], 'une place sans témoin en a null');
+      name: { fr: 'Aménager la maison', en: 'Furnishing the house' }, target: 30, slot: 0, sample: 'de tafel' }, 'une ligne d\'entrée : son slot, son unité et le mot du mainteneur');
+    same([rowW(KW, 'wonen:s29').sample, rowW(KW, 'wonen:s29').slot, rowW(KW, 'vragen:s09').sample], [null, 29, 'nu'], 'un slot sans témoin en a null');
 
     /* Check : chaque règle, sur une ligne juste et une ligne fausse. */
     const ctxW = { repo: WD, course: () => CW };
@@ -1558,11 +1557,11 @@ module.exports = {
       'sans extrait, Check dit la commande à lancer');
     fs.renameSync(SENSES + '.old', SENSES);
 
-    /* De bout en bout : quatre places de deux unités, nommées à Split, rédigées et relues, check.js,
-       Merge (refusée tant que deux places écrivent le même mot), le lexique et ids.tsv récrits, Merge
+    /* De bout en bout : quatre slots de deux unités, nommés à Split, rédigés et relus, check.js,
+       Merge (refusée tant que deux slots écrivent le même mot), le lexique et ids.tsv récrits, Merge
        relancée à l'identique, et un second Split qui ne coupe plus ces unités. */
     const E2WS = path.join(WD, 'bout-en-bout'), E2W = path.join(E2WS, 'drafts', 'words');
-    same(runWd('split.js', [WD, E2W, 'vragen:s00', 'vragen:s10', 'wonen:s00', 'wonen:s10']), { code: 0, lines: ['vragen 2', 'wonen 2'] }, 'Split nommé coupe quatre places');
+    same(runWd('split.js', [WD, E2W, 'vragen:s00', 'vragen:s10', 'wonen:s00', 'wonen:s10']), { code: 0, lines: ['vragen 2', 'wonen 2'] }, 'Split nommé coupe quatre slots');
     const ROWS = {
       'vragen:s00': WIE,
       'vragen:s10': { nl: 'toch', fr: 'quand même', en: 'anyway', art: null, pos: 'adv', evidence: 'wiktionary:toch' },
@@ -1576,7 +1575,7 @@ module.exports = {
       same(runWd('check.js', [dir]).code, 0, 'le lot ' + b + ', rédigé et relu, passe');
     });
     const lexBefore = text(LEX), idsBefore = text(IDS);
-    same(runWd('merge.js', [WD, E2W]), { code: 1, lines: ['fail words -: wonen:s10 and vragen:s10 both write « toch »: one word, one slot'] }, 'Merge refuse deux places qui écrivent le même mot');
+    same(runWd('merge.js', [WD, E2W]), { code: 1, lines: ['fail words -: wonen:s10 and vragen:s10 both write « toch »: one word, one slot'] }, 'Merge refuse deux slots qui écrivent le même mot');
     same([text(LEX), text(IDS)], [lexBefore, idsBefore], 'refusée, Merge n\'écrit rien');
     const slotOf = (id, nl, unit) => ({ id, row: { nl }, input: { unit } });
     throws(() => K.write([slotOf('vragen:s10', 'toch', 'vragen'), slotOf('vragen:s11', 'de douche', 'vragen'), slotOf('wonen:s10', 'toch', 'wonen'), slotOf('wonen:s11', 'de douche', 'wonen')], ctxW),
@@ -1589,9 +1588,10 @@ module.exports = {
     ok(lexAfter.indexOf('W(\'de tafel\', { fr: \'la table\', en: \'table\' }, \'de\')') > 0 && lexAfter.indexOf('W(\'wie\', { fr: \'qui\', en: \'who\' })') > 0 &&
       lexAfter.indexOf('id: \'vragen\', n: 13,') < lexAfter.indexOf('id: \'wonen\', n: 23,'), 'le lexique écrit chaque mot comme lexicon.a1b.js, les unités dans l\'ordre');
     same(text(IDS).slice(idsBefore.length).split(/\r?\n/).filter(Boolean), ['vragen:w0\twie', 'vragen:w1\ttoch', 'wonen:w0\tde tafel', 'wonen:w1\tde douche'],
-      'ids.tsv gagne une ligne par mot, numérotés sans trou dans l\'ordre des places');
+      'ids.tsv gagne une ligne par mot, numérotés sans trou dans l\'ordre des slots');
     const CM = course(WD);
-    same([CM.units.length, CM.byUnit('wonen').words.map(w => w.nl), CM.byUnit('vragen').n, CM.byUnit('wonen').phrases, CM.byUnit('wonen').grammar],
+    const unitM = id => CM.units.find(u => u.id === id);
+    same([CM.units.length, unitM('wonen').words.map(w => w.nl), unitM('vragen').n, unitM('wonen').phrases, unitM('wonen').grammar],
       [14, ['de tafel', 'de douche'], 13, [], []], 'le cours relu a ses deux unités nouvelles, leurs mots, sans phrase ni grammaire');
     same(runWd('merge.js', [WD, E2W]), { code: 0, lines: ['ok words 4 taken, 0 dropped', 'ok lexicon.a1c.js 4 words in 2 units', 'ok ids.tsv 0 added'] },
       'relancée, Merge récrit le même lexique et n\'ajoute rien à ids.tsv');
@@ -1625,14 +1625,14 @@ module.exports = {
     same([text(LEX), text(IDS)], [crlf(lexAfter), crlf(idsAfter)], 'le lexique et ids.tsv gardent leurs fins de ligne \r\n, sans mélange');
     fs.writeFileSync(LEX, lexAfter);
     fs.writeFileSync(IDS, idsAfter);
-    /* Ce que le mainteneur lit d'une place : son unité, et le mot écrit (task 3 : un genre sans table). */
+    /* Ce que le mainteneur lit d'un slot : son unité, et le mot écrit (task 3 : un genre sans table). */
     const readingW = require(path.join(WD, 'tools', 'content', 'lib', 'reading'));
     same(readingW.every(WD, E2WS, 'words').lines.slice(2, 7), ['4 rows: 4 taken, 0 dropped.', '', '- `vragen` (vragen:s00) — Questions et petits mots · Questions and small words', '  - kept by the first reader',
-      '  - row: {"nl":"wie","fr":"qui","en":"who","art":null,"pos":"pron","evidence":"wiktionary:wie"}'], 'l\'outil de lecture montre le mot d\'une place, et son unité');
+      '  - row: {"nl":"wie","fr":"qui","en":"who","art":null,"pos":"pron","evidence":"wiktionary:wie"}'], 'l\'outil de lecture montre le mot d\'un slot, et son unité');
     same(readingW.list(WD, E2WS).lines.filter(l => /^ {2}- row: /.test(l)).length, 4, 'la liste du contrôle du contenu aussi');
     same(runWd('split.js', [WD, path.join(WD, 'apres', 'words')]), { code: 0, lines: K.UNITS.filter(u => u.id !== 'vragen' && u.id !== 'wonen').map(u => u.id + ' ' + u.target) },
       'un second Split ne coupe plus les unités fondues');
-    console.log('  words          ' + K.UNITS.length + ' unités, ' + K.UNITS.reduce((s, u) => s + u.target, 0) + ' places ; chaque règle, Merge de bout en bout, relancée, second Split');
+    console.log('  words          ' + K.UNITS.length + ' unités, ' + K.UNITS.reduce((s, u) => s + u.target, 0) + ' slots ; chaque règle, Merge de bout en bout, relancée, second Split');
   }
 
   /* ==================================================== 9. l'outil de lecture
