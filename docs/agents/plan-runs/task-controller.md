@@ -83,10 +83,13 @@ each verifier, and start no second suite beside a running one.
   which case it is:
   - `no suite runs`: the suite was cut off, and its verifier has no line to give. Stop that verifier with
     `TaskStop` if it is still there, then dispatch a new one with a new wait. `VERIFIER: fail — suite cut off` means
-    the same. Neither is a fix round. A second cut-off on the same commit: return `needs ruling` with the line.
+    the same. Neither is a fix round, and both count as a cut-off. A second cut-off on the same commit: return
+    `needs ruling` with the line.
   - `a suite still runs`: stop the verifier with `TaskStop` and return `needs ruling` with the `STALE` line. Stopping
     an agent or its shell does not stop its suite (measured on this machine on 2026-11-02: the suite's process went
     on writing), and a second suite beside it would mix the file and the build outputs.
+- `VERIFIER: fail — a suite still runs`: return `needs ruling` with the line. A suite from an earlier verifier or
+  sitting still holds the file and the build outputs, so this verifier started none.
 - A script whose verifier has already returned is left over (a verifier that fails at once starts no suite): stop
   it with `TaskStop`, and ignore its notice if one comes.
 - `TaskStop` and `SendMessage` may need loading with `ToolSearch` first. Each takes the ID its dispatch returned, so
@@ -101,7 +104,7 @@ each verifier, and start no second suite beside a running one.
    <WS>/run.md. Ticket: <…>. [Ruling: …] Report to <WS>/reports/task-<N>-impl.md." On `BLOCKED` or
    `NEEDS_RULING` with a question the brief does not answer: return `needs ruling` with that question.
 3. Dispatch the verifier with the run file and the commit hash. On `fail`: a fix round (step 6) with the failing
-   lines, unless it says `suite cut off` (« Waiting »).
+   lines, unless it says `suite cut off` or `a suite still runs` (« Waiting »).
 4. Write the review diff — with a `.sh` file in `<WS>/tmp/`, run with `sh`:
 
        git log --format='%h %s%n%b' BASE..HEAD > "<WS>/reviews/task-<N>.diff"

@@ -53,7 +53,7 @@ for « none »), and set its row to `done`. Only a fan-out whose `after` names a
 
 Whenever fewer than six batch controllers are in flight and a Batches row is `pending`, dispatch the first
 one as a background subagent on `sonnet`, description `batch <kind>/<batch>`, and set its row to `drafting`.
-The prompt:
+The prompt, with `<WS>` out as the absolute path `run.md` gives:
 
     You are the batch controller for batch <kind>/<batch> of the plan run in <worktree>. Read
     docs/agents/plan-runs/batch-controller.md and follow it. Run file: <WS>/run.md.

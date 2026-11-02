@@ -116,6 +116,30 @@ const ver = fs.readFileSync(path.join(ROOT, 'docs/agents/plan-runs/verifier.md')
 const iCo = ver.indexOf('git checkout -- index.html artifact.html'), iSt = ver.indexOf('`git status --short`');
 ok(iCo >= 0 && iSt >= 0 && iCo < iSt, 'verifier.md remet index.html et artifact.html avant la vérification de l\'arbre entier');
 
+// verify.sh tel que verifier.md l'écrit, sur une fausse suite. Arrêter le shell d'un agent n'arrête pas sa suite (mesuré
+// le 2026-11-02) : le pid laissé doit rester celui de la suite une fois ce shell tué, ou une seconde suite part à côté.
+const verifyBlock = (ver.match(/Write `<WS>\/tmp\/verify\.sh` with the Write tool:\s*\n([\s\S]*?)\n\s*\n\s*and run/) || [])[1] || '';
+const verifyDir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-sh-')).replace(/\\/g, '/');
+fs.mkdirSync(path.join(verifyDir, 'tmp'));
+fs.mkdirSync(path.join(verifyDir, 'test'));
+fs.writeFileSync(path.join(verifyDir, 'tmp/verify.sh'), verifyBlock.replace(/^\s+/gm, '').split('<WS>').join(verifyDir) + '\n');
+const inVerifyDir = script => waitFor(`cd "${verifyDir}" && git init -q && ${script}`);
+fs.writeFileSync(path.join(verifyDir, 'test/run-all.sh'), 'sleep 8\nexit 3\n');
+ok(/a suite still runs$/.test(inVerifyDir(`{ sh tmp/verify.sh & V=$!; sleep 1; kill -9 $V; sh "${path.resolve(waitSuite).replace(/\\/g, '/')}" "${verifyDir}/tmp/suite.txt" 0 1; sleep 3; }`)), 'le pid de verify.sh reste celui de la suite une fois son shell tué');
+fs.writeFileSync(path.join(verifyDir, 'test/run-all.sh'), 'exit 3\n');
+inVerifyDir('sh tmp/verify.sh');
+ok(/^exit=3$/m.test(fs.readFileSync(path.join(verifyDir, 'tmp/suite.txt'), 'utf8')), 'verify.sh écrit le code de sortie de la suite');
+ok(!fs.existsSync(path.join(verifyDir, 'tmp/suite.txt.pid')), 'verify.sh retire son pid quand la suite finit : un numéro réutilisé ne se prend pas pour elle');
+fs.rmSync(verifyDir, { recursive: true, force: true });
+
+// La suite ne part qu'à un endroit, et il regarde d'abord : c'est ce qui couvre une suite orpheline, après une coupure.
+const verLine = ver.replace(/\s+/g, ' ');
+ok(/kill -0[^.]*suite\.txt\.pid/.test(verLine) && verLine.indexOf('kill -0') < verLine.indexOf('git update-index'), 'verifier.md regarde si une suite tourne avant de toucher à l\'arbre');
+ok(/`VERIFIER: fail — a suite still runs`/.test(verLine) && /`VERIFIER: fail — a suite still runs`: return `needs ruling`/.test(tc), 'une suite qui tourne déjà va en question, pas en seconde suite');
+ok(/both count as a cut-off/.test(tc), 'STALE et suite cut off comptent tous deux pour une coupure');
+ok(/`<WS>` out[^.]*absolute path/.test(oneLine('one-session.md')), 'one-session.md écrit <WS> en chemin absolu dans ses envois');
+ok(/`UNFINISHED:`/.test(oneLine('closing-review.md')) && /UNFINISHED: /.test(oneLine('closing-review.md')), 'la revue de clôture dit un retour forcé par sa ligne UNFINISHED');
+
 // Le garde-fou git reste branché, pour les deux shells.
 const guard = (hooks.PreToolUse || []).find(e => e.matcher === 'Bash|PowerShell');
 ok(guard && /block-dangerous-git\.js/.test(guard.hooks[0].command), 'le garde-fou git est toujours branché');
