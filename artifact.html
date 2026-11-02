@@ -2856,14 +2856,14 @@ NL.speech = (function () {
   function respaced(heard, target) {
     const S = words(heard), T = words(target), out = [];
     const known = w => T.indexOf(w) >= 0;
-    const asOne = i => {
+    function asOne(i) {
       for (let n = S.length - i; n > 1; n--) {
         const run = S.slice(i, i + n), t = T.find(w => letters([w]) === letters(run));
         if (t && !run.every(known)) return { t, n };
       }
       return null;
-    };
-    const asMany = w => {
+    }
+    function asMany(w) {
       if (known(w)) return [w];
       for (let j = 0; j < T.length; j++) {
         for (let m = 1; j + m <= T.length; m++) {
@@ -2871,7 +2871,7 @@ NL.speech = (function () {
         }
       }
       return [w];
-    };
+    }
     for (let i = 0; i < S.length; i++) {
       const one = asOne(i);
       if (one) { out.push(one.t); i += one.n - 1; }
