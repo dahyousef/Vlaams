@@ -221,7 +221,7 @@ NL.screens.sessie = (function () {
     if (L.source !== 'fouten' && L.source !== 'defi') {
       const here = new Set();
       L.queue.forEach(x => x.items.forEach(it => here.add(it.id)));
-      more = NL.srs.compose(L.source, undefined, { quiet: true, without: here }).due.slice(0, spoken);
+      more = NL.srs.compose(L.source, undefined, { quiet: true, without: here, fill: spoken }).due;
     }
     L.queue = settle(head.concat(kept, spread(build(more, [], true), kept.length ? kept[kept.length - 1].ex : null)), L.at);
     Object.assign(L, blankTurn());

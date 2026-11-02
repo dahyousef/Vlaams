@@ -720,6 +720,49 @@ NL.state.open().then(async () => {
     S.abandon();
     ok(fixed.length === 1 && fixed[0] === c.id, 'after « je ne peux pas parler » the mistakes session served ' + JSON.stringify(fixed) + ' instead of its one item that is not spoken');
     console.log('  rien que du parlé : retour à l’accueil sans bilan ; séance sur les fautes : le parlé en sort, rien n’y entre');
+
+    /* Reprendre des places n'est pas composer une séance : ses nouveaux éléments sont déjà
+       dans la file, rien n'est à leur réserver. Quel que soit l'arriéré, la séance garde
+       autant d'éléments tant qu'il en reste à écrire. */
+    const distinct = () => {
+      const seen = new Set();
+      let turns = 0;
+      const turn = () => { const c = S.peek(), m = c.ex === 'match'; c.items.forEach(it => seen.add(it.id)); turns++; B.clock.advance(20000); answer.right(); answer.next(m); };
+      S.begin('vandaag');
+      let n = 0;
+      while (S.peek() && S.peek().ex !== 'speak' && n++ < 60) turn();
+      ok(S.peek() && S.peek().ex === 'speak', 'the fixture is wrong: the session holds no spoken exercise');
+      answer.cantSpeak();
+      n = 0;
+      while (S.peek() && n++ < 120) { turn(); if (B.app.innerHTML.indexOf('done-stage') >= 0) break; }
+      S.abandon();
+      return { seen, turns };
+    };
+    [[300, 100], [80, 100], [80, 10]].forEach(([voiceN, writtenN]) => {
+      fresh();
+      words.slice(0, voiceN).forEach(it => put(it, 3, T0 - 2 * DAY));
+      words.slice(voiceN, voiceN + writtenN).forEach(it => put(it, 2, T0 - DAY));
+      const plan = NL.srs.compose('vandaag'), held = plan.fresh.length + Math.min(plan.due.length, writtenN);
+      ok(plan.due.every(it => NL.srs.needsVoice(it)), 'the fixture is wrong: of ' + plan.due.length + ' reviews in the session, ' + plan.due.filter(it => NL.srs.needsVoice(it)).length + ' can only be spoken');
+      const { seen } = distinct();
+      ok(seen.size === held, voiceN + ' due to say, ' + writtenN + ' to write, ' + plan.due.length + ' reviews put off: the session holds ' + seen.size + ' items, not ' + held);
+      ok(!plan.due.some(it => seen.has(it.id)), 'an item put off was served in the same session');
+      console.log('  ' + voiceN + ' à dire, ' + writtenN + ' à écrire : ' + plan.due.length + ' révisions mises de côté, ' + seen.size + ' éléments servis sur ' + held);
+    });
+
+    /* Le budget du jour borne ce qui est repris, et ce qui est repris est dû, jamais neuf. */
+    {
+      const dues = () => { fresh(); words.slice(0, 31).forEach(it => put(it, 3, T0 - 2 * DAY)); words.slice(31, 400).forEach(it => put(it, 2, T0 - DAY)); };
+      dues();
+      NL.srs.spend(NL.srs.pace().cap - 5);
+      const tight = NL.srs.compose('vandaag', undefined, { quiet: true, fill: 31 });
+      ok(tight.due.length === 5 && tight.fresh.length === 0, 'with five exercises left in the day, filling 31 places takes ' + tight.due.length + ' reviews and ' + tight.fresh.length + ' new items, not 5 and 0');
+      dues();
+      NL.srs.spend(NL.srs.pace().cap - 20);
+      const { turns } = distinct();
+      ok(turns <= 20, 'with twenty exercises left in the day, the session served ' + turns + ' after « je ne peux pas parler »');
+      console.log('  budget de cinq exercices : ' + tight.due.length + ' places reprises ; de vingt : ' + turns + ' exercices servis');
+    }
   }
 
   /* ------------------------------------------------------------------ */

@@ -418,6 +418,9 @@ NL.srs = (function () {
        opts     { quiet, without } : une séance où l'on ne peut pas parler laisse
                 attendre ce qui ne peut être que dit, et ne reprend pas les
                 éléments (`without`, un Set d'identifiants) qu'elle contient déjà
+                { fill } : reprendre ce nombre de places dans une séance en cours,
+                avec des révisions seules : ses nouveaux éléments sont déjà dans sa
+                file, rien n'est à leur réserver. Le budget du jour borne encore.
        → { due, fresh, left }   deux listes d'éléments, et le budget restant
      La séance suit l'arriéré (ADR 0007, sa seconde option : la part réservée ne
      cède pas, c'est le budget qui suit). Trente places de base ; une place de
@@ -435,8 +438,9 @@ NL.srs = (function () {
     if (uid) due = due.filter(it => it.unit === uid);
     if (opts && opts.quiet) due = due.filter(it => !needsVoice(it) && !(opts.without && opts.without.has(it.id)));
     const extra = Math.min(EXTRA_MAX, Math.floor(due.length / BACKLOG_STEP));
-    const places = Math.min(BASE_SIZE + extra, left);
-    const unmet = freshItems(BASE_SIZE, uid);
+    const filling = !!opts && opts.fill !== undefined;
+    const places = Math.min(filling ? opts.fill : BASE_SIZE + extra, left);
+    const unmet = filling ? [] : freshItems(BASE_SIZE, uid);
 
     /* La réserve sort AVANT que les révisions remplissent le reste, et elle
        disparaît d'elle-même quand il ne reste rien à rencontrer. */
