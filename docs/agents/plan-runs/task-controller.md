@@ -45,8 +45,7 @@ fallback tasks sit above it, still unreviewed.
 ## The roles you dispatch
 
 Give each one its model explicitly and a description that starts with `task <N>` (the measures group by it),
-and tell it: its final message is at most 10 lines; everything longer goes to the report file you name. Dispatch each one in the foreground and wait for its return; never end
-your turn while one runs.
+and tell it: its final message is at most 10 lines; everything longer goes to the report file you name.
 
 | Role | Model | Its instructions |
 |---|---|---|
@@ -56,6 +55,28 @@ your turn while one runs.
 | Re-reviewer | `haiku` for `mechanical`, `sonnet` for `engine` | `reviewer.md`, section Re-review |
 
 Dispatch nothing else, and nothing below these four.
+
+## Waiting
+
+Agents run in the background here, so a dispatch returns at once. After dispatching one, end your turn: that is
+how you wait, and its notice wakes you. Your final return ends your run, so it is the one thing you never do
+while an agent of yours runs. Do not poll, sleep or use Monitor.
+
+The verifier needs one thing more. It goes idle on its own background suite for about half an hour, and in phase
+4a a controller with nothing of its own running was then woken and forced to hand back (the cause is inferred from
+the timing, not proved). So every time you dispatch the verifier, right after it, from the worktree, run
+
+    sh docs/agents/plan-runs/wait-suite.sh "<WS>/tmp/suite.txt"
+
+with `run_in_background`. It is one wait: it exits when the suite ends and prints `FINISHED`. Start it once for
+each verifier, and start no second suite.
+
+- The verifier's line is the result, never the script's output. If the script's notice comes first, wait on.
+- A suite past fifteen minutes in all is no stop: the script counts silence, not time. `STALE` means the suite
+  wrote nothing for fifteen minutes and has no `exit=` line. If the verifier's line doesn't come either, return
+  `needs ruling` with the `STALE` line.
+- If a harness message forces you to hand back while an agent runs, say so in your return, with what is
+  unfinished. Without that message you wait: this line gives no leave to hand back early.
 
 ## The steps
 

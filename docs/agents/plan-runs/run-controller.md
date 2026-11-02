@@ -43,6 +43,9 @@ task controllers' notices.
      back as a new task with its own Status row.
    - `failed`: stop the run and tell the maintainer, with the report paths from the return.
 
+   A controller that handed back while its agent still ran has not failed, whatever state it wrote. Send the
+   same controller on with `SendMessage`, with the agent's line once it has come.
+
 The dispatch prompt:
 
     You are the task controller for task <N> of the plan run in <worktree>. Read

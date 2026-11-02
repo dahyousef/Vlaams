@@ -2,8 +2,9 @@
    branche sur SessionStart (compact|resume), et ce qu'il imprime entre dans le contexte de la session. Le crochet
    du transcript (startup|clear) imprime le chemin que Claude Code lui donne sur stdin. verifier.md remet les
    sorties du build avant de vérifier l'arbre. Le texte du kit ne porte aucun caractère de contrôle, et sa commande
-   de lancement nomme claude.exe en entier. On lance les commandes telles que Claude Code les lance. */
-const path = require('path'), fs = require('fs'), { spawnSync } = require('child_process');
+   de lancement nomme claude.exe en entier. Le kit dit comment un agent en attend un autre, et wait-suite.sh attend
+   la fin de la suite. On lance les commandes telles que Claude Code les lance. */
+const path = require('path'), fs = require('fs'), os = require('os'), { spawnSync } = require('child_process');
 const ROOT = process.argv[2];
 let fails = 0;
 const ok = (cond, msg) => { if (!cond) { console.log('  FAIL: ' + msg); fails++; } };
@@ -57,6 +58,31 @@ for (const f of fs.readdirSync(kit).filter(f => f.endsWith('.md'))) {
 }
 const launches = rc.split('$env:USERPROFILE').slice(1);
 ok(launches.length >= 2 && launches.every(s => s.startsWith('\\.local\\bin\\claude.exe')), 'run-controller.md nomme claude.exe par son chemin entier, au lancement et dans la fenêtre');
+
+// Les agents tournent en arrière-plan : « au premier plan » ne se suit pas, et « ne termine jamais ton tour » défend
+// ce qui les fait attendre. La règle qui a tenu en phase 4a se lit dans le kit, avec son script.
+const page = f => fs.readFileSync(path.join(kit, f), 'utf8');
+for (const f of fs.readdirSync(kit).filter(f => f.endsWith('.md'))) {
+  ok(!/[Dd]ispatch[^.]*\bforeground\b/.test(page(f)), f + ' ne demande aucun agent au premier plan');
+  ok(!/never\s+end\s+your\s+turn/.test(page(f)), f + ' ne défend plus de terminer son tour');
+}
+for (const f of ['task-controller.md', 'batch-controller.md', 'closing-review.md']) {
+  ok(/end your turn: that is how you wait/.test(page(f).replace(/\s+/g, ' ')), f + ' dit comment attendre un agent');
+}
+ok(/wait-suite\.sh "<WS>\/tmp\/suite\.txt"[\s\S]{0,40}`run_in_background`/.test(page('task-controller.md')), 'task-controller.md nomme wait-suite.sh et run_in_background');
+ok(/same controller/.test(page('run-controller.md')) && /same controller/.test(page('one-session.md')), 'un contrôleur rendu avant son agent reprend, il n\'a pas échoué');
+
+// wait-suite.sh : une suite finie après son lancement rend FINISHED ; le `exit=` de la suite d'avant ne compte pas.
+const waitSuite = path.join(kit, 'wait-suite.sh').replace(/\\/g, '/');
+const waitDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wait-suite-'));
+const suiteFile = path.join(waitDir, 'suite.txt').replace(/\\/g, '/');
+const waitFor = script => (spawnSync('sh', ['-c', script], { cwd: ROOT, env, encoding: 'utf8' }).stdout || '').trim();
+fs.writeFileSync(suiteFile, 'exit=0\n');
+ok(/^STALE: /.test(waitFor(`sh "${waitSuite}" "${suiteFile}" 0 1`)), 'wait-suite.sh ne prend pas le exit= de la suite d\'avant');
+fs.writeFileSync(suiteFile, 'FAIL: la suite d\'avant\nexit=1\n');
+ok(waitFor(`(sleep 2; echo exit=0 >> "${suiteFile}") & sh "${waitSuite}" "${suiteFile}" 0 900`) === 'FINISHED', 'wait-suite.sh rend FINISHED quand la suite finit');
+ok(waitFor(`sh "${waitSuite}"`).indexOf('usage') === 0, 'wait-suite.sh sans fichier dit son usage au lieu d\'attendre quinze minutes');
+fs.rmSync(waitDir, { recursive: true, force: true });
 
 const ver = fs.readFileSync(path.join(ROOT, 'docs/agents/plan-runs/verifier.md'), 'utf8');
 const iCo = ver.indexOf('git checkout -- index.html artifact.html'), iSt = ver.indexOf('`git status --short`');
