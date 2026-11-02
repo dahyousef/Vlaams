@@ -88,8 +88,8 @@ each verifier, and start no second suite beside a running one.
   - `a suite still runs`: stop the verifier with `TaskStop` and return `needs ruling` with the `STALE` line. Stopping
     an agent or its shell does not stop its suite (measured on this machine on 2026-11-02: the suite's process went
     on writing), and a second suite beside it would mix the file and the build outputs.
-- `VERIFIER: fail — a suite still runs`: return `needs ruling` with the line. A suite from an earlier verifier or
-  sitting still holds the file and the build outputs, so this verifier started none.
+- `VERIFIER: fail — a suite still runs`: stop its wait with `TaskStop` and return `needs ruling` with the line. A
+  suite from an earlier verifier or sitting still holds the file and the build outputs, so this verifier started none.
 - A script whose verifier has already returned is left over (a verifier that fails at once starts no suite): stop
   it with `TaskStop`, and ignore its notice if one comes.
 - `TaskStop` and `SendMessage` may need loading with `ToolSearch` first. Each takes the ID its dispatch returned, so
