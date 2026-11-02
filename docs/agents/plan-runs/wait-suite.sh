@@ -10,6 +10,8 @@ if [ -z "$1" ] || { [ "$1" = "--running" ] && [ -z "$2" ]; }; then
 fi
 # verify.sh leaves the suite's process id beside the suite file. A suite that hangs still runs, and a second one beside
 # it would mix the file and the build outputs. The id alone is not enough: after a reboot another program can hold it.
+# It sees the suite's shell, not a test: kill that shell and the test it was running goes on to its own end. That test
+# can still write to the file, but neither `exit=` nor the suite's last line, so it cannot make a pass.
 suite_state() {
   if [ -f "$1.pid" ] && ps -ef | awk -v p="$(cat "$1.pid")" '$2 == p && /run-all/ { found = 1 } END { exit !found }'; then
     echo "a suite still runs"

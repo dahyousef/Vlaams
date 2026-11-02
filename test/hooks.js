@@ -119,7 +119,8 @@ fs.rmSync(suiteFile + '.pid');
 fs.writeFileSync(suiteFile, 'FAIL: la suite d\'avant\nexit=1\n');
 ok(waitFor(`(sleep 2; echo exit=0 >> "${suiteFile}") & sh "${waitSuite}" "${suiteFile}" 0 900`) === 'FINISHED', 'wait-suite.sh rend FINISHED quand la suite finit');
 ok(waitFor(`sh "${waitSuite}"`).indexOf('usage') === 0, 'wait-suite.sh sans fichier dit son usage au lieu d\'attendre quinze minutes');
-fs.rmSync(waitDir, { recursive: true, force: true });
+// Une fausse suite peut vivre un instant après son dernier fichier, et Windows refuse d'effacer ce qu'un processus tient.
+fs.rmSync(waitDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 500 });
 
 const ver = fs.readFileSync(path.join(ROOT, 'docs/agents/plan-runs/verifier.md'), 'utf8');
 const iCo = ver.indexOf('git checkout -- index.html artifact.html'), iSt = ver.indexOf('`git status --short`');
@@ -142,13 +143,16 @@ fs.writeFileSync(path.join(verifyDir, 'test/run-all.sh'), 'exit 3\n');
 inVerifyDir('sh tmp/verify.sh');
 ok(/^exit=3$/m.test(fs.readFileSync(path.join(verifyDir, 'tmp/suite.txt'), 'utf8')), 'verify.sh écrit le code de sortie de la suite');
 ok(!fs.existsSync(path.join(verifyDir, 'tmp/suite.txt.pid')), 'verify.sh retire son pid quand la suite finit : un numéro réutilisé ne se prend pas pour elle');
-fs.rmSync(verifyDir, { recursive: true, force: true });
+fs.rmSync(verifyDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 500 });
 
 // La suite ne part qu'à un endroit, et il regarde d'abord : c'est ce qui couvre une suite orpheline, après une coupure.
 const verLine = ver.replace(/\s+/g, ' ');
 ok(/wait-suite\.sh --running "<WS>\/tmp\/suite\.txt"/.test(verLine) && verLine.indexOf('--running') < verLine.indexOf('git update-index'), 'verifier.md regarde si une suite tourne avant de toucher à l\'arbre');
 ok(/`VERIFIER: fail — a suite still runs`/.test(verLine) && /`VERIFIER: fail — a suite still runs`: stop its wait with `TaskStop` and return `needs ruling`/.test(tc), 'une suite qui tourne déjà va en question, pas en seconde suite');
-ok(/No `exit=` line, or `exit=129`, `130`, `137` or `143`[^.]*commit\. Run step 1's `--running` check/.test(verLine), 'une suite qu\'on a tuée n\'est pas un échec du code, et le vérificateur regarde si elle tourne encore');
+ok(/No `exit=` line, `exit=0` without that line[^.]*, or `exit=129`, `130`, `137` or `143`[^.]*commit\. Run step 1's `--running` check/.test(verLine), 'une suite qu\'on a tuée n\'est pas un échec du code, et le vérificateur regarde si elle tourne encore');
+// Tuée depuis Windows (taskkill /F, mesuré le 2026-11-02), une suite rend exit=0 sans sa dernière ligne : exit=0 seul serait un faux succès.
+const lastEcho = fs.readFileSync(path.join(ROOT, 'test/run-all.sh'), 'utf8').trim().split('\n').pop().replace(/^echo "|"$/g, '');
+ok(verLine.indexOf('Pass: `exit=0`, the line `' + lastEcho + '` before it') >= 0, 'verifier.md ne compte un succès qu\'avec la dernière ligne de run-all.sh');
 // Un test qui plante (134, 139) arrête la suite aussi, mais c'est un résultat : `suite cut off` la relancerait sans rien corriger.
 ok(!/above 128/.test(verLine), 'verifier.md ne prend pas le plantage d\'un test pour une coupure');
 ok(!/kill -0/.test(verLine), 'verifier.md n\'a qu\'une façon de regarder, utilisable depuis PowerShell');
