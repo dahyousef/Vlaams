@@ -31,7 +31,7 @@ NL.content.byDutch['sourced'] = {
   'de omgeving': [{ nl: 'Is er in de omgeving een bakker?', fr: 'Y a-t-il un boulanger dans les environs ?', en: 'Is there a baker in the area?', gap: 'omgeving', src: 'gen' }],
   'de papa': [{ nl: 'Mijn papa is hier ook.', fr: 'Mon papa est ici aussi.', en: 'My dad is here too.', gap: 'papa', src: 'gen' }],
   'de richting': [{ nl: 'Ik ga in de richting van het station.', fr: 'Je vais en direction de la gare.', en: 'I am going in the direction of the station.', gap: 'richting', src: 'gen' }],
-  'de rit': [{ nl: 'De rit naar het werk duurt lang.', fr: 'Le trajet jusqu\'au travail est long.', en: 'The journey to work takes long.', gap: 'rit', src: 'gen' }],
+  'de rit': [{ nl: 'De rit naar het werk duurt een uur.', fr: 'Le trajet jusqu\'au travail dure une heure.', en: 'The journey to work takes an hour.', gap: 'rit', src: 'gen' }],
   'de slaapkamer': [{ nl: 'Mijn huis heeft twee slaapkamers.', fr: 'Ma maison a deux chambres à coucher.', en: 'My house has two bedrooms.', gap: 'slaapkamers', src: 3530574 }],
   'de taart': [{ nl: 'Wilt u wat taart?', fr: 'Voulez-vous du gâteau ?', en: 'Would you like some cake?', gap: 'taart', src: 8672024 }],
   'de tand': [{ nl: 'Mijn tand doet pijn.', fr: 'J\'ai mal à la dent.', en: 'My tooth hurts.', gap: 'tand', src: 7369794 }],

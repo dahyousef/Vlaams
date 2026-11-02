@@ -43,7 +43,7 @@ NL.content.units = NL.content.units || [];
       P('De trein heeft tien minuten vertraging.', { fr: 'Le train a dix minutes de retard.', en: 'The train is ten minutes late.' }),
       P('Op welk spoor?', { fr: 'Sur quelle voie ?', en: 'Which track?' }),
       P('Ik moet overstappen in Dendermonde.', { fr: 'Je dois changer à Termonde.', en: 'I have to change at Dendermonde.' }),
-      P('Hoe lang duurt het?', { fr: 'Ça prend combien de temps ?', en: 'How long does it take?' }),
+      P('Hoelang duurt het?', { fr: 'Ça prend combien de temps ?', en: 'How long does it take?' }),
       P('Ik sta in de file.', { fr: 'Je suis dans les files.', en: 'I am stuck in traffic.' }),
       P('Ik kom een beetje later, sorry.', { fr: 'Je vais arriver un peu plus tard, désolé.', en: 'I will arrive a little later, sorry.' }),
       P('Rijdt deze bus naar Aalst?', { fr: 'Ce bus va à Alost ?', en: 'Does this bus go to Aalst?' }),

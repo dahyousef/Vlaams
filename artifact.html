@@ -2847,6 +2847,39 @@ NL.speech = (function () {
   }
 
   /* ---------------- scoring ---------------- */
+  /* A voice has no spaces, hyphens or apostrophes: the recogniser writes « hoe lang »
+     or « hoelang » as it pleases. What it heard is respaced as the target writes it,
+     and only when the letters match exactly: heard words that are one target word, or
+     one heard word that is target words in a row. A heard word the target already
+     holds stays as it is: « werk en » is not « werken » when the target has all three. */
+  const letters = list => list.join('').replace(/['-]/g, '');
+  function respaced(heard, target) {
+    const S = words(heard), T = words(target), out = [];
+    const known = w => T.indexOf(w) >= 0;
+    function asOne(i) {
+      for (let n = S.length - i; n > 1; n--) {
+        const run = S.slice(i, i + n), t = T.find(w => letters([w]) === letters(run));
+        if (t && !run.every(known)) return { t, n };
+      }
+      return null;
+    }
+    function asMany(w) {
+      if (known(w)) return [w];
+      for (let j = 0; j < T.length; j++) {
+        for (let m = 1; j + m <= T.length; m++) {
+          if (letters(T.slice(j, j + m)) === letters([w])) return T.slice(j, j + m);
+        }
+      }
+      return [w];
+    }
+    for (let i = 0; i < S.length; i++) {
+      const one = asOne(i);
+      if (one) { out.push(one.t); i += one.n - 1; }
+      else out.push(...asMany(S[i]));
+    }
+    return out.join(' ');
+  }
+
   /* Scores the best of the alternatives the recogniser offered, so a single
      misheard word does not sink an otherwise correct sentence. */
   function score(heardList, target) {
@@ -2854,9 +2887,10 @@ NL.speech = (function () {
     if (!cands.length) return { pct: 0, parts: diffWords('', target), heard: '', pass: false };
     let best = null;
     cands.forEach(h => {
-      const parts = diffWords(h, target);
+      const said = respaced(h, target);
+      const parts = diffWords(said, target);
       const hit = parts.filter(p => p.ok).length;
-      const extra = Math.max(0, words(h).length - words(target).length);
+      const extra = Math.max(0, words(said).length - words(target).length);
       const pct = Math.round(Math.max(0, hit / Math.max(1, parts.length) - extra * 0.06) * 100);
       if (!best || pct > best.pct) best = { pct, parts, heard: h };
     });
@@ -3721,7 +3755,7 @@ NL.content.units = NL.content.units || [];
       P('De trein heeft tien minuten vertraging.', { fr: 'Le train a dix minutes de retard.', en: 'The train is ten minutes late.' }),
       P('Op welk spoor?', { fr: 'Sur quelle voie ?', en: 'Which track?' }),
       P('Ik moet overstappen in Dendermonde.', { fr: 'Je dois changer à Termonde.', en: 'I have to change at Dendermonde.' }),
-      P('Hoe lang duurt het?', { fr: 'Ça prend combien de temps ?', en: 'How long does it take?' }),
+      P('Hoelang duurt het?', { fr: 'Ça prend combien de temps ?', en: 'How long does it take?' }),
       P('Ik sta in de file.', { fr: 'Je suis dans les files.', en: 'I am stuck in traffic.' }),
       P('Ik kom een beetje later, sorry.', { fr: 'Je vais arriver un peu plus tard, désolé.', en: 'I will arrive a little later, sorry.' }),
       P('Rijdt deze bus naar Aalst?', { fr: 'Ce bus va à Alost ?', en: 'Does this bus go to Aalst?' }),
@@ -4796,10 +4830,10 @@ NL.content.byDutch['be'] = {
   'Hoe gaat het met de familie?': 'En hoe is ’t thuis?',
   'Hoe heet je?': 'Hoe heette gij?',
   'Hoe laat is het?': 'Hoe laat is ’t?',
-  'Hoe lang duurt het?': 'Hoe lang duurt ’t?',
   'Hoe oud ben je?': 'Hoe oud zijde gij?',
   'Hoe was uw weekend?': 'En, hoe was ’t weekend?',
   'Hoe zeg je dat in het Nederlands?': 'Hoe zegde da in ’t Nederlands?',
+  'Hoelang duurt het?': 'Hoelang duurt ’t?',
   'Hoeveel is het?': 'Hoeveel is ’t?',
   'Hoeveel kost dat?': 'Hoeveel kost da?',
   'Ik ben Nederlands aan het leren.': 'Ik ben Nederlands aan het leren, hè.',
@@ -5064,7 +5098,7 @@ NL.content.byDutch['sourced'] = {
   'de omgeving': [{ nl: 'Is er in de omgeving een bakker?', fr: 'Y a-t-il un boulanger dans les environs ?', en: 'Is there a baker in the area?', gap: 'omgeving', src: 'gen' }],
   'de papa': [{ nl: 'Mijn papa is hier ook.', fr: 'Mon papa est ici aussi.', en: 'My dad is here too.', gap: 'papa', src: 'gen' }],
   'de richting': [{ nl: 'Ik ga in de richting van het station.', fr: 'Je vais en direction de la gare.', en: 'I am going in the direction of the station.', gap: 'richting', src: 'gen' }],
-  'de rit': [{ nl: 'De rit naar het werk duurt lang.', fr: 'Le trajet jusqu\'au travail est long.', en: 'The journey to work takes long.', gap: 'rit', src: 'gen' }],
+  'de rit': [{ nl: 'De rit naar het werk duurt een uur.', fr: 'Le trajet jusqu\'au travail dure une heure.', en: 'The journey to work takes an hour.', gap: 'rit', src: 'gen' }],
   'de slaapkamer': [{ nl: 'Mijn huis heeft twee slaapkamers.', fr: 'Ma maison a deux chambres à coucher.', en: 'My house has two bedrooms.', gap: 'slaapkamers', src: 3530574 }],
   'de taart': [{ nl: 'Wilt u wat taart?', fr: 'Voulez-vous du gâteau ?', en: 'Would you like some cake?', gap: 'taart', src: 8672024 }],
   'de tand': [{ nl: 'Mijn tand doet pijn.', fr: 'J\'ai mal à la dent.', en: 'My tooth hurts.', gap: 'tand', src: 7369794 }],
@@ -5588,7 +5622,7 @@ NL.content.byDutch['sourced'] = {
     'niks': [S('Dit weekend doen wij niks.', { fr: 'Ce week-end on ne fait rien.', en: 'This weekend we’re doing nothing.' }, 'niks'),
       S('Er is niks aan de hand.', { fr: 'Il n’y a rien de grave.', en: 'There’s nothing wrong.' }, 'niks')],
     'lang': [S('Het was een lange dag.', { fr: 'Ça a été une longue journée.', en: 'It was a long day.' }, 'lange'),
-      S('Hoe lang duurt de rit?', { fr: 'Combien de temps dure le trajet ?', en: 'How long does the journey take?' }, 'lang')],
+      S('De rit duurt niet lang.', { fr: 'Le trajet ne dure pas longtemps.', en: 'The journey does not take long.' }, 'lang')],
     'volgende': [S('Volgende week ben ik met verlof.', { fr: 'La semaine prochaine je suis en congé.', en: 'Next week I’m on leave.' }, 'Volgende'),
       S('Tot volgende maandag!', { fr: 'À lundi prochain !', en: 'See you next Monday!' }, 'volgende')]
   };
@@ -5712,10 +5746,10 @@ NL.content.byDutch['notes'] = {
   'Hoe gaat het met de familie?': { fr: '« En hoe is ’t thuis » demande comment ça va « thuis » (à la maison) : prépare ta réponse.', en: '“En hoe is ’t thuis” asks how things are “thuis” (at home): have your answer ready.' },
   'Hoe heet je?': { fr: '« Gij » est le tu du flamand parlé, là où les Pays-Bas disent « jij ».', en: '“Gij” is the spoken Flemish word for you, where the Netherlands says “jij”.' },
   'Hoe laat is het?': { fr: '« ’t » est « het » réduit : on l’entend ainsi et on l’écrit avec l’apostrophe.', en: '“’t” is “het” reduced: you hear it that way and write it with the apostrophe.' },
-  'Hoe lang duurt het?': { fr: '« Hoe lang » porte sur la durée ; pour la distance, on dit « hoe ver ».', en: '“Hoe lang” is about duration; for distance you say “hoe ver”.' },
   'Hoe oud ben je?': { fr: '« Zijde » est « zijt » et « gij » collés, là où le néerlandais dit « ben je ».', en: '“Zijde” is “zijt” and “gij” run together, where Dutch says “ben je”.' },
   'Hoe was uw weekend?': { fr: 'Les collègues posent cette question le lundi. « En » (alors) lance la question, et « ’t weekend » remplace « uw weekend ».', en: 'Colleagues ask this on Monday. “En” (so) opens the question, and “’t weekend” replaces “uw weekend”.' },
   'Hoe zeg je dat in het Nederlands?': { fr: '« Zegde » est « zegt ge » collé : la fin est le « ge » flamand, là où les Pays-Bas disent « zeg je ».', en: '“Zegde” is “zegt ge” run together: the end is the Flemish “ge”, where the Netherlands says “zeg je”.' },
+  'Hoelang duurt het?': { fr: '« Hoelang » s’écrit en un mot et porte sur la durée ; pour la distance, on dit « hoe ver ».', en: '“Hoelang” is one word and asks about duration; for distance you say “hoe ver”.' },
   'Hoeveel is het?': { fr: '« Hoeveel is ’t » demande ce que tu dois ; pour le prix d’une chose, « wat kost dat ».', en: '“Hoeveel is ’t” asks what you owe; for the price of one thing, say “wat kost dat”.' },
   'Hoeveel kost dat?': { fr: 'Pointe l’objet du doigt : « da » (pour « dat ») suffit, pas besoin de le nommer.', en: 'Point at the object: “da” (for “dat”) is enough, you need not name it.' },
   'Ik ben Java-ontwikkelaar.': { fr: 'Un métier se dit sans article ; au travail, on dit aussi bien developer que « ontwikkelaar ».', en: 'A job is said with no article; at work, people say developer as often as “ontwikkelaar”.' },
@@ -5761,7 +5795,7 @@ NL.content.byDutch['notes'] = {
   'Ik woon in {stad}.': { fr: 'Si un autre mot ouvre la phrase, le verbe passe avant le sujet : « hier woon ik ».', en: 'If another word opens the sentence, the verb comes before the subject: “hier woon ik”.' },
   'Ik zou graag een koffiekoek hebben.': { fr: 'On commande avec « ik had graag » en Flandre ; les Pays-Bas disent « ik zou graag ».', en: 'You order with “ik had graag” in Flanders; the Netherlands says “ik zou graag”.' },
   'Is dat alles?': { fr: 'C’est eux qui te le demandent. Réponse : « Ja, dat is alles ».', en: 'They are the ones who ask you. Answer: “Ja, dat is alles”.' },
-  'Is het ver van hier?': { fr: 'Le « ’t » est « het », à peine prononcé. Pour la durée, demande plutôt « hoe lang duurt ’t ».', en: 'The “’t” is “het”, barely pronounced. To ask about time instead, say “hoe lang duurt ’t”.' },
+  'Is het ver van hier?': { fr: 'Le « ’t » est « het », à peine prononcé. Pour la durée, demande plutôt « hoelang duurt ’t ».', en: 'The “’t” is “het”, barely pronounced. To ask about time instead, say “hoelang duurt ’t”.' },
   'Italië': { fr: 'Sans article ; l’adjectif est « Italiaans ».', en: 'No article; the adjective is “Italiaans”.' },
   'Ja, dat is alles, merci.': { fr: '« Merci » se dit en Flandre pour « bedankt », même au comptoir.', en: '“Merci” is said in Flanders for “bedankt”, even at the counter.' },
   'Kan ik met de kaart betalen?': { fr: '« Bancontact » est la carte de paiement belge ; aux Pays-Bas on dit « pinnen ».', en: '“Bancontact” is the Belgian payment card; in the Netherlands people say “pinnen”.' },
@@ -6727,10 +6761,10 @@ NL.content.byDutch['decoys'] = {
   'Hoe gaat het met de familie?': ['En hoe is ’t tuis?', 'En hoe is t’ thuis?'],
   'Hoe heet je?': ['Hoe heetten gij?', 'Hoe heetje gij?'],
   'Hoe laat is het?': ['Hoe laat is ’et?', 'Hoe laat is t’?'],
-  'Hoe lang duurt het?': ['Hoe lang duur ’t?', 'Hoe lang duurt ’d?'],
   'Hoe oud ben je?': ['Hoe oud zijd gij?', 'Hoe oud zijnde gij?'],
   'Hoe was uw weekend?': ['En, hoe wast weekend?', 'En, hoe was ’t weekent?'],
   'Hoe zeg je dat in het Nederlands?': ['Hoe zeg de da in ’t Nederlands?', 'Hoe zegde da in ’t Nederland?'],
+  'Hoelang duurt het?': ['Hoelang duur ’t?', 'Hoelang duurt ’d?'],
   'Hoeveel is het?': ['Hoeveel is ’d?', 'Hoeveel is t’?'],
   'Hoeveel kost dat?': ['Hoeveel kosd da?', 'Hoeveel kost daa?'],
   'Ik ben Nederlands aan het leren.': ['Ik ben Nederlands aan het leert, hè.', 'Ik ben Nederlands an het leren, hè.'],
@@ -6925,8 +6959,8 @@ NL.content.byDutch['open.phrases'] = {
   'Dit is mijn vrouw.': { ask: { fr: 'À une fête, présente un proche (famille ou ami) à un collègue. Commence par « Dit is ».', en: 'At a party, introduce someone close to you (family or friend) to a colleague. Start with “Dit is”.' }, need: [{ what: { fr: 'commence par « dit is »', en: 'starts with “dit is”' }, rx: /^\s*dit\s+is\b/i, miss: 'Mijn vrouw is hier.' }, { what: { fr: 'dit qui est la personne', en: 'says who the person is' }, any: ['vrouw', 'man', 'zoon', 'dochter', 'broer', 'zus', 'mama', 'papa', 'ouders', 'kind', 'kinderen', 'vriend', 'vriendin'], miss: 'Dit is mijn collega.' }, { what: { fr: 'au moins 4 mots', en: 'at least 4 words' }, min: 4, miss: 'Dit is zus.' }], model: 'Dit is mijn man en dit is mijn zoon.' },
   'Eerst werk ik, daarna kook ik.': { ask: { fr: 'Un collègue te demande ta soirée. Raconte deux choses que tu fais, dans l’ordre : commence par « eerst » et enchaîne avec « daarna ».', en: 'A colleague asks about your evening. Tell two things you do, in order: start with “eerst” and continue with “daarna”.' }, need: [{ what: { fr: 'commence par « eerst »', en: 'starts with “eerst”' }, rx: /^\s*eerst\b/i, miss: 'Ik werk eerst, daarna kook ik.' }, { what: { fr: 'emploie « daarna »', en: 'uses “daarna”' }, any: ['daarna'], miss: 'Eerst werk ik en ik kook ook.' }, { what: { fr: 'au moins 6 mots', en: 'at least 6 words' }, min: 6, miss: 'Eerst werk, daarna koken.' }], model: 'Eerst werk ik, daarna ga ik naar huis.' },
   'Hoe gaat het met de familie?': { ask: { fr: 'Tu retrouves un collègue. Demande-lui des nouvelles de sa famille ou de ses enfants. Commence par « Hoe gaat het ».', en: 'You meet a colleague. Ask how their family or children are. Start with “Hoe gaat het”.' }, need: [{ what: { fr: 'commence par « hoe gaat het »', en: 'starts with “hoe gaat het”' }, rx: /^\s*hoe\s+gaat\s+het\b/i, miss: 'Gaat het goed met de familie?' }, { what: { fr: 'parle de sa famille', en: 'mentions their family' }, any: ['familie', 'kinderen', 'kind', 'vrouw', 'man', 'zoon', 'dochter', 'ouders', 'mama', 'papa', 'broer', 'zus'], miss: 'Hoe gaat het met u?' }, { what: { fr: 'au moins 5 mots', en: 'at least 5 words' }, min: 5, miss: 'Hoe gaat het familie?' }], model: 'Hoe gaat het met uw vrouw en de kinderen?' },
-  'Hoe lang duurt het?': { ask: { fr: 'Tu veux savoir combien de temps dure le trajet vers Bruxelles. Pose la question à un collègue.', en: 'You want to know how long the trip to Brussels takes. Ask a colleague.' }, need: [{ what: { fr: 'demande la durée', en: 'asks about the duration' }, rx: /\b(duurt|duren|hoe\s+lang|hoeveel\s+(tijd|minuten))\b/i, miss: 'Hoe is de rit naar Brussel?' }, { what: { fr: 'nomme la ville', en: 'names the town' }, any: ['brussel'], miss: 'Hoe lang duurt de rit naar daar?' }, { what: { fr: 'au moins 4 mots', en: 'at least 4 words' }, min: 4, miss: 'Duurt Brussel lang?' }], model: 'Hoe lang duurt de rit naar Brussel met de trein?' },
   'Hoe was uw weekend?': { ask: { fr: 'Lundi matin, tu retrouves un collègue que tu connais bien. Demande-lui comment s’est passé son week-end, et si c’était bien. Commence par « hoe ».', en: 'On Monday morning, you meet a colleague you know well. Ask how their weekend went, and whether it was good. Start with “hoe”.' }, need: [{ what: { fr: 'commence par « hoe »', en: 'starts with “hoe”' }, rx: /^\s*hoe\b/i, miss: 'Was je weekend goed, vandaag?' }, { what: { fr: 'parle du « weekend »', en: 'mentions the “weekend”' }, any: ['weekend'], miss: 'Hoe was je maandag, was het goed?' }, { what: { fr: 'demande si c’était bien', en: 'asks if it was good' }, any: ['goed', 'lekker', 'plezant', 'gezellig', 'leuk', 'fijn', 'tof', 'prettig'], miss: 'Hoe was je weekend, was het druk?' }, { what: { fr: 'au moins 5 mots', en: 'at least 5 words' }, min: 5, miss: 'Hoe was weekend goed?' }], model: 'Hoe was je weekend, was het goed?' },
+  'Hoelang duurt het?': { ask: { fr: 'Tu veux savoir combien de temps dure le trajet vers Bruxelles. Pose la question à un collègue.', en: 'You want to know how long the trip to Brussels takes. Ask a colleague.' }, need: [{ what: { fr: 'demande la durée', en: 'asks about the duration' }, rx: /\b(duurt|duren|hoe\s*lang|hoeveel\s+(tijd|minuten|uur))\b/i, miss: 'Hoe is de rit naar Brussel?' }, { what: { fr: 'nomme la ville', en: 'names the town' }, any: ['brussel'], miss: 'Hoelang duurt de rit naar daar?' }, { what: { fr: 'au moins 3 mots', en: 'at least 3 words' }, min: 3, miss: 'Duurt Brussel?' }], model: 'Hoelang duurt de rit naar Brussel met de trein?' },
   'Hoeveel kost dat?': { ask: { fr: 'Dans un magasin, tu montres un objet et tu demandes combien il coûte. Ajoute un mot poli.', en: 'In a shop, you point at something and ask how much it costs. Add a polite word.' }, need: [{ what: { fr: 'demande le prix', en: 'asks the price' }, rx: /\b(hoeveel|wat\s+kost|prijs|hoe\s+duur)/i, miss: 'Sorry, mag ik dat hebben?' }, { what: { fr: 'ajoute un mot poli', en: 'adds a polite word' }, any: ['alstublieft', 'sorry', 'merci', 'dank', 'goeiedag', 'hallo', 'dag', 'u', 'kunt u', 'kan u', 'mag ik'], miss: 'Hoeveel kost dit broodje?' }, { what: { fr: 'au moins 4 mots', en: 'at least 4 words' }, min: 4, miss: 'Alstublieft, hoeveel?' }], model: 'Goeiedag, hoeveel kost deze taart, alstublieft?' },
   'Ik ben getrouwd en ik heb twee kinderen.': { ask: { fr: 'Une nouvelle collègue te pose des questions sur ta vie privée. Dis si tu es marié(e) et si tu as des enfants.', en: 'A new colleague asks about your private life. Say whether you are married and whether you have children.' }, need: [{ what: { fr: 'parle du mariage', en: 'mentions marriage' }, any: ['getrouwd'], miss: 'Ik heb twee kinderen en ik woon hier.' }, { what: { fr: 'parle des enfants', en: 'mentions children' }, any: ['kinderen', 'kind'], miss: 'Ik ben getrouwd en ik woon hier.' }, { what: { fr: 'au moins 5 mots', en: 'at least 5 words' }, min: 5, miss: 'Getrouwd, twee kinderen.' }], model: 'Ik ben getrouwd en wij hebben twee kinderen.' },
   'Ik ben op zoek naar brood.': { ask: { fr: 'Dans un magasin, un vendeur te demande s’il peut t’aider. Dis ce que tu cherches, avec le verbe « zoeken ».', en: 'In a shop, an assistant asks if he can help you. Say what you are looking for, with the verb “zoeken”.' }, need: [{ what: { fr: 'emploie « zoeken »', en: 'uses “zoeken”' }, any: ['zoek', 'zoeken'], miss: 'Ik wil graag een broodje.' }, { what: { fr: 'au moins 5 mots', en: 'at least 5 words' }, min: 5, miss: 'Ik zoek brood.' }], model: 'Ik zoek een broodje met kaas en hesp.' },
@@ -8078,6 +8112,10 @@ NL.ex = (function () {
       const forced = d.gap ||
         (item.kind === 'word' && U.tiles(U.bare(item.nl)).length === 1 ? U.bare(item.nl) : null);
       const gap = gapWord(d.nl, forced);
+      /* Un trou qui tient une majuscule la donne à ses leurres : sinon la seule option qui en
+         porte une est la réponse, sans lire la phrase. */
+      const likeGap = w => gap[0] === gap[0].toLowerCase() ? w :
+        w.slice(0, 2).toLowerCase() === 'ij' ? 'IJ' + w.slice(2) : w[0].toUpperCase() + w.slice(1);
       /* Les leurres du texte à trous sortaient des mots de l'unité, articles et
          pronoms compris : « Het » face à « gemeentehuis » ne trompe personne et
          se raye sans lire la phrase. On ne garde que des mots pleins, et de
@@ -8088,7 +8126,8 @@ NL.ex = (function () {
         'wel', 'uw', 'mijn', 'er', 'u', 'al'];
       const pool = U.uniq(NL.content.itemsOf(item.unit)
         .flatMap(x => U.tiles(x.nl || '').concat((x.drills || []).flatMap(d => U.tiles(d.nl))))
-        .filter(w => w.length > 2 && U.norm(w) !== U.norm(gap) && FILLERS.indexOf(U.norm(w)) < 0));
+        .filter(w => w.length > 2 && U.norm(w) !== U.norm(gap) && FILLERS.indexOf(U.norm(w)) < 0)
+        .map(likeGap));
       const near = pool.slice().sort((a, b) =>
         Math.abs(a.length - gap.length) - Math.abs(b.length - gap.length));
       const opts = U.shuffle([{ label: gap, ok: true }].concat(

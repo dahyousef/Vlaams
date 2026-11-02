@@ -206,6 +206,14 @@ NL.state.open().then(() => {
   ok(ahead >= AHEAD_BUDGET, 'seulement ' + ahead + ' phrases empruntent en avant : baisser AHEAD_BUDGET à ' + ahead + ' pour verrouiller le gain');
   console.log('  séquence        ' + ahead + ' / ' + sentences + ' phrases empruntent en avant (budget ' + AHEAD_BUDGET + ')');
 
+  /* La durée s'écrit en un mot, « hoelang » : le cours ne doit pas enseigner une orthographe ici et
+     l'autre là (#128). « Hoe lang » en deux mots reste juste quand il porte sur la longueur ; si une
+     leçon l'enseigne un jour, ce contrôle doit nommer la ligne qu'il laisse passer. */
+  const CONTENT = path.join(ROOT, 'src', 'content');
+  fs.readdirSync(CONTENT).filter(f => /\.js$/.test(f)).forEach(f =>
+    fs.readFileSync(path.join(CONTENT, f), 'utf8').split(/\r?\n/).forEach((line, i) =>
+      ok(!/\bhoe\s+lang\b/i.test(line), 'src/content/' + f + ':' + (i + 1) + ' écrit « hoe lang » : la durée s’écrit « hoelang »')));
+
   /* Les phrases sourcées, src/content/sourced.js : tirées de Tatoeba (src, le numéro de la
      phrase) ou écrites pour le cours (src 'gen'), rangées sous le néerlandais du mot tel que son
      premier listage l'écrit. src/content/examples.js, chargé juste après, les pose sur le mot

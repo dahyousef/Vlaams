@@ -861,6 +861,37 @@ NL.state.open().then(() => {
     ok(r.pass === want, 'scoring "' + label + '" gave ' + r.pct + '% pass=' + r.pass + ', wanted ' + want);
     console.log('  ' + label.padEnd(14) + r.pct + '%  ' + (r.pass ? 'pass' : 'fail'));
   });
+  /* La voix n'a pas de blancs : le reconnaisseur écrit « hoe lang » ou « hoelang » à son gré, et
+     celui qui a bien dit la phrase n'en est pas responsable (#128). Seuls des mots qui, collés,
+     font exactement le mot attendu comptent pour lui. */
+  [['hoe lang duurt het', 'Hoelang duurt het?', true, 'heard in two'],
+   ['hoelang duurt het', 'Hoelang duurt het?', true, 'heard in one'],
+   ['hoe lang', 'hoelang', true, 'the word alone'],
+   ['hoever is het', 'Hoe ver is het?', true, 'joined by ear'],
+   ['ik werk en ik wil werken', 'Ik werk en ik wil werken.', true, 'stays apart'],
+   ['een en twintig', 'eenentwintig', true, 'three words'],
+   ['ik ben java ontwikkelaar', 'Ik ben Java-ontwikkelaar.', true, 'hyphen a space'],
+   ['ik ben javaontwikkelaar', 'Ik ben Java-ontwikkelaar.', true, 'hyphen unheard'],
+   ['is t ver van hier', 'Is ’t ver van hier?', true, 'no apostrophe'],
+   ['een twintig', 'eenentwintig', false, 'letters short'],
+   ['hoe laat duurt het', 'Hoelang duurt het?', false, 'another word'],
+   ['lang duurt het', 'Hoelang duurt het?', false, 'half the word'],
+   ['hoe duurt het', 'Hoelang duurt het?', false, 'other half']].forEach(([said, target, want, label]) => {
+    const r = NL.speech.score([said], target);
+    ok(r.pass === want, 'scoring "' + said + '" for "' + target + '" gave ' + r.pct + '% pass=' + r.pass + ', wanted ' + want);
+    ok(!want || r.pct === 100, 'scoring "' + said + '" for "' + target + '" passes at ' + r.pct + '%: the screen would show it as a partial match');
+    console.log('  ' + label.padEnd(14) + r.pct + '%  ' + (r.pass ? 'pass' : 'fail'));
+  });
+
+  /* Un trou en tête de phrase tient sa majuscule : si les leurres n'en ont pas, la seule option
+     qui en porte une est la réponse, sans lire la phrase. */
+  for (let i = 0; i < 40; i++) {
+    const t = NL.ex.get('cloze').build(NL.content.byId('onderweg:p4'));
+    const labels = t.opts.map(o => o.label);
+    ok(t.gap === 'Hoelang', 'the cloze of onderweg:p4 hides « ' + t.gap + ' », this check wants a capitalised gap');
+    ok(labels.every(l => l[0] !== l[0].toLowerCase()), 'only the answer is capitalised among ' + JSON.stringify(labels));
+    ok(new Set(labels.map(l => NL.util.norm(l))).size === labels.length, 'two options are one word: ' + JSON.stringify(labels));
+  }
 
   console.log('\nPROGRESS');
   const before = NL.content.unitProgress('overleven');
