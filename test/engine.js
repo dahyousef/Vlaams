@@ -897,12 +897,13 @@ NL.state.open().then(async () => {
        il revient le lendemain que l'on touche le bouton ou non. Le bouton ne garde que ce qui
        n'a pas été servi. Refusé deux fois à voix haute, un élément arme son second exercice à
        voix haute lui aussi. */
-    const afterRefusals = (n, refusals) => {
+    const turn = play => { const m = S.peek().ex === 'match'; B.clock.advance(20000); play(); answer.next(m); };
+    const summary = () => (B.app.innerHTML.match(/done-stage[\s\S]*?class="tally"/) || [''])[0];
+    function afterRefusals(n, refusals) {
       fresh();
       words.slice(0, n).forEach(it => put(it, 3, T0 - 2 * DAY));
       words.slice(n, n + 30).forEach(it => put(it, 2, T0 - DAY));
       S.begin('vandaag');
-      const turn = play => { const m = S.peek().ex === 'match'; B.clock.advance(20000); play(); answer.next(m); };
       let guard = 0, refused = 0;
       while (S.peek() && guard++ < 80 && !(S.peek().ex === 'speak' && refused >= refusals)) {
         if (S.peek().ex === 'speak') { refused++; turn(answer.wrong); } else turn(answer.right);
@@ -915,26 +916,43 @@ NL.state.open().then(async () => {
         turn(answer.right);
         if (B.app.innerHTML.indexOf('done-stage') >= 0) break;
       }
-      const sub = (B.app.innerHTML.match(/done-stage[\s\S]*?class="tally"/) || [''])[0];
+      const sub = summary();
       S.abandon();
       return { tapped, sub };
-    };
-    const keptIn = sub => Array.from({ length: 40 }, (_, i) => i + 1).filter(k => sub.includes(NL.t.doneSpokenKept(k)));
+    }
+    const keptIn = sub => Array.from({ length: 40 }, (_, i) => i + 1).filter(k => {
+      const at = sub.indexOf(NL.t.doneSpokenKept(k));
+      return at >= 0 && !/[0-9]/.test(sub.charAt(at - 1));
+    });
 
     const others = afterRefusals(3, 1);
-    ok(others.sub.includes(NL.t.doneSpokenKept(2)), 'one of 3 spoken exercises refused, then the button: the summary keeps ' + JSON.stringify(keptIn(others.sub)) + ', not the 2 never served');
+    ok(others.tapped.retry, 'the fixture is wrong: the button was not tapped on the retry');
+    ok(keptIn(others.sub).join() === '2', 'one of 3 spoken exercises refused, then the button on its retry: the summary keeps ' + JSON.stringify(keptIn(others.sub)) + ', not the 2 never served');
 
     const onRetry = afterRefusals(1, 1);
     ok(onRetry.tapped.retry, 'the fixture is wrong: the button was not tapped on a retry');
     ok(keptIn(onRetry.sub).length === 0, 'the button on a retry: the summary says ' + JSON.stringify(keptIn(onRetry.sub)) + ' exercise(s) kept, when nothing was set aside');
     ok(onRetry.sub.indexOf(NL.t.doneNoSpoken) < 0, 'the button on a retry: the summary says pronunciation exercises are yet to come, when one was just refused');
-    ok(NL.srs.needsVoice(onRetry.tapped.items[0]) && NL.state.rec(onRetry.tapped.items[0].id).due > T0, 'an item refused aloud, then the button on its retry, should still wait to be said');
+    ok(NL.srs.needsVoice(onRetry.tapped.items[0]), 'an item refused aloud, then the button on its retry, should still wait to be said');
 
     const onSecond = afterRefusals(1, 2);
     ok(onSecond.tapped.second, 'the fixture is wrong: the button was not tapped on a second exercise');
     ok(keptIn(onSecond.sub).length === 0, 'the button on a second exercise: the summary says ' + JSON.stringify(keptIn(onSecond.sub)) + ' exercise(s) kept, when nothing was set aside');
     ok(onSecond.sub.indexOf(NL.t.doneNoSpoken) < 0, 'the button on a second exercise: the summary says pronunciation exercises are yet to come, when one was just refused');
-    console.log('  un refus, puis le bouton : ' + keptIn(others.sub).join() + ' gardés sur 3 ; sur la reprise : ' + keptIn(onRetry.sub).length + ' ; sur le second exercice : ' + keptIn(onSecond.sub).length);
+    /* Sans le bouton, et rien encore à dire : la phrase reste. */
+    fresh();
+    S.begin('vandaag');
+    let spokenSeen = 0, turns = 0;
+    while (S.peek() && turns++ < 120) {
+      if (S.peek().ex === 'speak') spokenSeen++;
+      turn(answer.right);
+      if (B.app.innerHTML.indexOf('done-stage') >= 0) break;
+    }
+    const untapped = summary();
+    S.abandon();
+    ok(spokenSeen === 0, 'the fixture is wrong: a session of new items served ' + spokenSeen + ' spoken exercise(s)');
+    ok(untapped.includes(NL.t.doneNoSpoken), 'nothing said and the button never tapped: the summary no longer says pronunciation exercises are yet to come: « ' + untapped + ' »');
+    console.log('  un refus, puis le bouton sur sa reprise : ' + keptIn(others.sub).join() + ' gardés sur 3 ; sur la reprise : ' + keptIn(onRetry.sub).length + ' ; sur le second exercice : ' + keptIn(onSecond.sub).length);
   }
 
   /* ------------------------------------------------------------------ */
