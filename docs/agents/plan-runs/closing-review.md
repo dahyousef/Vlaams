@@ -17,7 +17,8 @@ Your dispatch names the run file and the run's base commit.
    - tests: `test/`.
    Each gets the area's paths, the diff file, `reviewer.md`'s Part 2 and Calibration, the checklist below,
    and a report path `<WS>/reports/closing-<area>.md`. Its final message, at most 10 lines: issue counts and
-   the checklist items it found broken. Agents run in the background here, so a dispatch returns at once.
+   the checklist items it found broken. Write `<WS>` out in every dispatch as the absolute path `run.md` gives.
+   Agents run in the background here, so a dispatch returns at once.
    After dispatching them, end your turn: that is how you wait, and each one's notice wakes you. End it with one
    line naming what you wait for, never in your return's form: your final return ends your run, so it is the one
    thing you never do while an agent of yours runs. Do not poll, sleep or use Monitor. Step 4 starts once all of

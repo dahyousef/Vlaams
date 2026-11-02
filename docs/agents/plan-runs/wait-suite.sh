@@ -8,7 +8,7 @@ if [ -z "$1" ]; then
 fi
 F="$1"
 GRACE="${2:-120}"    # after the suite's end, so that the verifier's line comes first
-SILENCE="${3:-900}"  # with no write to the file for this long, the suite was cut off
+SILENCE="${3:-900}"  # with no write to the file for this long, the suite hangs or was cut off
 START=$(date +%s)
 while true; do
   now=$(date +%s)
@@ -22,7 +22,10 @@ while true; do
   last=$m
   [ "$START" -gt "$last" ] && last=$START
   if [ $(( now - last )) -ge "$SILENCE" ]; then
-    echo "STALE: no exit= and no write for $(( now - last ))s"
+    # verify.sh leaves its process id beside the suite file. A suite that hangs still runs, and a second one
+    # beside it would mix the file and the build outputs.
+    if [ -f "$F.pid" ] && kill -0 "$(cat "$F.pid")" 2>/dev/null; then state="a suite still runs"; else state="no suite runs"; fi
+    echo "STALE: no exit= and no write for $(( now - last ))s; $state"
     exit 0
   fi
   sleep 5

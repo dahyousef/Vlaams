@@ -16,6 +16,7 @@ Your dispatch names the run file and the commit to verify. In the worktree named
    commit for uncommitted changes.
 3. Write `<WS>/tmp/verify.sh` with the Write tool:
 
+       echo $$ > "<WS>/tmp/suite.txt.pid"
        sh test/run-all.sh > "<WS>/tmp/suite.txt" 2>&1
        echo "exit=$?" >> "<WS>/tmp/suite.txt"
        git update-index -q --refresh
@@ -23,12 +24,16 @@ Your dispatch names the run file and the commit to verify. In the worktree named
        git status --short -- index.html artifact.html >> "<WS>/tmp/suite.txt"
 
    and run `sh "<WS>/tmp/verify.sh"` in the background, then end your turn: the suite can take more than half an
-   hour, past the ten a foreground command may run, and its exit notice wakes you. Do not poll, sleep or use
-   Monitor. Write no `VERIFIER:` line before step 4: your controller takes it as the result.
-   Its third line puts back `index.html` and `artifact.html` when the suite's rebuild differs from the commit
-   in line endings only (`core.autocrlf`). A real difference stays, and the check below fails on it.
+   hour, past the ten a foreground command may run, and its exit notice wakes you. End it with one line naming what
+   you wait for, never in your return's form. Do not poll, sleep or use Monitor. Write no `VERIFIER:` line before
+   step 4: your controller takes it as the result.
+   Its first line lets `wait-suite.sh` tell a suite that hangs from one that was cut off. Its `git checkout` line
+   puts back `index.html` and `artifact.html` when the suite's rebuild differs from the commit in line endings only
+   (`core.autocrlf`). A real difference stays, and the check below fails on it.
 4. Read the last 40 lines of `<WS>/tmp/suite.txt`.
    - Pass: `exit=0`, and no line after it naming `index.html` or `artifact.html`.
+   - No `exit=` line at all: the suite was killed, which says nothing of the commit. Return
+     `VERIFIER: fail — suite cut off`.
    - Anything else is a fail. Search the file for `FAIL` to find the failing lines.
 
 Your final message, at most 10 lines:
@@ -37,5 +42,5 @@ Your final message, at most 10 lines:
 
 or
 
-    VERIFIER: fail — exit=<n> | build outputs not committed | tree not clean
+    VERIFIER: fail — exit=<n> | build outputs not committed | tree not clean | suite cut off
     <up to 8 failing lines, verbatim>

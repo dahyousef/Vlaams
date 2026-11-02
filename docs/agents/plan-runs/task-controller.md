@@ -79,11 +79,18 @@ each verifier, and start no second suite beside a running one.
   background work, is not a result either: wait on. If it has stopped without that line, send it on with
   `SendMessage`.
 - A suite past fifteen minutes in all is no stop: the script counts silence, not time. `STALE` means no suite has
-  ended since the script started, and nothing has written to the file for fifteen minutes: the suite was cut off,
-  and its verifier has no line to give. Stop that verifier with `TaskStop`, then dispatch a new one with a new wait.
-  This is not a fix round. A second `STALE` on the same commit: return `needs ruling` with the `STALE` line.
+  ended since the script started and nothing has written to the file for fifteen minutes. Its line ends by saying
+  which case it is:
+  - `no suite runs`: the suite was cut off, and its verifier has no line to give. Stop that verifier with
+    `TaskStop` if it is still there, then dispatch a new one with a new wait. `VERIFIER: fail — suite cut off` means
+    the same. Neither is a fix round. A second cut-off on the same commit: return `needs ruling` with the line.
+  - `a suite still runs`: stop the verifier with `TaskStop` and return `needs ruling` with the `STALE` line. Stopping
+    an agent or its shell does not stop its suite (measured on this machine on 2026-11-02: the suite's process went
+    on writing), and a second suite beside it would mix the file and the build outputs.
 - A script whose verifier has already returned is left over (a verifier that fails at once starts no suite): stop
   it with `TaskStop`, and ignore its notice if one comes.
+- `TaskStop` and `SendMessage` may need loading with `ToolSearch` first. Each takes the ID its dispatch returned, so
+  keep the IDs of the verifier and its script until the verifier's line has come.
 - If a harness message forces you to hand back while an agent runs, say so in your return's `UNFINISHED:` line.
   Without that message you wait: this line gives no leave to hand back early.
 
@@ -93,7 +100,8 @@ each verifier, and start no second suite beside a running one.
 2. Dispatch the implementer: "Read docs/agents/plan-runs/run-notes.md, then your brief <path>. Run file:
    <WS>/run.md. Ticket: <…>. [Ruling: …] Report to <WS>/reports/task-<N>-impl.md." On `BLOCKED` or
    `NEEDS_RULING` with a question the brief does not answer: return `needs ruling` with that question.
-3. Dispatch the verifier with the run file and the commit hash. On `fail`: a fix round (step 6) with the failing lines.
+3. Dispatch the verifier with the run file and the commit hash. On `fail`: a fix round (step 6) with the failing
+   lines, unless it says `suite cut off` (« Waiting »).
 4. Write the review diff — with a `.sh` file in `<WS>/tmp/`, run with `sh`:
 
        git log --format='%h %s%n%b' BASE..HEAD > "<WS>/reviews/task-<N>.diff"

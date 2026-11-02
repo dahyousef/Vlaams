@@ -20,6 +20,7 @@ the Check command, and perhaps the maintainer's rulings or confirmations for thi
 
 Dispatch each with its model given explicitly and a description that starts with `batch <kind>/<batch>`. Every
 reader is a new agent: a reader confirms what someone else wrote, and a second reader judges the retry afresh.
+Write `<WS>` out in every dispatch as the absolute path `run.md` gives.
 
 Agents run in the background here, so a dispatch returns at once. After dispatching one, end your turn: that is
 how you wait, and its notice wakes you. End it with one line naming what you wait for, never in your return's

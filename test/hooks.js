@@ -78,14 +78,19 @@ const tc = oneLine('task-controller.md');
 ok(/Only a line starting `VERIFIER:` is the verifier's result/.test(tc), 'task-controller.md dit ce qu\'est un résultat');
 ok(/send it on with `SendMessage`/.test(tc), 'task-controller.md dit quoi faire d\'un vérificateur arrêté sans sa ligne');
 ok(/dispatch a new one with a new wait/.test(tc), 'task-controller.md relance un vérificateur après STALE');
-ok(/A second `STALE` on the same commit: return `needs ruling`/.test(tc), 'task-controller.md s\'arrête au second STALE');
+ok(/A second cut-off on the same commit: return `needs ruling`/.test(tc), 'task-controller.md s\'arrête à la seconde suite coupée');
+ok(/`a suite still runs`: [^.]*`needs ruling`/.test(tc), 'task-controller.md ne lance pas de seconde suite à côté d\'une suite qui tourne');
+ok(/`VERIFIER: fail — suite cut off`/.test(tc) && /`VERIFIER: fail — suite cut off`/.test(oneLine('verifier.md')), 'une suite coupée n\'est pas un échec du code, pour le vérificateur comme pour son contrôleur');
+ok(/suite\.txt\.pid/.test(oneLine('verifier.md')), 'verifier.md écrit le pid de sa suite, que wait-suite.sh lit');
+ok(/`ToolSearch`/.test(tc), 'task-controller.md dit que TaskStop et SendMessage se chargent d\'abord');
+ok(/`<WS>` out[^.]*absolute path/.test(oneLine('closing-review.md')) && /`<WS>` out[^.]*absolute path/.test(oneLine('batch-controller.md')) && /`<WS>` out[^.]*absolute path/.test(oneLine('run-controller.md')), 'chaque page qui envoie un agent écrit <WS> en chemin absolu');
 ok(!/has no `exit=` line/.test(tc), 'task-controller.md dit STALE comme le script le calcule');
 ok(/left over/.test(tc), 'task-controller.md dit quoi faire d\'une attente restée après la ligne du vérificateur');
 ok(/`<WS>` out[^.]*absolute path/.test(tc), 'task-controller.md écrit <WS> en chemin absolu dans chaque envoi');
 ok(/UNFINISHED: /.test(tc) && /`UNFINISHED:`/.test(oneLine('run-controller.md')), 'un retour forcé se reconnaît à sa ligne UNFINISHED');
 ok(/forced hand-back/.test(oneLine('batch-controller.md')) && /forced hand-back/.test(oneLine('one-session.md')), 'un lot rendu de force se reconnaît à sa raison');
 ok(/Write no `VERIFIER:` line before step 4/.test(oneLine('verifier.md')), 'verifier.md n\'écrit sa ligne qu\'à la fin');
-for (const f of ['task-controller.md', 'batch-controller.md', 'closing-review.md']) {
+for (const f of ['task-controller.md', 'batch-controller.md', 'closing-review.md', 'verifier.md']) {
   ok(/naming what you wait for, never in your return's form/.test(oneLine(f)), f + ' dit avec quoi terminer son tour');
 }
 ok(/Step 4 starts once all of them have returned/.test(oneLine('closing-review.md')), 'closing-review.md attend tous ses relecteurs');
@@ -98,6 +103,10 @@ const suiteFile = path.join(waitDir, 'suite.txt').replace(/\\/g, '/');
 const waitFor = script => (spawnSync('sh', ['-c', script], { cwd: ROOT, env, encoding: 'utf8' }).stdout || '').trim();
 fs.writeFileSync(suiteFile, 'exit=0\n');
 ok(/^STALE: /.test(waitFor(`sh "${waitSuite}" "${suiteFile}" 0 1`)), 'wait-suite.sh ne prend pas le exit= de la suite d\'avant');
+// STALE dit si la suite tourne encore : une seconde suite à côté mêlerait le fichier et les sorties du build.
+ok(/no suite runs$/.test(waitFor(`sh "${waitSuite}" "${suiteFile}" 0 1`)), 'wait-suite.sh dit qu\'aucune suite ne tourne');
+ok(/a suite still runs$/.test(waitFor(`sleep 8 >/dev/null 2>&1 & echo $! > "${suiteFile}.pid"; sh "${waitSuite}" "${suiteFile}" 0 1`)), 'wait-suite.sh dit qu\'une suite tourne encore');
+fs.rmSync(suiteFile + '.pid');
 fs.writeFileSync(suiteFile, 'FAIL: la suite d\'avant\nexit=1\n');
 ok(waitFor(`(sleep 2; echo exit=0 >> "${suiteFile}") & sh "${waitSuite}" "${suiteFile}" 0 900`) === 'FINISHED', 'wait-suite.sh rend FINISHED quand la suite finit');
 ok(waitFor(`sh "${waitSuite}"`).indexOf('usage') === 0, 'wait-suite.sh sans fichier dit son usage au lieu d\'attendre quinze minutes');
