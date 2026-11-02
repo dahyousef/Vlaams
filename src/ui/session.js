@@ -201,8 +201,8 @@ NL.screens.sessie = (function () {
      nouveau, et ils pourront être demandés par écrit. D'autres éléments dus
      prennent la place de ceux qui n'ont pas encore été servis, choisis par
      compose() dans ce qui reste du budget du jour. Rien n'est retenu au-delà :
-     la séance suivante redemande. Ce n'est pas un
-     réglage, parce qu'un réglage suit l'appareil et s'oublie éteint. */
+     la séance suivante redemande. Ce n'est pas un réglage, parce qu'un réglage
+     suit l'appareil et s'oublie éteint. */
   function quiet() {
     const c = cur();
     if (!c || c.ex !== 'speak' || L.phase !== 'ask') return;
@@ -215,8 +215,8 @@ NL.screens.sessie = (function () {
     const spoken = rest.filter(x => x.ex === 'speak' && !x.retry && !x.second).length;
     /* Le second exercice d'un élément qui ne peut être que dit part avec son
        exercice parlé : servi sans parler, il le ferait monter par écrit sans
-       qu'il ait jamais été dit. Sa place, elle, est reprise ; la séance
-       raccourcit donc d'un exercice par élément mis de côté. */
+       qu'il ait jamais été dit. Rien ne le remplace : la séance raccourcit
+       d'autant. */
     const kept = rest.filter(x => x.ex !== 'speak' && !(!x.task && NL.srs.needsVoice(x.items[0])));
     /* Les séances à liste fixe, les fautes et le défi, ne se complètent pas. */
     let more = [];

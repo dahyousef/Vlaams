@@ -296,6 +296,7 @@ NL.state.open().then(async () => {
     ok(hundred.due.length === 23 && hundred.fresh.length === RESERVED && pHundred.total === 32,
       '100 items due: ' + hundred.due.length + ' reviews + ' + hundred.fresh.length + ' new, announced ' + pHundred.total + ', not 23 + 9 = 32');
   }
+
   /* ------------------------------------------------------------------ */
   console.log('\nL’ANNONCE ET LA SÉANCE DISENT LA MÊME CHOSE');
   {
@@ -753,9 +754,9 @@ NL.state.open().then(async () => {
 
     /* Le budget du jour borne ce qui est repris, et ce qui est repris est dû, jamais neuf. */
     {
+      /* Rien que de l'écrit : chaque révision coûte un exercice. */
       fresh();
-      words.slice(0, 31).forEach(it => put(it, 3, T0 - 2 * DAY));
-      words.slice(31, 400).forEach(it => put(it, 2, T0 - DAY));
+      words.slice(0, 400).forEach(it => put(it, 2, T0 - DAY));
       NL.srs.spend(NL.srs.pace().cap - 5);
       const fillIn = kept => NL.srs.compose('vandaag', undefined, { fill: 31, kept, without: new Set() });
       const tight = fillIn(2);
