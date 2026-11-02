@@ -8112,6 +8112,10 @@ NL.ex = (function () {
       const forced = d.gap ||
         (item.kind === 'word' && U.tiles(U.bare(item.nl)).length === 1 ? U.bare(item.nl) : null);
       const gap = gapWord(d.nl, forced);
+      /* Un trou qui tient une majuscule la donne à ses leurres : sinon la seule option qui en
+         porte une est la réponse, sans lire la phrase. */
+      const likeGap = w => gap[0] === gap[0].toLowerCase() ? w :
+        w.slice(0, 2).toLowerCase() === 'ij' ? 'IJ' + w.slice(2) : w[0].toUpperCase() + w.slice(1);
       /* Les leurres du texte à trous sortaient des mots de l'unité, articles et
          pronoms compris : « Het » face à « gemeentehuis » ne trompe personne et
          se raye sans lire la phrase. On ne garde que des mots pleins, et de
@@ -8122,7 +8126,8 @@ NL.ex = (function () {
         'wel', 'uw', 'mijn', 'er', 'u', 'al'];
       const pool = U.uniq(NL.content.itemsOf(item.unit)
         .flatMap(x => U.tiles(x.nl || '').concat((x.drills || []).flatMap(d => U.tiles(d.nl))))
-        .filter(w => w.length > 2 && U.norm(w) !== U.norm(gap) && FILLERS.indexOf(U.norm(w)) < 0));
+        .filter(w => w.length > 2 && U.norm(w) !== U.norm(gap) && FILLERS.indexOf(U.norm(w)) < 0)
+        .map(likeGap));
       const near = pool.slice().sort((a, b) =>
         Math.abs(a.length - gap.length) - Math.abs(b.length - gap.length));
       const opts = U.shuffle([{ label: gap, ok: true }].concat(

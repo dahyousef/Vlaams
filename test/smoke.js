@@ -883,6 +883,16 @@ NL.state.open().then(() => {
     console.log('  ' + label.padEnd(14) + r.pct + '%  ' + (r.pass ? 'pass' : 'fail'));
   });
 
+  /* Un trou en tête de phrase tient sa majuscule : si les leurres n'en ont pas, la seule option
+     qui en porte une est la réponse, sans lire la phrase. */
+  for (let i = 0; i < 40; i++) {
+    const t = NL.ex.get('cloze').build(NL.content.byId('onderweg:p4'));
+    const labels = t.opts.map(o => o.label);
+    ok(t.gap === 'Hoelang', 'the cloze of onderweg:p4 hides « ' + t.gap + ' », this check wants a capitalised gap');
+    ok(labels.every(l => l[0] !== l[0].toLowerCase()), 'only the answer is capitalised among ' + JSON.stringify(labels));
+    ok(new Set(labels.map(l => NL.util.norm(l))).size === labels.length, 'two options are one word: ' + JSON.stringify(labels));
+  }
+
   console.log('\nPROGRESS');
   const before = NL.content.unitProgress('overleven');
   NL.content.itemsOf('tijd').forEach(i => { if (i.kind !== 'pattern') NL.srs.seed(i, 2); });
