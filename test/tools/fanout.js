@@ -251,6 +251,12 @@ async function main() {
     '« unsure » tient sur une ligne comme tout texte du kit : ni \\r, ni blanc autour');
   put(EEN, 'draft.json', '[{');
   ok(/^fail draft\.json -: not JSON \(/.test(only(EEN, 'draft.json')[0]), 'un fichier qui n\'est pas du JSON est nommé');
+  /* Un fichier enregistré en Windows-1252 : lu en utf8, son « é » devient U+FFFD, le JSON reste valide, et la
+     Merge l'écrirait dans le cours. Une marque d'ordre en tête reste refusée, comme avant. */
+  fs.writeFileSync(path.join(EEN, 'draft.json'), Buffer.from('[{"id":"overleven:w1","mot":"café"}]', 'latin1'));
+  same(only(EEN, 'draft.json'), ['fail draft.json -: not UTF-8'], 'un fichier qui n\'est pas en UTF-8 est nommé');
+  put(EEN, 'draft.json', '﻿[]');
+  ok(/^fail draft\.json -: not JSON \(/.test(only(EEN, 'draft.json')[0]), 'une marque d\'ordre en tête n\'est pas du JSON');
   put(EEN, 'draft.json', {});
   same(only(EEN, 'draft.json'), ['fail draft.json -: not a JSON array'], 'un fichier est un tableau');
   put(EEN, 'draft.json', draftEen);

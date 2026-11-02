@@ -149,10 +149,13 @@ function alreadySplit(kindDir, keep) {
     (unnamed.length ? '; in its batches but not named: ' + unnamed.join(' ') : '')] };
 }
 
-/* Un fichier JSON du lot : un tableau, ou une ligne `fail`. */
+/* Un fichier JSON du lot : un tableau, ou une ligne `fail`. Il se décode d'abord, strictement : lu en 'utf8', un
+   octet invalide devient U+FFFD, que JSON.parse prend pour du texte. `ignoreBOM` garde la marque d'ordre, que
+   JSON.parse refuse : un décodeur ordinaire l'enlèverait en silence. */
 function readArray(dir, file, out) {
-  let v;
-  try { v = JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8')); } catch (e) { out.push('fail ' + file + ' -: not JSON (' + e.message.split('\n')[0] + ')'); return null; }
+  let text, v;
+  try { text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(fs.readFileSync(path.join(dir, file))); } catch (e) { out.push('fail ' + file + ' -: not UTF-8'); return null; }
+  try { v = JSON.parse(text); } catch (e) { out.push('fail ' + file + ' -: not JSON (' + e.message.split('\n')[0] + ')'); return null; }
   if (!Array.isArray(v)) { out.push('fail ' + file + ' -: not a JSON array'); return null; }
   if (v.some(x => !x || typeof x !== 'object' || Array.isArray(x) || typeof x.id !== 'string')) { out.push('fail ' + file + ' -: an entry is not an object with an id'); return null; }
   return v;
