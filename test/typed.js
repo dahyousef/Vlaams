@@ -140,10 +140,11 @@ NL.state.open().then(() => {
 
   /* Deux mots qu'un même mot français traduit sans qu'ils disent la même chose (#129) : « neuf »
      est un chiffre et un état, « le café » un lieu et une boisson. L'un n'est pas juste pour
-     l'autre, ni dans un sens ni dans l'autre, dans aucune langue d'affichage. */
+     l'autre, ni dans un sens ni dans l'autre, dans aucune langue d'affichage. Et la consigne dit
+     lequel : à « le café » tout court, taper « café » serait une réponse honnête, comptée fausse. */
   {
-    [['nieuw', 'negen'], ['de ober', 'de server'], ['het café', 'de koffie'], ['het meisje', 'de dochter'], ['luid', 'sterk']].forEach(pair => {
-      [pair, [pair[1], pair[0]]].forEach(([nl, other]) => {
+    [['nieuw', 'negen', 'neuf'], ['de ober', 'de server', 'serveur'], ['het café', 'de koffie', 'café'], ['het meisje', 'de dochter', 'fille'], ['luid', 'sterk', 'fort']].forEach(([a, b, word]) => {
+      [[a, b], [b, a]].forEach(([nl, other]) => {
         const input = U.bare(other);
         ['en', 'fr'].forEach(lang => {
           fresh();
@@ -152,6 +153,7 @@ NL.state.open().then(() => {
           if (!it || !askTyped(it)) { ok(false, 'setup: ' + say(nl) + ' is never asked in « Écris-le en néerlandais »'); return; }
           const prompt = NL.gloss.bare(it, lang);
           ok(text(B.app.innerHTML).indexOf(prompt) >= 0, 'the card for ' + say(nl) + ', in ' + lang + ', does not ask ' + say(prompt) + ': ' + text(B.app.innerHTML));
+          if (lang === 'fr') ok(prompt.split(/\s*\/\s*/).map(U.norm).indexOf(U.norm(word)) < 0, 'the prompt ' + say(prompt) + ' for ' + say(nl) + ' reads both ways: « ' + word + ' » alone is also ' + say(other));
           answer.type(input);
           answer.click({ check: '1' });
           const v = verdict(it);
@@ -163,7 +165,7 @@ NL.state.open().then(() => {
     });
     fresh();
     NL.state.setMeta({ displayLang: 'en' }); NL.lang.apply();
-    console.log('  même mot fr   « negen » pour new, « server » pour waiter, « koffie » pour pub, « dochter » pour girl, « sterk » pour loud : faux');
+    console.log('  même mot fr    « negen » pour new, « server » pour waiter, « koffie » pour pub, « dochter » pour girl, « sterk » pour loud : faux, et chaque consigne française dit lequel');
   }
 
   /* Ce qui reste faux, et le « Presque » mesuré contre chaque réponse acceptée. */
