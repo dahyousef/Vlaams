@@ -511,6 +511,9 @@ NL.state.open().then(() => {
        libre compte les deux pour la durée, sans le verbe qui les rattraperait. */
     meets('onderweg:p4', 'Hoelang is de rit naar Brussel?', 0, true, '« hoelang » in one word asks about the duration');
     meets('onderweg:p4', 'Hoe lang is de rit naar Brussel?', 0, true, '« hoe lang » in two words asks it too');
+    /* Le compte de mots ne punit pas l'orthographe enseignée. */
+    meets('onderweg:p4', 'Hoelang naar Brussel?', 2, true, 'the word count must not favour the two-word spelling');
+    meets('onderweg:p4', 'Hoeveel uur is het naar Brussel?', 0, true, '« hoeveel uur » asks the duration too, and « uur » is taught');
 
     /* Un besoin posé le temps de quelques réponses, puis remis : aucune tâche du cours
        ne montre ces deux cas-ci. */
