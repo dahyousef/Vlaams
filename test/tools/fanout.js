@@ -1526,7 +1526,7 @@ module.exports = {
     ], 'la forme des six champs');
     same(wrong('wonen:s00', TAFEL, { nl: 'de taffel' }), ['« taffel » is not Dutch that OpenTaal or flemish.tsv knows: pick another word, or say in unsure why the course needs this one',
       '« taffel » is not in test/data/dehet.tsv, so test/dehet.js would refuse it after Merge: pick another word, or say in unsure why the course needs this one',
-      'this slot writes the sample « de tafel », not « de taffel »', 'nl does not use the lemma « tafel »'], 'l\'orthographe, de / het, le témoin de la place, et le lemme que nl emploie');
+      'this slot writes the sample « de tafel », not « de taffel »', 'nl does not use the lemma « tafel »'], 'l\'orthographe, de / het, le témoin du slot, et le lemme que nl emploie');
     same([wrong('wonen:s00', TAFEL, { art: null }), wrong('wonen:s00', TAFEL, { nl: 'tafel' }), wrong('wonen:s00', TAFEL, { nl: 'het tafel', art: 'het' }),
       wrong('wonen:s10', { nl: 'de zqzq', fr: 'le zq', en: 'zq', art: 'de', pos: 'noun', evidence: 'course' }, {}).slice(1)], [
       ['a noun carries its article: art is de or het'], ['nl starts with its article « de »'], ['« het tafel »: test/data/dehet.tsv says « de »'],

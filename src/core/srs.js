@@ -415,12 +415,13 @@ NL.srs = (function () {
      l'annonce et la séance elle-même posent tous deux la question ici : ils ne
      peuvent donc pas se contredire.
        source   'vandaag' (défaut) ou l'identifiant d'une unité
-       opts     { quiet, without } : une séance où l'on ne peut pas parler laisse
-                attendre ce qui ne peut être que dit, et ne reprend pas les
-                éléments (`without`, un Set d'identifiants) qu'elle contient déjà
-                { fill } : reprendre ce nombre de places dans une séance en cours,
-                avec des révisions seules : ses nouveaux éléments sont déjà dans sa
-                file, rien n'est à leur réserver. Le budget du jour borne encore.
+       opts     { fill, kept, without } : compléter une séance en cours où l'on ne
+                peut plus parler. `fill` places à reprendre, avec des révisions
+                seules : ses nouveaux éléments sont déjà dans sa file, rien n'est à
+                leur réserver. Ce qui ne peut être que dit attend, et les éléments
+                qu'elle contient déjà (`without`, un Set d'identifiants) ne reviennent
+                pas. Le budget du jour borne encore, net des `kept` exercices qui lui
+                restent à servir, reprises comprises.
        → { due, fresh, left }   deux listes d'éléments, et le budget restant
      La séance suit l'arriéré (ADR 0007, sa seconde option : la part réservée ne
      cède pas, c'est le budget qui suit). Trente places de base ; une place de
@@ -430,17 +431,16 @@ NL.srs = (function () {
   function compose(source, now, opts) {
     const uid = source && source !== 'vandaag' ? source : null;
     /* Travailler une unité précise est un choix : le budget du jour ne la bride pas. */
-    const left = uid ? Infinity : budgetLeft();
+    const left = uid ? Infinity : budgetLeft() - (opts ? opts.kept : 0);
     const base = Math.min(BASE_SIZE, left);
     if (base <= 0) return { due: [], fresh: [], left };
 
     let due = dueItems(now);
     if (uid) due = due.filter(it => it.unit === uid);
-    if (opts && opts.quiet) due = due.filter(it => !needsVoice(it) && !(opts.without && opts.without.has(it.id)));
+    if (opts) due = due.filter(it => !needsVoice(it) && !opts.without.has(it.id));
     const extra = Math.min(EXTRA_MAX, Math.floor(due.length / BACKLOG_STEP));
-    const filling = !!opts && opts.fill !== undefined;
-    const places = Math.min(filling ? opts.fill : BASE_SIZE + extra, left);
-    const unmet = filling ? [] : freshItems(BASE_SIZE, uid);
+    const places = Math.min(opts ? opts.fill : BASE_SIZE + extra, left);
+    const unmet = opts ? [] : freshItems(BASE_SIZE, uid);
 
     /* La réserve sort AVANT que les révisions remplissent le reste, et elle
        disparaît d'elle-même quand il ne reste rien à rencontrer. */

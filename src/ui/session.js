@@ -199,8 +199,9 @@ NL.screens.sessie = (function () {
      needsVoice() désigne, dont le prochain exercice ne peut être que parlé,
      reviendront à voix haute ; pour les autres, l'exercice sera tiré de
      nouveau, et ils pourront être demandés par écrit. D'autres éléments dus
-     prennent leur place, choisis par compose() comme pour toute séance. Rien
-     n'est retenu au-delà : la séance suivante redemande. Ce n'est pas un
+     prennent la place de ceux qui n'ont pas encore été servis, choisis par
+     compose() dans ce qui reste du budget du jour. Rien n'est retenu au-delà :
+     la séance suivante redemande. Ce n'est pas un
      réglage, parce qu'un réglage suit l'appareil et s'oublie éteint. */
   function quiet() {
     const c = cur();
@@ -210,7 +211,8 @@ NL.screens.sessie = (function () {
     /* Le bilan dira combien d'exercices parlés sont gardés pour la séance suivante. */
     L.putOff = (L.putOff || 0) + L.queue.slice(L.at).filter(x => x.ex === 'speak').length;
     const head = L.queue.slice(0, L.at), rest = L.queue.slice(L.at);
-    const spoken = rest.filter(x => x.ex === 'speak').length;
+    /* Une reprise ou un second exercice ne libère aucune place : son élément a déjà été servi. */
+    const spoken = rest.filter(x => x.ex === 'speak' && !x.retry && !x.second).length;
     /* Le second exercice d'un élément qui ne peut être que dit part avec son
        exercice parlé : servi sans parler, il le ferait monter par écrit sans
        qu'il ait jamais été dit. Sa place, elle, est reprise ; la séance
@@ -221,7 +223,7 @@ NL.screens.sessie = (function () {
     if (L.source !== 'fouten' && L.source !== 'defi') {
       const here = new Set();
       L.queue.forEach(x => x.items.forEach(it => here.add(it.id)));
-      more = NL.srs.compose(L.source, undefined, { quiet: true, without: here, fill: spoken }).due;
+      more = NL.srs.compose(L.source, undefined, { fill: spoken, kept: kept.length, without: here }).due;
     }
     L.queue = settle(head.concat(kept, spread(build(more, [], true), kept.length ? kept[kept.length - 1].ex : null)), L.at);
     Object.assign(L, blankTurn());
