@@ -10,6 +10,7 @@
                    champs que les tables de src/content lui donnent (NL.content.TABLES), tels
                    qu'ils sont écrits
      C.byId(id)    la source d'un id ; undefined pour une copie ou un id inconnu
+     C.units       les unités telles qu'elles sont écrites (RAW.units), dans l'ordre du cours
 
    Les éléments se forment comme build() les forme (src/content/index.js) : le genre et le
    néerlandais écrit, par NL.util.norm. Les modèles (patterns) n'en sont pas : leur
@@ -41,7 +42,7 @@ function course(repo) {
     sources.push(src);
   })));
   const byId = new Map(sources.map(s => [s.id, s]));
-  return { NL, RAW, sources, byId: id => byId.get(id) };
+  return { NL, RAW, sources, byId: id => byId.get(id), units: RAW.units };
 }
 
 module.exports = { course };

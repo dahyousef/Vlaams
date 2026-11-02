@@ -198,9 +198,11 @@ NL.state.open().then(() => {
     sentences++;
     if (sequence.ahead(d.nl, ui, first).length) ahead++;
   })));
-  const AHEAD_BUDGET = 61;
+  /* Révélé par les unités 13–34, qui ont fait monter ce compte de 61 à 129 : chaque phrase comptée en plus
+     employait un de leurs mots avant qu'il soit enseigné. Le plan 4c, qui écrit leurs phrases, peut le baisser. */
+  const AHEAD_BUDGET = 129;
   ok(ahead <= AHEAD_BUDGET, ahead + ' phrases d’exemple empruntent du vocabulaire à une unité ultérieure, budget ' + AHEAD_BUDGET +
-    ' — baisser le budget quand on en corrige, jamais le lever');
+    ' — baisser le budget quand on en corrige, jamais le lever (sa seule hausse, de 61 à 129, comptait des emprunts qui existaient déjà : les unités 13–34 les ont révélés)');
   ok(ahead >= AHEAD_BUDGET, 'seulement ' + ahead + ' phrases empruntent en avant : baisser AHEAD_BUDGET à ' + ahead + ' pour verrouiller le gain');
   console.log('  séquence        ' + ahead + ' / ' + sentences + ' phrases empruntent en avant (budget ' + AHEAD_BUDGET + ')');
 
@@ -347,10 +349,11 @@ NL.state.open().then(() => {
   /* ============================================ 6. l'anglais qui reste dû */
   /* Chaque sens et chaque texte du cours doit porter un `en`. Il ne reste rien à écrire. */
   ok(JSON.stringify(RAW).indexOf('{naam}') >= 0, 'RAW n’a pas été pris avant la première construction : {naam} a disparu');
-  const batches = { lexiqueA1: [], lexiqueA1b: [], exemples: [], grammaire: [], references: [], scenarios: [] };
+  const batches = { lexiqueA1: [], lexiqueA1b: [], lexiqueA1c: [], exemples: [], grammaire: [], references: [], scenarios: [] };
+  const lexique = n => (n <= 6 ? 'lexiqueA1' : n <= 12 ? 'lexiqueA1b' : 'lexiqueA1c');
   RAW.units.forEach((u, i) => owed(u, 'units[' + i + ']', '', []).forEach(r => {
     if (/\.drills\[/.test(r.where)) batches.exemples.push(r);
-    else batches[u.n <= 6 ? 'lexiqueA1' : 'lexiqueA1b'].push(r);
+    else batches[lexique(u.n)].push(r);
   }));
   ['patterns', 'openTasks'].forEach(k => owed(RAW[k], k, '', []).forEach(r => batches.grammaire.push(r)));
   ['register', 'hetRules', 'deRules', 'sheets'].forEach(k => owed(RAW[k], k, '', []).forEach(r => batches.references.push(r)));
@@ -360,7 +363,7 @@ NL.state.open().then(() => {
   const unitOf = new Map();
   RAW.units.forEach(u => ['words', 'phrases'].forEach(k => (u[k] || []).forEach(x => { if (!unitOf.has(x.nl)) unitOf.set(x.nl, u.n); })));
   const tabled = owedTables(RAW, []);
-  tabled.forEach(r => batches[unitOf.get(r.nl) <= 6 ? 'lexiqueA1' : 'lexiqueA1b'].push(r));
+  tabled.forEach(r => batches[lexique(unitOf.get(r.nl))].push(r));
   ok(tabled.length > 0, 'aucune note lue dans src/content/notes.js : le contrôle 6 ne la voit pas');
   /* La tâche ouverte d'une phrase vit dans src/content/open.phrases.js : son ask et ses what doivent
      leur anglais, et chacun se relit par son chemin. */

@@ -6,4 +6,7 @@ const dueReviews = (N, n, now) => N.content.allItems().filter(it => it.unit !== 
   N.srs.seed(it, 1); const r = N.state.rec(it.id); r.due = now - 1000 * (i + 1); N.state.setRec(r);
 });
 
-module.exports = { dueReviews };
+/* Un jour neuf pour le budget : rien de dépensé, quoi que la suite vienne de jouer. */
+const budgetAnew = N => N.state.setMeta({ exDay: null, exToday: 0 });
+
+module.exports = { dueReviews, budgetAnew };

@@ -3,6 +3,8 @@
   'use strict';
   const U = NL.util, esc = U.esc, ICON = NL.ex.ICON;
   let query = '', filter = 'alles', adding = false;
+  /* Ce qu'une recherche dessine au plus : chaque touche redessine la page, et elle lit tout le cours. */
+  const SEARCH_MAX = 60;
 
   /* L'étiquette « pour qui » d'une section de référence, d'après NL.content.anchors. */
   const anchor = k => {
@@ -30,7 +32,12 @@
         : filter === 'zwak' ? seen.filter(it => missed.has(it.id))
           : filter === 'sterk' ? all.filter(it => it.unit !== 'eigen' && NL.content.produced(it))   // l'ensemble et le prédicat du compteur « produits »
             : seen);
-      if (q) list = all.filter(it => [it.nl, it.be, NL.gloss.of(it, 'fr'), NL.gloss.of(it, 'en')].some(s => !!s && U.norm(s).indexOf(q) >= 0));
+      let more = 0;
+      if (q) {
+        list = all.filter(it => [it.nl, it.be, NL.gloss.of(it, 'fr'), NL.gloss.of(it, 'en')].some(s => !!s && U.norm(s).indexOf(q) >= 0));
+        more = Math.max(0, list.length - SEARCH_MAX);
+        list = list.slice(0, SEARCH_MAX);
+      }
 
       const groups = {};
       list.forEach(it => { (groups[it.unit] = groups[it.unit] || []).push(it); });
@@ -77,6 +84,7 @@
               '</div>';
           });
         });
+        if (more) html += '<p class="empty">' + NL.t.wordsMore(more) + '</p>';
       }
       return html + '</div>';
     },

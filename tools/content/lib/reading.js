@@ -45,9 +45,10 @@ function read(repo, ws, name, C) {
   if (failed(r.lines)) return { lines: r.lines.filter(l => /^fail /.test(l)) };
   const lines = [], tables = r.kind ? r.kind.tables : [], entries = {};
   r.rows.forEach(x => {
+    const src = r.kind.sourceOf(C, x.input.id);
     if (x.why) lines.push('fail ' + name + ' ' + x.input.id + ': unsettled, ' + x.why);
-    else if (!C.byId(x.input.id)) lines.push('fail ' + name + ' ' + x.input.id + ': no longer an item');
-    else x.src = C.byId(x.input.id);
+    else if (!src) lines.push('fail ' + name + ' ' + x.input.id + ': no longer an item');
+    else x.src = src;
   });
   tables.forEach(t => {
     const file = path.join(path.resolve(repo), 'src', 'content', t + '.js');
@@ -64,15 +65,31 @@ const settled = x => x.ruling
   ? 'ruled ' + x.ruling.ruling + ' on ' + x.ruling.date + (x.ruling.words ? ': ' + x.ruling.words : '')
   : x.from === 'draft' ? 'kept by the first reader' : 'kept by the second reader';
 
-/* La ligne d'une source : son néerlandais, son id et son sens, langue par langue. */
-const heading = (src, G) => '- `' + src.nl + '` (' + src.id + ') — ' + G.LANGS.map(l => G.of(src, l)).join(' · ');
+/* La ligne d'une source : son néerlandais, l'id de la ligne (celui de la source, sauf quand le genre
+   donne la source lui-même) et son sens, langue par langue. */
+const heading = (src, G, id) => '- `' + src.nl + '` (' + (id || src.id) + ') — ' + G.LANGS.map(l => G.of(src, l)).join(' · ');
+
+/* Les champs d'une ligne écrite, sans son id ni son empreinte. */
+const fieldsOf = row => {
+  const rest = Object.assign({}, row);
+  delete rest.id;
+  delete rest.stamp;
+  return rest;
+};
 
 /* Une ligne lue : sa source, pourquoi elle est là, puis ce que chaque table du genre tient
-   sous son néerlandais, et le doute du rédacteur s'il en a dit un. */
+   sous son néerlandais, ou ce que la ligne écrit quand le genre n'a pas de table (le mot d'un
+   slot du genre words, même écarté), et le doute du rédacteur s'il en a dit un. */
 function block(x, k, G, also) {
   const why = (x.whole ? [x.whole] : []).concat([settled(x)], also || []);
-  const out = [heading(x.src, G), '  - ' + why.join('; ')];
+  const out = [heading(x.src, G, x.input.id), '  - ' + why.join('; ')];
   k.tables.forEach(t => out.push('  - ' + t + '.js: ' + (has(k.entries[t], x.src.nl) ? table.literal(k.entries[t][x.src.nl]) : 'no entry')));
+  const written = x.row || x.dropped;
+  if (!k.tables.length && written) {
+    const shown = fieldsOf(written);
+    delete shown.unsure;
+    out.push('  - row: ' + JSON.stringify(shown));
+  }
   if (x.row && x.row.unsure) out.push('  - unsure: ' + x.row.unsure);
   return out;
 }
@@ -129,10 +146,7 @@ function unsentenced(repo, ws, opts) {
     lines.push(heading(s, G));
     if (!x) { lines.push('  - ' + name + ': no row'); return; }
     if (x.drop) { lines.push('  - ' + name + ': ' + settled(x)); return; }
-    const rest = Object.assign({}, x.row);
-    delete rest.id;
-    delete rest.stamp;
-    lines.push('  - ' + name + ': ' + JSON.stringify(rest) + '; ' + settled(x));
+    lines.push('  - ' + name + ': ' + JSON.stringify(fieldsOf(x.row)) + '; ' + settled(x));
   });
   return { ok: true, lines };
 }

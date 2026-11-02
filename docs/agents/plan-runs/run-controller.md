@@ -150,8 +150,8 @@ Once per plan, in the run's worktree, create `<WS>` = `.superpowers/sdd/<plan na
 The first sitting is launched with the command, from the run's worktree, by whichever Claude session the
 maintainer is talking to. The maintainer never starts a sitting by hand, and never pastes a prompt.
 
-After a cut-off, wait six minutes first: closing a session's window does not stop a suite its verifier started,
-and `sh test/run-all.sh` runs on for up to six minutes, rewriting `<WS>/tmp/suite.txt` and the build outputs.
+After a cut-off, wait thirty-five minutes first: closing a session's window does not stop a suite its verifier started,
+and `sh test/run-all.sh` runs on for more than half an hour on a busy machine, rewriting `<WS>/tmp/suite.txt` and the build outputs.
 Then that session launches the next sitting with the command. The start prompt is:
 
     Run the plan in <WS>/run.md. Read docs/agents/plan-runs/run-controller.md, then the Status table of

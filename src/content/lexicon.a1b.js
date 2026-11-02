@@ -72,7 +72,7 @@ NL.content.units = NL.content.units || [];
       W('de planning', { fr: 'le planning', en: 'schedule' }, 'de'),
       W('de omgeving', { fr: 'l’environnement', en: 'environment' }, 'de'),
       W('de databank', { fr: 'la base de données', en: 'database' }, 'de'),
-      W('de server', { fr: 'le serveur', en: 'server' }, 'de'),
+      W('de server', { fr: 'le serveur (informatique)', en: 'server' }, 'de'),
       W('de mail', { fr: 'le mail', en: 'email' }, 'de'),
       W('het verslag', { fr: 'le compte rendu', en: 'report' }, 'het'),
       W('het thuiswerk', { fr: 'le télétravail', en: 'working from home' }, 'het'),

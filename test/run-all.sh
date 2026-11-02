@@ -33,6 +33,8 @@ node test/tools/fanout.js "$ROOT"
 # Les sources externes du kit (tools/content/kaikki.js, tools/content/tatoeba.js), sur des
 # fichiers faits par la suite.
 node test/tools/sources.js "$ROOT"
+# Les outils de la passe d'apprenant, sans navigateur : une passe qui s'arrête en route le dit.
+node test/tools/learner-pass.js "$ROOT"
 
 # Une voix et un navigateur par ligne : c'est là que vivent les vrais problèmes.
 for c in "nl-BE OPR" "nl-NL OPR" "none OPR" "nl-BE EDG" "nl-NL EDG" "none EDG" "nl-BE IOS" "nl-BE SAF"; do
@@ -41,16 +43,19 @@ for c in "nl-BE OPR" "nl-NL OPR" "none OPR" "nl-BE EDG" "nl-NL EDG" "none EDG" "
   node test/journey.js "$ROOT" "$1" "$2"
 done
 
-# Quatre apprenants : celui qui épuise le budget du jour, celui qui ne fait
-# qu'une séance, celui qui, une séance sur cinq, ne peut pas parler, et celui
+# Cinq apprenants : celui qui épuise le budget du jour, celui qui ne fait
+# qu'une séance, celui qui, une séance sur cinq, ne peut pas parler, celui
 # dont la séance commence chaque jour vingt minutes plus tôt, de 21 h à 7 h,
-# puis remonte. Le défaut d'octobre ne se voyait que chez le deuxième. Le
+# puis remonte, et celui qui, une séance par jour, apprend un cours grossi à
+# 1 160 éléments. Le défaut d'octobre ne se voyait que chez le deuxième. Le
 # quatrième voit ce qu'aucun autre ne voit : un lendemain qui dépendrait de
-# l'heure à laquelle on commence (#32).
+# l'heure à laquelle on commence (#32). Le cinquième voit l'arriéré que la
+# séance doit suivre (ADR 0007) : son pic tombe avant le jour 200.
 node test/pace.js "$ROOT" "${PACE_DAYS:-200}"
 node test/pace.js "$ROOT" "${PACE_DAYS:-200}" one
 node test/pace.js "$ROOT" "${PACE_DAYS:-200}" one quiet
 node test/pace.js "$ROOT" "${PACE_DAYS:-200}" one drift
+node test/pace.js "$ROOT" "${PACE_DAYS:-200}" one groot
 # Un seul jour, comme les tâches d'un plan la lancent : ce qui ne se juge que
 # sur la durée dit « non jugé », et ne compte pas comme un problème.
 node test/pace.js "$ROOT" 1

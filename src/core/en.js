@@ -41,7 +41,7 @@ NL.tables.en = {
 
   /* --- parcours --- */
   pathEyebrow: 'Path',
-  pathTitle: 'Level A1, in twelve units',
+  pathTitle: n => 'Level A1, in ' + n + ' units',
   pathBody: 'The units feed the scheduler with new material. You do not have to finish one unit to open the next: it opens by itself once most of the previous one has been seen.',
   courseCounts: (met, produce, total) => met + ' met out of ' + total + ', of which ' + produce + ' you can produce.',
   unitCounts: (met, produce, total) => met + ' met out of ' + total + ' · ' + produce + ' you can produce',
@@ -184,6 +184,7 @@ NL.tables.en = {
   wordsAdd: 'Add a word of my own',
   wordsNothing: 'Nothing yet. Do a session and it will show up here.',
   wordsNoResult: 'Nothing found.',
+  wordsMore: n => '… and ' + n + ' more: narrow your search.',
   wordsMineNone: 'No words of your own yet. Add one with the button above.',
   wordsSearch: 'Search…',
   wordsAll: 'all', wordsWeak: 'shaky', wordsStrong: 'produced', wordsMine: 'mine',

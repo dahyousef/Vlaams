@@ -138,6 +138,115 @@ NL.state.open().then(() => {
     console.log('  même sens      « hallo » pour goeiedag, et le panneau nomme goeiedag');
   }
 
+  /* Deux mots qu'un même mot français traduit sans qu'ils disent la même chose (#129) : « neuf »
+     est un chiffre et un état, « le café » un lieu et une boisson. L'un n'est pas juste pour
+     l'autre, ni dans un sens ni dans l'autre, dans aucune langue d'affichage. Et la consigne dit
+     lequel : à « le café » tout court, taper « café » serait une réponse honnête, comptée fausse. */
+  {
+    [['nieuw', 'negen', 'neuf'], ['de ober', 'de server', 'serveur'], ['het café', 'de koffie', 'café'], ['het meisje', 'de dochter', 'fille'], ['luid', 'sterk', 'fort']].forEach(([a, b, word]) => {
+      [[a, b], [b, a]].forEach(([nl, other]) => {
+        const input = U.bare(other);
+        ['en', 'fr'].forEach(lang => {
+          fresh();
+          NL.state.setMeta({ displayLang: lang }); NL.lang.apply();
+          const it = find(nl);
+          if (!it || !askTyped(it)) { ok(false, 'setup: ' + say(nl) + ' is never asked in « Écris-le en néerlandais »'); return; }
+          const prompt = NL.gloss.bare(it, lang);
+          ok(text(B.app.innerHTML).indexOf(prompt) >= 0, 'the card for ' + say(nl) + ', in ' + lang + ', does not ask ' + say(prompt) + ': ' + text(B.app.innerHTML));
+          if (lang === 'fr') ok(prompt.split(/\s*\/\s*/).map(U.norm).indexOf(U.norm(word)) < 0, 'the prompt ' + say(prompt) + ' for ' + say(nl) + ' reads both ways: « ' + word + ' » alone is also ' + say(other));
+          answer.type(input);
+          answer.click({ check: '1' });
+          const v = verdict(it);
+          ok(!v.right, say(input) + ' at the prompt ' + say(prompt) + ' (' + say(nl) + ', in ' + lang + ') is marked right');
+          ok(v.rec.lapses === 1, say(input) + ' for ' + say(nl) + ', in ' + lang + ', did not count as a wrong answer: ' + JSON.stringify(v.rec));
+          S.abandon();
+        });
+      });
+    });
+    fresh();
+    NL.state.setMeta({ displayLang: 'en' }); NL.lang.apply();
+    console.log('  même mot fr    « negen » pour new, « server » pour waiter, « koffie » pour pub, « dochter » pour girl, « sterk » pour loud : faux, et chaque consigne française dit lequel');
+  }
+
+  /* La précision qui termine un sens dit lequel à qui cherche le mot (#129). Face au néerlandais, elle
+     n'a rien à départager : seule à en porter, l'option se choisit sans connaître le mot, et elle ne
+     se montre donc qu'au pied. Elle reste quand elle dit lequel de deux sens, quand elle ne termine
+     pas le sens, et quand l'option se lirait sinon comme son néerlandais sans le traduire. */
+  {
+    const readings = s => s.replace(/\s*\([^)]*\)/g, '').split(/\s*\/\s*/).map(U.norm).filter(Boolean);
+    const share = (a, b) => readings(a).some(x => readings(b).indexOf(x) >= 0);
+    const CARDS = {
+      fr: [['negen', 'neuf'], ['de koffie', 'café'], ['de dochter', 'fille'], ['sterk', 'fort'], ['de ober', 'serveur'],
+        ['de server', 'serveur'], ['dragen', 'porter'],
+        ['het café', 'café (le lieu) / le bistrot'], ['luid', 'fort (un son) / bruyant'], ['kunnen', 'pouvoir / savoir (faire)'],
+        ['zullen', 'aller (futur) / on va… ? (proposition)']],
+      en: [['weten', 'to know'], ['liggen', 'to lie'], ['Kunt u mij helpen?', 'Could you help me?'], ['Hoe was uw weekend?', 'How was your weekend?'],
+        ['Ik ben veertig jaar.', 'I am forty (years old).'], ['wel', 'indeed / do (positive emphasis)'], ['laten', 'to let / to have (something done)'],
+        ['draaien', 'to turn / to run (of software)'], ['half', 'half (before the hour)'], ['licht', 'light (not heavy)']]
+    };
+    const APART = { fr: [['de koffie', 'het café'], ['de ober', 'de server'], ['sterk', 'luid']], en: [['weten', 'kennen'], ['de juf', 'de meester'], ['jij', 'u']] };
+    ['en', 'fr'].forEach(lang => {
+      fresh();
+      NL.state.setMeta({ displayLang: lang }); NL.lang.apply();
+      const items = NL.content.allItems().filter(x => x.kind !== 'pattern' && NL.gloss.has(x, lang));   // une règle n'a pas de « recall »
+      items.forEach(it => {
+        const reps = /\(/.test(NL.gloss.bare(it, lang)) ? 20 : 2;
+        for (let k = 0; k < reps; k++) {
+          const opts = NL.ex.get('recall').build(it).opts;
+          ok(opts.length === 4, say(it.nl) + ', in ' + lang + ', has ' + opts.length + ' options');
+          opts.forEach((o, i) => opts.slice(i + 1).forEach(p =>
+            ok(!share(o.label, p.label), say(it.nl) + ', in ' + lang + ', offers ' + say(o.label) + ' beside ' + say(p.label) + ', which say the same')));
+        }
+      });
+      CARDS[lang].forEach(([nl, want]) => {
+        const it = find(nl);
+        if (!it) { ok(false, 'setup: no item ' + say(nl)); return; }
+        const right = NL.ex.get('recall').build(it).opts.filter(o => o.ok)[0];
+        ok(right.label === want, 'the recall of ' + say(nl) + ', in ' + lang + ', offers ' + say(right.label) + ', not ' + say(want));
+      });
+      APART[lang].forEach(([a, b]) => [[a, b], [b, a]].forEach(([x, y]) => {
+        const ix = find(x), iy = find(y);
+        if (!ix || !iy) { ok(false, 'setup: no item ' + say(x) + ' or ' + say(y)); return; }
+        const theirs = NL.gloss.option(iy, lang);
+        for (let k = 0; k < 40; k++) {
+          ok(NL.ex.get('recall').build(ix).opts.every(o => o.ok || o.label !== theirs), 'the recall of ' + say(x) + ', in ' + lang + ', offers ' + say(theirs) + ' as wrong');
+        }
+      }));
+    });
+    /* Une unité où tous les leurres se recoupent : la carte garde quand même ses quatre options. */
+    {
+      fresh();
+      NL.state.setMeta({ displayLang: 'fr' }); NL.lang.apply();
+      const it = find('negen'), itemsOf = NL.content.itemsOf;
+      const twin = (nl, fr) => ({ id: 'twin-' + nl, unit: it.unit, kind: 'word', nl: nl, fr: fr, en: fr });
+      NL.content.itemsOf = () => [it, twin('aa', 'chat / chien'), twin('bb', 'chien / loup'), twin('cc', 'loup / renard'), twin('dd', 'renard / chat')];
+      for (let k = 0; k < 40; k++) {
+        const opts = NL.ex.get('recall').build(it).opts;
+        ok(opts.length === 4, 'a unit whose wrong options all overlap gives a card of ' + opts.length + ' options');
+      }
+      NL.content.itemsOf = itemsOf;
+    }
+    /* Le pied dit le sens entier, là où l'option l'a laissé tomber. */
+    [['fr', 'negen', 'neuf', 'neuf (le nombre)'], ['en', 'weten', 'to know', 'to know (a fact)'],
+      ['en', 'Kunt u mij helpen?', 'Could you help me?', 'Could you help me? (formal)']].forEach(([lang, nl, shown, foot]) => {
+      fresh();
+      NL.state.setMeta({ displayLang: lang }); NL.lang.apply();
+      const it = find(nl);
+      if (!it || !ask(it, 'recall', 0, 'pick')) { ok(false, 'setup: ' + say(nl) + ' is never asked as a recall'); S.abandon(); return; }
+      const card = B.app.innerHTML, opts = text(card.slice(card.indexOf('<div class="opts">')));
+      ok(opts.indexOf(shown) >= 0, 'the recall of ' + say(nl) + ' does not offer ' + say(shown) + ': ' + opts);
+      ok(opts.indexOf(foot) < 0, 'the recall of ' + say(nl) + ' shows ' + say(foot) + ' among its options: ' + opts);
+      answer.right();
+      const v = verdict(it);
+      ok(v.right, 'the right option for ' + say(nl) + ' is not marked right');
+      ok(v.answer === foot, 'the foot after a right recall of ' + say(nl) + ' says ' + say(v.answer));
+      S.abandon();
+    });
+    fresh();
+    NL.state.setMeta({ displayLang: 'en' }); NL.lang.apply();
+    console.log('  parenthèses    l’option de « recall » la laisse tomber quand elle termine un seul sens, le pied la montre');
+  }
+
   /* Ce qui reste faux, et le « Presque » mesuré contre chaque réponse acceptée. */
   {
     const v = typed('dank u wel', 'dag');

@@ -9,7 +9,7 @@ const { dutchWords, words } = require('./lib/dutch');
 const spelling = require('./lib/spelling');
 const { text, joined, runs, count, argsOf } = require('./lib/langs');
 const { fakeSupabase } = require('./lib/supabase');
-const { dueReviews } = require('./lib/seed');
+const { dueReviews, budgetAnew } = require('./lib/seed');
 const ROOT = process.argv[2] || path.join(__dirname, '..');
 let fails = 0, checks = 0;
 const ok = (c, m) => { checks++; if (!c) { console.log('  FAIL: ' + m); fails++; } };
@@ -41,7 +41,9 @@ const textAndLabels = html => text(String(html).replace(/\s(aria-label|placehold
    reçoit le HTML de l'écran. Deux navigateurs partis de la même graine visitent les
    mêmes états : la différence entre leurs textes est une vraie différence. */
 const { SCREENS } = require('./lib/screens');
-function views(B, visit) {
+/* `whole` : les séances montrent tout le cours à chaque échelon, et le contrôle échoue si elles n'y
+   arrivent plus. C'est plus long : seul le contrôle qui lit le texte de chaque élément le demande. */
+function views(B, visit, whole) {
   const NL = B.NL, S = NL.screens.sessie, answer = require('./lib/answer')(B);
   const html = () => B.app.innerHTML;
   /* Des échéances fixes et toutes différentes : l'ordre d'une séance ne doit rien à l'horloge. */
@@ -115,10 +117,16 @@ function views(B, visit) {
   for (let r = 0; r <= 6; r++) {
     fresh();
     const all = builtIn();
-    all.forEach(it => put(it, r));
+    /* Le budget du jour (120) coupe cette boucle, sauf en `whole`, et le plus en retard est servi d'abord,
+       c'est-à-dire le dernier posé. Les tâches ouvertes (échelons 4 et 6) ne viennent que des éléments de open.phrases : on
+       les pose en dernier, donc ils sont servis les premiers, puis le cours depuis son début, pour que ce
+       que la boucle montre ne dépende pas de ce que les dernières unités ajoutent. */
+    const hasOpen = it => !!(NL.content.byDutch['open.phrases'] || {})[it.nl];
+    all.filter(hasOpen).concat(all.filter(it => !hasOpen(it))).reverse().forEach(it => put(it, r));
     const shown = new Set();
     let sessions = 0;
     while (shown.size < all.length && sessions++ < 80) {
+      if (whole) budgetAnew(NL);
       if (!S.begin('vandaag')) break;
       NL.ui.go('sessie');
       let quit = false, turns = 0;
@@ -134,6 +142,7 @@ function views(B, visit) {
       }
       S.abandon();
     }
+    if (whole) ok(shown.size === all.length, 'les séances de l’échelon ' + r + ' montrent ' + shown.size + ' éléments sur ' + all.length);
   }
 }
 
@@ -452,6 +461,15 @@ function langChecks() {
           ok(hallo().cognate === false, '5e : hallo est transparent en français');
           NL.lang.set('en'); NL.ui.render();
           ok(hallo().cognate === true, '5e : hallo n\'est plus transparent au retour en anglais');
+          /* #129. Une précision française ne change pas ce à quoi le mot ressemble : « le serveur
+             (informatique) » reste le mot de « server ». En anglais, rien ne bouge : « half (before
+             the hour) » est un faux ami, et le rester garde son exercice de sens. */
+          const word = nl => NL.content.allItems().find(it => it.nl === nl);
+          ok(word('half').cognate === false, '5e : half (before the hour) est transparent en anglais');
+          NL.lang.set('fr'); NL.ui.render();
+          ok(word('de server').fr === 'le serveur (informatique)', '5e : de server se lit ' + word('de server').fr);
+          ok(word('de server').cognate === true, '5e : de server n\'est pas transparent en français');
+          NL.lang.set('en'); NL.ui.render();
         });
       }).then(() => {
         /* 5f. Dans chaque langue, aucun texte de l'autre à l'écran. */
@@ -474,7 +492,7 @@ function langChecks() {
               }
               const m = textAndLabels(h).match(OTHER[l]);
               if (m && !hits.has(m[0])) hits.set(m[0], n);
-            });
+            }, true);
             hits.forEach((n, w) => ok(false, '5f (' + l + ') : « ' + w + ' » à l\'écran (vue ' + n + ')'));
           });
         };
@@ -512,7 +530,7 @@ function langAttrFind(B, each) {
      on ne l'écarte que dans un passage qui se déclare français (ou anglais) ET dont le texte est un texte français
      (ou anglais) du cours. Un élément néerlandais qui montre « merci » sans lang="nl-BE" est une faute. */
   const gloss = { fr: new Set(), en: new Set() };
-  tree.visit(NL.content, (v, key) => { if ((key === 'fr' || key === 'en') && typeof v === 'string') gloss[key].add(U.norm(v)); });
+  tree.visit(NL.content, (v, key) => { if ((key === 'fr' || key === 'en') && typeof v === 'string') { gloss[key].add(U.norm(v)); if (key === 'fr') gloss.fr.add(U.norm(U.bareFr(v))); } });
   ['fr', 'en'].forEach(l => tree.visit(NL.tables[l], v => { if (typeof v === 'string') gloss[l].add(U.norm(v)); }));
   ok(dutch.size > 100, '6 : trop peu de mots néerlandais à chercher (' + dutch.size + ')');
   /* La table des sons compare un son à une lettre française, en gras et nue (6d.8) : « le u de tu »
@@ -905,16 +923,12 @@ const REFERENCE_TABLES = ['loans', 'sounds', 'faux', 'fauxEn'];
    « constructor » ou « toString » n'y est pas listé. */
 const QUOTE_OK = Object.assign(Object.create(null), {
   pardon: 'le nord pour excuseer, dans la note d’un choix de la conversation du train',
-  lijn: '« De Lijn », les bus flamands, dans la présentation de l’unité du trajet',
   jam: 'le nord pour de confituur, dans sa note d’emprunt',
   vrachtwagen: 'l’écrit pour de camion, dans sa note d’emprunt',
-  vork: 'le standard pour de fourchet, dans sa note d’emprunt',
   bijgevoegd: 'le nord pour « in bijlage », dans une note de la fiche des mails',
   werke: 'werken tel qu’il se dit, n final tombé, dans la table des sons',
   lope: 'lopen tel qu’il se dit, n final tombé, dans la table des sons',
   uiteindelijk: 'ce que veut dire eventually, dans le piège de eventueel',
-  eigenlijk: 'ce que veut dire actually, dans le piège de actueel',
-  dun: 'ce que veut dire slim (mince), dans le piège de slim',
   slank: 'ce que veut dire slim (svelte), dans le piège de slim',
   zeldzaam: 'ce que veut dire rare, dans le piège de raar',
   merk: '« het merk », ce que veut dire brand (une marque), dans le piège de de brand',
@@ -934,7 +948,8 @@ const SHARED_OK = Object.assign(Object.create(null), {
   direct: '« Être direct », “Being direct”, dans une note de la conversation sur les délais',
   t: 'la lettre t, nommée de même en français et en anglais, dans les notes de « Dat was plezant. », « Wat betekent dat? », « acht » et « komen »',
   s: 'la lettre s, nommée de même en français et en anglais, dans la note de « Niks speciaals, en bij u? »',
-  o: 'la lettre o, nommée de même en français et en anglais, dans la note de « goedkoop »'
+  o: 'la lettre o, nommée de même en français et en anglais, dans la note de « goedkoop »',
+  film: 'un film se regarde, en français comme en anglais, dans la note de « kijken »'
 });
 /* Ce que la table des sons met en gras sans le déclarer néerlandais : la lettre ou le mot auquel elle
    compare un son, français (une fois, le w anglais), avec la raison (D5). Le reste de son gras est
@@ -1221,9 +1236,11 @@ Promise.all([plain.NL.state.open(), paired.NL.state.open()]).then(() => {
   ok(a.length === b.length, 'pas le même nombre de vues : ' + a.length + ' / ' + b.length);
   a.forEach((s, i) => ok(s === b[i], 'vue appariée différente : ' + s.slice(0, 120)));
   b.forEach(s => ok(!/\[object|undefined|\bEN\d/.test(s), 'trou ou anglais en vue française : ' + s.slice(0, 120)));
-  /* 2b. Le jeu de mots transparents est celui d'aujourd'hui. */
-  const U = plain.NL.util, was = it => it.kind === 'word' && U.ratio(U.bare(it.nl), U.bareFr(it.fr)) > 0.62;
-  plain.NL.content.allItems().forEach(it => ok(it.cognate === was(it), 'transparence changée : ' + it.id));
+  /* 2b. Les mots transparents en français : le rapport du mot à son sens. Parmi les sens qui portent
+     une précision, celle-ci ne décide de rien et le seul transparent est écrit ici à la main. */
+  const U = plain.NL.util, was = it => it.kind === 'word' &&
+    (it.fr.indexOf('(') >= 0 ? it.nl === 'de server' : U.ratio(U.bare(it.nl), U.bareFr(it.fr)) > 0.62);
+  plain.NL.content.allItems().forEach(it => ok(it.cognate === was(it), 'transparence changée : ' + it.nl + ' (' + it.fr + ')'));
 
   /* 2c. Des mots à soi dans l'autre langue : lus dans la leur, jamais proposés en
      faux aux autres, jamais une option vide. */
@@ -1355,7 +1372,17 @@ Promise.all([plain.NL.state.open(), paired.NL.state.open()]).then(() => {
           ok(got === want, 'gloss.quoted(' + JSON.stringify(x) + ') donne « ' + got + ' », attendu « ' + want + ' »');
         });
         [['tussen', 'entre'], ['tegen', 'contre'], ['eigen', 'propre']].forEach(([nl, fr]) =>
-          ok(WC({ kind: 'word', nl: nl, fr: fr }, 'fr') === 'other', 'wordClass : « ' + fr + ' » (' + nl + ') n’est pas un verbe')); }
+          ok(WC({ kind: 'word', nl: nl, fr: fr }, 'fr') === 'other', 'wordClass : « ' + fr + ' » (' + nl + ') n’est pas un verbe'));
+        /* Une précision ne change pas la nature du mot. */
+        [['dragen', 'porter (un vêtement)'], ['ontbijten', 'déjeuner (le matin)'], ['bellen', 'appeler (au téléphone) / sonner']].forEach(([nl, fr]) =>
+          ok(WC({ kind: 'word', nl: nl, fr: fr }, 'fr') === 'verb', 'wordClass : « ' + fr + ' » (' + nl + ') est un verbe'));
+        ok(WC({ kind: 'word', nl: 'Vlaanderen', fr: 'Flandre (belge)' }, 'fr') === 'other', 'wordClass : « Flandre (belge) » (Vlaanderen) n’est pas un verbe');
+        /* Un mot à soi écrit ce qu'il veut : l'option ne le défait pas. */
+        const OPT = plain.NL.gloss.option;
+        [['(quelque chose)', '(quelque chose)'], ['être (en) retard', 'être (en) retard'], ['retard (grave)', 'retard'], ['retard (a) (b)', 'retard (a)']].forEach(([fr, want]) => {
+          const got = OPT({ kind: 'word', nl: 'iets', fr: fr }, 'fr');
+          ok(got === want, 'gloss.option : « ' + fr + ' » donne « ' + got + ' », attendu « ' + want + ' »');
+        }); }
       const L6 = boot();
       return L6.NL.state.open().then(() => langAttrCheck(L6)).then(() => anchorCheck(L6)).then(() => addFormCheck(L6)).then(heardCheck).then(interfaceCheck).then(displayChecks).then(quoteChecks);
     }).then(() => {

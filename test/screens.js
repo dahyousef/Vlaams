@@ -131,6 +131,76 @@ NL.state.open().then(async () => {
   }
 
   /* ------------------------------------------------------------------ */
+  /* Le titre du parcours compte les cartes que l'écran montre, dans les deux langues : il a dit
+     « douze » au-dessus de 34 cartes, et aucune suite ne le lisait. L'anglais en dernier : ce qui
+     suit tourne en anglais. */
+  console.log('\nLE TITRE DU PARCOURS');
+  {
+    fresh();
+    const titles = ['fr', 'en'].map(l => {
+      NL.state.setMeta({ displayLang: l }); NL.lang.apply();
+      const page = NL.screens.leerpad.render();
+      const title = text((page.match(/<h1>[\s\S]*?<\/h1>/) || [''])[0]);
+      const cards = page.split('<section class="unit-card').length - 1;
+      const said = title.match(/\b\d+\b/g) || [];
+      ok(said.length === 1 && +said[0] === cards, 'in ' + l + ', the Path title « ' + title + ' » does not count the ' + cards + ' unit cards on the screen');
+      ok(!/douze|twelve/i.test(title), 'in ' + l + ', the Path title still spells out the old size: « ' + title + ' »');
+      return '« ' + title + ' » sur ' + cards + ' cartes';
+    });
+    console.log('  ' + titles.join(' ; '));
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Trente-quatre cartes font plusieurs écrans. Le parcours s'ouvre sur l'unité en cours, et tout
+     autre écran en haut, pas à la hauteur où le précédent défilait : c'est la fenêtre qui défile.
+     Un écran redessiné sur place ne bouge pas : on y lit peut-être autre chose. */
+  console.log("\nOÙ S'OUVRE UN ÉCRAN");
+  {
+    fresh();
+    const entering = route => { B.scrolls.length = 0; NL.ui.go(route); return B.scrolls.join(', '); };
+    ok(entering('leerpad') === 'window 0', 'at unit 1, entering the Path did « ' + B.scrolls.join(', ') + ' », not the top of the page');
+    NL.content.allItems().slice(0, 500).forEach(it => put(it, 2, T0 + DAY));
+    NL.content.refresh();
+    const at = NL.content.courseProgress().current;
+    ok(at && at.id !== NL.content.units[0].id, 'the 500 items seeded should put the learner past unit 1');
+    ok(entering('leerpad') === 'window 0, .unit-card.now start', 'past unit 1, entering the Path did « ' + B.scrolls.join(', ') + ' », not the current unit');
+    B.scrolls.length = 0;
+    NL.ui.render();
+    ok(B.scrolls.length === 0, 'redrawing the Path in place moved the page: ' + B.scrolls.join(', '));
+    ok(entering('woorden') === 'window 0', 'entering the Library did « ' + B.scrolls.join(', ') + ' », not the top of the page');
+    NL.ui.go('vandaag');
+    /* Précédent : le hash change sans passer par go(), l'écran s'ouvre pareil. */
+    B.ctx.location.hash = '#leerpad';
+    B.scrolls.length = 0;
+    B.listeners.hashchange.forEach(f => f());
+    ok(NL.ui.route === 'leerpad' && B.scrolls.join(', ') === 'window 0, .unit-card.now start', 'Back to the Path did « ' + B.scrolls.join(', ') + ' » on ' + NL.ui.route);
+    NL.ui.go('vandaag');
+    console.log('  parcours : le haut à l\'unité 1, puis « ' + at.id + ' » ; un autre écran : le haut');
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Une recherche lit tout le cours, et chaque touche redessine la page : une lettre trouvait 831
+     lignes, plus d'une demi-seconde par touche sur un téléphone lent (mesuré sur Edge, processeur
+     divisé par six). La liste s'arrête, et dit ce qu'elle tait. */
+  console.log('\nCHERCHER DANS TOUT LE COURS');
+  {
+    fresh();
+    NL.ui.go('woorden');
+    const search = q => { NL.screens.woorden.input({ id: 'wsearch', value: q }); return B.app.innerHTML; };
+    const rows = page => page.split('class="vrow"').length - 1;
+    const said = page => { const m = /and (\d+) more: narrow your search/.exec(text(page)); return m ? +m[1] : 0; };
+    const U = NL.util, found = q => NL.content.allItems().filter(it => [it.nl, it.be, NL.gloss.of(it, 'fr'), NL.gloss.of(it, 'en')].some(s => !!s && U.norm(s).indexOf(q) >= 0)).length;
+    const wide = search('a');
+    ok(rows(wide) === 60, 'a one-letter search drew ' + rows(wide) + ' rows, where 60 are the most it should draw');
+    ok(60 + said(wide) === found('a'), 'a one-letter search finds ' + found('a') + ' items: the page draws ' + rows(wide) + ' and announces ' + said(wide) + ' more');
+    const narrow = search('ka');
+    ok(rows(narrow) === found('ka') && rows(narrow) > 0 && rows(narrow) < 60, 'a narrow search drew ' + rows(narrow) + ' rows of the ' + found('ka') + ' it finds');
+    ok(!said(narrow), 'a search that shows everything it found still says there is more');
+    search('');
+    console.log('  « a » : ' + rows(wide) + ' lignes, et ' + said(wide) + ' de plus annoncées ; « ka » : ' + rows(narrow) + ' lignes');
+  }
+
+  /* ------------------------------------------------------------------ */
   console.log('\nLA SÉANCE — plus de rangée de repères, et un score qui se compte');
   {
     fresh();

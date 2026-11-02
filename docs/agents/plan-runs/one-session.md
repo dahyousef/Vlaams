@@ -58,6 +58,7 @@ The prompt:
     You are the batch controller for batch <kind>/<batch> of the plan run in <worktree>. Read
     docs/agents/plan-runs/batch-controller.md and follow it. Run file: <WS>/run.md.
     Batch: <WS>/drafts/<kind>/<batch>/. Format: <WS>/drafts/<kind>/format.md. Check: <its Check command>.
+    [Reader model: <model> — when the task's `Fan-out:` line names one.]
     [Rulings: <id> keep; <id> drop; <id> change: <the maintainer's words> — after the maintainer rules.]
     [Confirmed: <ids> — after the maintainer accepts the changed rows.]
 
@@ -98,7 +99,7 @@ as a proposed task. It becomes a task, with a brief and a Status row, on their w
 - When `run-controller.md` says to stop the run (a `sitting` task, `needs design`, a `failed` task): dispatch
   nothing new, wait for the batch controllers in flight and write their rows, then launch what the loop
   launches and stop. One run controller at a time: the next one is the session that sitting launches.
-- After a cut-off, the next session starts as `run-controller.md` says (six minutes' wait, the command, the
+- After a cut-off, the next session starts as `run-controller.md` says (thirty-five minutes' wait, the command, the
   start prompt) and adds its own `Sitting:` line. It dispatches the batches left `drafting` again: their
   batch controllers carry on from the files. It tells the maintainer again of each gate left `in progress`.
 - After a compaction, the hook's reminder covers this file too: re-read it with `run-controller.md`.

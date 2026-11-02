@@ -16,7 +16,7 @@ the Check command, and perhaps the maintainer's rulings or confirmations for thi
 | Role | Model | Its instructions |
 |---|---|---|
 | Drafter | `sonnet` | `docs/agents/plan-runs/drafter.md` |
-| Reader | `opus` | `docs/agents/plan-runs/reader.md` |
+| Reader | `opus`, or the model your dispatch's `Reader model:` line names | `docs/agents/plan-runs/reader.md` |
 
 Dispatch each in the foreground, with its model given explicitly and a description that starts with
 `batch <kind>/<batch>`, and wait for its return. Every reader is a new agent: a reader confirms what someone

@@ -37,6 +37,9 @@ function cardKey() {
 /* Les résultats qu'une passe signale : une carte qui bloque, un toucher sans effet. */
 const STUCK = /NOTHING|NO VERDICT|ERROR|DID NOT/;
 
+/* Une séance a une fin : passé ce nombre de cartes, la passe s'arrête et le dit (STUCK). */
+const MAX_CARDS = 120;
+
 /* Joue la séance ouverte par `opts.startSel` (« Commencer » par défaut) jusqu'à son écran de fin.
    opts.wrongEvery : passe une carte écrite sur n ;
    opts.speakModes : pour chaque carte parlée, dans l'ordre, 'mic-right', 'mic-wrong', 'self-end'
@@ -45,10 +48,10 @@ const STUCK = /NOTHING|NO VERDICT|ERROR|DID NOT/;
 async function playSession(page, label, opts) {
   const p = page, log = [];
   opts.speakCount = opts.speakCount || { n: 0 };
-  let stuck = 0;
+  let stuck = 0, step = 0;
   await p.click(opts.startSel || '[data-act="start"]');
   await sleep(200);
-  for (let step = 0; step < 120; step++) {
+  for (; step < MAX_CARDS; step++) {
     if (await p.evaluate(() => NL.ui.route) !== 'sessie') break;
     /* L'écran de fin (défi perdu, séance finie) : plus aucune carte à jouer, même si peek() en garde une. */
     if (!(await p.$('[data-skip], [data-check], [data-match], [data-quiet], [data-mic], [data-next]'))) break;
@@ -112,6 +115,7 @@ async function playSession(page, label, opts) {
     log.push(entry);
     if (stuck > 5) break;
   }
+  if (step === MAX_CARDS && await p.evaluate(() => NL.ui.route) === 'sessie') log.push({ step, ex: 'session', mode: 'cap', answer: '', result: 'DID NOT END after ' + MAX_CARDS + ' cards' });
   await sleep(200);
   await shot(p, label + '-end', true);
   const endText = await p.evaluate(() => document.querySelector('main, #app, body').innerText.slice(0, 600));

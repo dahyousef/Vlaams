@@ -13,7 +13,7 @@ NL.screens.fouten = (function () {
       '<h1>' + (list.length ? t.missTitle(list.length) : t.missEyebrow) + '</h1>' +
       '<p>' + (list.length ? t.missBody : t.missNone) + '</p>' +
       (list.length ? '<button class="btn btn-primary" data-act="start">' +
-        t.missStart(Math.min(list.length, NL.srs.MAX_TASKS)) + '</button>' : '') +
+        t.missStart(Math.min(list.length, NL.srs.BASE_SIZE)) + '</button>' : '') +
       '</section>';
 
     list.slice(0, SHOWN).forEach(x => {

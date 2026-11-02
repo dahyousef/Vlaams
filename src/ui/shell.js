@@ -34,8 +34,19 @@ NL.ui = (function () {
     route = to; arg = a == null ? null : a; sheet = null;
     try { location.hash = '#' + to + (a ? '/' + a : ''); } catch (e) {}
     render();
+    arrive();
+  }
+
+  /* Un écran qui s'ouvre, par un toucher comme par Précédent. C'est la fenêtre qui défile, pas
+     .screen : sans cela, un écran s'ouvre à la hauteur où le précédent défilait. Après elle,
+     l'écran qui s'ouvre ailleurs qu'en haut le fait lui-même : une fois, en y entrant, jamais à
+     chaque dessin. */
+  function arrive() {
     const b = document.querySelector('.screen');
     if (b) b.scrollTop = 0;
+    window.scrollTo(0, 0);
+    const S = NL.screens[route];
+    if (S && S.entered) S.entered();
   }
 
   function fromHash() {
@@ -52,7 +63,7 @@ NL.ui = (function () {
       '<div class="brand"><span class="mark">' +
       '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">' +
       '<path d="M5 18.5c3.5-1.5 4.5-5 4.5-8.5S8 4.5 8 4.5"/><path d="M19 18.5c-3.5-1.5-4.5-5-4.5-8.5S16 4.5 16 4.5"/><path d="M4.5 11.5h15"/></svg></span>' +
-      '<span class="brand-txt"><b>Vlaams</b><i>' + esc(NL.content.fill(t.brandSub)) + '</i></span></div>' +
+      '<span class="brand-txt"><b' + NL.gloss.attr('nl') + '>Vlaams</b><i>' + esc(NL.content.fill(t.brandSub)) + '</i></span></div>' +
       '<button class="iconbtn gear" data-sheet="instellingen" aria-label="' + t.setTitle + '">' + I.gear + syncDot() + '</button>' +
       '</div></header>';
   }
@@ -419,7 +430,7 @@ NL.ui = (function () {
 
     window.addEventListener('hashchange', () => {
       const h = fromHash();
-      if (h && h.r !== route) { route = h.r; arg = h.a; render(); }
+      if (h && h.r !== route) { route = h.r; arg = h.a; render(); arrive(); }
     });
   }
 

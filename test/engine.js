@@ -7,12 +7,14 @@
    est invisible. */
 const browser = require('./lib/browser');
 const { inZone, offsets } = require('./lib/zone');
+const { dueReviews } = require('./lib/seed');
 const ROOT = process.argv[2];
 const T0 = Date.parse('2026-10-05T08:00:00Z');
 const MIN = 60000, HOUR = 3600000, DAY = 86400000;
 /* Ce que la spécification promet, écrit ici plutôt que relu dans le code : au
-   moins 30 % des 22 places d'une séance, et jamais moins de quatre, vont au neuf. */
-const FEW = 4, RESERVED = Math.max(FEW, Math.ceil(22 * 0.3));
+   moins 30 % des 30 places de base d'une séance, et jamais moins de quatre, vont au
+   neuf ; les places que l'arriéré ajoute n'en donnent pas (ADR 0007). */
+const FEW = 4, RESERVED = Math.max(FEW, Math.ceil(30 * 0.3));
 
 let fails = 0, checks = 0;
 const ok = (c, m) => { checks++; if (!c) { console.log('  FAIL: ' + m); fails++; } };
@@ -54,7 +56,7 @@ function play(right) {
   return served;
 }
 
-NL.state.open().then(() => {
+NL.state.open().then(async () => {
   NL.content.refresh();
   NL.ui.go('sessie');
   const units = NL.content.units;
@@ -234,7 +236,7 @@ NL.state.open().then(() => {
     const reviews = served.filter(x => !x.unmet && !x.second && !x.retry && x.ex !== 'match').length;
     console.log('  200 éléments dus : ' + reviews + ' révisions, ' + news + ' rencontres');
     ok(news >= RESERVED, 'with 200 items due, a session met only ' + news + ' new item(s)');
-    ok(reviews + news <= NL.srs.MAX_TASKS, 'the session holds ' + (reviews + news) + ' items, more than its ' + NL.srs.MAX_TASKS + ' places');
+    ok(reviews + news === 35, 'with 200 items due, the session holds ' + (reviews + news) + ' items, not 35: the 30 base places and one more per 40 due');
 
     /* La réserve survit au rabotage : presque plus de budget, et pourtant du neuf. */
     fresh();
@@ -250,13 +252,49 @@ NL.state.open().then(() => {
     NL.srs.spend(5);
     ok(NL.srs.plan().total === 0, 'a spent day budget still offers a session');
 
-    /* Plus rien à rencontrer : la réserve disparaît, les révisions prennent tout. */
+    /* Plus rien à rencontrer : la réserve disparaît, les révisions prennent tout —
+       les trente places, et celle que soixante éléments dus ajoutent. */
     fresh();
     all.forEach((it, i) => put(it, 3, i < 60 ? T0 - DAY : T0 + 30 * DAY));
     const full = NL.srs.compose('vandaag');
-    ok(full.fresh.length === 0 && full.due.length === NL.srs.MAX_TASKS,
+    ok(full.fresh.length === 0 && full.due.length === 31,
       'with nothing left to meet, the session holds ' + full.due.length + ' reviews and ' + full.fresh.length + ' new');
     console.log('  plus rien à rencontrer : ' + full.due.length + ' révisions, ' + full.fresh.length + ' rencontre');
+  }
+
+  /* ------------------------------------------------------------------ */
+  console.log('\nLA SÉANCE SUIT L’ARRIÉRÉ — une place de révision de plus par quarante éléments dus');
+  /* ADR 0007, sa seconde option : la part réservée ne cède pas, c'est la séance qui grandit
+     avec l'arriéré. Trente places de base ; dès quarante éléments dus, une de plus par
+     quarante, onze au plus (41 places). La réserve se calcule sur les trente : neuf
+     nouveaux, quel que soit l'arriéré. Une unité travaillée à part suit la même règle sur
+     ses seuls dus. La règle se lit sur une page à part, où rien d'autre ne change. */
+  {
+    const G = browser.open({ root: ROOT, seed: browser.SEED, now: T0, ua: browser.UA.OPR, byId: 'stub' });
+    await G.NL.state.open();
+    const X = G.NL, size = X.content.allItems().length;
+    ok(size >= 1000, 'the course holds ' + size + ' items, fewer than the 1,000 due this block needs');
+    /* n éléments dus, et ce que compose() en fait. */
+    const backlog = (n, src) => { X.state.clearAll(); dueReviews(X, n, T0); return X.srs.compose(src || 'vandaag'); };
+    [[39, 30], [40, 31], [440, 41], [1000, 41]].forEach(([n, places]) => {
+      const c = backlog(n), held = c.due.length + c.fresh.length;
+      console.log('  ' + String(n).padStart(4) + ' dus : ' + c.due.length + ' révisions + ' + c.fresh.length + ' rencontres = ' + held + ' places');
+      ok(held === places, n + ' items due: the session holds ' + held + ' items, not ' + places + ' (30 base places, one more per 40 due, 11 at most)');
+      ok(c.fresh.length === RESERVED, n + ' items due: ' + c.fresh.length + ' new, not the reserve of ' + RESERVED + ' computed on the 30 base places');
+    });
+    /* Une unité travaillée à part : ses dus seuls comptent. Tout le cours dû, on compte ceux de « tijd ». */
+    const c = backlog(X.content.allItems().length, 'tijd');
+    const inUnit = X.srs.dueItems().filter(it => it.unit === 'tijd').length;
+    console.log('  unité tijd, ' + inUnit + ' dus : ' + c.due.length + ' révisions + ' + c.fresh.length + ' rencontres');
+    ok(inUnit >= 40 && inUnit < 80, 'the unit holds ' + inUnit + ' items due, the check needs 40 to 79');
+    ok(c.due.length + c.fresh.length === 31, 'a unit session with ' + inUnit + ' items due holds ' + (c.due.length + c.fresh.length) + ' items, not 31');
+    /* L'annonce dit ce que la séance contient : tout dû et rien à rencontrer, 41 + 0 ; cent dus, 23 + 9. */
+    const everything = backlog(X.content.allItems().length), pEvery = X.srs.plan();
+    ok(everything.due.length === 41 && everything.fresh.length === 0 && pEvery.total === 41,
+      'every item due, nothing unmet: ' + everything.due.length + ' reviews + ' + everything.fresh.length + ' new, announced ' + pEvery.total + ', not 41 + 0');
+    const hundred = backlog(100), pHundred = X.srs.plan();
+    ok(hundred.due.length === 23 && hundred.fresh.length === RESERVED && pHundred.total === 32,
+      '100 items due: ' + hundred.due.length + ' reviews + ' + hundred.fresh.length + ' new, announced ' + pHundred.total + ', not 23 + 9 = 32');
   }
 
   /* ------------------------------------------------------------------ */
@@ -600,8 +638,8 @@ NL.state.open().then(() => {
     const size = () => Number((S.render().match(/class="pill">\d+\/(\d+)</) || [0, 0])[1]);
 
     ok(voice.every(it => NL.srs.needsVoice(it)) && !other.some(it => NL.srs.needsVoice(it)), 'needsVoice() does not tell the items that can only be spoken from the others');
-    const without = NL.srs.compose('vandaag', undefined, { quiet: true }).due;
-    ok(without.length > 0 && !without.some(it => NL.srs.needsVoice(it)), 'a session composed without speaking still holds ' + without.filter(it => NL.srs.needsVoice(it)).length + ' item(s) that can only be spoken');
+    const without = NL.srs.compose('vandaag', undefined, { fill: 30, kept: 0, without: new Set() }).due;
+    ok(without.length > 0 && !without.some(it => NL.srs.needsVoice(it)), 'a session filled without speaking takes ' + without.filter(it => NL.srs.needsVoice(it)).length + ' item(s) that can only be spoken');
 
     ok(S.begin('vandaag'), 'the session did not start');
     let guard = 0;
@@ -669,6 +707,100 @@ NL.state.open().then(() => {
     S.abandon();
     ok(fixed.length === 1 && fixed[0] === c.id, 'after « je ne peux pas parler » the mistakes session served ' + JSON.stringify(fixed) + ' instead of its one item that is not spoken');
     console.log('  rien que du parlé : retour à l’accueil sans bilan ; séance sur les fautes : le parlé en sort, rien n’y entre');
+
+    /* Reprendre des places n'est pas composer une séance : ses nouveaux éléments sont déjà
+       dans la file, rien n'est à leur réserver. Quel que soit l'arriéré, la séance garde
+       autant d'éléments tant qu'il en reste à écrire. */
+    const distinct = (refusals, onRetry) => {
+      const seen = new Set();
+      let refused = 0;
+      const turn = play => { const c = S.peek(), m = c.ex === 'match'; c.items.forEach(it => seen.add(it.id)); B.clock.advance(20000); play(); answer.next(m); };
+      const tapHere = c => c.ex === 'speak' && refused >= (refusals || 0) && (!onRetry || c.retry);
+      S.begin('vandaag');
+      let n = 0;
+      while (S.peek() && !tapHere(S.peek()) && n++ < 90) {
+        if (S.peek().ex === 'speak' && refused < (refusals || 0)) { refused++; turn(answer.wrong); } else turn(answer.right);
+      }
+      ok(S.peek() && tapHere(S.peek()), 'the fixture is wrong: the session holds no spoken exercise to refuse');
+      answer.cantSpeak();
+      n = 0;
+      while (S.peek() && n++ < 120) { turn(answer.right); if (B.app.innerHTML.indexOf('done-stage') >= 0) break; }
+      S.abandon();
+      return seen;
+    };
+    [[300, 100], [80, 100], [80, 10]].forEach(([voiceN, writtenN]) => {
+      fresh();
+      words.slice(0, voiceN).forEach(it => put(it, 3, T0 - 2 * DAY));
+      words.slice(voiceN, voiceN + writtenN).forEach(it => put(it, 2, T0 - DAY));
+      const plan = NL.srs.compose('vandaag'), held = plan.fresh.length + Math.min(plan.due.length, writtenN);
+      ok(plan.due.every(it => NL.srs.needsVoice(it)), 'the fixture is wrong: of ' + plan.due.length + ' reviews in the session, ' + plan.due.filter(it => NL.srs.needsVoice(it)).length + ' can only be spoken');
+      const seen = distinct();
+      ok(seen.size === held, voiceN + ' due to say, ' + writtenN + ' to write, ' + plan.due.length + ' reviews put off: the session holds ' + seen.size + ' items, not ' + held);
+      ok(!plan.due.some(it => seen.has(it.id)), 'an item put off was served in the same session');
+      console.log('  ' + voiceN + ' à dire, ' + writtenN + ' à écrire : ' + plan.due.length + ' révisions mises de côté, ' + seen.size + ' éléments servis sur ' + held);
+    });
+
+    /* Une reprise ne libère aucune place : son élément a déjà été servi. Répondre faux à voix
+       haute avant de toucher le bouton ne grossit donc pas la séance. */
+    [[1, false], [5, false], [1, true]].forEach(([refusals, onRetry]) => {
+      fresh();
+      words.slice(0, 300).forEach(it => put(it, 3, T0 - 2 * DAY));
+      words.slice(300, 400).forEach(it => put(it, 2, T0 - DAY));
+      const plan = NL.srs.compose('vandaag'), held = plan.due.length + plan.fresh.length;
+      const seen = distinct(refusals, onRetry);
+      ok(seen.size === held, refusals + ' refused aloud, then the button' + (onRetry ? ' on the retry' : '') + ': the session holds ' + seen.size + ' items, not ' + held);
+      console.log('  ' + refusals + ' refus à voix haute' + (onRetry ? ', le bouton sur la reprise' : '') + ' : ' + seen.size + ' éléments sur ' + held);
+    });
+
+    /* Le budget du jour borne ce qui est repris, et ce qui est repris est dû, jamais neuf. */
+    {
+      /* Rien que de l'écrit : chaque révision coûte un exercice. */
+      fresh();
+      words.slice(0, 400).forEach(it => put(it, 2, T0 - DAY));
+      NL.srs.spend(NL.srs.pace().cap - 5);
+      const fillIn = kept => NL.srs.compose('vandaag', undefined, { fill: 31, kept, without: new Set() });
+      const tight = fillIn(2);
+      ok(tight.due.length === 3 && tight.fresh.length === 0, 'with five exercises left in the day and two still in the queue, filling 31 places takes ' + tight.due.length + ' reviews and ' + tight.fresh.length + ' new items, not 3 and 0');
+      ok(fillIn(5).due.length === 0, 'with five exercises left in the day and five still in the queue, a fill still takes ' + fillIn(5).due.length + ' reviews');
+
+      /* Ce qui reste dans la file compte contre le budget, reprises comprises : des révisions
+         fausses avant le bouton, et ce qui est repris n'emmène pas la journée au-delà. */
+      const played = wrongs => {
+        fresh();
+        words.slice(0, 12).forEach(it => put(it, 2, T0 - 3 * DAY));
+        words.slice(12, 50).forEach(it => put(it, 3, T0 - 2 * DAY));
+        words.slice(50, 150).forEach(it => put(it, 2, T0 - DAY));
+        NL.srs.spend(NL.srs.pace().cap - 40);
+        const plan = NL.srs.compose('vandaag'), planned = new Set(plan.due.concat(plan.fresh).map(it => it.id));
+        ok(S.begin('vandaag'), 'the session did not start');
+        let n = 0, wrong = 0;
+        const go = (play, c) => { const m = c.ex === 'match'; B.clock.advance(20000); play(); answer.next(m); };
+        while (S.peek() && n++ < 60 && !(S.peek().ex === 'speak' && wrong >= wrongs)) {
+          const c = S.peek(), mine = c.ex !== 'speak' && c.ex !== 'match' && !c.retry && plan.due.indexOf(c.items[0]) >= 0;
+          if (mine && wrong < wrongs) { wrong++; go(answer.wrong, c); } else go(answer.right, c);
+        }
+        ok(wrong === wrongs && S.peek() && S.peek().ex === 'speak', 'the fixture is wrong: ' + wrong + ' written reviews answered wrong before the button, not ' + wrongs);
+        const before = NL.srs.budgetLeft();
+        answer.cantSpeak();
+        let added = 0, served = 0;
+        n = 0;
+        while (S.peek() && n++ < 120) {
+          const c = S.peek();
+          if (c.items.some(it => !planned.has(it.id))) added++;
+          served++;
+          go(answer.right, c);
+          if (B.app.innerHTML.indexOf('done-stage') >= 0) break;
+        }
+        S.abandon();
+        return { before, added, served };
+      };
+      const sixWrong = played(6);
+      ok(sixWrong.added === 0 || sixWrong.served <= sixWrong.before, 'six written reviews wrong, ' + sixWrong.before + ' exercises left in the day: the button brought ' + sixWrong.added + ' new reviews, and ' + sixWrong.served + ' exercises were served');
+      const noneWrong = played(0);
+      ok(noneWrong.added > 0, 'every answer right, ' + noneWrong.before + ' exercises left in the day: the button brought no reviews, so this checks nothing');
+      ok(noneWrong.served <= noneWrong.before, 'every answer right, ' + noneWrong.before + ' exercises left in the day: ' + noneWrong.served + ' were served');
+      console.log('  budget de cinq, deux en file : ' + tight.due.length + ' places reprises ; six fausses avant le bouton : ' + sixWrong.added + ' reprises, ' + sixWrong.served + ' exercices pour ' + sixWrong.before + ' restants ; aucune : ' + noneWrong.added + ' reprises, ' + noneWrong.served + ' pour ' + noneWrong.before);
+    }
   }
 
   /* ------------------------------------------------------------------ */
@@ -760,6 +892,67 @@ NL.state.open().then(() => {
       console.log('  dit puis mis de côté : « ' + mixed.slice(10) + ' »');
     }
     console.log('  3 mis de côté : « ' + (many.match(/done-sub">([^<]*)/) || ['', '?'])[1] + ' »');
+
+    /* Une reprise ou un second exercice n'est pas gardé : son élément a déjà eu sa réponse, et
+       il revient le lendemain que l'on touche le bouton ou non. Le bouton ne garde que ce qui
+       n'a pas été servi. Refusé deux fois à voix haute, un élément arme son second exercice à
+       voix haute lui aussi. */
+    const turn = play => { const m = S.peek().ex === 'match'; B.clock.advance(20000); play(); answer.next(m); };
+    const summary = () => (B.app.innerHTML.match(/done-stage[\s\S]*?class="tally"/) || [''])[0];
+    function afterRefusals(n, refusals) {
+      fresh();
+      words.slice(0, n).forEach(it => put(it, 3, T0 - 2 * DAY));
+      words.slice(n, n + 30).forEach(it => put(it, 2, T0 - DAY));
+      S.begin('vandaag');
+      let guard = 0, refused = 0;
+      while (S.peek() && guard++ < 80 && !(S.peek().ex === 'speak' && refused >= refusals)) {
+        if (S.peek().ex === 'speak') { refused++; turn(answer.wrong); } else turn(answer.right);
+      }
+      const tapped = S.peek();
+      ok(tapped && tapped.ex === 'speak', 'the fixture is wrong: no spoken exercise left after ' + refused + ' refusals');
+      answer.cantSpeak();
+      guard = 0;
+      while (S.peek() && guard++ < 120) {
+        turn(answer.right);
+        if (B.app.innerHTML.indexOf('done-stage') >= 0) break;
+      }
+      const sub = summary();
+      S.abandon();
+      return { tapped, sub };
+    }
+    const keptIn = sub => Array.from({ length: 40 }, (_, i) => i + 1).filter(k => {
+      const at = sub.indexOf(NL.t.doneSpokenKept(k));
+      return at >= 0 && !/[0-9]/.test(sub.charAt(at - 1));
+    });
+
+    const others = afterRefusals(3, 1);
+    ok(others.tapped.retry, 'the fixture is wrong: the button was not tapped on the retry');
+    ok(keptIn(others.sub).join() === '2', 'one of 3 spoken exercises refused, then the button on its retry: the summary keeps ' + JSON.stringify(keptIn(others.sub)) + ', not the 2 never served');
+
+    const onRetry = afterRefusals(1, 1);
+    ok(onRetry.tapped.retry, 'the fixture is wrong: the button was not tapped on a retry');
+    ok(keptIn(onRetry.sub).length === 0, 'the button on a retry: the summary says ' + JSON.stringify(keptIn(onRetry.sub)) + ' exercise(s) kept, when nothing was set aside');
+    ok(onRetry.sub.indexOf(NL.t.doneNoSpoken) < 0, 'the button on a retry: the summary says pronunciation exercises are yet to come, when one was just refused');
+    ok(NL.srs.needsVoice(onRetry.tapped.items[0]), 'an item refused aloud, then the button on its retry, should still wait to be said');
+
+    const onSecond = afterRefusals(1, 2);
+    ok(onSecond.tapped.second, 'the fixture is wrong: the button was not tapped on a second exercise');
+    ok(keptIn(onSecond.sub).length === 0, 'the button on a second exercise: the summary says ' + JSON.stringify(keptIn(onSecond.sub)) + ' exercise(s) kept, when nothing was set aside');
+    ok(onSecond.sub.indexOf(NL.t.doneNoSpoken) < 0, 'the button on a second exercise: the summary says pronunciation exercises are yet to come, when one was just refused');
+    /* Sans le bouton, et rien encore à dire : la phrase reste. */
+    fresh();
+    S.begin('vandaag');
+    let spokenSeen = 0, turns = 0;
+    while (S.peek() && turns++ < 120) {
+      if (S.peek().ex === 'speak') spokenSeen++;
+      turn(answer.right);
+      if (B.app.innerHTML.indexOf('done-stage') >= 0) break;
+    }
+    const untapped = summary();
+    S.abandon();
+    ok(spokenSeen === 0, 'the fixture is wrong: a session of new items served ' + spokenSeen + ' spoken exercise(s)');
+    ok(untapped.includes(NL.t.doneNoSpoken), 'nothing said and the button never tapped: the summary no longer says pronunciation exercises are yet to come: « ' + untapped + ' »');
+    console.log('  un refus, puis le bouton sur sa reprise : ' + keptIn(others.sub).join() + ' gardés sur 3 ; sur la reprise : ' + keptIn(onRetry.sub).length + ' ; sur le second exercice : ' + keptIn(onSecond.sub).length);
   }
 
   /* ------------------------------------------------------------------ */
