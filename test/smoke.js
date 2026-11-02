@@ -868,6 +868,12 @@ NL.state.open().then(() => {
    ['hoelang duurt het', 'Hoelang duurt het?', true, 'heard in one'],
    ['hoe lang', 'hoelang', true, 'the word alone'],
    ['hoever is het', 'Hoe ver is het?', true, 'joined by ear'],
+   ['ik werk en ik wil werken', 'Ik werk en ik wil werken.', true, 'stays apart'],
+   ['een en twintig', 'eenentwintig', true, 'three words'],
+   ['ik ben java ontwikkelaar', 'Ik ben Java-ontwikkelaar.', true, 'hyphen a space'],
+   ['ik ben javaontwikkelaar', 'Ik ben Java-ontwikkelaar.', true, 'hyphen unheard'],
+   ['is t ver van hier', 'Is ’t ver van hier?', true, 'no apostrophe'],
+   ['een twintig', 'eenentwintig', false, 'letters short'],
    ['hoe laat duurt het', 'Hoelang duurt het?', false, 'another word'],
    ['lang duurt het', 'Hoelang duurt het?', false, 'half the word'],
    ['hoe duurt het', 'Hoelang duurt het?', false, 'other half']].forEach(([said, target, want, label]) => {

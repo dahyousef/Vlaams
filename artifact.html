@@ -2847,17 +2847,35 @@ NL.speech = (function () {
   }
 
   /* ---------------- scoring ---------------- */
-  /* A voice has no spaces: the recogniser writes « hoe lang » or « hoelang » as it
-     pleases. What it heard is respaced as the target writes it, and only when the
-     letters match exactly: two heard words that are one target word, or one heard
-     word that is two target words in a row. */
+  /* A voice has no spaces, hyphens or apostrophes: the recogniser writes « hoe lang »
+     or « hoelang » as it pleases. What it heard is respaced as the target writes it,
+     and only when the letters match exactly: heard words that are one target word, or
+     one heard word that is target words in a row. A heard word the target already
+     holds stays as it is: « werk en » is not « werken » when the target has all three. */
+  const letters = list => list.join('').replace(/['-]/g, '');
   function respaced(heard, target) {
     const S = words(heard), T = words(target), out = [];
+    const known = w => T.indexOf(w) >= 0;
+    const asOne = i => {
+      for (let n = S.length - i; n > 1; n--) {
+        const run = S.slice(i, i + n), t = T.find(w => letters([w]) === letters(run));
+        if (t && !run.every(known)) return { t, n };
+      }
+      return null;
+    };
+    const asMany = w => {
+      if (known(w)) return [w];
+      for (let j = 0; j < T.length; j++) {
+        for (let m = 1; j + m <= T.length; m++) {
+          if (letters(T.slice(j, j + m)) === letters([w])) return T.slice(j, j + m);
+        }
+      }
+      return [w];
+    };
     for (let i = 0; i < S.length; i++) {
-      const two = T.findIndex((t, j) => j + 1 < T.length && t + T[j + 1] === S[i]);
-      if (i + 1 < S.length && T.indexOf(S[i] + S[i + 1]) >= 0) out.push(S[i] + S[++i]);
-      else if (two >= 0) out.push(T[two], T[two + 1]);
-      else out.push(S[i]);
+      const one = asOne(i);
+      if (one) { out.push(one.t); i += one.n - 1; }
+      else out.push(...asMany(S[i]));
     }
     return out.join(' ');
   }
