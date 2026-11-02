@@ -150,14 +150,15 @@ function alreadySplit(kindDir, keep) {
 }
 
 /* Le texte d'un fichier du lot, ou une ligne `fail`. Il se décode strictement : lu en 'utf8', un octet invalide
-   devient U+FFFD, que JSON.parse prend pour du texte. `ignoreBOM` garde la marque d'ordre, que JSON.parse refuse :
-   un décodeur ordinaire l'enlèverait en silence. Un U+FFFD déjà là, tel quel ou en échappement, est un caractère
-   perdu par une conversion, jamais un texte du cours. */
+   devient U+FFFD, que JSON.parse prend pour du texte. `ignoreBOM` garde la marque d'ordre, pour la nommer ici : un
+   décodeur ordinaire l'enlèverait en silence, et disputes.md ne passe pas par JSON.parse, qui la refuse. Un U+FFFD
+   déjà là, tel quel ou en échappement, est un caractère perdu par une conversion, jamais un texte du cours. */
 function readText(dir, file, out) {
   let bytes, text;
   try { bytes = fs.readFileSync(path.join(dir, file)); } catch (e) { out.push('fail ' + file + ' -: cannot be read (' + e.code + ')'); return null; }
   try { text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes); } catch (e) { out.push('fail ' + file + ' -: not UTF-8'); return null; }
-  if (/�|\\ufffd/i.test(text)) { out.push('fail ' + file + ' -: holds U+FFFD, a character lost in a conversion'); return null; }
+  if (text.charCodeAt(0) === 0xFEFF) { out.push('fail ' + file + ' -: starts with a byte-order mark'); return null; }
+  if (/\uFFFD|\\ufffd/i.test(text)) { out.push('fail ' + file + ' -: holds U+FFFD, a character lost in a conversion'); return null; }
   return text;
 }
 

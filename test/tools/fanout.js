@@ -256,10 +256,10 @@ async function main() {
   fs.writeFileSync(path.join(EEN, 'draft.json'), Buffer.from('[{"id":"overleven:w1","mot":"café"}]', 'latin1'));
   same(only(EEN, 'draft.json'), ['fail draft.json -: not UTF-8'], 'un fichier qui n\'est pas en UTF-8 est nommé');
   put(EEN, 'draft.json', '\uFEFF[]');
-  ok(/^fail draft\.json -: not JSON \(/.test(only(EEN, 'draft.json')[0]), 'une marque d\'ordre en tête n\'est pas du JSON');
+  same(only(EEN, 'draft.json'), ['fail draft.json -: starts with a byte-order mark'], 'une marque d\'ordre en tête est nommée');
   /* U+FFFD, écrit tel quel ou en échappement : un caractère déjà perdu par une conversion, que la Merge écrirait aussi. */
   const PERDU = ['fail draft.json -: holds U+FFFD, a character lost in a conversion'];
-  put(EEN, 'draft.json', '[{"id":"overleven:w1","mot":"caf�"}]');
+  put(EEN, 'draft.json', '[{"id":"overleven:w1","mot":"caf\uFFFD"}]');
   same(only(EEN, 'draft.json'), PERDU, 'U+FFFD tel quel est nommé');
   put(EEN, 'draft.json', '[{"id":"overleven:w1","mot":"caf\\ufffd"}]');
   same(only(EEN, 'draft.json'), PERDU, 'U+FFFD en échappement est nommé');
@@ -313,6 +313,9 @@ async function main() {
   ], 'une section a ses lignes, et seules les lignes pour le mainteneur ont une section');
   fs.writeFileSync(path.join(EEN, 'disputes.md'), Buffer.from(DISPUTES, 'latin1'));
   same(only(EEN, 'disputes.md'), ['fail disputes.md -: not UTF-8'], 'disputes.md se décode comme les autres fichiers du lot');
+  /* Une marque d'ordre cacherait son premier « ## » : la section passerait pour absente. */
+  fs.writeFileSync(path.join(EEN, 'disputes.md'), Buffer.concat([Buffer.from([0xEF, 0xBB, 0xBF]), Buffer.from(DISPUTES)]));
+  same(only(EEN, 'disputes.md'), ['fail disputes.md -: starts with a byte-order mark'], 'disputes.md nomme sa marque d\'ordre');
   put(EEN, 'disputes.md', DISPUTES);
 
   const change = { id: 'bakker:w22', ruling: 'change', words: 'keep it, and say why', confirmed: true, date: '2026-10-22' };
