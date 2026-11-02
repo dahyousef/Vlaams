@@ -107,10 +107,13 @@ ok(/^STALE: /.test(waitFor(`sh "${waitSuite}" "${suiteFile}" 0 1`)), 'wait-suite
 ok(/no suite runs$/.test(waitFor(`sh "${waitSuite}" "${suiteFile}" 0 1`)), 'wait-suite.sh dit qu\'aucune suite ne tourne');
 ok(waitFor(`sh "${waitSuite}" --running "${suiteFile}"`) === 'no suite runs', 'wait-suite.sh --running sans pid : aucune suite');
 const standIn = path.join(waitDir, 'run-all.sh').replace(/\\/g, '/');
-fs.writeFileSync(standIn, 'sleep 8\n');
-ok(/^a suite still runs\nSTALE: .*a suite still runs$/.test(waitFor(`sh "${standIn}" >/dev/null 2>&1 & echo $! > "${suiteFile}.pid"; sh "${waitSuite}" --running "${suiteFile}"; sh "${waitSuite}" "${suiteFile}" 0 1`)), 'wait-suite.sh dit qu\'une suite tourne encore, avec --running comme après STALE');
+// Une fausse suite finit quand le test le lui dit (au plus une minute), pas après un temps deviné : sur une machine
+// chargée, un `sleep` court finirait avant le contrôle, et le contrôle dirait qu'aucune suite ne tourne.
+const fakeSuite = dir => `for i in $(seq 60); do [ -f "${dir}/stop" ] && break; sleep 1; done\n`;
+fs.writeFileSync(standIn, fakeSuite(waitDir));
+ok(/^a suite still runs\nSTALE: .*a suite still runs$/.test(waitFor(`sh "${standIn}" >/dev/null 2>&1 & echo $! > "${suiteFile}.pid"; sh "${waitSuite}" --running "${suiteFile}"; sh "${waitSuite}" "${suiteFile}" 0 1; touch "${waitDir}/stop"; wait`)), 'wait-suite.sh dit qu\'une suite tourne encore, avec --running comme après STALE');
 // Le numéro seul ne suffit pas : après un redémarrage, un autre programme peut le porter.
-ok(waitFor(`sleep 8 >/dev/null 2>&1 & echo $! > "${suiteFile}.pid"; sh "${waitSuite}" --running "${suiteFile}"`) === 'no suite runs', 'wait-suite.sh ne prend pas un autre programme, au même numéro, pour la suite');
+ok(waitFor(`sleep 60 >/dev/null 2>&1 & P=$!; echo $P > "${suiteFile}.pid"; sh "${waitSuite}" --running "${suiteFile}"; kill $P`) === 'no suite runs', 'wait-suite.sh ne prend pas un autre programme, au même numéro, pour la suite');
 ok(waitFor(`sh "${waitSuite}" --running`).indexOf('usage') === 0, 'wait-suite.sh --running sans fichier dit son usage');
 fs.rmSync(suiteFile + '.pid');
 fs.writeFileSync(suiteFile, 'FAIL: la suite d\'avant\nexit=1\n');
@@ -130,8 +133,10 @@ fs.mkdirSync(path.join(verifyDir, 'tmp'));
 fs.mkdirSync(path.join(verifyDir, 'test'));
 fs.writeFileSync(path.join(verifyDir, 'tmp/verify.sh'), verifyBlock.replace(/^\s+/gm, '').split('<WS>').join(verifyDir) + '\n');
 const inVerifyDir = script => waitFor(`cd "${verifyDir}" && git init -q && ${script}`);
-fs.writeFileSync(path.join(verifyDir, 'test/run-all.sh'), 'sleep 8\nexit 3\n');
-ok(/a suite still runs$/.test(inVerifyDir(`{ sh tmp/verify.sh & V=$!; sleep 1; kill -9 $V; sh "${path.resolve(waitSuite).replace(/\\/g, '/')}" "${verifyDir}/tmp/suite.txt" 0 1; sleep 3; }`)), 'le pid de verify.sh reste celui de la suite une fois son shell tué');
+fs.writeFileSync(path.join(verifyDir, 'test/run-all.sh'), `echo $$ > "${verifyDir}/own.pid"\n${fakeSuite(verifyDir)}touch "${verifyDir}/ended"\nexit 3\n`);
+const untilFile = file => `i=0; while [ ! -f "${file}" ] && [ $i -lt 30 ]; do sleep 1; i=$((i+1)); done`;
+ok(/a suite still runs$/.test(inVerifyDir(`{ sh tmp/verify.sh & V=$!; ${untilFile(`${verifyDir}/own.pid`)}; kill -9 $V; sh "${path.resolve(waitSuite).replace(/\\/g, '/')}" "${verifyDir}/tmp/suite.txt" 0 1; cp tmp/suite.txt.pid left.pid; touch stop; ${untilFile(`${verifyDir}/ended`)}; }`)), 'le pid de verify.sh reste celui de la suite une fois son shell tué');
+ok(fs.readFileSync(path.join(verifyDir, 'left.pid'), 'utf8').trim() === fs.readFileSync(path.join(verifyDir, 'own.pid'), 'utf8').trim(), 'le pid de verify.sh est celui de la suite elle-même, pas du shell qui la lance');
 // Une garde, pas une preuve : le code de sortie passait déjà ; il doit survivre à la forme que prend le lancement.
 fs.writeFileSync(path.join(verifyDir, 'test/run-all.sh'), 'exit 3\n');
 inVerifyDir('sh tmp/verify.sh');
@@ -143,7 +148,9 @@ fs.rmSync(verifyDir, { recursive: true, force: true });
 const verLine = ver.replace(/\s+/g, ' ');
 ok(/wait-suite\.sh --running "<WS>\/tmp\/suite\.txt"/.test(verLine) && verLine.indexOf('--running') < verLine.indexOf('git update-index'), 'verifier.md regarde si une suite tourne avant de toucher à l\'arbre');
 ok(/`VERIFIER: fail — a suite still runs`/.test(verLine) && /`VERIFIER: fail — a suite still runs`: stop its wait with `TaskStop` and return `needs ruling`/.test(tc), 'une suite qui tourne déjà va en question, pas en seconde suite');
-ok(/No `exit=` line, or one above 128[^.]*commit\. Run step 1's `--running` check/.test(verLine), 'une suite tuée par un signal n\'est pas un échec du code, et le vérificateur regarde si elle tourne encore');
+ok(/No `exit=` line, or `exit=129`, `130`, `137` or `143`[^.]*commit\. Run step 1's `--running` check/.test(verLine), 'une suite qu\'on a tuée n\'est pas un échec du code, et le vérificateur regarde si elle tourne encore');
+// Un test qui plante (134, 139) arrête la suite aussi, mais c'est un résultat : `suite cut off` la relancerait sans rien corriger.
+ok(!/above 128/.test(verLine), 'verifier.md ne prend pas le plantage d\'un test pour une coupure');
 ok(!/kill -0/.test(verLine), 'verifier.md n\'a qu\'une façon de regarder, utilisable depuis PowerShell');
 ok(/both count as a cut-off/.test(tc), 'STALE et suite cut off comptent tous deux pour une coupure');
 ok(/`<WS>` out[^.]*absolute path/.test(oneLine('one-session.md')), 'one-session.md écrit <WS> en chemin absolu dans ses envois');

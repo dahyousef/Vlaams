@@ -36,10 +36,11 @@ Your dispatch names the run file and the commit to verify. In the worktree named
    only (`core.autocrlf`). A real difference stays, and the check below fails on it.
 4. Read the last 40 lines of `<WS>/tmp/suite.txt`.
    - Pass: `exit=0`, and no line after it naming `index.html` or `artifact.html`.
-   - No `exit=` line, or one above 128 (a signal ended the suite): it was killed or goes on without its shell, which
-     says nothing of the commit. Run step 1's `--running` check. Return `VERIFIER: fail — a suite still runs` if it
-     says so, `VERIFIER: fail — suite cut off` otherwise.
-   - Anything else is a fail. Search the file for `FAIL` to find the failing lines.
+   - No `exit=` line, or `exit=129`, `130`, `137` or `143` (the signals that stop a process from outside): it was
+     killed or goes on without its shell, which says nothing of the commit. Run step 1's `--running` check. Return
+     `VERIFIER: fail — a suite still runs` if it says so, `VERIFIER: fail — suite cut off` otherwise.
+   - Anything else is a fail, a test that crashed included (`exit=134` or `139`). Search the file for `FAIL` to find
+     the failing lines.
 
 Your final message, at most 10 lines:
 
