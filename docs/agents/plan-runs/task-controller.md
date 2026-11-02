@@ -45,7 +45,9 @@ fallback tasks sit above it, still unreviewed.
 ## The roles you dispatch
 
 Give each one its model explicitly and a description that starts with `task <N>` (the measures group by it),
-and tell it: its final message is at most 10 lines; everything longer goes to the report file you name.
+and tell it: its final message is at most 10 lines; everything longer goes to the report file you name. Write
+`<WS>` out in every dispatch as the absolute path `run.md` gives: in phase 4a a verifier took it for `tmp/` at the
+worktree root, which left the tree unclean for the next one.
 
 | Role | Model | Its instructions |
 |---|---|---|
@@ -59,8 +61,9 @@ Dispatch nothing else, and nothing below these four.
 ## Waiting
 
 Agents run in the background here, so a dispatch returns at once. After dispatching one, end your turn: that is
-how you wait, and its notice wakes you. Your final return ends your run, so it is the one thing you never do
-while an agent of yours runs. Do not poll, sleep or use Monitor.
+how you wait, and its notice wakes you. End it with one line naming what you wait for, never in your return's
+form: your final return ends your run, so it is the one thing you never do while an agent of yours runs. Do not
+poll, sleep or use Monitor.
 
 The verifier needs one thing more. It goes idle on its own background suite for about half an hour, and in phase
 4a a controller with nothing of its own running was then woken and forced to hand back (the cause is inferred from
@@ -69,14 +72,20 @@ the timing, not proved). So every time you dispatch the verifier, right after it
     sh docs/agents/plan-runs/wait-suite.sh "<WS>/tmp/suite.txt"
 
 with `run_in_background`. It is one wait: it exits when the suite ends and prints `FINISHED`. Start it once for
-each verifier, and start no second suite.
+each verifier, and start no second suite beside a running one.
 
-- The verifier's line is the result, never the script's output. If the script's notice comes first, wait on.
-- A suite past fifteen minutes in all is no stop: the script counts silence, not time. `STALE` means the suite
-  wrote nothing for fifteen minutes and has no `exit=` line. If the verifier's line doesn't come either, return
-  `needs ruling` with the `STALE` line.
-- If a harness message forces you to hand back while an agent runs, say so in your return, with what is
-  unfinished. Without that message you wait: this line gives no leave to hand back early.
+- Only a line starting `VERIFIER:` is the verifier's result, never the script's output. If the script's notice
+  comes first, wait on. Any other message from the verifier, « suite started » or a notice that it waits on its own
+  background work, is not a result either: wait on. If it has stopped without that line, send it on with
+  `SendMessage`.
+- A suite past fifteen minutes in all is no stop: the script counts silence, not time. `STALE` means no suite has
+  ended since the script started, and nothing has written to the file for fifteen minutes: the suite was cut off,
+  and its verifier has no line to give. Stop that verifier with `TaskStop`, then dispatch a new one with a new wait.
+  This is not a fix round. A second `STALE` on the same commit: return `needs ruling` with the `STALE` line.
+- A script whose verifier has already returned is left over (a verifier that fails at once starts no suite): stop
+  it with `TaskStop`, and ignore its notice if one comes.
+- If a harness message forces you to hand back while an agent runs, say so in your return's `UNFINISHED:` line.
+  Without that message you wait: this line gives no leave to hand back early.
 
 ## The steps
 
@@ -120,6 +129,7 @@ each verifier, and start no second suite.
        REVIEW: <Approved | Needs fixes> (<critical>/<important>/<minor>) <report path>
        QUESTION: <for needs ruling or needs design: the question, at most 3 lines>
        OPEN: <one line, or none>
+       UNFINISHED: <only after a forced hand-back: the agent still running, and what is left>
 
 ## Never
 

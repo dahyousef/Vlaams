@@ -71,6 +71,25 @@ for (const f of ['task-controller.md', 'batch-controller.md', 'closing-review.md
 }
 ok(/wait-suite\.sh "<WS>\/tmp\/suite\.txt"[\s\S]{0,40}`run_in_background`/.test(page('task-controller.md')), 'task-controller.md nomme wait-suite.sh et run_in_background');
 ok(/same controller/.test(page('run-controller.md')) && /same controller/.test(page('one-session.md')), 'un contrôleur rendu avant son agent reprend, il n\'a pas échoué');
+// Ce que le contrôleur fait de chaque réveil : la ligne du vérificateur seule est un résultat ; STALE veut dire une suite
+// coupée, donc un vérificateur neuf (décision du 2026-11-01, en phase 4a), et une seconde fois une question.
+const oneLine = f => page(f).replace(/\s+/g, ' ');
+const tc = oneLine('task-controller.md');
+ok(/Only a line starting `VERIFIER:` is the verifier's result/.test(tc), 'task-controller.md dit ce qu\'est un résultat');
+ok(/send it on with `SendMessage`/.test(tc), 'task-controller.md dit quoi faire d\'un vérificateur arrêté sans sa ligne');
+ok(/dispatch a new one with a new wait/.test(tc), 'task-controller.md relance un vérificateur après STALE');
+ok(/A second `STALE` on the same commit: return `needs ruling`/.test(tc), 'task-controller.md s\'arrête au second STALE');
+ok(!/has no `exit=` line/.test(tc), 'task-controller.md dit STALE comme le script le calcule');
+ok(/left over/.test(tc), 'task-controller.md dit quoi faire d\'une attente restée après la ligne du vérificateur');
+ok(/`<WS>` out[^.]*absolute path/.test(tc), 'task-controller.md écrit <WS> en chemin absolu dans chaque envoi');
+ok(/UNFINISHED: /.test(tc) && /`UNFINISHED:`/.test(oneLine('run-controller.md')), 'un retour forcé se reconnaît à sa ligne UNFINISHED');
+ok(/forced hand-back/.test(oneLine('batch-controller.md')) && /forced hand-back/.test(oneLine('one-session.md')), 'un lot rendu de force se reconnaît à sa raison');
+ok(/Write no `VERIFIER:` line before step 4/.test(oneLine('verifier.md')), 'verifier.md n\'écrit sa ligne qu\'à la fin');
+for (const f of ['task-controller.md', 'batch-controller.md', 'closing-review.md']) {
+  ok(/naming what you wait for, never in your return's form/.test(oneLine(f)), f + ' dit avec quoi terminer son tour');
+}
+ok(/Step 4 starts once all of them have returned/.test(oneLine('closing-review.md')), 'closing-review.md attend tous ses relecteurs');
+ok(/^\*\.sh text eol=lf$/m.test(fs.readFileSync(path.join(ROOT, '.gitattributes'), 'utf8')), '.gitattributes garde les scripts en LF');
 
 // wait-suite.sh : une suite finie après son lancement rend FINISHED ; le `exit=` de la suite d'avant ne compte pas.
 const waitSuite = path.join(kit, 'wait-suite.sh').replace(/\\/g, '/');

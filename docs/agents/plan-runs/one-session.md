@@ -72,8 +72,8 @@ The return is one line, `BATCH <kind>/<batch>: <state> — kept <n>, for maintai
 - `to confirm`: show the maintainer the changed rows, as returned. On their yes, dispatch again with
   `Confirmed:`; on another change, with `Rulings:`.
 - `failed`: tell the maintainer, with the reason. The batch waits for their word. A controller that handed back
-  while its agent still ran has not failed, whatever state it wrote: send the same controller on with
-  `SendMessage`.
+  while its agent still ran, whose reason says `forced hand-back` or not, has not failed, whatever state it wrote:
+  send the same controller on with `SendMessage`.
 
 The ledger has one writer, you, plus each task controller's log entry. When an edit of `progress.md` fails
 because the file changed, read it again and redo the edit: a task controller has just appended its entry.
