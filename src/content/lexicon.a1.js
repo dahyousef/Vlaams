@@ -240,7 +240,7 @@ NL.content.units = NL.content.units || [];
       W('de vrouw', { fr: 'la femme', en: 'woman / wife' }, 'de'),
       W('de man', { fr: 'l’homme', en: 'man / husband' }, 'de'),
       W('de zoon', { fr: 'le fils', en: 'son' }, 'de'),
-      W('de dochter', { fr: 'la fille', en: 'daughter' }, 'de'),
+      W('de dochter', { fr: 'la fille (ma fille)', en: 'daughter' }, 'de'),
       W('het kind', { fr: 'l’enfant', en: 'child' }, 'het'),
       W('de kinderen', { fr: 'les enfants', en: 'children' }, 'de'),
       W('de ouders', { fr: 'les parents', en: 'parents' }, 'de'),

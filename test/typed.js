@@ -138,6 +138,34 @@ NL.state.open().then(() => {
     console.log('  même sens      « hallo » pour goeiedag, et le panneau nomme goeiedag');
   }
 
+  /* Deux mots qu'un même mot français traduit sans qu'ils disent la même chose (#129) : « neuf »
+     est un chiffre et un état, « le café » un lieu et une boisson. L'un n'est pas juste pour
+     l'autre, ni dans un sens ni dans l'autre, dans aucune langue d'affichage. */
+  {
+    [['nieuw', 'negen'], ['de ober', 'de server'], ['het café', 'de koffie'], ['het meisje', 'de dochter'], ['luid', 'sterk']].forEach(pair => {
+      [pair, [pair[1], pair[0]]].forEach(([nl, other]) => {
+        const input = U.bare(other);
+        ['en', 'fr'].forEach(lang => {
+          fresh();
+          NL.state.setMeta({ displayLang: lang }); NL.lang.apply();
+          const it = find(nl);
+          if (!it || !askTyped(it)) { ok(false, 'setup: ' + say(nl) + ' is never asked in « Écris-le en néerlandais »'); return; }
+          const prompt = NL.gloss.bare(it, lang);
+          ok(text(B.app.innerHTML).indexOf(prompt) >= 0, 'the card for ' + say(nl) + ', in ' + lang + ', does not ask ' + say(prompt) + ': ' + text(B.app.innerHTML));
+          answer.type(input);
+          answer.click({ check: '1' });
+          const v = verdict(it);
+          ok(!v.right, say(input) + ' at the prompt ' + say(prompt) + ' (' + say(nl) + ', in ' + lang + ') is marked right');
+          ok(v.rec.lapses === 1, say(input) + ' for ' + say(nl) + ', in ' + lang + ', did not count as a wrong answer: ' + JSON.stringify(v.rec));
+          S.abandon();
+        });
+      });
+    });
+    fresh();
+    NL.state.setMeta({ displayLang: 'en' }); NL.lang.apply();
+    console.log('  même mot fr   « negen » pour new, « server » pour waiter, « koffie » pour pub, « dochter » pour girl, « sterk » pour loud : faux');
+  }
+
   /* Ce qui reste faux, et le « Presque » mesuré contre chaque réponse acceptée. */
   {
     const v = typed('dank u wel', 'dag');
