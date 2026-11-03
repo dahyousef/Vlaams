@@ -1856,6 +1856,197 @@ module.exports = {
     console.log('  grammar        ' + K.RULES.length + ' règles, ' + new Set(K.RULES.map(r => r.unit)).size + ' unités ; chaque garde, la boucle de chargement, Merge de bout en bout, relancée, second Split');
   }
 
+  /* ==================================================== le genre scenarios */
+  {
+    /* tools/content/kinds/scenarios.js dans une copie à lui sous la copie, avec test/data (l'orthographe).
+       Sa source est une conversation à venir : le cours de la copie n'en a aucune des quatre. Le fichier
+       src/content/scenarios.a1c.js de la copie est remis vide : le cours de la fixture reste celui des six
+       conversations écrites à la main, quoi que la fusion du dépôt y ait écrit. */
+    const { oneLine } = require('../lib/text');
+    /* Le fichier est chargé par la page (SRC de build.sh) et par test/smoke.js, qui a sa propre liste, juste après
+       scenarios.js : oublié de l'une d'elles, il reste vert tant qu'il est vide. */
+    same(/'src\/content\/scenarios\.js',\s*'src\/content\/scenarios\.a1c\.js',\s*'src\/content\/index\.js'/.test(text(path.join(ROOT, 'test', 'smoke.js'))), true,
+      'la liste de test/smoke.js nomme scenarios.a1c.js entre scenarios.js et index.js');
+    const srcLines = text(path.join(ROOT, 'build.sh')).split(/\r?\n/);
+    same(srcLines.indexOf('src/content/scenarios.a1c.js') - srcLines.indexOf('src/content/scenarios.js'), 1, 'le SRC de build.sh nomme scenarios.a1c.js juste après scenarios.js');
+    const SD = path.join(TMP, 'conversations');
+    ['build.sh', 'src', 'test/lib', 'test/data', 'tools'].forEach(p => fs.cpSync(path.join(ROOT, p), path.join(SD, p), { recursive: true }));
+    const runSd = (script, args) => {
+      const r = spawnSync(process.execPath, [path.join(SD, 'tools', 'content', script)].concat(args), { encoding: 'utf8' });
+      return { code: r.status, lines: (r.stdout || '').split(/\r?\n/).filter(Boolean) };
+    };
+    const KS = require(path.join(SD, 'tools', 'content', 'kinds', 'scenarios')), KWS = require(path.join(SD, 'tools', 'content', 'kinds', 'words'));
+    const A1C = path.join(SD, 'src', 'content', 'scenarios.a1c.js'), emptyFile = KS.scenarios([]).map(l => l + '\n').join('');
+    fs.writeFileSync(A1C, emptyFile);
+    const CS = course(SD), NLS = CS.NL;
+
+    /* Les 4 conversations : leurs ids (rangés dans scenariosDone), leur unité, leur voie (s-afspraak sous leven, D21). */
+    same(KS.CONVERSATIONS.map(c => [c.id, c.unit, c.n, c.track].join(' ')), ['s-cafe cafe 21 leven', 's-afspraak afspraak 30 leven', 's-school school 29 leven', 's-gemeente stad 25 leven'],
+      'quatre conversations, leurs ids, leurs unités et leur voie');
+    ok(KS.CONVERSATIONS.every(c => oneLine(c.place) && c.situation.length > 200 && oneLine(c.situation) && KWS.UNITS.some(u => u.id === c.unit && u.n === c.n)),
+      'chaque conversation a son lieu, une situation, et une unité de UNITS avec son numéro');
+    same(CS.RAW.scenarios.map(s => s.id), ['s-bakker', 's-buur', 's-trein', 's-standup', 's-koffie', 's-status'], 'le fichier vide ne pousse rien : le cours de la copie a ses six conversations');
+    same(KS.sourceOf(CS, 's-school'), { id: 's-school', nl: 's-school', fr: KS.CONVERSATIONS[2].place, en: KS.CONVERSATIONS[2].place, unit: 'school', n: 29, track: 'leven', setting: KS.CONVERSATIONS[2].place, situation: KS.CONVERSATIONS[2].situation },
+      'la source d\'une ligne est sa conversation, dont nl est l\'id');
+    ok(KS.sourceOf(CS, 's-bakker') === undefined, 'une conversation écrite à la main n\'a pas de source');
+
+    /* Split : un lot par conversation, une ligne par lot. */
+    const KSD = path.join(SD, 'drafts', 'scenarios');
+    same(runSd('split.js', [SD, KSD]), { code: 0, lines: ['s-cafe 1', 's-afspraak 1', 's-school 1', 's-gemeente 1'] }, 'Split coupe un lot par conversation, une ligne par lot');
+    const rowS = (dir, id) => JSON.parse(text(path.join(dir, id, 'input.json'))).find(r => r.id === id);
+    same(rowS(KSD, 's-afspraak'), { id: 's-afspraak', stamp: kit.stamp(KS, KS.sourceOf(CS, 's-afspraak'), NLS), copies: [], unit: 'afspraak', n: 30, track: 'leven', setting: KS.CONVERSATIONS[1].place, situation: KS.CONVERSATIONS[1].situation },
+      'une ligne d\'entrée : son unité, sa voie, son lieu et sa situation');
+
+    /* Check : une ligne juste, puis chaque règle. */
+    const ctxS = { repo: SD, course: () => CS };
+    const p = (fr, en) => ({ fr, en });
+    const CAFE = {
+      icon: '\u{1F37A}', title: p('Sur la terrasse', 'On the terrace'), place: p('{stad}, terrasse, samedi après-midi', '{stad}, terrace, Saturday afternoon'),
+      blurb: p('Commander et payer, du début à la fin. Six échanges.', 'Ordering and paying, start to finish. Six exchanges.'),
+      steps: [
+        { them: { nl: 'Goeiemiddag! Wat mag het zijn?', fr: 'Bonjour ! Qu’est-ce que ce sera ?', en: 'Good afternoon! What will it be?', be: 'Goeiemiddag! Wat mag het zijn?' } },
+        { you: { ask: p('Commande un café et demande ce qu’on conseille à manger.', 'Order a coffee and ask what they recommend to eat.'), choices: [
+          { nl: 'Een koffie alstublieft. Wat raadt u aan om te eten?', fr: 'Un café s’il vous plaît. Que me conseillez-vous à manger ?', en: 'A coffee, please. What do you recommend to eat?',
+            reply: { nl: 'De dagschotel is lekker vandaag.', fr: 'Le plat du jour est bon aujourd’hui.', en: 'The dish of the day is good today.', be: 'De dagschotel is lekker vandaag.' }, note: null },
+          { nl: 'Een koffie alstublieft. Is er iets vegetarisch?', fr: 'Un café s’il vous plaît. Y a-t-il quelque chose de végétarien ?', en: 'A coffee, please. Is there anything vegetarian?', reply: null,
+            note: p('« Alstublieft » ouvre toute commande.', '“Alstublieft” opens any order.') }
+        ], hint: p('Un seul mot de politesse suffit : « alstublieft ».', 'One polite word is enough: “alstublieft”.') } },
+        { them: { nl: 'Komt in orde. Wilt u nog iets anders?', fr: 'C’est noté. Vous voulez autre chose ?', en: 'Coming up. Would you like anything else?', be: 'Komt in orde. Wilt ge nog iets anders?' } },
+        { you: { ask: p('Dis que ça suffit.', 'Say that is all.'), choices: [
+          { nl: 'Nee, dat is alles, dank u wel.', fr: 'Non, c’est tout, merci beaucoup.', en: 'No, that is all, thank you.', reply: null, note: null },
+          { nl: 'Ja, ook een glas water alstublieft.', fr: 'Oui, et aussi un verre d’eau s’il vous plaît.', en: 'Yes, and a glass of water as well, please.', reply: null, note: null }
+        ], hint: null } },
+        { them: { nl: 'Zo, alstublieft. Zegt het maar als u wilt betalen.', fr: 'Voilà. Dites-le quand vous voulez payer.', en: 'There you are. Just say when you want to pay.', be: 'Zo, alstublieft. Zegt het maar als ge wilt betalen.' } },
+        { you: { ask: p('Demande l’addition.', 'Ask for the bill.'), choices: [
+          { nl: 'De rekening alstublieft. Kan ik met bancontact betalen?', fr: 'L’addition s’il vous plaît. Je peux payer par Bancontact ?', en: 'The bill, please. Can I pay by Bancontact?', reply: null, note: null },
+          { nl: 'De rekening alstublieft. Ik betaal contant.', fr: 'L’addition s’il vous plaît. Je paie en liquide.', en: 'The bill, please. I will pay cash.', reply: null, note: null }
+        ], hint: null } }
+      ],
+      outro: p('Tu as commandé et payé. Sur une terrasse, la politesse tient en un mot.', 'You ordered and paid. On a terrace, politeness fits in one word.')
+    };
+    const clone = o => JSON.parse(JSON.stringify(o));
+    const atS = (row, id) => KS.check(Object.assign({ id: id || 's-cafe' }, row), rowS(KSD, id || 's-cafe'), ctxS);
+    const wrongS = f => { const r = clone(CAFE); f(r); return atS(r); };
+    same(atS(CAFE), [], 'une conversation juste passe');
+    same(KS.forMaintainer(CAFE) + '|' + KS.readWhole(CAFE), '|course-written', 'aucune ligne ne va au mainteneur par une règle, et chacune est lue entière');
+    same([wrongS(r => { r.icon = 'cafe'; }), wrongS(r => { r.icon = '\u{1F37A}\u{1F37A}\u{1F37A}'; })],
+      [['icon: is one or two non-ASCII characters, a pictogram'], ['icon: is one or two non-ASCII characters, a pictogram']], 'l\'icône : un ou deux caractères hors ASCII');
+    same([wrongS(r => { r.title.en = ' On the terrace'; }), wrongS(r => { r.blurb = { fr: 'Six échanges.' }; }), wrongS(r => { r.outro.en = 'You ordered and paid in 1 go.'; })],
+      [['title.en: is a text on one line with no space at either end'], ['blurb: is { fr, en } and nothing else'], ['outro: fr and en hold different digits or {…} tokens']],
+      'un sens manque ou est mal écrit, dans une langue ou l\'autre, et mêmes chiffres des deux côtés');
+    same([wrongS(r => { r.steps.pop(); r.steps.pop(); }), wrongS(r => { r.steps.splice(1, 0, clone(r.steps[0])); }), wrongS(r => { r.steps.shift(); })],
+      [['steps: holds 3 to 4 steps of yours (you), like the six conversations of the course: 2 here'],
+        ['steps[1]: two steps of theirs in a row: the learner answers in between'], ['steps[0]: the first step is theirs (them): the other speaks first']],
+      'les bornes des six : étapes de l\'autre, étapes à toi, la première est à l\'autre, jamais deux à la suite');
+    same([wrongS(r => { delete r.steps[0].them.be; }), wrongS(r => { r.steps[0].them.be = ''; }), wrongS(r => { r.steps[0].them.en = ''; })],
+      [['steps[0].them: is { nl, fr, en, be } and nothing else'], ['steps[0].them.be: is a text on one line with no space at either end'], ['steps[0].them.en: is a text on one line with no space at either end']],
+      'une réplique de l\'autre porte son be et ses deux sens');
+    same([wrongS(r => { r.steps[1].you.choices.pop(); }), wrongS(r => { r.steps[1].you.choices.push(clone(r.steps[1].you.choices[0]), clone(r.steps[1].you.choices[0])); r.steps[1].you.choices[2].nl = 'Een thee alstublieft.'; r.steps[1].you.choices[3].nl = 'Een bier alstublieft.'; }),
+      wrongS(r => { r.steps[1].you.choices[1].nl = r.steps[1].you.choices[0].nl; }), wrongS(r => { delete r.steps[1].you.choices[0].reply; }), wrongS(r => { r.steps[1].you.choices[0].reply.be = ''; }),
+      wrongS(r => { r.steps[1].you.hint = { fr: 'Un mot.' }; })],
+      [['steps[1].you.choices: holds 2 or 3 choices, like the six conversations of the course'], ['steps[1].you.choices: holds 2 or 3 choices, like the six conversations of the course'],
+        ['steps[1].you.choices[1]: says what another choice of the step says'], ['steps[1].you.choices[0]: is { nl, fr, en, reply, note } and nothing else: reply and note are null when absent'],
+        ['steps[1].you.choices[0].reply.be: is a text on one line with no space at either end'], ['steps[1].you.hint: is { fr, en } and nothing else']],
+      'un choix : deux ou trois par étape, des néerlandais distincts, reply et note null quand ils manquent, la réponse porte son be');
+    same([wrongS(r => { r.steps[0].them.nl = 'Goeiemiddag! Wat mag het zijn, zqzqx?'; }), wrongS(r => { r.steps[2].them.be = 'Komt in orde. Wilt ge nog iets anders, zqzqx?'; }),
+      wrongS(r => { r.steps[1].you.choices[0].reply.nl = 'De dagschotel is zqzqy.'; })],
+      [['« zqzqx » is not Dutch that OpenTaal or flemish.tsv knows: pick another word'],
+        ['« zqzqx » is not Dutch that OpenTaal or flemish.tsv knows: pick another word'],
+        ['« zqzqy » is not Dutch that OpenTaal or flemish.tsv knows: pick another word']],
+      'un néerlandais que l\'orthographe ne connaît pas est refusé, dans nl, dans be et dans une réponse');
+    same([wrongS(r => { r.steps[0].them.fr = 'Bonjour {prénom} !'; r.steps[0].them.en = 'Hello {prénom}!'; }), wrongS(r => { r.place.fr = '{stad}, terrasse'; r.place.en = 'terrace'; }),
+      wrongS(r => { r.steps[0].them.nl = 'Goeiemiddag, {naam}! Wat mag het zijn?'; }), wrongS(r => { r.steps[0].them.fr = 'Qu\'est-ce que ce sera ?'; }), wrongS(r => { r.steps[0].them.fr = 'Bonjour "madame" !'; }),
+      wrongS(r => { r.steps[0].them.en = 'Good afternoon! "What" will it be?'; }), wrongS(r => { r.steps[1].you.ask.en = 'Order a “coffee'; })],
+      [['steps[0].them.fr: the token {prénom} is not one of {naam}, {stad}, {bedrijf}', 'steps[0].them.en: the token {prénom} is not one of {naam}, {stad}, {bedrijf}'],
+        ['place: fr and en hold different digits or {…} tokens'], [],
+        ['steps[0].them.fr: writes the typographic apostrophe « ’ » and no straight quote'], ['steps[0].them.fr: quotes with « » only'], ['steps[0].them.en: quotes with “ ” only'],
+        ['steps[1].you.ask.en: a “ never closed']],
+      'les {jetons} du cours seuls, l\'apostrophe typographique, les guillemets de chaque langue');
+    /* Ce que test/lang.js 6d refuserait à Merge, refusé dès Check (test/lib/quoted.js) : une citation qui n'est pas du
+       néerlandais du cours, une citation dans title ou place, un mot du cours laissé nu en français et en anglais. Le
+       néerlandais de la ligne compte comme celui du cours : ses phrases n'y entrent qu'à Merge. */
+    const WAS = 'wasknijper', ownNl = r => { r.steps[1].you.choices[1].nl = 'Een koffie alstublieft. Hebt u een ' + WAS + '?'; };
+    ok(!require(path.join(SD, 'test', 'lib', 'dutch')).dutchWords(NLS).has(WAS), 'le cours de la copie n\'enseigne pas « ' + WAS + ' » : la ligne qui le cite apporte seule ce néerlandais');
+    const NOT_DUTCH = (where, q) => where + ': quotes « ' + q + ' », which is not Dutch of the course: a translation goes in parentheses, with no quotes';
+    same([wrongS(r => { r.blurb.fr = 'Commander et payer, du début à la fin. « Voilà » (six échanges).'; }),
+      wrongS(r => { r.steps[1].you.hint.en = 'One polite word is enough: “here you are”.'; }),
+      wrongS(r => { r.steps[1].you.choices[1].note = p('« Wasknijper » est le mot du nord.', '“Wasknijper” is the northern word.'); }),
+      wrongS(r => { ownNl(r); r.steps[1].you.choices[1].note = p('« Wasknijper » est le mot du nord.', '“Wasknijper” is the northern word.'); })],
+      [[NOT_DUTCH('blurb.fr', 'Voilà')], [NOT_DUTCH('steps[1].you.hint.en', 'here you are')],
+        [NOT_DUTCH('steps[1].you.choices[1].note.fr', 'Wasknijper'), NOT_DUTCH('steps[1].you.choices[1].note.en', 'Wasknijper')], []],
+      '6d : une citation hors du néerlandais du cours est refusée (une traduction va entre parenthèses) ; celle du néerlandais de la ligne passe');
+    const NO_QUOTE = where => where + ': carries no quotation marks: the screen cites nothing there';
+    same([wrongS(r => { r.title.fr = 'Sur la « terrasse »'; r.title.en = 'On the “terrace”'; }), wrongS(r => { r.place.fr = '{stad}, « terrasse »'; r.place.en = '{stad}, “terrace”'; })],
+      [[NO_QUOTE('title.fr'), NO_QUOTE('title.en')], [NO_QUOTE('place.fr'), NO_QUOTE('place.en')]], '6d : title et place ne portent aucun guillemet');
+    const BARE = (where, w) => where + ': « ' + w + ' » is Dutch of the course, written bare in fr and in en: quote it, or use the French or English word';
+    same([wrongS(r => { r.blurb = p('Un koffie, du début à la fin. Six échanges.', 'A koffie, start to finish. Six exchanges.'); }),
+      wrongS(r => { r.title = p('Le koffie', 'The koffie'); }),
+      wrongS(r => { r.steps[1].you.hint = p('Un seul mot de politesse suffit : alstublieft.', 'One polite word is enough: alstublieft.'); }),
+      wrongS(r => { ownNl(r); r.outro = p('Une ' + WAS + ' ou rien.', 'A ' + WAS + ' or nothing.'); })],
+      [[BARE('blurb', 'koffie')], [BARE('title', 'koffie')], [BARE('steps[1].you.hint', 'alstublieft')], [BARE('outro', WAS)]],
+      '6d : un mot du néerlandais du cours (ou de la ligne) écrit nu en français et en anglais est refusé');
+    same([wrongS(r => { r.steps[0].me = 1; }).length, wrongS(r => { r.steps.push({ them: r.steps[0].them, you: r.steps[1].you }); }).length], [1, 1], 'une clé en trop dans une étape est refusée');
+
+    /* Un id que le cours a déjà : refusé par Split, qui nomme l'entrée de CONVERSATIONS et le scénario du cours. */
+    KS.CONVERSATIONS.push({ id: 's-bakker', unit: 'cafe', n: 21, track: 'leven', place: 'x', situation: 'y' });
+    try {
+      throws(() => KS.split(CS, ctxS), /^CONVERSATIONS id « s-bakker » is the id of the course's scenario « s-bakker » \(At the baker’s\): a conversation never repeats an existing scenario's id$/, 'Split refuse un id que le cours a déjà');
+    } finally { KS.CONVERSATIONS.pop(); }
+    KS.CONVERSATIONS.push(Object.assign({}, KS.CONVERSATIONS[0]));
+    try {
+      throws(() => KS.split(CS, ctxS), /^CONVERSATIONS names « s-cafe » twice$/, 'Split refuse deux entrées de même id');
+    } finally { KS.CONVERSATIONS.pop(); }
+    /* Et par l'outil : la ligne fail du kit, sans que rien ne soit coupé. */
+    const kfile = path.join(SD, 'tools', 'content', 'kinds', 'scenarios.js'), kold = text(kfile);
+    fs.writeFileSync(kfile, kold.replace(/const CONVERSATIONS = \[\r?\n/, 'const CONVERSATIONS = [\n  { id: \'s-trein\', unit: \'cafe\', n: 21, track: \'leven\', place: \'x\', situation: \'y\' },\n'));
+    const refused = runSd('split.js', [SD, path.join(SD, 'refus', 'scenarios')]);
+    fs.writeFileSync(kfile, kold);
+    same(refused, { code: 1, lines: ['fail scenarios -: the kind\'s split threw: CONVERSATIONS id « s-trein » is the id of the course\'s scenario « s-trein » (The train to Brussels): a conversation never repeats an existing scenario\'s id'] },
+      'Split, lancée par l\'outil, dit la faute et ne coupe rien');
+    ok(!fs.existsSync(path.join(SD, 'refus', 'scenarios')), 'refusée, Split n\'a rien écrit');
+
+    /* De bout en bout : une ligne nommée à Split, rédigée et relue, check.js, Merge, le fichier récrit, Merge
+       relancée à l'identique, les fins de ligne gardées, et un second Split qui ne coupe plus cette conversation. */
+    const E2SS = path.join(SD, 'bout-en-bout'), E2S = path.join(E2SS, 'drafts', 'scenarios');
+    same(runSd('split.js', [SD, E2S, 's-cafe']), { code: 0, lines: ['s-cafe 1'] }, 'Split nommé coupe une conversation');
+    const dirS = path.join(E2S, 's-cafe'), inpS = JSON.parse(text(path.join(dirS, 'input.json')));
+    put(dirS, 'draft.json', inpS.map(r => Object.assign({ id: r.id, stamp: r.stamp }, CAFE)));
+    put(dirS, 'review.json', inpS.map(r => ({ id: r.id, verdict: 'keep' })));
+    same(runSd('check.js', [dirS]).code, 0, 'le lot, rédigé et relu, passe');
+    const merged = runSd('merge.js', [SD, E2S]);
+    same(merged, { code: 0, lines: ['ok scenarios 1 taken, 0 dropped', 'ok scenarios.a1c.js 1 scenarios'] }, 'Merge écrit le fichier, et le dit');
+    const after = text(A1C);
+    ok(after.indexOf('  S({\n    id: \'s-cafe\', track: \'leven\', level: \'A1\', icon: \'\\u{1F37A}\',') > 0 && after.indexOf('      T(\'Goeiemiddag! Wat mag het zijn?\', { fr: ') > 0 &&
+      after.indexOf('        C(\'Een koffie alstublieft. Is er iets vegetarisch?\', { fr: ') > 0 && after.indexOf('\n    outro: { fr: ') > 0 && !/\bunit\s*:/.test(after), 'le fichier écrit la conversation comme scenarios.js, sans clé unit (D22)');
+    const CM = course(SD), got = CM.RAW.scenarios.find(s => s.id === 's-cafe');
+    const norm = o => JSON.parse(JSON.stringify(o, (k, v) => (v === null ? undefined : v)));
+    same([CM.RAW.scenarios.length, CM.RAW.scenarios[6].id, got.track, got.level, 'unit' in got, norm(got.steps)], [7, 's-cafe', 'leven', 'A1', false, norm(CAFE.steps)], 'le cours relu a sept conversations, la nouvelle en dernier, ses étapes telles qu\'écrites, sans unité');
+    same(runSd('merge.js', [SD, E2S]), merged, 'relancée, Merge dit la même chose');
+    same(text(A1C), after, 'le fichier est le même octet pour octet');
+    const crlf = after.replace(/\n/g, '\r\n');
+    fs.writeFileSync(A1C, crlf);
+    runSd('merge.js', [SD, E2S]);
+    same(text(A1C), crlf, 'le fichier garde ses fins de ligne \\r\\n, sans mélange');
+    fs.writeFileSync(A1C, after);
+    /* Ce que Merge refuse avant d'écrire : un id de CONVERSATIONS que le cours a écrit à la main (le cours a pu bouger
+       depuis Split), et une conversation du fichier que plus aucune ligne prise n'écrit (il est récrit entier). */
+    KS.CONVERSATIONS.push({ id: 's-bakker', unit: 'cafe', n: 21, track: 'leven', place: 'x', situation: 'y' });
+    try {
+      throws(() => KS.write([], { repo: SD, course: () => CM }), /^CONVERSATIONS id « s-bakker » is the id of the course's scenario « s-bakker » \(At the baker’s\): a conversation never repeats an existing scenario's id$/,
+        'Merge refuse un id de CONVERSATIONS que le cours a écrit à la main');
+    } finally { KS.CONVERSATIONS.pop(); }
+    throws(() => KS.write([], { repo: SD, course: () => CM }), /^scenarios\.a1c\.js holds the conversation s-cafe, and no taken row writes it: Merge rewrites the file whole$/,
+      'Merge refuse de récrire un fichier dont une conversation n\'a plus de ligne prise');
+    same(runSd('split.js', [SD, path.join(SD, 'apres', 'scenarios')]), { code: 0, lines: ['s-afspraak 1', 's-school 1', 's-gemeente 1'] }, 'un second Split ne coupe plus la conversation fondue');
+    /* Ce que le mainteneur lit d'une ligne : sa conversation, et la conversation écrite (comme le genre words : un genre sans table). */
+    const readingS = require(path.join(SD, 'tools', 'content', 'lib', 'reading'));
+    const everyS = readingS.every(SD, E2SS, 'scenarios').lines;
+    same(everyS.slice(2, 6), ['1 rows: 1 taken, 0 dropped.', '', '- `s-cafe` (s-cafe) — ' + KS.CONVERSATIONS[0].place + ' · ' + KS.CONVERSATIONS[0].place, '  - course-written; kept by the first reader'],
+      'l\'outil de lecture montre la conversation d\'une ligne');
+    same(readingS.list(SD, E2SS).lines.filter(l => /^ {2}- row: /.test(l)).length, 1, 'la liste du contrôle du contenu la montre entière : chaque conversation est lue entière');
+    console.log('  scenarios      ' + KS.CONVERSATIONS.length + ' conversations ; chaque règle, Merge de bout en bout, relancée, second Split');
+  }
+
   /* ==================================================== 9. l'outil de lecture
      Un bloc : ses noms ne croisent pas ceux des sections que d'autres tâches ajoutent. */
   {

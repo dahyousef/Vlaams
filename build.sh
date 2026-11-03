@@ -38,6 +38,7 @@ src/content/open.js
 src/content/open.phrases.js
 src/content/reference.js
 src/content/scenarios.js
+src/content/scenarios.a1c.js
 src/content/index.js
 src/core/lang.js
 src/ex/index.js

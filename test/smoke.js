@@ -13,7 +13,7 @@ const B = browser.open({
   files: ['src/core/util.js', 'src/core/gloss.js', 'src/core/fr.js', 'src/core/state.js', 'src/core/srs.js', 'src/core/speech.js',
     'src/core/audio.js', 'src/content/lexicon.a1.js', 'src/content/lexicon.a1b.js', 'src/content/lexicon.a1c.js', 'src/content/be.js', 'src/content/notes.js',
     'src/content/decoys.js', 'src/content/grammar.js', 'src/content/grammar.a1c.js',
-    'src/content/open.js', 'src/content/open.phrases.js', 'src/content/reference.js', 'src/content/scenarios.js', 'src/content/index.js',
+    'src/content/open.js', 'src/content/open.phrases.js', 'src/content/reference.js', 'src/content/scenarios.js', 'src/content/scenarios.a1c.js', 'src/content/index.js',
     'src/core/lang.js', 'src/ex/index.js']
 });
 const NL = B.NL;

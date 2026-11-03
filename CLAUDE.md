@@ -96,6 +96,9 @@ the maintainer answers, runs in sittings.
   `src/content/grammar.a1c.js`: the 13 rules that `grammar.js` lacks, from its `RULES` and the
   accepted rows; the page lists each on its unit at load. A rule changes through its row, and its id
   never changes.
+  The `scenarios` kind's Merge (`tools/content/kinds/scenarios.js`) likewise writes
+  `src/content/scenarios.a1c.js` whole, from its `CONVERSATIONS` and the accepted rows: a conversation
+  changes through its rows, never by hand.
 
 ## Decisions already taken
 
