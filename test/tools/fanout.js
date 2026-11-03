@@ -1657,6 +1657,205 @@ module.exports = {
     console.log('  words          ' + K.UNITS.length + ' unités, ' + K.UNITS.reduce((s, u) => s + u.target, 0) + ' slots ; chaque règle, Merge de bout en bout, relancée, second Split');
   }
 
+  /* ==================================================== le genre grammar */
+  {
+    /* tools/content/kinds/grammar.js dans un dépôt à lui sous la copie, avec test/data (l'orthographe) : le
+       cours y est celui d'avant la fusion, grammar.a1c.js vidé par l'écrivain du genre. Sa source est une
+       règle de RULES, nommée par son id ; Split coupe les 13 en 9 lots, un par unité. */
+    const GR = path.join(TMP, 'regles');
+    const PIECES = ['build.sh', 'src', 'test/lib', 'test/data', 'tools'];
+    PIECES.forEach(p => fs.cpSync(path.join(ROOT, p), path.join(GR, p), { recursive: true }));
+    /* Le cours d'une copie tel qu'il était avant la fusion du genre grammar : le fichier vidé. */
+    const beforeGrammar = dir => fs.writeFileSync(path.join(dir, 'src', 'content', 'grammar.a1c.js'),
+      require(path.join(dir, 'tools', 'content', 'kinds', 'grammar')).patterns([]).map(l => l + '\n').join(''));
+    beforeGrammar(GR);
+    const runIn = (dir, script, args) => {
+      const r = spawnSync(process.execPath, [path.join(dir, 'tools', 'content', script)].concat(args), { encoding: 'utf8' });
+      return { code: r.status, lines: (r.stdout || '').split(/\r?\n/).filter(Boolean) };
+    };
+    const runGr = (script, args) => runIn(GR, script, args);
+    const copyGr = name => {
+      const d = path.join(TMP, name);
+      PIECES.forEach(p => fs.cpSync(path.join(GR, p), path.join(d, p), { recursive: true }));
+      return d;
+    };
+    const K = require(path.join(GR, 'tools', 'content', 'kinds', 'grammar'));
+    const CG = course(GR), ctxG = { repo: GR, course: () => CG };
+
+    /* Le câblage : la page charge grammar.a1c.js après lexicon.a1c.js (dont les unités gardent grammar: [])
+       et grammar.js, avant index.js ; test/smoke.js a sa propre liste. Un fichier absent de l'une d'elles
+       ne charge rien, et rien ne le dit. */
+    const src = text(path.join(ROOT, 'build.sh')).split(/\r?\n/).map(l => l.trim()), pos = f => src.indexOf('src/content/' + f);
+    ok(pos('lexicon.a1c.js') >= 0 && pos('grammar.js') >= 0 && pos('grammar.a1c.js') > pos('lexicon.a1c.js') && pos('grammar.a1c.js') > pos('grammar.js') && pos('grammar.a1c.js') < pos('index.js'),
+      'le SRC de build.sh charge grammar.a1c.js après lexicon.a1c.js et grammar.js, avant index.js');
+    const smk = text(path.join(ROOT, 'test', 'smoke.js')), sp = f => smk.indexOf('\'src/content/' + f + '\'');
+    ok(sp('lexicon.a1c.js') >= 0 && sp('grammar.js') >= 0 && sp('grammar.a1c.js') > sp('lexicon.a1c.js') && sp('grammar.a1c.js') > sp('grammar.js') && sp('grammar.a1c.js') < sp('index.js'),
+      'la liste de test/smoke.js nomme grammar.a1c.js au même endroit');
+
+    /* Les 13 règles : leurs ids, leurs unités, leurs numéros, et une instruction en anglais chacune. */
+    same(K.RULES.map(r => r.id + '@' + r.unit), ['g-niet-geen@vragen', 'g-bijzin@vragen', 'g-vraag@vragen', 'g-twee-werkwoorden@kunnen', 'g-perfect-zijn@doen', 'g-was-had@doen',
+      'g-deelwoord@doen', 'g-hem-haar@mensen', 'g-er-is@waar', 'g-meervoud@eten', 'g-gebiedend@cafe', 'g-verkleinwoord@wonen', 'g-om-op-in@kalender'], 'les 13 règles, leurs ids et leurs unités');
+    ok(K.RULES.every(r => CG.units.find(u => u.id === r.unit).n === r.n && require('../lib/text').oneLine(r.teach) && r.teach.length > 100), 'chaque règle a le numéro de son unité et une instruction sur une ligne');
+    same(K.TILES, { min: 3, max: 8 }, 'une phrase de gap compte de 3 à 8 tuiles (la plus longue de grammar.js en a 8)');
+    same(K.readWhole(), 'course-written', 'toutes les lignes vont sur la liste du mainteneur');
+    same([CG.RAW.patterns.length, CG.units.filter(u => u.n >= 13).every(u => (u.grammar || []).length === 0)], [9, true], 'le fichier vide ne change rien au cours : 9 règles, aucune unité 13 à 34 n\'en liste');
+
+    /* Split : un lot par unité de RULES, une ligne par règle. */
+    const DG = path.join(GR, 'drafts', 'grammar');
+    same(runGr('split.js', [GR, DG]), { code: 0, lines: ['vragen 3', 'kunnen 1', 'doen 3', 'mensen 1', 'waar 1', 'eten 1', 'cafe 1', 'wonen 1', 'kalender 1'] }, 'Split coupe 9 lots et 13 lignes');
+    const inputOf = (dir, id) => JSON.parse(text(path.join(dir, 'drafts', 'grammar', K.RULES.find(r => r.id === id).unit, 'input.json'))).find(r => r.id === id);
+    const IN = inputOf(GR, 'g-niet-geen');
+    same([IN.unit, IN.n, IN.name.en, IN.teach === K.RULES[0].teach, IN.words.length > 0], ['vragen', 13, 'Questions and small words', true, true], 'une ligne porte sa règle, son unité et les mots de l\'unité');
+
+    /* Check : une ligne juste passe ; chaque règle refuse ce qu'elle doit. */
+    const D = (nl, fr, en, gap) => ({ nl, fr, en, gap });
+    const GOOD = {
+      id: 'g-niet-geen',
+      title: { fr: '<span class="nl">niet</span> ou <span class="nl">geen</span>', en: '<span class="nl">niet</span> or <span class="nl">geen</span>' },
+      rule: { fr: '« geen » devant un nom sans article, « niet » ailleurs.', en: '“geen” before a noun with no article, “niet” elsewhere.' },
+      nl: 'Ik heb geen tijd.', fr: 'Je n’ai pas de temps.', en: 'I have no time.',
+      explain: {
+        fr: 'Pour nier un nom sans article, on met <i class="nl">geen</i> devant : <span class="ex">Ik heb geen tijd</span>. Pour tout le reste, on met <i class="nl">niet</i> : <span class="ex">Ik werk niet</span>.',
+        en: 'To negate a noun with no article, put <i class="nl">geen</i> in front: <span class="ex">Ik heb geen tijd</span>. For everything else, use <i class="nl">niet</i>: <span class="ex">Ik werk niet</span>.'
+      },
+      drills: [D('Ik heb geen tijd.', 'Je n’ai pas de temps.', 'I have no time.', 'geen'), D('Ik werk niet vandaag.', 'Je ne travaille pas aujourd’hui.', 'I am not working today.', 'niet'),
+        D('Geen probleem voor mij.', 'Pas de problème pour moi.', 'No problem for me.', 'Geen'), D('Hij is niet thuis.', 'Il n’est pas à la maison.', 'He is not at home.', 'niet'),
+        D('Wij hebben geen auto.', 'Nous n’avons pas de voiture.', 'We have no car.', 'geen')]
+    };
+    const chk = more => K.check(Object.assign({}, GOOD, more), IN, ctxG);
+    const drillsWith = (k, d) => GOOD.drills.map((x, i) => i === k ? Object.assign({}, x, d) : x);
+    same(chk({}), [], 'une ligne juste passe');
+    /* Review Focus 2 : un trou en tête de phrase passe (le 3e exercice de GOOD) ; un trou écrit deux fois est refusé, avec l'exercice. */
+    same(chk({ drills: drillsWith(2, { gap: 'Geen' }) }), [], 'un trou en tête de phrase est accepté');
+    same(chk({ drills: drillsWith(0, { nl: 'Ik heb geen tijd en geen geld.', fr: 'Je n’ai pas de temps ni d’argent.', en: 'I have no time and no money.' }) }),
+      ['drill 1 « Ik heb geen tijd en geen geld. »: gap « geen » occurs 2 times in the drill: the cloze hides the first, and the learner cannot tell which'], 'un trou écrit deux fois est refusé, en nommant l\'exercice');
+    same(chk({ drills: drillsWith(0, { gap: 'heb geen' }) }), ['drill 1 « Ik heb geen tijd. »: gap « heb geen » is not one tile: the cloze hides one word'], 'un trou de deux tuiles est refusé');
+    same(chk({ drills: drillsWith(0, { nl: 'Geen tijd.', fr: 'Pas de temps.', en: 'No time.', gap: 'Geen' }) }),
+      ['drill 1 « Geen tijd. » has 2 tiles: 3 to 8 (the longest the course has is 8)'], 'une phrase de deux tuiles est refusée');
+    same(chk({ drills: drillsWith(0, { nl: 'Ik heb vandaag echt geen tijd voor jou nu.', fr: 'Je n’ai vraiment pas de temps pour toi maintenant.', en: 'I really have no time for you today now.' }) }), [
+      'drill 1 « Ik heb vandaag echt geen tijd voor jou nu. » has 9 tiles: 3 to 8 (the longest the course has is 8)',
+      'drill 1 « Ik heb vandaag echt geen tijd voor jou nu. » borrows from a later unit: echt',
+      'drill 1 « Ik heb vandaag echt geen tijd voor jou nu. » uses forms the course never teaches: jou'], 'neuf tuiles, un mot d\'une unité à venir, une forme que le cours n\'enseigne jamais');
+    same(chk({ drills: drillsWith(1, GOOD.drills[0]) }), ['drill 2 « Ik heb geen tijd. » repeats drill 1'], 'deux exercices identiques sont refusés');
+    same(chk({ drills: GOOD.drills.slice(0, 4) }), ['drills is a list of 5 sentences, not 4'], 'cinq exercices exactement');
+    same(chk({ drills: drillsWith(1, { nl: 'Ik werk niet vandaagx.' }) }), [
+      'drill 2: « vandaagx » is not Dutch that OpenTaal or flemish.tsv knows: pick another word',
+      'drill 2 « Ik werk niet vandaagx. » uses forms the course never teaches: vandaagx'], 'une forme que l\'orthographe ne connaît pas est refusée');
+    same(chk({ nl: 'Ik heb "geen" tijd.' }), ['nl: nl writes the typographic apostrophe « ’ » and no straight quote'], 'aucun guillemet droit');
+    same(chk({ fr: 'Je n’ai pas de {temps}.' }), ['nl: fr and en hold different digits or {…} tokens', 'nl: nl and fr hold different {…} tokens', 'nl: {temps} is not a token of the course ({naam}, {stad}, {bedrijf})'], 'un jeton {…} hors du cours est refusé');
+    same(chk({ explain: { fr: 'Pour nier un nom.', en: 'To negate a noun.' } }), ['explain.fr shows no Dutch: an example goes in <span class="ex"> or <i class="nl">', 'explain.en shows no Dutch: an example goes in <span class="ex"> or <i class="nl">'],
+      'une explication montre du néerlandais balisé');
+    /* Un mot néerlandais qui est aussi un mot du français (« en ») n'est pas du néerlandais laissé nu : seul un mot du
+       cours que le français et l'anglais écrivent tous deux l'est. */
+    same(chk({ explain: { fr: GOOD.explain.fr + ' Rien ne se passe en double.', en: GOOD.explain.en }, drills: drillsWith(1, { nl: 'Ik werk en jij werkt.', fr: 'Je travaille et tu travailles.', en: 'I work and you work.', gap: 'werkt' }) }), [], 'un mot néerlandais qui est aussi français passe dans la prose');
+    /* Ce que test/lang.js 6d refuserait à Merge (test/lib/quoted.js) : une traduction citée, un mot du cours nu des deux côtés. */
+    same(chk({ rule: { fr: '« voilà » devant un nom sans article.', en: '“here you are” before a noun.' } }), [
+      'rule.fr quotes « voilà », which is not Dutch of the course: a translation goes in parentheses, with no quotes',
+      'rule.en quotes « here you are », which is not Dutch of the course: a translation goes in parentheses, with no quotes'], 'une citation qui n\'est pas du néerlandais du cours est refusée dans rule');
+    same(chk({ explain: { fr: GOOD.explain.fr + ' Cela veut dire « pas de ».', en: GOOD.explain.en + ' It means “no”.' } }), [
+      'explain.fr quotes « pas de », which is not Dutch of the course: a translation goes in parentheses, with no quotes',
+      'explain.en quotes « no », which is not Dutch of the course: a translation goes in parentheses, with no quotes'], 'une citation qui n\'est pas du néerlandais du cours est refusée dans explain');
+    same(chk({ explain: { fr: GOOD.explain.fr + ' Le mot tijd est courant.', en: GOOD.explain.en + ' The word tijd is common.' } }),
+      ['explain: « tijd » is Dutch of the course, written bare in fr and in en: put it in <i class="nl"> or <span class="ex">'], 'un mot du cours écrit nu des deux côtés est refusé dans explain');
+    same(chk({ rule: { fr: 'Werk devant un nom.', en: 'Werk before a noun.' } }),
+      ['rule: « werk » is Dutch of the course, written bare in fr and in en: quote it « … »'], 'un mot du cours écrit nu des deux côtés est refusé dans rule');
+    same(chk({ rule: { fr: '« geen » devant un nom sans article.', en: '“geen” before a noun.' } }), [], 'un mot du cours cité passe dans rule');
+    same(chk({ rule: { fr: '« geen devant un nom.', en: '“geen” before a noun.' } }), ['rule.fr has a quote mark with no partner, or an empty quote'], 'un guillemet sans son pendant est refusé');
+    /* L'exemple de la règle suit l'ordre du cours, comme un exercice. */
+    same(chk({ nl: 'Ik zie jou.', fr: 'Je te vois.', en: 'I see you.' }), ['nl « Ik zie jou. » uses forms the course never teaches: zie, jou'], 'l\'exemple d\'une forme que le cours n\'enseigne pas est refusé');
+    same(chk({ nl: 'Ik heb vandaag echt geen tijd voor jou nu.', fr: 'Je n’ai vraiment pas de temps pour toi maintenant.', en: 'I really have no time for you today now.' }), [
+      'nl « Ik heb vandaag echt geen tijd voor jou nu. » borrows from a later unit: echt',
+      'nl « Ik heb vandaag echt geen tijd voor jou nu. » uses forms the course never teaches: jou'], 'l\'exemple d\'une unité à venir est refusé');
+    /* Une phrase qu'une autre règle écrit déjà : un lot frère (retry.json au lieu de draft.json), un pattern du cours. */
+    const XB = path.join(TMP, 'regles-lots', 'grammar');
+    const asRule = (id, more) => Object.assign({}, GOOD, { id }, more);
+    ['vragen', 'kunnen'].forEach(b => fs.mkdirSync(path.join(XB, b), { recursive: true }));
+    put(path.join(XB, 'vragen'), 'draft.json', [asRule('g-bijzin', {})]);
+    put(path.join(XB, 'kunnen'), 'draft.json', [asRule('g-twee-werkwoorden', {})]);
+    const ctxX = { repo: GR, course: () => CG, kindDir: XB, batchDir: path.join(XB, 'vragen') };
+    const clash = (id, row) => K.check(Object.assign({}, GOOD, { id }, row || {}), inputOf(GR, id), ctxX).filter(w => /is also written by/.test(w));
+    same(clash('g-vraag'), [
+      'nl « Ik heb geen tijd. » is also written by g-bijzin', 'drill 1 « Ik heb geen tijd. » is also written by g-bijzin', 'drill 2 « Ik werk niet vandaag. » is also written by g-bijzin',
+      'drill 3 « Geen probleem voor mij. » is also written by g-bijzin', 'drill 4 « Hij is niet thuis. » is also written by g-bijzin', 'drill 5 « Wij hebben geen auto. » is also written by g-bijzin'],
+      'une phrase qu\'une règle plus haut dans RULES écrit déjà, dans le lot ou dans un autre, est refusée, avec la règle');
+    same(clash('g-niet-geen'), [], 'la règle la plus haute n\'est refusée par aucune règle plus bas');
+    put(path.join(XB, 'vragen'), 'retry.json', [asRule('g-bijzin', { nl: 'Ik werk niet.', fr: 'Je ne travaille pas.', en: 'I do not work.', drills: GOOD.drills.map((d, i) => i === 4 ? d : Object.assign({}, d, { nl: 'Zij werkt ' + ['hier', 'niet', 'veel', 'thuis'][i] + '.' })) })]);
+    same(clash('g-vraag'), ['drill 5 « Wij hebben geen auto. » is also written by g-bijzin'], 'retry.json remplace la ligne du même id : seules les phrases de la reprise sont lues');
+    const handP = CG.RAW.patterns[0], hd = handP.drills[0];
+    same(chk({ drills: drillsWith(0, { nl: hd.nl, fr: hd.fr, en: hd.en, gap: hd.gap }) }).filter(w => /is also written by/.test(w)),
+      ['drill 1 « ' + hd.nl + ' » is also written by ' + handP.id], 'une phrase d\'exercice d\'un pattern du cours est refusée, avec le pattern');
+    same(chk({ rule: { fr: 'x'.repeat(71), en: 'ok' } }), ['rule.fr is 71 signs, 70 at most: the sheet shows it on one line'], 'la règle tient sur une ligne');
+
+    /* Review Focus 3 et 4 : une unité que le cours n'a pas, un id que le cours a déjà. Chaque cas est une copie dont on change le genre ou le cours. */
+    const rewrite = (dir, file, from, to) => {
+      const f = path.join(dir, file), t = text(f);
+      ok(t.indexOf(from) >= 0, 'le texte à changer est dans ' + file + ' : ' + from);
+      fs.writeFileSync(f, t.replace(from, to));
+    };
+    const KIND = path.join('tools', 'content', 'kinds', 'grammar.js');
+    const U1 = copyGr('regles-unite');
+    rewrite(U1, KIND, "id: 'g-niet-geen', unit: 'vragen'", "id: 'g-niet-geen', unit: 'zzz'");
+    same(runIn(U1, 'split.js', [U1, path.join(U1, 'drafts', 'grammar')]),
+      { code: 1, lines: ['fail grammar -: the kind\'s split threw: rule g-niet-geen is listed on the unit « zzz », which is not a unit of the course'] }, 'Split refuse une unité que le cours n\'a pas, en la nommant');
+    const H1 = copyGr('regles-main');
+    rewrite(H1, path.join('src', 'content', 'grammar.js'), "id: 'g-v2', unit: 'overleven'", "id: 'g-niet-geen', unit: 'overleven'");
+    same(runIn(H1, 'split.js', [H1, path.join(H1, 'drafts', 'grammar')]),
+      { code: 1, lines: ['fail grammar -: the kind\'s split threw: rule g-niet-geen is already the id of a pattern of src/content/grammar.js: an id is fixed once shipped'] }, 'Split refuse un id que grammar.js a déjà');
+    const I1 = copyGr('regles-item');
+    rewrite(I1, KIND, "id: 'g-niet-geen', unit: 'vragen'", "id: 'overleven:w1', unit: 'vragen'");
+    const itemLine = runIn(I1, 'split.js', [I1, path.join(I1, 'drafts', 'grammar')]);
+    same([itemLine.code, itemLine.lines.length, /^fail grammar -: the kind's split threw: rule overleven:w1 is already the id of the item overleven:w1 « .+ » of the course$/.test(itemLine.lines[0] || '')], [1, 1, true], 'Split refuse un id d\'élément du cours, en nommant les deux');
+
+    /* Review Focus 3, côté Merge : write refuse la même unité inconnue et le même numéro faux, et deux règles qui écrivent une phrase
+       (Check ne voit que les lots déjà écrits). Ces gardes n'ont pas de « vieux code » : le genre n'existait pas. */
+    const takeOf = id => ({ id, row: GOOD });
+    const r0 = K.RULES[0];
+    try {
+      r0.unit = 'zzz';
+      throws(() => K.write([takeOf('g-niet-geen')], ctxG), /rule g-niet-geen is listed on the unit « zzz », which is not a unit of the course/, 'Merge refuse une unité que le cours n\'a pas, en la nommant');
+      r0.unit = 'vragen'; r0.n = 99;
+      throws(() => K.write([takeOf('g-niet-geen')], ctxG), /rule g-niet-geen is listed on the unit « vragen » as n 99, and the course numbers it 13/, 'Merge refuse un numéro d\'unité faux');
+    } finally { r0.unit = 'vragen'; r0.n = 13; }
+    throws(() => K.write([takeOf('g-niet-geen'), takeOf('g-bijzin')], ctxG), /g-bijzin and g-niet-geen both write « Ik heb geen tijd\. ».*: one sentence, one rule/, 'Merge refuse deux règles qui écrivent la même phrase');
+
+    /* La boucle de chargement : la règle dans une unité absente lève une erreur qui nomme la règle et l'unité, et
+       test/smoke.js échoue sur elle ; avec l'unité, la règle est rangée dans la liste de son unité. */
+    const withRule = unit => K.patterns([{ rule: { id: 'g-niet-geen', unit }, row: GOOD, level: 'A1' }]).map(l => l + '\n').join('');
+    const load = (code, units) => {
+      const NLs = { content: { units, patterns: [] }, gloss: { pair: g => ({ fr: g.fr, en: g.en }) } };
+      new Function('NL', code)(NLs);
+      return NLs.content;
+    };
+    throws(() => load(withRule('zzz'), [{ id: 'vragen' }]), /g-niet-geen.*zzz/, 'le chargement lève une erreur qui nomme la règle et l\'unité');
+    const loaded = load(withRule('vragen'), [{ id: 'vragen', grammar: [] }]);
+    same([loaded.patterns.length, loaded.patterns[0].id, loaded.units[0].grammar, loaded.patterns[0].drills.length], [1, 'g-niet-geen', ['g-niet-geen'], 5], 'avec son unité, la règle est ajoutée aux patterns et rangée dans la liste de l\'unité');
+    const S1 = copyGr('regles-smoke');
+    fs.mkdirSync(path.join(S1, 'test'), { recursive: true });
+    fs.copyFileSync(path.join(ROOT, 'test', 'smoke.js'), path.join(S1, 'test', 'smoke.js'));
+    fs.writeFileSync(path.join(S1, 'src', 'content', 'grammar.a1c.js'), withRule('zzz'));
+    const sm = spawnSync(process.execPath, [path.join(S1, 'test', 'smoke.js'), S1], { encoding: 'utf8' });
+    ok(sm.status !== 0 && /g-niet-geen/.test((sm.stdout || '') + (sm.stderr || '')), 'test/smoke.js échoue quand une règle de grammar.a1c.js veut une unité absente, et nomme la règle');
+
+    /* De bout en bout, une règle : rédigée et relue, check.js, Merge, le fichier récrit et chargé, Merge relancée, un second Split. */
+    const E2E = path.join(GR, 'bout-en-bout', 'grammar');
+    same(runGr('split.js', [GR, E2E, 'g-niet-geen']), { code: 0, lines: ['vragen 1'] }, 'Split nommé coupe une règle');
+    const dir = path.join(E2E, 'vragen'), inp = JSON.parse(text(path.join(dir, 'input.json')));
+    put(dir, 'draft.json', inp.map(r => Object.assign({}, GOOD, { id: r.id, stamp: r.stamp })));
+    put(dir, 'review.json', inp.map(r => ({ id: r.id, verdict: 'keep' })));
+    same(runGr('check.js', [dir]).code, 0, 'le lot vragen, rédigé et relu, passe check.js');
+    const GFILE = path.join(GR, 'src', 'content', 'grammar.a1c.js'), empty = text(GFILE);
+    same(runGr('merge.js', [GR, E2E]), { code: 0, lines: ['ok grammar 1 taken, 0 dropped', 'ok grammar.a1c.js 1 rules in 1 units'] }, 'Merge écrit la règle');
+    const merged = text(GFILE);
+    ok(merged !== empty && merged.indexOf('id: \'g-niet-geen\', unit: \'vragen\', level: \'A1\'') > 0 && merged.indexOf('[\'g-niet-geen\', \'vragen\']') > 0, 'grammar.a1c.js tient la règle et la liste de son unité');
+    const CM = course(GR);
+    same([CM.RAW.patterns.length, CM.units.find(u => u.id === 'vragen').grammar, CM.RAW.patterns[9].drills.map(d => d.gap)], [10, ['g-niet-geen'], ['geen', 'niet', 'Geen', 'niet', 'geen']], 'la page chargée a la règle, rangée dans son unité, ses cinq trous');
+    same(runGr('merge.js', [GR, E2E]), { code: 0, lines: ['ok grammar 1 taken, 0 dropped', 'ok grammar.a1c.js 1 rules in 1 units'] }, 'Merge relancée écrit la même chose');
+    ok(text(GFILE) === merged, 'Merge relancée laisse le fichier à l\'identique');
+    same(runGr('split.js', [GR, path.join(GR, 'apres', 'grammar')]), { code: 0, lines: ['vragen 2', 'kunnen 1', 'doen 3', 'mensen 1', 'waar 1', 'eten 1', 'cafe 1', 'wonen 1', 'kalender 1'] }, 'un second Split ne coupe plus la règle fondue');
+    fs.writeFileSync(GFILE, empty);
+    console.log('  grammar        ' + K.RULES.length + ' règles, ' + new Set(K.RULES.map(r => r.unit)).size + ' unités ; chaque garde, la boucle de chargement, Merge de bout en bout, relancée, second Split');
+  }
+
   /* ==================================================== 9. l'outil de lecture
      Un bloc : ses noms ne croisent pas ceux des sections que d'autres tâches ajoutent. */
   {

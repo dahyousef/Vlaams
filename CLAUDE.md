@@ -92,6 +92,10 @@ the maintainer answers, runs in sittings.
   the new words' lines to `test/data/ids.tsv`. The same rule: a word changes through its rows, by Merging
   its unit again from the workspace that drafted them, and never to another Dutch word. With that
   workspace gone it has no path yet (`docs/agents/plan-runs/design-sitting.md`).
+  The `grammar` kind's Merge (`tools/content/kinds/grammar.js`) also writes a file whole,
+  `src/content/grammar.a1c.js`: the 13 rules that `grammar.js` lacks, from its `RULES` and the
+  accepted rows; the page lists each on its unit at load. A rule changes through its row, and its id
+  never changes.
 
 ## Decisions already taken
 
