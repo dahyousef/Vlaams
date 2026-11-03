@@ -17,8 +17,13 @@ Your dispatch names the run file and the run's base commit.
    - tests: `test/`.
    Each gets the area's paths, the diff file, `reviewer.md`'s Part 2 and Calibration, the checklist below,
    and a report path `<WS>/reports/closing-<area>.md`. Its final message, at most 10 lines: issue counts and
-   the checklist items it found broken. Dispatch each one in the foreground and wait for its return; never end
-   your turn while one runs.
+   the checklist items it found broken. Write `<WS>` out in every dispatch as the absolute path `run.md` gives.
+   Agents run in the background here, so a dispatch returns at once.
+   After dispatching them, end your turn: that is how you wait, and each one's notice wakes you. End it with one
+   line naming what you wait for, never in your return's form: your final return ends your run, so it is the one
+   thing you never do while an agent of yours runs. Do not poll, sleep or use Monitor. Step 4 starts once all of
+   them have returned. If a harness message forces you to hand back while one runs, say so in your final message's
+   `UNFINISHED:` line. Without that message you wait: this line gives no leave to hand back early.
 4. Read the area reviewers' final messages and the Issues of their reports. Read the diff only around a
    Critical or Important item.
 5. Check the checklist against the diff's stat and the areas' answers.
@@ -56,3 +61,4 @@ Write the full report to `<WS>/reports/closing.md`. Your final message, at most 
     FIXES: <WS>/briefs/task-closing.md | none
     TICKETS: #<n>, … | none
     REPORT: <WS>/reports/closing.md
+    UNFINISHED: <the reviewer still running>        (only when a harness message forced the hand-back)

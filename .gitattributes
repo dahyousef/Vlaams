@@ -1,3 +1,5 @@
 # Build outputs: build.sh writes LF; checking them out as CRLF made every build look like a change.
 index.html text eol=lf
 artifact.html text eol=lf
+# Shell scripts run under sh, here and on Linux: a CRLF checkout must not reach them.
+*.sh text eol=lf

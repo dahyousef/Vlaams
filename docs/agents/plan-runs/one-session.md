@@ -53,7 +53,7 @@ for « none »), and set its row to `done`. Only a fan-out whose `after` names a
 
 Whenever fewer than six batch controllers are in flight and a Batches row is `pending`, dispatch the first
 one as a background subagent on `sonnet`, description `batch <kind>/<batch>`, and set its row to `drafting`.
-The prompt:
+The prompt, with `<WS>` out as the absolute path `run.md` gives:
 
     You are the batch controller for batch <kind>/<batch> of the plan run in <worktree>. Read
     docs/agents/plan-runs/batch-controller.md and follow it. Run file: <WS>/run.md.
@@ -71,7 +71,9 @@ The return is one line, `BATCH <kind>/<batch>: <state> — kept <n>, for maintai
   controller again with `Rulings:`.
 - `to confirm`: show the maintainer the changed rows, as returned. On their yes, dispatch again with
   `Confirmed:`; on another change, with `Rulings:`.
-- `failed`: tell the maintainer, with the reason. The batch waits for their word.
+- `failed`: tell the maintainer, with the reason. The batch waits for their word. A controller that handed back
+  while its agent still ran has not failed, whatever state it wrote: its reason says `forced hand-back`. Send the
+  same controller on with `SendMessage`.
 
 The ledger has one writer, you, plus each task controller's log entry. When an edit of `progress.md` fails
 because the file changed, read it again and redo the edit: a task controller has just appended its entry.

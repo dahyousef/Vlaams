@@ -43,7 +43,12 @@ task controllers' notices.
      back as a new task with its own Status row.
    - `failed`: stop the run and tell the maintainer, with the report paths from the return.
 
-The dispatch prompt:
+   A controller that handed back while its agent still ran has not failed, whatever state it wrote: its return's
+   `UNFINISHED:` line says so. Send the same controller on with `SendMessage`, with the agent's line once it has
+   come.
+
+The dispatch prompt. Here and in every other prompt of this kit, write `<WS>` out as the absolute path `run.md`
+gives:
 
     You are the task controller for task <N> of the plan run in <worktree>. Read
     docs/agents/plan-runs/task-controller.md and follow it. Run file: <WS>/run.md.

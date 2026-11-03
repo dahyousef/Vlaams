@@ -18,9 +18,18 @@ the Check command, and perhaps the maintainer's rulings or confirmations for thi
 | Drafter | `sonnet` | `docs/agents/plan-runs/drafter.md` |
 | Reader | `opus`, or the model your dispatch's `Reader model:` line names | `docs/agents/plan-runs/reader.md` |
 
-Dispatch each in the foreground, with its model given explicitly and a description that starts with
-`batch <kind>/<batch>`, and wait for its return. Every reader is a new agent: a reader confirms what someone
-else wrote, and a second reader judges the retry afresh.
+Dispatch each with its model given explicitly and a description that starts with `batch <kind>/<batch>`. Every
+reader is a new agent: a reader confirms what someone else wrote, and a second reader judges the retry afresh.
+Write `<WS>` out in every dispatch as the absolute path `run.md` gives.
+
+Agents run in the background here, so a dispatch returns at once. After dispatching one, end your turn: that is
+how you wait, and its notice wakes you. End it with one line naming what you wait for, never in your return's
+form: your one-line return ends your run, so it is the one thing you never do while an agent of yours runs. Do
+not poll, sleep or use Monitor.
+
+If a harness message forces you to hand back while an agent runs, return `failed` with the reason
+`forced hand-back: <the agent still running>`. Without that message you wait: this line gives no leave to hand
+back early.
 
 ## The files
 
