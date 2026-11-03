@@ -40,7 +40,7 @@ patterns.
   reader that did not write it).
 - The phase 4 design sitting's decisions of 28 October 2026 (`handoff.md`, « Grammar » and « Conversations »): the 13
   rules, the 4 conversations, « course-written, read whole », « Full simple past later ».
-- The maintainer's decisions D9–D23, stated below. The unit list approved on 28 and 31 October 2026 (plan 4a's task
+- The maintainer's decisions D9–D24, stated below. The unit list approved on 28 and 31 October 2026 (plan 4a's task
   4, `UNITS`).
 - `GLOSSARY.md`; ADR 0005 (amended).
 - The tickets, sub-issues of #12: `{T-grammar}` (tasks 1, 4, 5), `{T-conversations}` (tasks 2, 6, 7) and
@@ -48,8 +48,8 @@ patterns.
 
 ## The maintainer's decisions
 
-D9–D20 were taken at the phase 4 design sitting and for plan 4a (25–31 October 2026); D21–D23 for this plan, on
-3 November 2026, each « As recommended ».
+D9–D20 were taken at the phase 4 design sitting and for plan 4a (25–31 October 2026); D21–D24 for this plan, on
+3 November 2026: D21–D23 « As recommended », D24 « Yes ».
 
 | D | Answer | Task |
 |---|---|---|
@@ -63,6 +63,7 @@ D9–D20 were taken at the phase 4 design sitting and for plan 4a (25–31 Octob
 | D21 | `s-afspraak`, the phone conversation, is listed under `leven`: praten lists only `leven` and `werk`, and its unit, afspraak, is `beide`. | 2 |
 | D22 | The new conversations are open from the start, like the six: no `unit` field on a scenario, no filter in praten, the home suggestion, `listenClips()` or `test/journey.js`. | 2, 6 |
 | D23 | This plan's run controller rules on the maintainer's behalf (a row still disputed after its second reader) and answers gate 9; every fault the gate confirms is fixed in the run, except one needing a decision no document holds; the 17 rows stay on the maintainer's reading list (D15). Mode: one session. | 4, 6, 9 |
+| D24 | `AHEAD_BUDGET` may rise a second time, from 129 to the count task 5 measures (130 in the replay): no sentence changes; a rule teaches at a later unit a form an earlier sentence already used (« Ik neem twee broodjes mee. », `g-meervoud`). Issue #12's « may only ever decrease » line names it as a second exception; the maintainer edits #12. Plan 4c may lower it. | 5 |
 
 ## How far to trust this plan
 
@@ -110,7 +111,7 @@ What is still not proved:
 - **No external data.** Neither kind reads `.cache/`: no fetch at set-up.
 - **The learner pass** needs its package (`npm ci --ignore-scripts` in `tools/learner-pass/`) and Edge, which this
   desktop has.
-- **The set-up writes D21–D23 as the ledger's first Rulings lines.**
+- **The set-up writes D21–D24 as the ledger's first Rulings lines.**
 
 ## Global Constraints
 
@@ -231,7 +232,7 @@ Learner pass: gate 9 plays the branch's last commit. If a closing task or a gate
    order, corrige, cloze and type all draw from them.
 6. **`AHEAD_BUDGET` follows the merged rules (task 5).** A gap a rule teaches at its unit can be a form an earlier
    unit's example sentence already used: that sentence then borrows ahead, a borrowing that was there uncounted, as
-   plan 4a's call 5 found for words. Task 5 sets the budget to the measured count, with the cause in its comment, and
+   plan 4a's call 5 found for words. Task 5 sets the budget to the measured count (D24), with the cause in its comment, and
    lists the sentences in its return.
 7. **The learner pass plays every conversation (task 3).** `corners.js` played s-bakker only; it now plays each one in
    `NL.content.scenarios`, once per choice position of its largest step, so every choice of every step is tapped. A new
@@ -2525,7 +2526,7 @@ in the tests, each named here. **`AHEAD_BUDGET`** (`test/content.js`): a rule's 
 an example sentence of an earlier or the same unit that already used that form becomes « ahead » the moment the rule
 lands (« Ik neem twee broodjes mee. » of `dedag` and `bakker` uses « broodjes », which `g-meervoud` teaches at `eten`). The
 rule borrowed nothing; a word is taught later than sentences that have it. The task sets `AHEAD_BUDGET` to the measured
-count, with the cause in its comment, and lists the sentences in its return; plan 4c, which writes the new units'
+count (D24), with the cause in its comment, and lists the sentences in its return; plan 4c, which writes the new units'
 sentences, may lower it (the header's call 6). `HOLLOW_BUDGET` stays 3. **`test/tools/fanout.js`**: its older blocks
 empty `lexicon.a1c.js` (`beforeWords`) so the kit tests on its own examples; once `grammar.a1c.js` holds rules, those
 copies load rules whose units are gone and the whole suite stops at load. The fix moves `beforeGrammar` up beside
