@@ -43,8 +43,8 @@ patterns.
 - The maintainer's decisions D9–D24, stated below. The unit list approved on 28 and 31 October 2026 (plan 4a's task
   4, `UNITS`).
 - `GLOSSARY.md`; ADR 0005 (amended).
-- The tickets, sub-issues of #12: `{T-grammar}` (tasks 1, 4, 5), `{T-conversations}` (tasks 2, 6, 7) and
-  `{T-learner-pass}` (task 3). Tasks 8 and 9 carry none.
+- The tickets, sub-issues of #12: `#134` (tasks 1, 4, 5), `#135` (tasks 2, 6, 7) and
+  `#136` (task 3). Tasks 8 and 9 carry none.
 
 ## The maintainer's decisions
 
@@ -106,8 +106,8 @@ What is still not proved:
   draft pull request from `phase-4b` into `phase-4`, never into `main`.
 - **Mode: one session** (D16, D23): 9 tasks, two of them fan-out, one gate.
 - **Who rules, and gate 9:** the run controller, on the maintainer's behalf (D23).
-- **Tickets.** Three sub-issues of #12, filed on the maintainer's word after the plan is approved: `{T-grammar}`,
-  `{T-conversations}`, `{T-learner-pass}`; the placeholders are replaced in the plan and the briefs at set-up.
+- **Tickets.** Three sub-issues of #12, filed on the maintainer's word on 3 November 2026: #134 (grammar), #135
+  (conversations), #136 (learner pass).
 - **No external data.** Neither kind reads `.cache/`: no fetch at set-up.
 - **The learner pass** needs its package (`npm ci --ignore-scripts` in `tools/learner-pass/`) and Edge, which this
   desktop has.
@@ -188,13 +188,13 @@ Public repository:
 ## Run order
 
 ```
-1. The grammar kind, and an empty grammar.a1c.js — mechanical — {T-grammar} — waits none
-2. The scenarios kind, and an empty scenarios.a1c.js — mechanical — {T-conversations} — waits none
-3. The learner pass plays every conversation and opens every rule sheet — mechanical — {T-learner-pass} — waits none
-4. FAN grammar — fan-out — {T-grammar} — waits 1
-5. Merge grammar — mechanical — {T-grammar} — waits 4
-6. FAN conversations — fan-out — {T-conversations} — waits 2
-7. Merge conversations — mechanical — {T-conversations} — waits 6
+1. The grammar kind, and an empty grammar.a1c.js — mechanical — #134 — waits none
+2. The scenarios kind, and an empty scenarios.a1c.js — mechanical — #135 — waits none
+3. The learner pass plays every conversation and opens every rule sheet — mechanical — #136 — waits none
+4. FAN grammar — fan-out — #134 — waits 1
+5. Merge grammar — mechanical — #134 — waits 4
+6. FAN conversations — fan-out — #135 — waits 2
+7. Merge conversations — mechanical — #135 — waits 6
 8. Docs: the two kinds, the learner pass, the a1c header — mechanical — none — waits 5, 7
 9. GATE: the learner pass in Edge — gate — none — waits 3, 5, 7, 8
 ```
@@ -250,7 +250,7 @@ Left out of this plan, for the maintainer:
 
 ### Task 1: The grammar kind, and an empty grammar.a1c.js
 Class: mechanical
-Ticket: {T-grammar}
+Ticket: #134
 Promises: none
 Why: D10 and D11 (13 grammar rules, each a pattern like the 9 the course has, listed on 9 of the 22 new units) and D15
 (every course-written row is read). The drafting lane runs only through kinds, and a hand-written table would leave no
@@ -1276,7 +1276,7 @@ Notes:
 - [ ] **Step 9: Commit.**
   ```
   git add tools/content/kinds/grammar.js test/lib/quoted.js test/lang.js src/content/grammar.a1c.js build.sh test/smoke.js CLAUDE.md test/tools/fanout.js index.html artifact.html
-  git commit -m "feat(content): the grammar kind and an empty grammar.a1c.js ({T-grammar})"
+  git commit -m "feat(content): the grammar kind and an empty grammar.a1c.js (#134)"
   ```
 
 Done when:
@@ -1291,7 +1291,7 @@ Done when:
 
 ### Task 2: The scenarios kind, and an empty scenarios.a1c.js
 Class: mechanical
-Ticket: {T-conversations}
+Ticket: #135
 Promises: none
 Why: D22 (the four new conversations are open from the start, like the six: a scenario has no `unit` field) and D21
 (`s-afspraak` is listed under `leven`), with D11 (the Node kit stays the factory) and D15 (every row is read whole).
@@ -1924,7 +1924,7 @@ Notes:
   Commit the nine files together:
   ```
   git add build.sh index.html artifact.html CLAUDE.md GLOSSARY.md src/content/scenarios.a1c.js test/smoke.js test/tools/fanout.js tools/content/kinds/scenarios.js
-  git commit -m "feat(content): the scenarios kind and an empty scenarios.a1c.js ({T-conversations})"
+  git commit -m "feat(content): the scenarios kind and an empty scenarios.a1c.js (#135)"
   ```
 
 Done when: `node test/tools/fanout.js .` ends `KIT CONFORME` and prints the `scenarios` line; `node test/smoke.js .`
@@ -1934,7 +1934,7 @@ has, refuses with the line the block pins; and the commit holds the nine files a
 
 ### Task 3: The learner pass plays every conversation and opens every rule sheet
 Class: mechanical
-Ticket: {T-learner-pass}
+Ticket: #136
 Promises: none
 Why: gate 9 (Review Focus 1 and 5) must see the 4 new conversations, all 13 new rules and every position of every choice step. The old `corners.js` played s-bakker only, always on choice 0; nothing opened a rule sheet. The task runs on today's 6 and 9 before any row exists (D19), so the gate meets tools already proven. What it leaves for later tasks: `corners.js` plays every scenario of `NL.content.scenarios` (6 today), one `CONVERSATION <id>` block each, once per choice position (pass q taps choice `q % n` at every "you" step, q from 0 to the conversation's largest n minus 1), so every choice of every step is played, and prints a `PROBLEM:` line for one that does not finish; a new `rules.js` taps every `data-act="gram"` chip on the leerpad (14 chips, 9 rules today) and checks each sheet at 390 px. Both are tested without a browser, and both run clean in Edge on today's content.
 
@@ -2352,13 +2352,13 @@ RULES 9 (14 chips on the leerpad; the course lists 9 rules on 14 unit cards)
 EVERY RULE SHEET OPENS
 ```
   A hang or a different count is a fault to report, not a reason to edit the expected lines. If Edge cannot launch (`Executable doesn't exist`), the step is blocked: say so in the ledger.
-- [ ] **Step 8: Commit** the three scripts and the test (nothing under `src/`, so no build outputs): `test(learner-pass): play every conversation, open every rule sheet ({T-learner-pass})`.
+- [ ] **Step 8: Commit** the three scripts and the test (nothing under `src/`, so no build outputs): `test(learner-pass): play every conversation, open every rule sheet (#136)`.
 
 Done when: `node test/tools/learner-pass.js .` ends `21 checks, LEARNER PASS TOOLS OK` and failed before the change; `corners.js` and `rules.js` print the lines above in Edge and exit 0; `git diff --stat` shows only `tools/learner-pass/{session,corners,rules}.js` and `test/tools/learner-pass.js`.
 
 ### Task 4: FAN grammar
 Class: fan-out
-Ticket: {T-grammar}
+Ticket: #134
 Kind: grammar
 Drafting after: 1
 Split: node tools/content/split.js . "<WS>/drafts/grammar"
@@ -2513,7 +2513,7 @@ The full Check rules are task 1's block in `test/tools/fanout.js`.
 
 ### Task 5: Merge grammar
 Class: mechanical
-Ticket: {T-grammar}
+Ticket: #134
 Merges: grammar
 Promises: none
 Why: D10, D11 and D15. Task 4's drafters, its readers and the run controller have settled every row of the kind
@@ -2857,7 +2857,7 @@ Notes:
 - [ ] **Step 10: Commit.**
   ```
   git add src/content/grammar.a1c.js index.html artifact.html test/content.js test/tools/fanout.js test/pace.js
-  git commit -m "feat(content): the 13 grammar rules, merged by the grammar kind into grammar.a1c.js, the ahead budget and two fixtures moved ({T-grammar})"
+  git commit -m "feat(content): the 13 grammar rules, merged by the grammar kind into grammar.a1c.js, the ahead budget and two fixtures moved (#134)"
   ```
   Add `test/engine.js` to the `git add` if step 6 changed it (it did in the proof).
 
@@ -2872,7 +2872,7 @@ Done when:
 
 ### Task 6: FAN conversations
 Class: fan-out
-Ticket: {T-conversations}
+Ticket: #135
 Kind: scenarios
 Drafting after: 2
 Split: node tools/content/split.js . "<WS>/drafts/scenarios"
@@ -2977,7 +2977,7 @@ Done when: Split has printed the four lines above, each batch folder holds `draf
 
 ### Task 7: Merge conversations
 Class: mechanical
-Ticket: {T-conversations}
+Ticket: #135
 Merges: scenarios
 Promises: none
 Why: D21, D22 and D15. The drafted rows of task 6 become `src/content/scenarios.a1c.js`: four scenarios appended to
@@ -3064,7 +3064,7 @@ Notes:
   Each must end as the table says, with « the measured count » where the rows differ. `lang.js` is the one that
   can fail on text (check 6d): stop and report it, as the notes say. Record the counts in the ticket. Commit
   `src/content/scenarios.a1c.js`, `index.html` and `artifact.html` with
-  `git commit -m "feat(content): Merge conversations, 4 scenarios ({T-conversations})"`.
+  `git commit -m "feat(content): Merge conversations, 4 scenarios (#135)"`.
 
 Done when: Merge printed the two lines and a second run changed nothing; the build is current; the five commands
 above end `ALL CHECKS PASSED`, `CONTENU CONFORME`, exit 0, `LANGUE CONFORME` and `NO PROBLEMS`; `smoke.js` counts
