@@ -1,8 +1,8 @@
 /* Ce qu'une séance ne montre pas : l'écoute (Comprendre, Répéter), une conversation
-   (chez le boulanger) et le défi, joués en touchant l'écran.
+   (chacune du cours) et le défi, joués en touchant l'écran.
      node tools/learner-pass/corners.js [dossier] */
 const { open, verdict, sleep } = require('./common');
-const { playSession, shot, STUCK } = require('./session');
+const { playSession, playConversation, shot, STUCK } = require('./session');
 
 (async () => {
   const A = await open();
@@ -54,44 +54,27 @@ const { playSession, shot, STUCK } = require('./session');
   await sleep(250);
   console.log('  end: ' + await screenText());
 
-  /* 3. Une conversation : chaque réplique à dire est dite telle qu'elle s'affiche. */
-  console.log('\nCONVERSATION s-bakker');
-  await p.evaluate(() => NL.ui.go('vandaag'));
-  await sleep(150);
-  await p.click('[data-scn="s-bakker"]');
-  let turns = 0, finished = false;
-  for (let k = 0; k < 40; k++) {
-    await sleep(300);
-    if (await p.$('[data-step="again"]')) { finished = true; await shot(p, 'conversation-end', true); break; }
-    if (await p.$('[data-step="next"]')) { await p.click('[data-step="next"]'); continue; }
-    if (await p.$('[data-choice]')) { await p.click('[data-choice="0"]'); continue; }
-    if (await p.$('[data-act="accept"]')) { await p.click('[data-act="accept"]'); continue; }
-    const mic = await p.$('[data-mic="start"]');
-    if (!mic) {
-      const buttons = await p.evaluate(() => Array.from(document.querySelectorAll('button')).map(b => JSON.stringify(b.dataset)).join(' '));
-      problems.push('conversation: no known button at step ' + k + ': ' + buttons);
-      await shot(p, 'conversation-unknown-' + k);
-      break;
+  /* 3. Chaque conversation du cours : chaque réplique à dire est dite telle qu'elle s'affiche ;
+     une passe par rang de choix : à la passe q, le choix q % n à chaque tour « vous » (playConversation),
+     de 0 au plus grand nombre de choix d'un tour, moins un. */
+  const ids = await p.evaluate(() => NL.content.scenarios.map(s => s.id));
+  const passes = await p.evaluate(() => NL.content.scenarios.map(s => Math.max.apply(null, s.steps.filter(x => x.you).map(x => x.you.choices.length))));
+  for (let c = 0; c < ids.length; c++) {
+    console.log('\nCONVERSATION ' + ids[c]);
+    for (let q = 0; q < passes[c]; q++) {
+      console.log('  pass ' + (q + 1) + ' of ' + passes[c]);
+      await p.evaluate(() => NL.ui.go('praten'));
+      await sleep(150);
+      await p.click('[data-scn="' + ids[c] + '"]');
+      const r = await playConversation(p, ids[c], { pass: q, firstShots: c === 0 && q === 0 });
+      r.lines.forEach(l => console.log(l));
+      r.problems.forEach(x => problems.push(x));
+      await p.click('[data-step="back"]').catch(() => {});
     }
-    const target = await p.evaluate(() => { const s = document.querySelector('[data-say][data-slow]'); return s ? s.dataset.say : ''; });
-    await p.evaluate(s => { window.__say = s; }, target);
-    await mic.click();
-    await sleep(450);
-    if (turns === 0) await shot(p, 'conversation-listening');
-    await p.click('[data-mic="stop"]', { force: true, timeout: 3000 });
-    const panel = await p.waitForSelector('.mic-panel.good, .mic-panel.bad', { timeout: 4000 }).then(e => e.getAttribute('class'), () => 'NEVER SCORED');
-    console.log('  turn ' + turns + ' said ' + JSON.stringify(target) + ' -> ' + panel);
-    if (!/\bgood\b/.test(panel)) problems.push('conversation turn ' + turns + ': « ' + target + ' » -> ' + panel);
-    if (turns === 0) await shot(p, 'conversation-scored');
-    turns++;
-    if (panel === 'NEVER SCORED') break;
   }
-  console.log('  ' + (finished ? 'finished after ' + turns + ' spoken turn(s)' : 'NOT FINISHED'));
-  if (!finished) problems.push('the conversation did not reach its end');
 
   /* 4. Le défi : d'abord une séance, pour rencontrer des éléments, puis le défi, une faute toutes les trois cartes. */
   console.log('\nDÉFI');
-  await p.click('[data-step="back"]').catch(() => {});
   await p.evaluate(() => NL.ui.go('vandaag'));
   await playSession(p, 'defi-day', { wrongEvery: 0 });
   await p.evaluate(() => NL.ui.go('vandaag'));
