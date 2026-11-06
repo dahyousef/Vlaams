@@ -55,7 +55,9 @@ const QUOTE_OK = Object.assign(Object.create(null), {
   slank: 'ce que veut dire slim (svelte), dans le piège de slim',
   zeldzaam: 'ce que veut dire rare, dans le piège de raar',
   merk: '« het merk », ce que veut dire brand (une marque), dans le piège de de brand',
-  plattegrond: '« de plattegrond », ce que veut dire map (un plan), dans le piège de de map'
+  plattegrond: '« de plattegrond », ce que veut dire map (un plan), dans le piège de de map',
+  aanraden: 'l’infinitif de « raadt … aan », dans la note d’un choix de la conversation du café',
+  kroket: 'le second mot de « kaaskroket », dans la note d’un choix de la conversation du café'
 });
 /* Les mots que le français et l'anglais écrivent tous deux et que le cours a aussi en néerlandais :
    l'anglais du bureau, une marque, un article. 6d.4 ne les prend pas pour du néerlandais laissé nu. */
