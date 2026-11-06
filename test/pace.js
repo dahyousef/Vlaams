@@ -17,8 +17,8 @@ const MODE = process.argv.slice(4);
 const DRIFT = MODE.indexOf('drift') >= 0;
 if (DRIFT) process.env.TZ = 'Europe/Brussels';
 /* Le cinquième, une seule séance par jour aussi, apprend un cours grossi à au moins 1 160
-   éléments (1 192 comptés) : les unités du cours recopiées (test/lib/grow.js), poussées avant
-   le premier build(). Le vrai cours en compte 1 035 : celui-ci regarde un peu au-delà. */
+   éléments (1 172 comptés) : les unités du cours recopiées (test/lib/grow.js), poussées avant
+   le premier build(). Le vrai cours en compte 1 048 : celui-ci regarde un peu au-delà. */
 const GROOT = MODE.indexOf('groot') >= 0, GROOT_ITEMS = 1160;
 
 let fails = 0, checks = 0, unjudged = 0;

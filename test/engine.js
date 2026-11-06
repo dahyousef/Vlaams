@@ -276,7 +276,10 @@ NL.state.open().then(async () => {
     ok(size >= 1000, 'the course holds ' + size + ' items, fewer than the 1,000 due this block needs');
     /* n éléments dus, et ce que compose() en fait. */
     const backlog = (n, src) => { X.state.clearAll(); dueReviews(X, n, T0); return X.srs.compose(src || 'vandaag'); };
-    [[39, 30], [40, 31], [440, 41], [1000, 41]].forEach(([n, places]) => {
+    /* Les rencontres viennent de l'unité où s'arrêtent les dus : le dernier arriéré doit en laisser au moins neuf (la
+       réserve) dans cette unité. 1 000 dus s'arrêtaient à huit mots de la fin de « reis » quand les 13 règles de
+       grammar.a1c.js ont décalé les éléments ; 990 en laisse dix-huit. */
+    [[39, 30], [40, 31], [440, 41], [990, 41]].forEach(([n, places]) => {
       const c = backlog(n), held = c.due.length + c.fresh.length;
       console.log('  ' + String(n).padStart(4) + ' dus : ' + c.due.length + ' révisions + ' + c.fresh.length + ' rencontres = ' + held + ' places');
       ok(held === places, n + ' items due: the session holds ' + held + ' items, not ' + places + ' (30 base places, one more per 40 due, 11 at most)');

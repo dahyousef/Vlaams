@@ -37,10 +37,14 @@ fs.mkdirSync(KINDS, { recursive: true });
 const kindFile = (name, text) => fs.writeFileSync(path.join(KINDS, name + '.js'), text);
 const text = f => fs.readFileSync(f, 'utf8');
 const put = (dir, file, v) => fs.writeFileSync(path.join(dir, file), typeof v === 'string' ? v : JSON.stringify(v, null, 2) + '\n');
+/* Et grammar.a1c.js vidé par l'écrivain du genre grammar : ses règles veulent des unités du lexique, que le lexique vidé n'a plus. */
+const beforeGrammar = dir => fs.writeFileSync(path.join(dir, 'src', 'content', 'grammar.a1c.js'),
+  require(path.join(dir, 'tools', 'content', 'kinds', 'grammar')).patterns([]).map(l => l + '\n').join(''));
 /* Le cours d'une copie de fixture tel qu'il était avant la tranche des unités 13 à 34 : le lexique vidé par
    l'écrivain du genre words sans ligne, et les lignes de ces unités ôtées de ids.tsv. Le kit se teste sur
    ses propres exemples, pas sur le cours que la fusion change ; les nombres attendus ne bougent pas avec lui. */
 const beforeWords = dir => {
+  beforeGrammar(dir);
   const K = require(path.join(dir, 'tools', 'content', 'kinds', 'words'));
   const own = new Set(K.UNITS.map(u => u.id)), ids = path.join(dir, 'test', 'data', 'ids.tsv');
   fs.writeFileSync(path.join(dir, 'src', 'content', 'lexicon.a1c.js'), K.lexicon([]).map(l => l + '\n').join(''));
@@ -1665,9 +1669,6 @@ module.exports = {
     const GR = path.join(TMP, 'regles');
     const PIECES = ['build.sh', 'src', 'test/lib', 'test/data', 'tools'];
     PIECES.forEach(p => fs.cpSync(path.join(ROOT, p), path.join(GR, p), { recursive: true }));
-    /* Le cours d'une copie tel qu'il était avant la fusion du genre grammar : le fichier vidé. */
-    const beforeGrammar = dir => fs.writeFileSync(path.join(dir, 'src', 'content', 'grammar.a1c.js'),
-      require(path.join(dir, 'tools', 'content', 'kinds', 'grammar')).patterns([]).map(l => l + '\n').join(''));
     beforeGrammar(GR);
     const runIn = (dir, script, args) => {
       const r = spawnSync(process.execPath, [path.join(dir, 'tools', 'content', script)].concat(args), { encoding: 'utf8' });
