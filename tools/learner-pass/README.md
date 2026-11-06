@@ -26,10 +26,11 @@ repository by default, and exits 1 with one `PROBLEM:` line per fault.
 | Script | What it plays | Clean run ends with |
 |---|---|---|
 | `node tools/learner-pass/days.js` | sessions on study days 0–20, the clock moved forward, until spoken cards come up; each mic path once: right, wrong then right, ending by itself, and « Je ne peux pas parler » | `THE STUDY DAYS PLAY THROUGH` |
-| `node tools/learner-pass/corners.js` | listening (Comprendre, Répéter), the baker conversation, the challenge | `LISTENING, CONVERSATION AND CHALLENGE PLAY THROUGH` |
+| `node tools/learner-pass/corners.js` | listening (Comprendre, Répéter), every conversation in `NL.content.scenarios` (one `CONVERSATION <id>` block each, played once per choice position, so every choice of every step is tapped), the challenge | `LISTENING, CONVERSATION AND CHALLENGE PLAY THROUGH` |
 | `node tools/learner-pass/sweep.js` | every tappable thing on 16 screens: one that changes nothing, one a finger cannot reach, a sheet that jumps from where it was scrolled, overflow at 390 px, console errors | `EVERY TAP DOES SOMETHING` |
+| `node tools/learner-pass/rules.js` | the leerpad, then every grammar rule's chip (`data-act="gram"`) tapped and its sheet checked at 390 px: title, rule, explanation, up to three drill rows, nothing wider than the screen, a close button that works. One line `RULE <id>` per rule; the first line, `RULES <n> (<c> chips …)`, compares the chips on the page with the rules the course lists on its units (a rule listed on several units has one chip each and one sheet) | `EVERY RULE SHEET OPENS` |
 
-`days.js` takes about two minutes, `corners.js` half a minute, `sweep.js` about four. Screenshots of
+`days.js` takes about a minute and a half, `corners.js` under three minutes (it plays every conversation once per choice position), `rules.js` about fifteen seconds, `sweep.js` a little over four minutes. Screenshots of
 each step go to `shots/` (ignored): look at them, as a learner would see the screens.
 
 ## Reading a fault

@@ -1519,6 +1519,16 @@ module.exports = {
     const LEX = path.join(WD, 'src', 'content', 'lexicon.a1c.js'), IDS = path.join(WD, 'test', 'data', 'ids.tsv');
     const CW = course(WD), NLW = CW.NL;
 
+    /* L'en-tête de chaque fichier que Merge écrit entier : celui du dépôt est celui que le genre écrirait. Merge
+       récrit le fichier depuis HEADER, sans lire l'ancien : un en-tête changé d'un seul côté serait écrasé, ou
+       écraserait l'autre, à la prochaine fusion, et aucune autre vérification ne le voit. */
+    const headOf = lines => lines.slice(0, lines.indexOf('') >= 0 ? lines.indexOf('') : lines.length - 1).join('\n') + '\n';
+    [['lexicon.a1c.js', K.lexicon([])], ['grammar.a1c.js', require(path.join(WD, 'tools', 'content', 'kinds', 'grammar')).patterns([])],
+      ['scenarios.a1c.js', require(path.join(WD, 'tools', 'content', 'kinds', 'scenarios')).scenarios([])]].forEach(([file, empty]) => {
+      const real = text(path.join(ROOT, 'src', 'content', file)).replace(/\r\n/g, '\n');
+      ok(real.startsWith(headOf(empty)), 'l\'en-tête de src/content/' + file + ' est celui que son genre écrit (HEADER)');
+    });
+
     /* Les 22 unités : leurs ids, leurs numéros, leurs cibles, chacune ses deux noms et ses deux présentations. */
     same([K.UNITS.length, K.UNITS.map(u => u.n).join(' '), K.UNITS.reduce((s, u) => s + u.target, 0), new Set(K.UNITS.map(u => u.id)).size],
       [22, Array.from({ length: 22 }, (x, k) => 13 + k).join(' '), 605, 22], '22 unités, numérotées de 13 à 34, 605 slots, chacune son id');

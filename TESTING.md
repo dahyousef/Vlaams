@@ -23,8 +23,8 @@ n'y a qu'une seule liste. Il faut Node et un `sh` (sous Windows, celui de Git).
 | `firstrun.js` | Une base vide : premier écran, première séance, le défi, la sauvegarde |
 | `sync.js` | Deux appareils et le faux Supabase de `test/lib/supabase.js` : adoption, conflits, panne, comptes, la remise à zéro sur deux appareils (dont un hors ligne qui revient), la migration unique, un appareil resté sur l'ancienne version et un serveur qui garde la remise à zéro la plus récente, et une langue d'affichage changée sur un autre appareil, que l'avis nomme ; une connexion qui finit sur l'écran compte, par le code à six chiffres ou par un autre onglet, dont l'accueil dit d'où vient la langue ; et la progression d'un mot listé dans deux unités, apprise sous son second listage avant les alias : repliée sur un appareil neuf, un raté d'après qui tient, rien après une remise à zéro, une sauvegarde d'avant repliée quand on la rend, et des copies d'avant qui ne passent pas devant une progression plus récente faite sur un autre appareil ni ne cachent une fiche d'alias plus récente au serveur, sur un appareil connecté rouvert comme sur un appareil sans compte qui rejoint le compte (six pages chargent `app.js`, les seules de la suite : les deux connexions et les quatre appareils qui s'ouvrent sur leurs copies d'avant) |
 | `hooks.js` | Le rappel de reprise : `.claude/settings.json` le branche sur SessionStart (`compact\|resume`), il imprime où une exécution de plan garde son état, même sans `CLAUDE_PROJECT_DIR`, le crochet de démarrage imprime le chemin du transcript que Claude Code lui donne, et `run-controller.md` le nomme, `verifier.md` remet les sorties du build avant de vérifier l'arbre, le kit dit comment un agent en attend un autre et `wait-suite.sh` attend la fin de la suite et dit si une suite tourne encore, `verify.sh` y laisse le numéro de la suite même quand son shell est tué, les scripts `.sh` restent en LF, et le garde-fou git reste branché |
-| `tools/fanout.js` | Le kit de répartition (`tools/content/`), dans une copie du dépôt et sans réseau : le cours tel que les outils le lisent, l'empreinte d'une source, Split, Check et Merge sur un genre d'essai (refus, reprise, ligne écartée, relance refusée comme périmée, un Split d'ids nommés qui ne coupe que leurs lignes et refuse, sans rien écrire, un id que le genre ne coupe pas ou, sur un dossier déjà coupé, des ids autres que les lignes de ses lots, ou un lot dont l'entrée manque ou ne se lit pas), le rédacteur des tables (littéraux, tri, en-tête, fins de ligne, et chaque table du cours relue dans sa forme), le cache épinglé (un dossier, un serveur local), l'outil de lecture ; puis chaque vrai genre, sur le cours tel qu'il est : son découpage, chacune de ses règles sur une ligne juste et une ligne fausse (tout texte d'une ligne refusé avec un blanc devant ou derrière, ou un `\r`), et un Merge de bout en bout (`flemish`, `examples` et `examples-gen`, `open`, les deux genres d'explications, et `words`, dont la source est une unité à venir : ses 22 unités et leurs places, ses règles, son Merge qui récrit `src/content/lexicon.a1c.js` et ajoute à `test/data/ids.tsv`, relancée à l'identique, et un second Split qui ne recoupe pas une unité fondue) |
-| `tools/learner-pass.js` | Les outils de la passe d'apprenant (`tools/learner-pass/`), sans navigateur : une séance qui ne finit pas est dite, et `sweep.js` ne s'arrête pas à un nombre fixe de touchers. |
+| `tools/fanout.js` | Le kit de répartition (`tools/content/`), dans une copie du dépôt et sans réseau : le cours tel que les outils le lisent, l'empreinte d'une source, Split, Check et Merge sur un genre d'essai (refus, reprise, ligne écartée, relance refusée comme périmée, un Split d'ids nommés qui ne coupe que leurs lignes et refuse, sans rien écrire, un id que le genre ne coupe pas ou, sur un dossier déjà coupé, des ids autres que les lignes de ses lots, ou un lot dont l'entrée manque ou ne se lit pas), le rédacteur des tables (littéraux, tri, en-tête, fins de ligne, et chaque table du cours relue dans sa forme), le cache épinglé (un dossier, un serveur local), l'outil de lecture ; puis chaque vrai genre, sur le cours tel qu'il est : son découpage, chacune de ses règles sur une ligne juste et une ligne fausse (tout texte d'une ligne refusé avec un blanc devant ou derrière, ou un `\r`), et un Merge de bout en bout (`flemish`, `examples` et `examples-gen`, `open`, les deux genres d'explications, et `words`, dont la source est une unité à venir : ses 22 unités et leurs places, ses règles, son Merge qui récrit `src/content/lexicon.a1c.js` et ajoute à `test/data/ids.tsv`, relancée à l'identique, et un second Split qui ne recoupe pas une unité fondue ; `grammar`, dont la source est une règle à venir : ses 13 règles et leurs 9 unités, chaque garde de Check (cinq exercices, un trou d'une seule tuile qui n'est pas écrit deux fois, de 3 à 8 tuiles par exercice, rien que l'unité de la règle n'ait enseigné, l'orthographe, le néerlandais de l'explication dans `<i class="nl">` ou `<span class="ex">`, les citations et le néerlandais nu que 6d de `lang.js` refuserait, et un `{jeton}` dans le titre ou l'explication, que la feuille montre en HTML et que 6d.7 refuserait), la boucle de `src/content/grammar.a1c.js` qui range chaque règle dans la liste de son unité au chargement et lève une erreur nommant la règle quand l'unité manque, et son Merge de bout en bout ; `scenarios`, dont la source est une conversation à venir : ses 4 conversations, la forme d'un scénario et les bornes des six du cours, une réplique de l'autre sans `be`, un sens manquant, un `{jeton}` hors `{naam}` `{stad}` `{bedrijf}`, un jeton dans le titre, que l'écran montre en HTML (6d.7), les mêmes citations et le même néerlandais nu, et son Merge qui récrit `src/content/scenarios.a1c.js` ; et, pour les trois fichiers qu'un Merge écrit entiers (`lexicon.a1c.js`, `grammar.a1c.js`, `scenarios.a1c.js`), que son en-tête est celui que son genre écrit (`HEADER`), puisque Merge ne lit pas l'ancien) |
+| `tools/learner-pass.js` | Les outils de la passe d'apprenant (`tools/learner-pass/`), sans navigateur : une séance qui ne finit pas est dite, une conversation est jouée une fois par position de choix et dite bloquée quand elle l'est, `sweep.js` ne s'arrête pas à un nombre fixe de touchers, et la feuille d'une règle est jugée (`judgeSheet` : titre, règle, explication, exemples, rien qui déborde de 390 px). |
 | `tools/sources.js` | Les sources externes du kit, sur des fichiers que la suite écrit avec leur épingle : les deux extraits du Wiktionnaire (`tools/content/kaikki.js` : les sens belges, et chaque entrée avec sa nature, son genre et ses gloses) et le classement des phrases de Tatoeba (`tools/content/tatoeba.js`), avec l'ordre du cours qu'il lit (`sequence.firstUnits`) ; rien n'est téléchargé |
 | `journey.js` | Le parcours complet d'un utilisateur, pour une voix et un navigateur donnés |
 | `pace.js` | 200 jours simulés, pour cinq apprenants (budget épuisé chaque jour ; une seule séance par jour ; une seule séance, dont une sur cinq là où l’on ne peut pas parler ; une seule séance, commencée à 21 h puis vingt minutes plus tôt chaque jour jusqu’à 7 h, et qui remonte, à l’heure de Bruxelles ; une seule séance, sur un cours grossi à au moins 1 160 éléments par `test/lib/grow.js`) ; chez ceux qui font une seule séance, l’arriéré reste sous les trois quarts du cours (la séance suit l’arriéré, ADR 0007) et tout est rencontré assez tôt pour que ce plafond juge quelque chose : charge quotidienne, variété, exigence — aucune journée sans élément nouveau tant qu’il en reste, des éléments laissés à un jour qui reviennent le lendemain, y compris les jours où la séance commence plus tôt que la veille, un élément du premier jour demandé à voix haute en dix jours et jamais après trois semaines, l’échelon de l’écrit passé en écrivant, et « je ne peux pas parler » qui ne note rien, ne coûte rien et ne fait rien sauter. L’horloge avance pendant la journée. Sous trente jours, ce qui ne se juge que sur la durée (le lendemain, la première demande à voix haute, une séance sans parler qui croise un exercice à voix haute, la fréquence d’un élément, l’étalement) dit « non jugé » et n’est pas un problème : la suite lance aussi un seul jour, comme les tâches d’un plan |
@@ -88,6 +88,12 @@ d'octobre en dure 25 et celui de mars 23, et un jour compté en arrière par pas
 de 24 heures tombe ces semaines-là sur la mauvaise date (#105).
 `NL.util.daysBack(n)` le compte sur le calendrier. Une suite qui fixe le fuseau
 pour un bloc le fait par `inZone()` de `test/lib/zone.js`, qui le remet ensuite.
+`test/lib/quoted.js` dit ce qu'une prose du cours cite et ce qu'elle laisse nu : `test/lang.js`
+(6d.3 et 6d.4) le lit sur tout le cours, le Check des genres `grammar` et `scenarios` sur une
+ligne avant Merge. Ni l'un ni l'autre ne prend un nombre pour un mot du cours : `courseWords`,
+de `test/lib/dutch.js`, l'ôte des mots qu'ajoutent `dutchWords` et les deux genres. Et
+`htmlTokens` fait refuser à Check un `{jeton}` dans un champ que l'écran montre en HTML,
+comme 6d.7 le refuse sur le cours.
 
 ## Les gardes de `smoke.js`
 
@@ -166,8 +172,13 @@ voit qu'à un `B.tap`.
 La **passe d'apprenant** (`tools/learner-pass/`, voir son README) joue la page
 construite dans un vrai Chrome habillé en Safari sur iPhone, en touchant l'écran :
 des jours d'étude jusqu'aux cartes parlées et chaque façon de s'en servir, l'écoute,
-une conversation, le défi, puis chaque bouton de seize écrans. Elle a besoin de
-Chrome et d'un `npm install` : elle n'est ni dans `run-all.sh` ni dans la CI. On la
+chaque conversation du cours (`corners.js` les prend dans `NL.content.scenarios`, une
+ligne `CONVERSATION <id>` chacune, jouée une fois par position de choix : chaque choix
+de chaque étape est touché), le défi, la feuille de chaque règle de grammaire
+ouverte depuis sa pastille sur le parcours, à 390 px (`rules.js` : une règle listée sur
+plusieurs unités a plusieurs pastilles et une seule feuille ; une fin
+`EVERY RULE SHEET OPENS`), puis chaque bouton de seize écrans. Elle a besoin de
+Chrome, ou d'Edge (`LEARNER_PASS_CHANNEL=msedge`), et d'un `npm install` : elle n'est ni dans `run-all.sh` ni dans la CI. On la
 lance avant de demander au mainteneur de vérifier en apprenant. La phase 3 est
 partie en production avec « Je ne peux pas parler » sans effet et le micro de Safari
 qui ne notait rien, la suite au vert ; la passe trouve les deux sur ce code-là.
@@ -198,13 +209,14 @@ werken »). Restent donc invérifiés : l'article devant un **autre** nom à
 l'intérieur d'une phrase d'exemple, l'idiome, et le registre.
 
 Certains de ces contrôles portent un budget plutôt qu'une exigence de zéro, parce
-que le contenu actuel enfreint déjà la règle : 129 phrases d'exemple empruntent du
+que le contenu actuel enfreint déjà la règle : 136 phrases d'exemple empruntent du
 vocabulaire à une unité ultérieure, et 3 échelons n'ont aucun exercice possible.
 Un budget ne peut que baisser, et chacun échoue aussi quand le compte passe
-dessous, pour que le gain soit verrouillé. Une seule exception, le premier : il est
-monté de 61 à 129 avec les unités 13–34, sans qu'aucune phrase change. Ces phrases
-employaient déjà des mots que le cours n'enseignait nulle part, un emprunt que rien ne
-comptait ; les unités, en les enseignant plus tard, l'ont révélé. Les leurres, les explications et les
+dessous, pour que le gain soit verrouillé. Le premier a fait deux exceptions : il est
+monté de 61 à 129 avec les unités 13–34, puis de 129 à 136 avec les règles de
+`grammar.a1c.js`, sans qu'aucune phrase change. Ces phrases employaient déjà des mots
+que le cours n'enseignait nulle part, un emprunt que rien ne comptait ; les unités,
+puis les règles, en les enseignant plus tard, l'ont révélé. Les leurres, les explications et les
 guillemets n'en ont plus : `content.js` exige que chaque élément de « Comment le
 dit-on ici ? » ait ses leurres et chaque élément son explication en français et
 en anglais (la note d'un mot ou d'une phrase, la règle d'un motif), et
@@ -231,8 +243,8 @@ changent, ni des heures au hasard, ni un jour sauté. En deux cents jours, il ne
 traverse que le passage à l'heure d'été du 29 mars ; celui d'octobre, c'est
 `engine.js` qui le vérifie. Et comme tous les apprenants simulés, il n'oublie
 rien : il répond juste 85 fois sur 100, quoi qu'il arrive. L'apprenant du grand
-cours apprend en partie des copies : ses 1 192 éléments sont les 1 035 du cours, et
-157 repris avec un suffixe (`test/lib/grow.js`), de même difficulté et des mêmes
+cours apprend en partie des copies : ses 1 172 éléments (comptés le 3 novembre 2026 par `node test/pace.js . 200 one groot`) sont
+les 1 048 du cours, et 124 repris avec un suffixe (`test/lib/grow.js`), de même difficulté et des mêmes
 types d'exercice.
 Il voit l'arriéré que la séance doit suivre, pas ce que des mots nouveaux feraient
 au mélange des types ni à la charge d'une journée.
@@ -250,13 +262,20 @@ ligne du même lot ajoute (un « on dit aussi ») ne se voit qu'après Merge, da
 `content.js`. Ils ne voient ni l'idiome, ni le registre, ni si un Flamand le dit
 vraiment, ni si une note explique bien : c'est ce que lisent le relecteur de chaque
 lot et le mainteneur, sur la liste de `tools/content/reading.js`.
+Check de `grammar` et de `scenarios` relit la garde 6d de `test/lang.js` par
+`test/lib/quoted.js` (des guillemets seulement autour du néerlandais du cours, aucun mot
+du cours nu dans la prose) : il ne lit pas ce que 6d ne lit pas, soit, dans un scénario,
+les répliques, les choix et leurs réponses.
 `test/tools/fanout.js` essaie chaque règle sur des lignes écrites pour lui, pas sur
 celles des lots, et `test/tools/sources.js` ne voit pas le vrai fichier épinglé,
 qui vit dans `.cache/`, que la CI n'a pas.
 
 Et ce qu'aucun d'eux ne voit : l'idiome, le registre, l'ordre des mots, si une
-phrase vaut la peine d'être apprise. Les scénarios et les antisèches ne passent
-pas par le contrôle d'orthographe.
+phrase vaut la peine d'être apprise. Les six scénarios écrits à la main et les
+antisèches ne passent pas par le contrôle d'orthographe ; les quatre conversations du
+genre `scenarios` y passent, par son Check. Et aucun contrôle ne dit si la règle
+d'une fiche est vraie ni si une conversation sonne flamand : ce sont les 17 lignes
+du genre `grammar` et du genre `scenarios` que le mainteneur lit entières.
 
 ## Le passage complet du 30 septembre 2026
 
@@ -289,5 +308,5 @@ test de placement, la dictée plus tôt, la série et le défi.
 
 ## Encore ouvert
 
-- Le contenu reste le plafond : 1035 éléments, tous de niveau A1 ; les unités 13 à 34 n'ont encore que leurs mots.
+- Le contenu reste le plafond : 1048 éléments, tous de niveau A1 ; les unités 13 à 34 ont leurs mots, treize règles de grammaire (neuf unités) et quatre conversations, et pas encore leurs phrases.
 - 613 mots sur 912 n'ont pas encore de phrase d'exemple (comptés le 1er novembre 2026) : les 8 d'octobre, et les 605 mots des unités 13 à 34, dont les phrases viennent avec un plan suivant de la phase 4.

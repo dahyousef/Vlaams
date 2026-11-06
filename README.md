@@ -314,8 +314,8 @@ survit dans le build.
 
 ## État
 
-**Livré** : interface et contenu en français de Belgique (34 unités, 1035
-éléments, 6 scénarios, 8 antisèches, 9 règles) ; docteur audio et
+**Livré** : interface et contenu en français de Belgique (34 unités, 1048
+éléments, 10 scénarios, 8 antisèches, 22 règles) ; docteur audio et
 enregistre-et-compare pour Opera ; sauvegarde export/import ; personnalisation
 prénom/commune/employeur.
 
@@ -325,8 +325,8 @@ déverrouillage par frontière contiguë, deux comptes, rencontrés et produits,
 quatre nouveaux types d'exercice — l'intrus, corrige l'erreur, standaard of
 Vlaams, réponse libre notée sur rubrique.
 
-**À venir** : les unités 13 à 34 n'ont encore que leurs mots. La suite, dans
-l'ordre : leurs règles de grammaire et leurs conversations, leurs phrases et
+**À venir** : les unités 13 à 34 ont leurs mots, leurs règles de grammaire et leurs conversations, mais pas encore leurs phrases. La suite, dans
+l'ordre : leurs phrases et
 leurs exemples, leurs formes flamandes (les autres plans de la phase 4), les
 écrans *Lezen* et *Missions*, les textes gradués et l'écoute longue, puis
 A2 → B2.
