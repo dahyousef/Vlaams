@@ -495,10 +495,13 @@ NL.state.open().then(() => {
       return /(^|[^a-zà-ÿ])(vous|votre|vos|dites|faites)(?![a-zà-ÿ])/i.test(s) ||
         (s.match(/[a-zà-ÿ]+ez(?![a-zà-ÿ])/gi) || []).some(w => EZ_OK.indexOf(w.toLowerCase()) < 0);
     };
-    ok(vouvoie('Commandez une boisson.') && vouvoie('Vous payez.') && vouvoie('Dites merci.') && vouvoie('Écoutez.') &&
-      !vouvoie('Commande une boisson, chez le boulanger.') && !vouvoie('Ton rendez-vous est à dix heures.') &&
-      !vouvoie('« Wat raadt u aan? » (Que conseillez-vous ?) se dit au café.') && !vouvoie('« alstublieft » (s’il vous plaît)'),
-      'vouvoie : la garde doit voir « vous », « votre », « vos » et un impératif en -ez, et ni « chez », ni « rendez-vous », ni la traduction d’un u néerlandais');
+    [['Commandez une boisson.', 'un impératif en -ez'], ['Vous payez.', '« vous »'], ['Donne votre nom.', '« votre »'],
+      ['Range vos affaires.', '« vos »'], ['Dites merci.', '« dites »'], ['Faites-le.', '« faites »'], ['Écoutez.', 'un impératif en -ez']]
+      .forEach(c => ok(vouvoie(c[0]), 'vouvoie : la garde doit voir ' + c[1] + ' dans « ' + c[0] + ' »'));
+    [['Commande une boisson, chez le boulanger.', '« chez »'], ['Ton rendez-vous est à dix heures.', '« rendez-vous »'],
+      ['Assez, c’est un nez.', '« assez » et « nez »'], ['« Wat raadt u aan? » (Que conseillez-vous ?) se dit au café.', 'la traduction d’un u néerlandais'],
+      ['« alstublieft » (s’il vous plaît)', 'la traduction de « alstublieft »']]
+      .forEach(c => ok(!vouvoie(c[0]), 'vouvoie : la garde doit laisser passer ' + c[1] + ' dans « ' + c[0] + ' »'));
     let seen = 0;
     (RAW.scenarios || []).forEach(sc => {
       const fields = [['blurb', sc.blurb], ['outro', sc.outro]];
