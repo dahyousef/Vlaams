@@ -483,6 +483,37 @@ NL.state.open().then(() => {
       });
     });
     ok(seenI > 0, 'aucun <i> dans les explications de grammaire : le contrôle est creux'); }
+  /* Une conversation tutoie l'apprenant, comme les six premières (#135) : son français à lui (blurb, outro, la
+     consigne et l'indice d'un tour, la note d'un choix) ne dit ni « vous », ni « votre », ni « vos », ni un impératif
+     en -ez. Ce qui rend le u d'un néerlandophone garde « vous » : une parenthèse qui traduit une citation en u ou
+     en « alstublieft », que la garde ôte avant de lire, comme « rendez-vous », qui est un nom. Les répliques et les
+     choix ne sont pas lus : ce sont les mots des personnages. */
+  { const EZ_OK = ['chez', 'assez', 'nez'];
+    const vouvoie = fr => {
+      const s = String(fr).replace(/rendez-vous/gi, '')
+        .replace(/«([^«»]*)»\s*\(([^()]*)\)/g, (m, nl) => hasU(nl) || /alstublieft/i.test(nl) ? '' : m);
+      return /(^|[^a-zà-ÿ])(vous|votre|vos|dites|faites)(?![a-zà-ÿ])/i.test(s) ||
+        (s.match(/[a-zà-ÿ]+ez(?![a-zà-ÿ])/gi) || []).some(w => EZ_OK.indexOf(w.toLowerCase()) < 0);
+    };
+    ok(vouvoie('Commandez une boisson.') && vouvoie('Vous payez.') && vouvoie('Dites merci.') && vouvoie('Écoutez.') &&
+      !vouvoie('Commande une boisson, chez le boulanger.') && !vouvoie('Ton rendez-vous est à dix heures.') &&
+      !vouvoie('« Wat raadt u aan? » (Que conseillez-vous ?) se dit au café.') && !vouvoie('« alstublieft » (s’il vous plaît)'),
+      'vouvoie : la garde doit voir « vous », « votre », « vos » et un impératif en -ez, et ni « chez », ni « rendez-vous », ni la traduction d’un u néerlandais');
+    let seen = 0;
+    (RAW.scenarios || []).forEach(sc => {
+      const fields = [['blurb', sc.blurb], ['outro', sc.outro]];
+      (sc.steps || []).forEach((st, i) => {
+        if (!st.you) return;
+        fields.push(['steps[' + i + '].ask', st.you.ask], ['steps[' + i + '].hint', st.you.hint]);
+        (st.you.choices || []).forEach((c, j) => fields.push(['steps[' + i + '].choices[' + j + '].note', c.note]));
+      });
+      fields.forEach(f => {
+        if (!f[1] || typeof f[1].fr !== 'string') return;
+        seen++;
+        ok(!vouvoie(f[1].fr), sc.id + ' ' + f[0] + ' vouvoie l’apprenant, que les conversations tutoient (#135) : « ' + f[1].fr + ' »');
+      });
+    });
+    ok(seen > 0, 'aucun français de conversation adressé à l’apprenant : la garde du tutoiement est creuse'); }
   console.log('  gardes         ' + glossed.length + ' éléments glosés en anglais contrôlés');
 
   console.log('\n' + checks + ' contrôles, ' + (fails === 0 ? 'CONTENU CONFORME' : fails + ' ÉCHEC(S)'));
