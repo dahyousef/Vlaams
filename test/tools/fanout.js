@@ -1761,6 +1761,21 @@ module.exports = {
       ['rule: « werk » is Dutch of the course, written bare in fr and in en: quote it « … »'], 'un mot du cours écrit nu des deux côtés est refusé dans rule');
     same(chk({ rule: { fr: '« geen » devant un nom sans article.', en: '“geen” before a noun.' } }), [], 'un mot du cours cité passe dans rule');
     same(chk({ rule: { fr: '« geen devant un nom.', en: '“geen” before a noun.' } }), ['rule.fr has a quote mark with no partner, or an empty quote'], 'un guillemet sans son pendant est refusé');
+    /* Un nombre n'est pas un mot du cours (courseWords, test/lib/dutch.js) : il s'écrit le même en néerlandais, en français
+       et en anglais, et les deux sens d'un texte portent les mêmes chiffres. dutchWords ne le range pas, et une explication
+       qui écrit nu, des deux côtés, le chiffre d'une phrase de sa ligne passe, comme test/lang.js 6d.4 la lit. */
+    const { dutchWords } = require(path.join(GR, 'test', 'lib', 'dutch'));
+    same(Array.from(dutchWords({ content: { DEFAULTS: { naam: 'Jan' }, units: [{ id: 'g-v2', nl: 'Kerstmis is op 25 december.' }] }, t: { nav: [] } })).sort(),
+      ['december', 'g', 'is', 'jan', 'kerstmis', 'op', 'v2'], 'dutchWords ne range pas un nombre (25) ; un mot qui porte un chiffre (v2) reste');
+    const KIDS = D('Wij hebben 2 kinderen en geen auto.', 'Nous avons 2 enfants et pas de voiture.', 'We have 2 children and no car.', 'geen');
+    same(chk({ drills: drillsWith(4, KIDS), explain: { fr: GOOD.explain.fr + ' Un chiffre ne change rien : <span class="ex">Wij hebben 2 kinderen en geen auto</span> (2 enfants, pas de voiture).',
+      en: GOOD.explain.en + ' A figure changes nothing: <span class="ex">Wij hebben 2 kinderen en geen auto</span> (2 children, no car).' } }), [], 'le chiffre d\'un exercice, écrit nu en français et en anglais, passe dans explain');
+    /* Le texte de l'apprenant ({naam}, {stad}, {bedrijf}) n'entre pas dans un champ que la feuille montre en HTML, title et
+       explain : il y serait lu comme du balisage (test/lang.js 6d.7). Les phrases, que la feuille échappe, gardent leurs jetons. */
+    const MINE = (f, l) => f + '.' + l + ': {stad} is the learner\'s text, and ' + f + ' is shown as HTML: write no token there';
+    same([chk({ explain: { fr: GOOD.explain.fr.replace('Ik werk niet<', 'Ik werk niet in {stad}<'), en: GOOD.explain.en.replace('Ik werk niet<', 'Ik werk niet in {stad}<') } }),
+      chk({ title: { fr: GOOD.title.fr + ' à {stad}', en: GOOD.title.en + ' in {stad}' } })],
+      [[MINE('explain', 'fr'), MINE('explain', 'en')], [MINE('title', 'fr'), MINE('title', 'en')]], 'un {jeton} dans explain ou title est refusé : la feuille les montre en HTML');
     /* L'exemple de la règle suit l'ordre du cours, comme un exercice. */
     same(chk({ nl: 'Ik zie jou.', fr: 'Je te vois.', en: 'I see you.' }), ['nl « Ik zie jou. » uses forms the course never teaches: zie, jou'], 'l\'exemple d\'une forme que le cours n\'enseigne pas est refusé');
     same(chk({ nl: 'Ik heb vandaag echt geen tijd voor jou nu.', fr: 'Je n’ai vraiment pas de temps pour toi maintenant.', en: 'I really have no time for you today now.' }), [
@@ -1985,6 +2000,15 @@ module.exports = {
       wrongS(r => { ownNl(r); r.outro = p('Une ' + WAS + ' ou rien.', 'A ' + WAS + ' or nothing.'); })],
       [[BARE('blurb', 'koffie')], [BARE('title', 'koffie')], [BARE('steps[1].you.hint', 'alstublieft')], [BARE('outro', WAS)]],
       '6d : un mot du néerlandais du cours (ou de la ligne) écrit nu en français et en anglais est refusé');
+    /* Un nombre n'est pas un mot du cours (courseWords, test/lib/dutch.js) : celui d'un choix de la ligne, écrit nu en
+       français et en anglais dans une prose, passe. */
+    same(wrongS(r => { Object.assign(r.steps[5].you.choices[1], { nl: 'De rekening alstublieft. Hier is 20 euro.', fr: 'L’addition s’il vous plaît. Voici 20 euros.', en: 'The bill, please. Here are 20 euros.' });
+      r.outro = p('Tu as commandé, puis payé : 20 euros, pourboire compris.', 'You ordered, then paid: 20 euros, tip included.'); }), [], '6d : le chiffre d\'un choix, écrit nu en français et en anglais, passe dans outro');
+    /* Le texte de l'apprenant n'entre pas dans title, que l'écran montre en HTML (test/lang.js 6d.7). Une prose que l'écran
+       cite (blurb) l'échappe et le garde, comme place, que CAFE remplit de {stad}. */
+    const MINE = l => 'title.' + l + ': {stad} is the learner\'s text, and title is shown as HTML: write no token there';
+    same([wrongS(r => { r.title = p('Sur une terrasse de {stad}', 'On a terrace in {stad}'); }), wrongS(r => { r.blurb = p('Commander et payer à {stad}. Six échanges.', 'Ordering and paying in {stad}. Six exchanges.'); })],
+      [[MINE('fr'), MINE('en')], []], 'un {jeton} dans title est refusé : l\'écran le montre en HTML ; blurb et place le gardent');
     same([wrongS(r => { r.steps[0].me = 1; }).length, wrongS(r => { r.steps.push({ them: r.steps[0].them, you: r.steps[1].you }); }).length], [1, 1], 'une clé en trop dans une étape est refusée');
 
     /* Un id que le cours a déjà : refusé par Split, qui nomme l'entrée de CONVERSATIONS et le scénario du cours. */

@@ -19,9 +19,9 @@ const sequence = require(path.join(__dirname, '..', '..', '..', 'test', 'lib', '
 const spelling = require(path.join(__dirname, '..', '..', '..', 'test', 'lib', 'spelling'));
 const { literal: lit } = require('../lib/table');
 const { oneLine, sig, untoken, strayQuotes } = require(path.join(__dirname, '..', '..', '..', 'test', 'lib', 'text'));
-const { dutchWords, words } = require(path.join(__dirname, '..', '..', '..', 'test', 'lib', 'dutch'));
+const { dutchWords, courseWords } = require(path.join(__dirname, '..', '..', '..', 'test', 'lib', 'dutch'));
 const { joined } = require(path.join(__dirname, '..', '..', '..', 'test', 'lib', 'langs'));
-const { names, foreignQuotes, bareDutch } = require(path.join(__dirname, '..', '..', '..', 'test', 'lib', 'quoted'));
+const { names, foreignQuotes, bareDutch, htmlTokens } = require(path.join(__dirname, '..', '..', '..', 'test', 'lib', 'quoted'));
 const { tokens } = spelling;
 
 /* Les 13 règles, dans l'ordre du plan : à l'intérieur d'une unité, la liste grammar se lit dans cet
@@ -198,6 +198,11 @@ function check(row, input, ctx) {
   LANGS.forEach(l => { if (/["]/.test(row.rule[l])) why.push('rule.' + l + ' writes no straight quote'); const q = strayQuotes(row.rule[l], l, []); if (q) why.push('rule.' + l + ' ' + q); });
   LANGS.forEach(l => { if (row.rule[l].length > RULE_MAX) why.push('rule.' + l + ' is ' + row.rule[l].length + ' signs, ' + RULE_MAX + ' at most: the sheet shows it on one line'); });
   ['title', 'rule', 'explain'].forEach(f => LANGS.forEach(l => { if (/'/.test(row[f][l])) why.push(f + '.' + l + ' writes the typographic apostrophe « ’ » and no straight quote'); }));
+  /* Le texte de l'apprenant n'entre pas dans un champ que la feuille montre en HTML (title, explain) : il y serait lu
+     comme du balisage (test/lang.js 6d.7). HTML_FIELDS en décide : rule, que la feuille cite, et les phrases, qu'elle
+     échappe, gardent leurs jetons. */
+  ['title', 'rule', 'explain'].forEach(f => LANGS.forEach(l => htmlTokens(f, row[f][l]).forEach(t =>
+    why.push(f + '.' + l + ': ' + t + ' is the learner\'s text, and ' + f + ' is shown as HTML: write no token there'))));
 
   /* L'explication : quatre balises, le néerlandais marqué (et connu), aucun néerlandais hors des marques. */
   LANGS.forEach(l => {
@@ -216,7 +221,7 @@ function check(row, input, ctx) {
      et l'anglais écrivent nu. Le néerlandais du cours, ici, compte les phrases de la ligne : elles ne
      rejoignent le cours qu'à Merge. */
   const dutch = new Set(T.dutch);
-  sentences.forEach(s => words(s[1]).forEach(w => dutch.add(w)));
+  sentences.forEach(s => courseWords(s[1]).forEach(w => dutch.add(w)));
   const fill = s => T.NL.content.fill(s);
   ['rule', 'explain'].forEach(f => LANGS.forEach(l => {
     const r = foreignQuotes(T.NL, joined(fill(row[f][l])), dutch);

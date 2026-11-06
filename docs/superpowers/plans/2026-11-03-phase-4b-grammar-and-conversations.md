@@ -192,9 +192,10 @@ Public repository:
 2. The scenarios kind, and an empty scenarios.a1c.js — mechanical — #135 — waits none
 3. The learner pass plays every conversation and opens every rule sheet — mechanical — #136 — waits none
 4. FAN grammar — fan-out — #134 — waits 1
-5. Merge grammar — mechanical — #134 — waits 4
+4a. Numerals are not words of the course; no token in a field shown as HTML — mechanical — #134 — waits 1, 2
+5. Merge grammar — mechanical — #134 — waits 4, 4a
 6. FAN conversations — fan-out — #135 — waits 2
-7. Merge conversations — mechanical — #135 — waits 6
+7. Merge conversations — mechanical — #135 — waits 4a, 6
 8. Docs: the two kinds, the learner pass, the a1c header — mechanical — none — waits 5, 7
 9. GATE: the learner pass in Edge — gate — none — waits 3, 5, 7, 8
 ```
@@ -2462,6 +2463,9 @@ The full Check rules are task 1's block in `test/tools/fanout.js`.
   guard 6d (task 1's `test/lib/quoted.js`), so the row is not refused at Merge for it.
 - `explain.fr` and `explain.en` say the same thing, in the same order, with the same Dutch examples. Write the rule, then
   one or two examples, then the contrast with French and the trap. A phone shows it in a sheet: short sentences, no table.
+- `title` and `explain` carry no `{naam}`, `{stad}` or `{bedrijf}`: the sheet shows them as HTML, where the learner's own
+  text would be read as markup. Quote a drill or an example with no token there; `nl` and the drills keep theirs, the sheet
+  escapes them (`explain.fr: {stad} is the learner's text, and explain is shown as HTML: write no token there`).
 - `drills` is a list of exactly 5 `{ "nl", "fr", "en", "gap" }`, five different sentences, each of 3 to 8 tiles (a tile is a
   word as the learner moves it: `NL.util.tiles` splits on spaces and drops `. , ! ? ; : " ( )`; the longest drill the course
   has is 8). A drill is a reorder, a cloze and a typing exercise at once, so write what a Flemish colleague says at work,
@@ -2511,6 +2515,355 @@ The full Check rules are task 1's block in `test/tools/fanout.js`.
 - Does a sentence repeat another rule's, or an example of one of the 9 hand patterns?
 - `unsure` rows first.
 
+### Task 4a: Numerals are not words of the course; no token in a field shown as HTML
+Class: mechanical
+Ticket: #134
+Promises: none
+Why: the maintainer's ruling on the diagnosis of task 5's first run (`<WS>/reports/task-5-diagnosis.md`). That run merged
+the 13 rules on `46bba2b` and stopped at its step 7: `node test/lang.js .` ended `25216 contrôles, 16 ÉCHEC(S)`. The
+failures have two causes, and both are faults of the kit, not of a row. **Numerals (15 FAILs, guard 6d.4).** `dutchWords`
+(`test/lib/dutch.js`) adds every word of every `nl` of the course, and `words` splits on `[^\p{L}\p{N}]+`, so a numeral
+counts as a word. `g-om-op-in` writes « Mijn verjaardag is op 5 mei. » and « Kerstmis is op 25 december. ». From the
+merge on, `5` and `25` are Dutch of the course, and `bareDutch` refuses 15 older texts that write the same figure bare
+in French and in English: « au moins 5 mots » of `src/content/open.js`, the `what` of 11 entries of `open.phrases`, and
+the note of « de pint » (« 25 ou 33 cl »). A text of the course writes the same digits in `fr` and in `en` (`sig`), so
+each of them fails by construction. 6d.3 already exempts a numeral (`foreignQuotes`); 6d.4 did not. The fix is
+`courseWords(s)`: the words of a text without the ones made only of digits. `dutchWords` adds through it, and so do the
+two kinds' Checks when they add a row's own sentences. A word that carries a digit (`v2`, from the id `g-v2`) stays.
+**The learner's text in a field shown as HTML (1 FAIL, guard 6d.7).** The `explain` of `g-twee-werkwoorden`, in batch
+`kunnen`, quotes a drill with `{stad}` in a `<span class="ex">`. The rule sheet shows `title` and `explain` through
+`NL.gloss.prose`, which does not escape them (`src/ui/home.js`, lines 121, 140 and 141). The conversation screen shows a
+conversation's `title` the same way (`src/ui/scenario.js`, lines 29 and 124; `home.js`, line 51). Whatever the learner
+typed as their town would be read as markup. 6d.7 plants `<u>zqmine</u>` as the learner's text and finds it raw, and
+Check did not refuse it. The fix is `htmlTokens(field, text)` in `test/lib/quoted.js`: the `{…}` tokens of a text written
+in a field of `HTML_FIELDS`. Both Checks refuse them: grammar's `title` and `explain`, and scenarios' `title`. `rule`,
+`place`, `blurb` and the sentences are escaped where they are shown, so they keep their tokens. Each fix leaves a test in
+`test/tools/fanout.js` that fails on the old code. The grammar and scenarios Format sections (tasks 4 and 6) each gain
+one line; this was approved as a plan change. The workspace's two `drafts/<kind>/format.md` already carry that line.
+After this task, the run controller checks every accepted batch again with the new Check (step 6 measures it).
+`g-twee-werkwoorden` goes back to batch `kunnen` to quote a drill with no token there (ruled under D23). Task 5's first
+run was discarded and kept as `<WS>/tmp/task-5-first-run.patch`; task 5 runs again from Merge.
+
+Files:
+- Modify: `test/lib/dutch.js` (`courseWords`, through which `dutchWords` adds)
+- Modify: `test/lib/quoted.js` (`htmlTokens`)
+- Modify: `tools/content/kinds/grammar.js` (Check refuses a token in `title` and `explain`, and adds the row's sentences through `courseWords`)
+- Modify: `tools/content/kinds/scenarios.js` (Check refuses a token in `title`, and adds the row's Dutch through `courseWords`)
+- Modify (an approved plan change): `docs/superpowers/plans/2026-11-03-phase-4b-grammar-and-conversations.md`. The Run
+  order changes. The sections of tasks 4 to 8 become their amended briefs, so the Format of tasks 4 and 6 gains one
+  line each. This task's section goes above task 5.
+- Test: `test/tools/fanout.js` (five checks: three in the grammar block, two in the scenarios block); `node
+  test/tools/fanout.js .`, `node test/lang.js .`, then the whole suite, `sh test/run-all.sh`
+
+Interfaces:
+- Consumes: `words` and `dutchWords` (`test/lib/dutch.js`); task 1's `test/lib/quoted.js` (`HTML_FIELDS`, `bareDutch`)
+  and `tools/content/kinds/grammar.js`; task 2's `tools/content/kinds/scenarios.js`.
+- Produces:
+  - `courseWords(s)`, exported by `test/lib/dutch.js`: `words(s)` without the words made only of digits (`/^\p{N}+$/u`).
+  - `htmlTokens(field, text)`, exported by `test/lib/quoted.js`: the `{…}` tokens of `text` when `HTML_FIELDS` holds `field`,
+    otherwise `[]`.
+  - A new refusal of Check, in both kinds: `<field>.<lang>: <token> is the learner's text, and <field> is shown as HTML:
+    write no token there`. Grammar refuses it in `title` and `explain`, scenarios in `title`.
+
+Notes:
+- Comments and test messages are French, as around them; the kit's messages are English.
+- The tree is LF (`core.autocrlf` is `input`); edits made with the Edit tool keep it so.
+- Nothing under `src/` changes, so there is no build, and `index.html` and `artifact.html` stay as they are.
+- Before step 1, `git status --short` prints nothing. Task 5's first run must not be in the tree; if it lists
+  `src/content/grammar.a1c.js` or another file, stop and report it.
+- `test/lang.js` keeps its count (step 6). Today's course holds no Dutch word made only of digits (its one word with a
+  digit is `v2`), and no token in a field shown as HTML. The two fixes act once task 5 merges `g-om-op-in` and once
+  `kunnen` is redrafted.
+- `test/tools/fanout.js` goes from 613 to 618 checks: tasks 1 and 2 left it at 613, and this task adds five.
+- No draft is edited here. Step 6 only reads the 13 batches; `tools/content/check.js` writes nothing.
+- **The proof.** On a copy of `46bba2b` (`/c/Users/youss/.claude/jobs/bf7bc74f/tmp/4a-proof`, made with `git archive` and
+  `git init`, LF, base commit `e7217b5`):
+  - The five checks of step 1 gave step 2's red exactly: the five `FAIL` lines and `618 contrôles, 5 ÉCHEC(S)`.
+  - The edits of steps 3 to 5 gave `618 contrôles, KIT CONFORME`, with the `grammar` and `scenarios` lines unchanged.
+  - `node test/lang.js .` gave `25084 contrôles, LANGUE CONFORME` in 6 min 47 s. Its output was identical to
+    `<WS>/tmp/lang-5-before.txt`, which was measured on `46bba2b` before the merge.
+  - The re-check of step 6 gave exit 0 for all 13 batches on `46bba2b`. With the edits, it gave exit 0 for 12 of them,
+    and for `grammar/kunnen` the three `fail` lines shown in step 6.
+  - `sh test/run-all.sh` ended `TOUTE LA SUITE EST PASSÉE`, exit 0, in 33 min 39 s (log: `/c/Users/youss/.claude/jobs/bf7bc74f/tmp/4a-suite.txt`).
+
+- [ ] **Step 1: The five checks.** In `test/tools/fanout.js`, in the grammar block, below the line
+  ```js
+      same(chk({ rule: { fr: '« geen devant un nom.', en: '“geen” before a noun.' } }), ['rule.fr has a quote mark with no partner, or an empty quote'], 'un guillemet sans son pendant est refusé');
+  ```
+  and above the line `    /* L'exemple de la règle suit l'ordre du cours, comme un exercice. */`, insert:
+  ```js
+      /* Un nombre n'est pas un mot du cours (courseWords, test/lib/dutch.js) : il s'écrit le même en néerlandais, en français
+         et en anglais, et les deux sens d'un texte portent les mêmes chiffres. dutchWords ne le range pas, et une explication
+         qui écrit nu, des deux côtés, le chiffre d'une phrase de sa ligne passe, comme test/lang.js 6d.4 la lit. */
+      const { dutchWords } = require(path.join(GR, 'test', 'lib', 'dutch'));
+      same(Array.from(dutchWords({ content: { DEFAULTS: { naam: 'Jan' }, units: [{ id: 'g-v2', nl: 'Kerstmis is op 25 december.' }] }, t: { nav: [] } })).sort(),
+        ['december', 'g', 'is', 'jan', 'kerstmis', 'op', 'v2'], 'dutchWords ne range pas un nombre (25) ; un mot qui porte un chiffre (v2) reste');
+      const KIDS = D('Wij hebben 2 kinderen en geen auto.', 'Nous avons 2 enfants et pas de voiture.', 'We have 2 children and no car.', 'geen');
+      same(chk({ drills: drillsWith(4, KIDS), explain: { fr: GOOD.explain.fr + ' Un chiffre ne change rien : <span class="ex">Wij hebben 2 kinderen en geen auto</span> (2 enfants, pas de voiture).',
+        en: GOOD.explain.en + ' A figure changes nothing: <span class="ex">Wij hebben 2 kinderen en geen auto</span> (2 children, no car).' } }), [], 'le chiffre d\'un exercice, écrit nu en français et en anglais, passe dans explain');
+      /* Le texte de l'apprenant ({naam}, {stad}, {bedrijf}) n'entre pas dans un champ que la feuille montre en HTML, title et
+         explain : il y serait lu comme du balisage (test/lang.js 6d.7). Les phrases, que la feuille échappe, gardent leurs jetons. */
+      const MINE = (f, l) => f + '.' + l + ': {stad} is the learner\'s text, and ' + f + ' is shown as HTML: write no token there';
+      same([chk({ explain: { fr: GOOD.explain.fr.replace('Ik werk niet<', 'Ik werk niet in {stad}<'), en: GOOD.explain.en.replace('Ik werk niet<', 'Ik werk niet in {stad}<') } }),
+        chk({ title: { fr: GOOD.title.fr + ' à {stad}', en: GOOD.title.en + ' in {stad}' } })],
+        [[MINE('explain', 'fr'), MINE('explain', 'en')], [MINE('title', 'fr'), MINE('title', 'en')]], 'un {jeton} dans explain ou title est refusé : la feuille les montre en HTML');
+  ```
+  In the scenarios block, below the line
+  ```js
+        '6d : un mot du néerlandais du cours (ou de la ligne) écrit nu en français et en anglais est refusé');
+  ```
+  and above the line that begins `    same([wrongS(r => { r.steps[0].me = 1; }).length`, insert:
+  ```js
+      /* Un nombre n'est pas un mot du cours (courseWords, test/lib/dutch.js) : celui d'un choix de la ligne, écrit nu en
+         français et en anglais dans une prose, passe. */
+      same(wrongS(r => { Object.assign(r.steps[5].you.choices[1], { nl: 'De rekening alstublieft. Hier is 20 euro.', fr: 'L’addition s’il vous plaît. Voici 20 euros.', en: 'The bill, please. Here are 20 euros.' });
+        r.outro = p('Tu as commandé, puis payé : 20 euros, pourboire compris.', 'You ordered, then paid: 20 euros, tip included.'); }), [], '6d : le chiffre d\'un choix, écrit nu en français et en anglais, passe dans outro');
+      /* Le texte de l'apprenant n'entre pas dans title, que l'écran montre en HTML (test/lang.js 6d.7). Une prose que l'écran
+         cite (blurb) l'échappe et le garde, comme place, que CAFE remplit de {stad}. */
+      const MINE = l => 'title.' + l + ': {stad} is the learner\'s text, and title is shown as HTML: write no token there';
+      same([wrongS(r => { r.title = p('Sur une terrasse de {stad}', 'On a terrace in {stad}'); }), wrongS(r => { r.blurb = p('Commander et payer à {stad}. Six échanges.', 'Ordering and paying in {stad}. Six exchanges.'); })],
+        [[MINE('fr'), MINE('en')], []], 'un {jeton} dans title est refusé : l\'écran le montre en HTML ; blurb et place le gardent');
+  ```
+  Both anchors occur once in the file. The two `MINE` are in different blocks, as the proof ran them.
+
+- [ ] **Step 2: See them fail.**
+  ```
+  node test/tools/fanout.js . > "<WS>/tmp/fanout-4a-red.txt" 2>&1; echo "exit $?"
+  grep -E "FAIL|contrôles" "<WS>/tmp/fanout-4a-red.txt"
+  ```
+  Expected: `exit 1`, and exactly these six lines:
+  ```
+    FAIL: dutchWords ne range pas un nombre (25) ; un mot qui porte un chiffre (v2) reste : ["25","december","g","is","jan","kerstmis","op","v2"], attendu ["december","g","is","jan","kerstmis","op","v2"]
+    FAIL: le chiffre d'un exercice, écrit nu en français et en anglais, passe dans explain : ["explain: « 2 » is Dutch of the course, written bare in fr and in en: put it in <i class=\"nl\"> or <span class=\"ex\">"], attendu []
+    FAIL: un {jeton} dans explain ou title est refusé : la feuille les montre en HTML : [[],[]], attendu [["explain.fr: {stad} is the learner's text, and explain is shown as HTML: write no token there","explain.en: {stad} is the learner's text, and explain is shown as HTML: write no token there"],["title.fr: {stad} is the learner's text, and title is shown as HTML: write no token there","title.en: {stad} is the learner's text, and title is shown as HTML: write no token there"]]
+    FAIL: 6d : le chiffre d'un choix, écrit nu en français et en anglais, passe dans outro : ["outro: « 20 » is Dutch of the course, written bare in fr and in en: quote it, or use the French or English word"], attendu []
+    FAIL: un {jeton} dans title est refusé : l'écran le montre en HTML ; blurb et place le gardent : [[],[]], attendu [["title.fr: {stad} is the learner's text, and title is shown as HTML: write no token there","title.en: {stad} is the learner's text, and title is shown as HTML: write no token there"],[]]
+  618 contrôles, 5 ÉCHEC(S)
+  ```
+  The first FAIL shows the cause of the 15 FAILs: `25` is a word of the course. The second and fourth show what it does:
+  a figure written bare on both sides is refused. The third and fifth show that the old Check lets a token through in a
+  field shown as HTML. Any other `FAIL`, or a `LOAD FAIL`, means the tree is not task 3's: stop and report it.
+
+- [ ] **Step 3: `test/lib/dutch.js`.** In the header comment, replace the line
+  ```
+       const { dutchWords, words, tokenFreeWords } = require('./lib/dutch');
+  ```
+  with
+  ```
+       const { dutchWords, words, tokenFreeWords, courseWords } = require('./lib/dutch');
+  ```
+  Below the line `                       d'un texte` (the second line of `tokenFreeWords(s)`), insert:
+  ```
+       courseWords(s)    les mots d'un texte sans ses nombres (25) : un nombre s'écrit le même en néerlandais,
+                         en français et en anglais, et les deux sens d'un texte portent les mêmes chiffres. Un mot
+                         qui porte un chiffre (v2) reste. Les genres grammar et scenarios y lisent les phrases
+                         d'une ligne
+  ```
+  and in the next line, `     dutchWords(NL)    un Set des mots, en minuscules : nl, be, les phrases, les colonnes du`,
+  replace `un Set des mots, en minuscules` with `un Set des mots (courseWords), en minuscules`. In the code, below the line
+  `const tokenFreeWords = s => words(untoken(s));`, insert:
+  ```js
+  /* Les mots du cours d'un texte : un nombre n'en est pas un (6d.4 le prendrait sinon pour du néerlandais laissé nu
+     dans toute prose qui porte le même chiffre en français et en anglais). */
+  const courseWords = s => words(s).filter(w => !/^\p{N}+$/u.test(w));
+  ```
+  In `dutchWords`, replace `  const add = s => words(s).forEach(w => set.add(w));` with
+  `  const add = s => courseWords(s).forEach(w => set.add(w));`. Replace the last line with
+  ```js
+  module.exports = { DUTCH_KEYS, dutchWords, words, tokenFreeWords, courseWords };
+  ```
+  `words` itself does not change: `test/lang.js`, `tools/content/lib/explain.js` and `tools/content/kinds/open.js` split
+  texts with it, and `open.js` already drops numerals itself.
+
+- [ ] **Step 4: `test/lib/quoted.js`.** In the header comment, replace the line
+  ```
+       const { QUOTE_OK, SHARED_OK, QUOTED_FIELDS, HTML_FIELDS, names, quotedSegments, foreignQuotes, bareDutch }
+  ```
+  with
+  ```
+       const { QUOTE_OK, SHARED_OK, QUOTED_FIELDS, HTML_FIELDS, names, quotedSegments, foreignQuotes, bareDutch, htmlTokens }
+  ```
+  Replace the header's last line,
+  ```
+                       NL.gloss.quoted) ; fr et en sont les textes écrits, jetons déjà remplis (NL.content.fill) */
+  ```
+  with these four (the ` */` moves to the end of the last):
+  ```
+                       NL.gloss.quoted) ; fr et en sont les textes écrits, jetons déjà remplis (NL.content.fill)
+       htmlTokens(field, text)
+                       les {jetons} de `text` quand `field` est dans HTML_FIELDS : le texte de l'apprenant ({naam},
+                       {stad}, {bedrijf}) y serait lu comme du balisage, sans échappement (test/lang.js 6d.7) ;
+                       [] pour un autre champ, que l'écran échappe */
+  ```
+  Replace the last line of the file,
+  ```js
+  module.exports = { QUOTE_OK, SHARED_OK, QUOTED_FIELDS, HTML_FIELDS, names, quotedSegments, foreignQuotes, bareDutch };
+  ```
+  with
+  ```js
+  /* Les {jetons} d'un texte écrit dans un champ que l'écran montre en HTML : ce que la page y substitue, elle ne
+     l'échappe pas. */
+  const htmlTokens = (field, s) => HTML_FIELDS.indexOf(field) >= 0 ? (String(s).match(/\{[^}]*\}/g) || []) : [];
+
+  module.exports = { QUOTE_OK, SHARED_OK, QUOTED_FIELDS, HTML_FIELDS, names, quotedSegments, foreignQuotes, bareDutch, htmlTokens };
+  ```
+
+- [ ] **Step 5: The two kinds, then green.** In `tools/content/kinds/grammar.js`:
+  - Replace `const { dutchWords, words } = require(` with `const { dutchWords, courseWords } = require(` (the line
+    goes on `path.join(__dirname, '..', '..', '..', 'test', 'lib', 'dutch'));`, unchanged).
+  - Replace `const { names, foreignQuotes, bareDutch } = require(` with
+    `const { names, foreignQuotes, bareDutch, htmlTokens } = require(`.
+  - Below the line in `check` that ends `writes the typographic apostrophe « ’ » and no straight quote'); }));`, above
+    the empty line and `  /* L'explication : quatre balises, …`, insert:
+    ```js
+      /* Le texte de l'apprenant n'entre pas dans un champ que la feuille montre en HTML (title, explain) : il y serait lu
+         comme du balisage (test/lang.js 6d.7). HTML_FIELDS en décide : rule, que la feuille cite, et les phrases, qu'elle
+         échappe, gardent leurs jetons. */
+      ['title', 'rule', 'explain'].forEach(f => LANGS.forEach(l => htmlTokens(f, row[f][l]).forEach(t =>
+        why.push(f + '.' + l + ': ' + t + ' is the learner\'s text, and ' + f + ' is shown as HTML: write no token there'))));
+    ```
+  - Replace `  sentences.forEach(s => words(s[1]).forEach(w => dutch.add(w)));` with
+    `  sentences.forEach(s => courseWords(s[1]).forEach(w => dutch.add(w)));`.
+
+  In `tools/content/kinds/scenarios.js`:
+  - Replace `const { dutchWords, words } = require(` with `const { dutchWords, courseWords } = require(`, and
+    `const { names, foreignQuotes, bareDutch } = require(` with `const { names, foreignQuotes, bareDutch, htmlTokens } = require(`.
+  - In the line in `check` that begins `    if (l === 'nl') { spelling.tokens(s)`, replace `words(s).forEach(w => mine.add(w)); }`
+    with `courseWords(s).forEach(w => mine.add(w)); }`.
+  - In the comment above `  const dutch = new Set(T.dutch);`, replace its last line, `     entre. */`, with
+    ```
+         entre. Le texte de l'apprenant n'entre pas dans title, que l'écran montre en HTML (6d.7) : place, échappé, le
+         garde. */
+    ```
+  - In `prose.forEach(({ where, f, v }) => {`, directly below `    LANGS.forEach(l => {` and above the line that begins
+    `      if (f === 'title' || f === 'place') {`, insert:
+    ```js
+          htmlTokens(f, v[l]).forEach(t => say(where + '.' + l, t + ' is the learner\'s text, and ' + f + ' is shown as HTML: write no token there'));
+    ```
+  Then:
+  ```
+  grep -nE "(^|[^A-Za-z])words\(" tools/content/kinds/grammar.js tools/content/kinds/scenarios.js
+  node test/tools/fanout.js . > "<WS>/tmp/fanout-4a-green.txt" 2>&1; echo "exit $?"
+  grep -E "FAIL|contrôles|^  grammar |^  scenarios " "<WS>/tmp/fanout-4a-green.txt"
+  ```
+  Expected: the `grep` for `words(` prints nothing (neither kind imports `words` any more), then `exit 0`, and:
+  ```
+    grammar        13 règles, 9 unités ; chaque garde, la boucle de chargement, Merge de bout en bout, relancée, second Split
+    scenarios      4 conversations ; chaque règle, Merge de bout en bout, relancée, second Split
+  618 contrôles, KIT CONFORME
+  ```
+
+- [ ] **Step 6: `test/lang.js` keeps its count.**
+  ```
+  node test/lang.js . > "<WS>/tmp/lang-4a.txt"; echo "exit $?"
+  diff "<WS>/tmp/lang-5-before.txt" "<WS>/tmp/lang-4a.txt"
+  ```
+  Expected: `exit 0`, and `diff` prints nothing: the output ends `25084 contrôles, LANGUE CONFORME`, line for line as
+  before the first run of task 5 (about 7 minutes). If `<WS>/tmp/lang-5-before.txt` is missing, the last line is the check.
+
+- [ ] **Step 7: The accepted batches, checked again.** Read only; no draft changes.
+  ```
+  for b in vragen kunnen doen mensen waar eten cafe wonen kalender; do node tools/content/check.js "<WS>/drafts/grammar/$b" > "<WS>/tmp/recheck-4a-$b.txt" 2>&1; echo "grammar/$b exit $?"; done
+  for b in s-cafe s-afspraak s-school s-gemeente; do node tools/content/check.js "<WS>/drafts/scenarios/$b" > "<WS>/tmp/recheck-4a-$b.txt" 2>&1; echo "scenarios/$b exit $?"; done
+  grep -h "^fail" "<WS>"/tmp/recheck-4a-*.txt
+  ```
+  Expected: `exit 0` for 12 batches and `grammar/kunnen exit 1`; the `grep` prints exactly
+  ```
+  fail retry.json g-twee-werkwoorden: explain.fr: {stad} is the learner's text, and explain is shown as HTML: write no token there
+  fail retry.json g-twee-werkwoorden: explain.en: {stad} is the learner's text, and explain is shown as HTML: write no token there
+  fail retry-review.json -: retry.json missing or failing
+  ```
+  The run controller sends `g-twee-werkwoorden` back to `kunnen` (ruled under D23); this task does not touch the batch.
+  If another batch fails, or `kunnen` fails on another line, report the lines in the return. Do not stop for them: the
+  run controller rules on them.
+
+- [ ] **Step 8: The plan.** In `docs/superpowers/plans/2026-11-03-phase-4b-grammar-and-conversations.md`:
+  - In `## Run order`, below the line `4. FAN grammar — fan-out — #134 — waits 1`, insert
+    ```
+    4a. Numerals are not words of the course; no token in a field shown as HTML — mechanical — #134 — waits 1, 2
+    ```
+    then replace `5. Merge grammar — mechanical — #134 — waits 4` with `5. Merge grammar — mechanical — #134 — waits 4, 4a`,
+    and `7. Merge conversations — mechanical — #135 — waits 6` with
+    `7. Merge conversations — mechanical — #135 — waits 4a, 6`. Task 7's Merge, `test/lang.js` and fan-out count need
+    this task, as task 5's do.
+  - Replace the plan's sections of tasks 4, 5, 6, 7 and 8 with their briefs. Each section runs from its `### Task <n>: `
+    line to the line before the next `### Task ` line. It becomes `<WS>/briefs/task-<n>.md`, whole, followed by one empty
+    line. The maintainer adds a task by adjusting the later tasks to fit it. Those five briefs were amended for this task,
+    and these are the only differences from the plan's sections (measured before this task):
+    - Tasks 4 and 6: the Format line (a `{…}` token in `title` and `explain`, then in `title`).
+    - Task 5: it runs on this task's commit, with `kunnen` redrafted. Fanout gives `618`, and `test/lang.js` is expected at
+      `25201`. `AHEAD_BUDGET` is the measured count under D24, as ruled: `136` in the first run, with the condition of
+      its step 5. The first run's figures replace the proof's `130` and its « broodjes » diff, which the step keeps as a
+      parenthesis.
+    - Task 7: `618`, and Check's refusal of a token in `title`.
+    - Task 8: `621`; `TESTING.md`'s passage on `AHEAD_BUDGET` (the measured figure and its second rise); this task's two
+      sentences in edits 1 and 5; the derived `58`/`28` stat, with what to do if the measured one differs.
+    Run, from the worktree's root, with `<WS>` written out:
+    ```
+    node -e '
+    const fs = require("fs");
+    const P = "docs/superpowers/plans/2026-11-03-phase-4b-grammar-and-conversations.md", W = process.argv[1];
+    let t = fs.readFileSync(P, "utf8");
+    if (t.includes("\r")) throw new Error(P + " is CRLF: check it out LF first");
+    for (const n of ["4", "5", "6", "7", "8"]) {
+      const a = t.indexOf("\n### Task " + n + ": ") + 1, b = t.indexOf("\n### Task ", a) + 1;
+      if (!a || !b) throw new Error("task " + n + ": section not found");
+      const brief = fs.readFileSync(W + "/briefs/task-" + n + ".md", "utf8");
+      if (brief.includes("\r") || !brief.startsWith("### Task " + n + ": ")) throw new Error("task-" + n + ".md: not the brief of task " + n);
+      t = t.slice(0, a) + brief.replace(/\n+$/, "") + "\n\n" + t.slice(b);
+    }
+    fs.writeFileSync(P, t);
+    ' "<WS>"
+    ```
+    Task 9's section, the gate, stays as it is, because nothing in it moves with this task:
+    - It pins no count that this task or the redraft of `kunnen` changes. `## rules` must open with `RULES 22 (` and
+      `## corners` must hold 10 conversation blocks, and the 13 ids and 4 conversations are unchanged.
+    - The `RULE <id> « <title> »` lines it prints now come from titles that hold no token.
+    - Its « plan 4a's gate 10 » and « plan 4a's task 10 » mean the phase 4a plan, not this task.
+  - Above the line `### Task 5: Merge grammar`, insert this whole brief, `<WS>/briefs/task-4a.md`, from its first line
+    to its last, then one empty line. The line above it stays the empty line that follows task 4's `- \`unsure\` rows first.`.
+  Then:
+  ```
+  P=docs/superpowers/plans/2026-11-03-phase-4b-grammar-and-conversations.md
+  grep -nE "^(4a|5|7)\. .* — waits " "$P"
+  diff "<WS>/drafts/grammar/format.md" <(sed -n '/^### Task 4: /,/^### Task 4a: /p' "$P" | sed -n '/^#### Format/,$p' | head -n -2)
+  diff "<WS>/drafts/scenarios/format.md" <(sed -n '/^### Task 6: /,/^### Task 7: /p' "$P" | sed -n '/^#### Format/,$p' | head -n -2)
+  sed -n '/^### Task 4a: /,/^### Task 5: /p' "$P" | head -n -2 | diff - "<WS>/briefs/task-4a.md"
+  for s in "4 4a" "5 6" "6 7" "7 8" "8 9"; do set -- $s; sed -n "/^### Task $1: /,/^### Task $2: /p" "$P" | head -n -2 | diff - "<WS>/briefs/task-$1.md" > /dev/null && echo "task $1 = brief"; done
+  grep -c "^### Task " "$P"
+  git diff --stat
+  ```
+  Expected: the `grep` prints the three Run order lines as written above, and the three `diff` print nothing. The loop
+  prints `task 4 = brief` through `task 8 = brief`, five lines, and the count is `10`. Each
+  workspace `format.md` is its task's Format section, from `#### Format` to the section's end, and already carries the new
+  line (measured before this task: each `diff` printed only that line). `git diff --stat` lists the five files of steps 1
+  to 5 and the plan.
+
+- [ ] **Step 9: The whole suite.**
+  ```
+  sh test/run-all.sh
+  ```
+  Expected: every suite passes and the last line is `TOUTE LA SUITE EST PASSÉE` (about half an hour). Any failure: stop
+  and report it.
+
+- [ ] **Step 10: Commit.**
+  ```
+  git add test/lib/dutch.js test/lib/quoted.js tools/content/kinds/grammar.js tools/content/kinds/scenarios.js test/tools/fanout.js docs/superpowers/plans/2026-11-03-phase-4b-grammar-and-conversations.md
+  git commit -m "fix(kit): numerals are not words of the course; Check refuses a {…} token in a field shown as HTML (#134)"
+  git status --short
+  ```
+  Expected: one commit with these six files, and `git status --short` prints nothing.
+
+Done when:
+- `node test/tools/fanout.js .` prints `618 contrôles, KIT CONFORME`, and its five new checks failed on the old code
+  (step 2).
+- `node test/lang.js .` prints `25084 contrôles, LANGUE CONFORME`, unchanged.
+- `sh test/run-all.sh` prints `TOUTE LA SUITE EST PASSÉE`.
+- The plan holds the line `4a.` in its Run order, with task 5 waiting on 4 and 4a and task 7 on 4a and 6. The sections
+  of tasks 4 to 8 are their amended briefs, so tasks 4 and 6 hold the new Format line. This task's section sits above
+  task 5, and task 9's is unchanged.
+- One commit holds the six files. The return gives step 7's 13 exit codes and its `fail` lines.
+
 ### Task 5: Merge grammar
 Class: mechanical
 Ticket: #134
@@ -2524,10 +2877,12 @@ rewrites the same file byte for byte: running it twice is harmless. The 13 rules
 pattern is one item), so everything that counts the course moves, and this task reports the numbers. Five things change
 in the tests, each named here. **`AHEAD_BUDGET`** (`test/content.js`): a rule's gap is a form its unit now teaches, and
 an example sentence of an earlier or the same unit that already used that form becomes « ahead » the moment the rule
-lands (« Ik neem twee broodjes mee. » of `dedag` and `bakker` uses « broodjes », which `g-meervoud` teaches at `eten`). The
-rule borrowed nothing; a word is taught later than sentences that have it. The task sets `AHEAD_BUDGET` to the measured
-count (D24), with the cause in its comment, and lists the sentences in its return; plan 4c, which writes the new units'
-sentences, may lower it (the header's call 6). `HOLLOW_BUDGET` stays 3. **`test/tools/fanout.js`**: its older blocks
+lands. « Zijn zus werkt bij de gemeente. » of `familie` uses « werkt », which `g-bijzin` and `g-vraag` teach at
+`vragen`. The rule borrowed nothing; a word is taught later than sentences that have it. The task sets `AHEAD_BUDGET` to
+the measured count, with the cause in its comment, and lists the sentences in its return. The maintainer ruled
+(« tasks 5, 8 ») that D24 covers the count measured for that reason, which was 136 in the first run. A count with any
+other cause comes back as a ruling (step 5). Plan 4c, which writes the new units' sentences, may lower it (the header's
+call 6). `HOLLOW_BUDGET` stays 3. **`test/tools/fanout.js`**: its older blocks
 empty `lexicon.a1c.js` (`beforeWords`) so the kit tests on its own examples; once `grammar.a1c.js` holds rules, those
 copies load rules whose units are gone and the whole suite stops at load. The fix moves `beforeGrammar` up beside
 `beforeWords` and has `beforeWords` call it first. **`test/engine.js`**: its « la séance suit l'arriéré » block gives the
@@ -2536,7 +2891,8 @@ unit, which leaves fewer than the reserve of 9 meetings. A smaller arrears (990)
 the size of the grown course the fifth run learns (1,172 counted items after the merge, not 1,192) and of the real course
 (1,048, not 1,035); the run itself passes unchanged. **`test/lang.js`** reads every field of the 13 rows, with guard 6d,
 which Check mirrors since task 1 (`test/lib/quoted.js`): a row that passed Check has no quote or bare Dutch word for it
-to refuse (see step 7).
+to refuse (see step 7). Since task 4a, Check also refuses a token in a field shown as HTML (6d.7), and neither Check nor
+the guard counts a numeral as a word of the course.
 
 Files:
 - Modify (Merge writes it): `src/content/grammar.a1c.js`
@@ -2550,12 +2906,21 @@ Files:
   `node test/pace.js . 200 one groot`, then the whole suite, `sh test/run-all.sh`
 
 Interfaces:
-- Consumes: task 1's `tools/content/kinds/grammar.js` (`RULES`, `patterns`, `write`) and the 13 settled rows of
-  `<WS>/drafts/grammar` (task 4).
+- Consumes: task 1's `tools/content/kinds/grammar.js` (`RULES`, `patterns`, `write`) as task 4a left it, task 4a's
+  `courseWords` (`test/lib/dutch.js`), and the 13 settled rows of `<WS>/drafts/grammar` (task 4, with `kunnen` redrafted
+  after task 4a).
 - Produces: `src/content/grammar.a1c.js` with 13 `P({…})` and the load loop listing 13 ids; 13 rules on 9 units
   (`vragen` 3, `kunnen` 1, `doen` 3, `mensen` 1, `waar` 1, `eten` 1, `cafe` 1, `wonen` 1, `kalender` 1).
 
 Notes:
+- **After task 4a.** This task's first run, on `46bba2b` before task 4a, stopped at step 7 and was discarded. Its patch is
+  `<WS>/tmp/task-5-first-run.patch`, its report `<WS>/reports/task-5-impl.md`, and the diagnosis
+  `<WS>/reports/task-5-diagnosis.md`. The task now starts from task 4a's commit, with `kunnen` redrafted: the `explain` of
+  `g-twee-werkwoorden` quotes a drill with no token (ruled under D23). The first run's before-files in `<WS>/tmp` still
+  stand: `*-5-before.txt`, `ahead-5-before.txt` and `ahead.js`. Task 4a changes nothing under `src/` and nothing these
+  suites read; `test/lang.js` was measured identical. So skip step 1 unless one of those files is missing, and start at step 2.
+  Every `the measured count` below is measured again, because the redraft may change a gap of `g-twee-werkwoorden`. The
+  first run's figures are given beside the proof's.
 - Comments and messages in `test/content.js`, `test/engine.js` and `test/tools/fanout.js` are French, as around them.
 - **Run Merge as often as you like.** A second run prints the same two lines and the file is identical (`cmp`).
   To start over: `git checkout -- src/content/grammar.a1c.js`.
@@ -2571,7 +2936,10 @@ Notes:
 - **The sentences of the 13 rows were ruled by the drafters, not by this task.** Nothing in this task edits a row.
   Check refuses a quoted passage that is not Dutch of the course and a Dutch word of the course written bare in both
   languages (task 1's `test/lib/quoted.js`, the code of guard 6d), so `test/lang.js` finds nothing of that kind in a row
-  that passed Check; if it does (step 7), Check and the guard disagree, which is a fault of the kit.
+  that passed Check; if it does (step 7), Check and the guard disagree, which is a fault of the kit. Since task 4a,
+  Check also refuses a `{…}` token in `title` or `explain` (6d.7), and neither Check nor the guard counts a numeral as a
+  word of the course (`courseWords`). Two `FAIL`s mean task 4a is missing from the tree: a 6d.4 `FAIL` on an older text
+  over a figure (« au moins 5 mots », « 25 ou 33 cl »), and a 6d.7 `FAIL` on `gram/<id>`. Stop and report them.
 - **What the counts depend on.** Every number below marked `the measured count` depends on the drafted rows. The proof's
   figures are in brackets; they are one real set of 13 rows' worth, not the run's.
 - **The proof.** On the copy `/c/Users/youss/.claude/jobs/5b75527c/tmp/fixZ` (a CRLF clone, branch `fix`, from `ee7f7cf`;
@@ -2683,8 +3051,9 @@ Notes:
   ```
   node test/tools/fanout.js .
   ```
-  Expected: exit 0 and `613 contrôles, KIT CONFORME` (the same count as before this task, on the chain of tasks 1 and 2:
-  nothing was added or removed, a definition moved), with the line `  grammar        13 règles, 9 unités ; chaque garde, la boucle de chargement, Merge de bout en bout, relancée, second Split`.
+  Expected: exit 0 and `618 contrôles, KIT CONFORME`. That is the same count as before this task, on the chain of
+  tasks 1, 2 and 4a (573 + 40 + 5): nothing was added or removed, a definition moved. The first run, before task 4a,
+  had 613. It comes with the line `  grammar        13 règles, 9 unités ; chaque garde, la boucle de chargement, Merge de bout en bout, relancée, second Split`.
 
 - [ ] **Step 5: `test/content.js`, and the suites that read the course.** Run
   ```
@@ -2693,11 +3062,16 @@ Notes:
   Read the `séquence` line:
   - if it still says `<b> / <s> phrases empruntent en avant (budget <b>)`, there is nothing to do here: exit 0,
     `<c'> contrôles, CONTENU CONFORME`;
-  - if there is one `FAIL` line (the proof's, seen on the old test file),
+  - if there is one `FAIL` line (the first run's, seen on the old test file; the proof's said 130),
     ```
-    FAIL: 130 phrases d’exemple empruntent du vocabulaire à une unité ultérieure, budget 129 — baisser le budget quand on en corrige, jamais le lever (sa seule hausse, de 61 à 129, comptait des emprunts qui existaient déjà : les unités 13–34 les ont révélés)
+    FAIL: 136 phrases d’exemple empruntent du vocabulaire à une unité ultérieure, budget 129 — baisser le budget quand on en corrige, jamais le lever (sa seule hausse, de 61 à 129, comptait des emprunts qui existaient déjà : les unités 13–34 les ont révélés)
     ```
-    the count rose to `<a>`: then in `test/content.js` replace the one line
+    the count rose to `<a>`. First run `ahead.js` and its `diff` (the two commands after this list), and read every line
+    the diff adds or changes. D24, as the maintainer ruled it (« tasks 5, 8 »), covers the rise only if each of them is an
+    unchanged sentence of the course that now borrows a form which a merged rule's gap teaches at a later unit, and the
+    count line. That held for 136 in the first run. If any line has another cause (a sentence that changed, a form no rule
+    teaches, a unit that moved for another reason), set no budget: stop and report the diff, which comes back as a ruling.
+    If every line is of that kind, in `test/content.js` replace the one line
     ```js
       const AHEAD_BUDGET = 129;
     ```
@@ -2712,13 +3086,24 @@ Notes:
     and, in the message of the next `ok(` (the one that ends `jamais le lever (sa seule hausse, de 61 à 129, comptait des
     emprunts qui existaient déjà : les unités 13–34 les ont révélés)`), replace `sa seule hausse, de 61 à 129,` by
     `ses seules hausses, de 61 à 129 puis à <a>,` and `les unités 13–34 les ont révélés` by `les unités 13–34 et les règles
-    de grammar.a1c.js les ont révélés`; and `comptait` by `comptaient`, which the plural now asks. The proof: `<a>` is 130, the form « broodjes » (`g-meervoud`, `eten`), the sentence
-    « Ik neem twee broodjes mee. » (`dedag`). The comment's second line in the proof names `g-meervoud`.
+    de grammar.a1c.js les ont révélés`; and `comptait` by `comptaient`, which the plural now asks. With several forms,
+    name each with its rules and unit, and count the sentences in words. The first run: `<a>` was 136; the forms were
+    « werkt » and « blijf » (`g-bijzin`, `g-vraag`, at `vragen`) and « wacht » (`g-gebiedend`, at `cafe`); seven
+    sentences. It wrote:
+    ```js
+      /* Les règles de grammar.a1c.js l'ont fait monter de 129 à 136 : le trou d'une règle enseigne sa forme à l'unité
+         qui la liste, et « werkt » et « blijf » (g-bijzin, g-vraag, à vragen), « wacht » (g-gebiedend, à cafe) font
+         emprunter en avant sept phrases qui les écrivaient déjà. Les règles n'ont rien emprunté : un mot de plus est
+         enseigné, plus tard que des phrases qui l'ont. */
+      const AHEAD_BUDGET = 136;
+    ```
+    (The proof had 130, from the one form « broodjes » (`g-meervoud`, `eten`) in « Ik neem twee broodjes mee. »
+    (`dedag`). Its rows were not these.)
     Run `node test/content.js .` again: `séquence        <a> / 557 phrases empruntent en avant (budget <a>)`, exit 0,
     `<c'> contrôles, CONTENU CONFORME`. With the budget one too high (`<a> + 1`) the run prints one `FAIL`,
     `seulement <a> phrases empruntent en avant : baisser AHEAD_BUDGET à <a> pour verrouiller le gain` (both ways);
   - if the `FAIL` is that line, `seulement <a> phrases empruntent en avant : baisser AHEAD_BUDGET à <a> …`, the count
-    fell (a merged rule can move a word's first unit earlier, as `blijven` goes from `doen` to `kunnen` below): set
+    fell (a merged rule can move a word's first unit earlier, as `blijven` went from `doen` to `kunnen` in the proof): set
     `AHEAD_BUDGET` to `<a>`, say in the comment above it which rule moved which form to an earlier unit (the diff of
     `ahead.js` below shows it), and change the two messages as for a rise (`ses seules hausses, de 61 à 129 puis à <a>`
     becomes the right words for a fall: `puis à <a>` stays); the messages of the `ok(` lines keep their text otherwise.
@@ -2729,33 +3114,41 @@ Notes:
   node "<WS>/tmp/ahead.js" . > "<WS>/tmp/ahead-5-after.txt"
   diff "<WS>/tmp/ahead-5-before.txt" "<WS>/tmp/ahead-5-after.txt"
   ```
-  Expected: the lines that changed are the sentences whose set of forms ahead grew, and the count line. In the proof:
+  Expected: the lines that changed are the sentences whose set of forms ahead grew, and the count line. In the first run:
   ```
-  49c49
-  < bakker:w22  Ik neem twee broodjes mee.  → neem (onderweg)
+  14c14
+  < ikengij:w11  Zij werkt van thuis uit.  → thuis (werkbasis)
   ---
-  > bakker:w22  Ik neem twee broodjes mee.  → neem (onderweg), broodjes (eten)
-  66c66
-  < thuis:w24  Een rustige straat, zonder veel auto’s.  → zonder (waar)
+  > ikengij:w11  Zij werkt van thuis uit.  → werkt (vragen), thuis (werkbasis)
+  67c67
+  < familie:w0  Mijn vrouw werkt in Brussel.  → brussel (onderweg)
   ---
-  > thuis:w24  Een rustige straat, zonder veel auto’s.  → zonder (waar), auto’s (eten)
-  100a101
-  > dedag:w4  Ik neem twee broodjes mee.  → broodjes (eten)
-  124c125
-  < weekend:w7  Dit weekend blijven wij thuis.  → blijven (doen)
+  > familie:w0  Mijn vrouw werkt in Brussel.  → werkt (vragen), brussel (onderweg)
+  73a74
+  > familie:w9  Zijn zus werkt bij de gemeente.  → werkt (vragen)
+  74a76
+  > familie:w11  Een vriend van mij werkt daar.  → werkt (vragen)
+  87c89
+  < werkbasis:w2  De klant wacht op een antwoord.  → antwoord (landen)
   ---
-  > weekend:w7  Dit weekend blijven wij thuis.  → blijven (kunnen)
-  126c127
-  < weekend:w16  Een rustige straat, zonder veel auto’s.  → zonder (waar)
-  ---
-  > weekend:w16  Een rustige straat, zonder veel auto’s.  → zonder (waar), auto’s (eten)
-  130c131
+  > werkbasis:w2  De klant wacht op een antwoord.  → wacht (cafe), antwoord (landen)
+  111a114
+  > winkel:w4  Uw kaart werkt niet.  → werkt (vragen)
+  114a118
+  > dokter:w0  Ik ben ziek en blijf thuis.  → blijf (vragen)
+  120a125
+  > dokter:w16  Wacht u even in de wachtzaal.  → wacht (cafe)
+  121a127,128
+  > dokter:w17  Zij werkt in het ziekenhuis.  → werkt (vragen)
+  > weekend:w0  Met dit weer blijf ik thuis.  → blijf (vragen)
+  130c137
   < 129 phrases empruntent en avant
   ---
-  > 130 phrases empruntent en avant
+  > 136 phrases empruntent en avant
   ```
-  The count rises by the sentences that gain their first form ahead (one here); a sentence that already borrowed and
-  borrows one more form does not count twice. Report all the changed lines.
+  The count rises by the sentences that gain their first form ahead (seven here: the `a` lines); a sentence that already
+  borrowed and borrows one more form (the three `c` lines) does not count twice. The redraft of `kunnen` may move a line
+  that names a form of `g-twee-werkwoorden`: whatever moved, the D24 test above decides. Report all the changed lines.
 
 - [ ] **Step 6: `test/engine.js`: the arrears fixture.** Run
   ```
@@ -2778,7 +3171,8 @@ Notes:
          grammar.a1c.js ont décalé les éléments ; 990 en laisse dix-huit. */
   ```
   (write the figures you find: `<n>`, the stopping unit, how many meetings it leaves). In the proof `<n>` is 990, which
-  leaves 18; the block's other three pairs hold. Then `node test/engine.js .`. Expected: `361 checks, ENGINE OK`, with the
+  leaves 18; the block's other three pairs hold (the first run measured the same: 1000 stopped in `reis` with 8 left, 990
+  with 18, 980 with 28). Then `node test/engine.js .`. Expected: `361 checks, ENGINE OK`, with the
   line `   990 dus : 32 révisions + 9 rencontres = 41 places`. Never change another threshold of the file.
 
 - [ ] **Step 7: `test/lang.js`, and the suites that read the course.**
@@ -2786,15 +3180,21 @@ Notes:
   node test/lang.js .
   ```
   Expected: exit 0 and `LANGUE CONFORME`; in the proof `25084 contrôles` became `25201`, and `néerlandais nu  1420 champs lus en deux langues` became `1459` (the 13 rows' fields; the
-  exceptions stay 13), `guillemets      0 citations hors du néerlandais du cours (exigé : 0), 11 exceptions` unchanged. The row
+  exceptions stay 13), `guillemets      0 citations hors du néerlandais du cours (exigé : 0), 11 exceptions` unchanged. The
+  first run, before task 4a, ended `25216 contrôles, 16 ÉCHEC(S)`. Fifteen of those were older texts holding a figure,
+  which the numerals 5 and 25 of `g-om-op-in` had made Dutch of the course; the sixteenth was the `{stad}` that
+  `g-twee-werkwoorden`'s `explain` quoted (`vue gram/g-twee-werkwoorden`). The diagnosis ran task 4a's fix with a
+  token-free quote and measured `25201 contrôles, LANGUE CONFORME`, the proof's count. The row
   texts are read by guard 6d, which Check refuses the same cases of since task 1 (one module, `test/lib/quoted.js`). The
-  three shapes the guard refuses, and so Check does, are the advice to the drafters of task 4:
+  four shapes the guard refuses, and so Check does (the fourth since task 4a), are the advice to the drafters of task 4:
   - a French word between « » or “ ”: « Le français a ses « le », « la », « lui » et « se » » (text between quotes must be
     Dutch of the course; a translation goes in parentheses, with no quotes: `Le français a ses propres petits mots (le, la,
     lui, se)`);
   - a Dutch word of the course bare in both languages of a rule, an explanation or a title, outside `<i class="nl">` and
     `<span class="ex">`;
-  - a foreign quote inside `rule` (`« -en »` where `-en` is not a word of the course).
+  - a foreign quote inside `rule` (`« -en »` where `-en` is not a word of the course);
+  - a `{naam}`, `{stad}` or `{bedrijf}` in `title` or `explain`, which the sheet shows as HTML (6d.7, `le texte de l’apprenant
+    montré comme du HTML, sans échappement (vue gram/<id>)`).
   A `FAIL` here for one of these shapes means Check and the guard disagree: stop and report it as a fault of the kit, not as
   a row to dispute. Any other `FAIL` names a row's field: do not add a word to `QUOTE_OK` or `SHARED_OK` for a row; stop
   and report each `FAIL` line with its row `id`: the run controller changes that row's verdict in its batch's
@@ -2812,6 +3212,8 @@ Notes:
   journey ends `<n> checks, NO PROBLEMS` (2871 before and 2870 after in the proof: the count follows the exercises drawn);
   `pace.js . 200 one groot` (the suite's fifth pace run) ends `12 vérifications, AUCUN PROBLÈME` and prints
   `arriéré maximum                       722` and `éléments au catalogue                 1172` (755 and 1192 before the merge).
+  The first run measured the same smoke, pace and journey lines, and `arriéré maximum                       731`: the
+  figure follows the rows, and no threshold reads it.
   Never change a threshold of `test/pace.js` or `test/journey.js`. The grown course shrinks, since `test/lib/grow.js`
   grows it to at least 1,160 items from the real course's units: in `test/pace.js`, in the comment before the fifth run,
   replace `(1 192 comptés)` by `(1 172 comptés)` and `Le vrai cours en compte 1 035` by `Le vrai cours en compte <i>`
@@ -2837,22 +3239,25 @@ Notes:
   `AHEAD_BUDGET`'s new value with the sentences of the `diff` of step 5), the engine pair that moved, `test/lang.js`'s
   lines, and the lines that moved in pace, journey and smoke. What the proof measured (the real run's are
   `the measured count`). The sizes and the counts of `test/content.js` and `test/tools/fanout.js` are those of the chain of
-  tasks 1, 2 and 3; re-measure them at the replay:
+  tasks 1, 2 and 3; re-measure them at the replay. The first run, on `46bba2b` before task 4a, measured the same `before`
+  figures as the proof; its `after` figures are the last column. On task 4a's commit, `test/tools/fanout.js` prints `618
+  contrôles, KIT CONFORME` before and after, and `test/lang.js` is expected at the diagnosis's `25201 contrôles, LANGUE
+  CONFORME`:
 
-  | file | before (`fb406a4`) | after (`task 5 (fixed)`) |
-  |---|---|---|
-  | build, `index.html` / `artifact.html` | 854948 / 854334 bytes | 879115 / 878501 bytes |
-  | `test/content.js` | `CONTENU — 1035 éléments`, `7436 contrôles`, `5392 formes vérifiées`, `16364 construits`, séquence `129 / 557 (budget 129)` | `1048 éléments`, `7732 contrôles`, `5687 formes vérifiées`, `16481 construits`, séquence `130 / 557 (budget 130)` |
-  | `test/tools/fanout.js` | `613 contrôles, KIT CONFORME` | `613 contrôles, KIT CONFORME` |
-  | `test/engine.js` | `361 checks, ENGINE OK`, `1000 dus : 32 révisions + 9 rencontres = 41 places`; `22 dus, 1013 à rencontrer`; the line « budget de cinq, deux en file » ends `aucune : 5 reprises, 23 pour 28` | `361 checks, ENGINE OK`, `990 dus : 32 révisions + 9 rencontres = 41 places`; `22 dus, 1026 à rencontrer`; the same line ends `six fausses avant le bouton : 0 reprises, 16 exercices pour 16 restants ; aucune : 5 reprises, 18 pour 23` |
-  | `test/lang.js` | `25084 contrôles`, `néerlandais nu 1420 champs` | `25201 contrôles`, `néerlandais nu 1459 champs` |
-  | `test/smoke.js` | `items 1035 (words 912, phrases 114, patterns 9)` | `items 1048 (words 912, phrases 114, patterns 22)` |
-  | `test/journey.js . nl-BE OPR` | `2871 checks, NO PROBLEMS` | `2870 checks, NO PROBLEMS` |
-  | `test/pace.js` | `10 vérifications, AUCUN PROBLÈME`; au catalogue `1035` | `10 vérifications, AUCUN PROBLÈME`; au catalogue `1048` |
-  | `test/pace.js . 200 one groot` | `12 vérifications, AUCUN PROBLÈME`; arriéré maximum 755; au catalogue `1192` | `12 vérifications, AUCUN PROBLÈME`; arriéré maximum 722; au catalogue `1172` |
+  | file | before (`fb406a4`) | after (`task 5 (fixed)`) | after, first run (`46bba2b`, not committed) |
+  |---|---|---|---|
+  | build, `index.html` / `artifact.html` | 854948 / 854334 bytes | 879115 / 878501 bytes | 889104 / 888490 bytes |
+  | `test/content.js` | `CONTENU — 1035 éléments`, `7436 contrôles`, `5392 formes vérifiées`, `16364 construits`, séquence `129 / 557 (budget 129)` | `1048 éléments`, `7732 contrôles`, `5687 formes vérifiées`, `16481 construits`, séquence `130 / 557 (budget 130)` | `1048 éléments`, `7786 contrôles`, `5699 formes vérifiées`, `16481 construits`, séquence `136 / 557 (budget 136)` |
+  | `test/tools/fanout.js` | `613 contrôles, KIT CONFORME` (618 since task 4a) | `613 contrôles, KIT CONFORME` (618 since task 4a) | `613 contrôles, KIT CONFORME` |
+  | `test/engine.js` | `361 checks, ENGINE OK`, `1000 dus : 32 révisions + 9 rencontres = 41 places`; `22 dus, 1013 à rencontrer`; the line « budget de cinq, deux en file » ends `aucune : 5 reprises, 23 pour 28` | `361 checks, ENGINE OK`, `990 dus : 32 révisions + 9 rencontres = 41 places`; `22 dus, 1026 à rencontrer`; the same line ends `six fausses avant le bouton : 0 reprises, 16 exercices pour 16 restants ; aucune : 5 reprises, 18 pour 23` | the same as the proof's |
+  | `test/lang.js` | `25084 contrôles`, `néerlandais nu 1420 champs` | `25201 contrôles`, `néerlandais nu 1459 champs` | `25216 contrôles, 16 ÉCHEC(S)`, `néerlandais nu 1459 champs` (step 7) |
+  | `test/smoke.js` | `items 1035 (words 912, phrases 114, patterns 9)` | `items 1048 (words 912, phrases 114, patterns 22)` | the same as the proof's |
+  | `test/journey.js . nl-BE OPR` | `2871 checks, NO PROBLEMS` | `2870 checks, NO PROBLEMS` | the same as the proof's |
+  | `test/pace.js` | `10 vérifications, AUCUN PROBLÈME`; au catalogue `1035` | `10 vérifications, AUCUN PROBLÈME`; au catalogue `1048` | the same as the proof's |
+  | `test/pace.js . 200 one groot` | `12 vérifications, AUCUN PROBLÈME`; arriéré maximum 755; au catalogue `1192` | `12 vérifications, AUCUN PROBLÈME`; arriéré maximum 722; au catalogue `1172` | `12 vérifications, AUCUN PROBLÈME`; arriéré maximum 731; au catalogue `1172` |
 
   The pace table moved in several cells (the 13 items change the day-90 row from `37 15 1035 1023` to `64 27 1048 1038`
-  and the largest arrears from 582 to 632); no threshold moved.
+  and the largest arrears from 582 to 632; in the first run, to `38 16 1048 1045` and 583); no threshold moved.
 
 - [ ] **Step 10: Commit.**
   ```
@@ -2862,10 +3267,12 @@ Notes:
   Add `test/engine.js` to the `git add` if step 6 changed it (it did in the proof).
 
 Done when:
+- The commit sits on task 4a's commit, with `kunnen` redrafted.
 - `src/content/grammar.a1c.js` holds what one successful run of Merge wrote, the run that printed
   `ok grammar 13 taken, 0 dropped` and `ok grammar.a1c.js 13 rules in 9 units`; a second run changes nothing.
 - `node test/content.js .` prints `CONTENU CONFORME` with `AHEAD_BUDGET` equal to its `séquence` line's count and its cause
-  in the comment above it, and `HOLLOW_BUDGET` still 3; `node test/tools/fanout.js .` prints `KIT CONFORME`; `node
+  in the comment above it, a rise that D24 covers (step 5), and `HOLLOW_BUDGET` still 3; `node test/tools/fanout.js .`
+  prints `618 contrôles, KIT CONFORME`; `node
   test/engine.js .` prints `ENGINE OK`; `node test/lang.js .` prints `LANGUE CONFORME`; `node test/pace.js . 200 one groot` prints
   `AUCUN PROBLÈME`; `sh test/run-all.sh` prints `TOUTE LA SUITE EST PASSÉE`, with no threshold of `test/pace.js` or `test/journey.js` changed.
 - The return gives the sentences that borrow ahead, the engine pair that moved, and the table of step 9.
@@ -2952,6 +3359,7 @@ The rules, one per line:
 - `ask` is an imperative telling the learner what to get done. A `reply` answers only its own choice. A `note` or a `hint` says one short true thing about the Dutch; leave `null` rather than pad.
 - Pick one register for the whole conversation, `u` or `je`, as the setting would have it, and keep it.
 - French is Belgian French; English is plain English. `fr` and `en` of a line say the same thing, with the same digits; the only `{…}` allowed in any text are `{naam}`, `{stad}` and `{bedrijf}`.
+- `title` carries none of them: the screen shows it as HTML, where the learner's own text would be read as markup. `place` keeps `{stad}`, the screen escapes it (`title.fr: {stad} is the learner's text, and title is shown as HTML: write no token there`).
 - Dutch lines use the typographic apostrophe `’` and no straight `'` or `"`; `fr` and `en` use `’` too; `fr` quotes with « » only and `en` with “ ” only, and Check refuses the other language’s marks. No quotation marks inside an `nl`.
 - Every Dutch word is spelled as OpenTaal or `test/data/flemish.tsv` knows it, and Check refuses the row otherwise. Spoken forms that fail: `goeiemorgen`, `goeiesmorgens`, `allez`. Forms that pass: `goeiedag`, `goeiemiddag`, `dag`, `allee`, `da’s`, `tof`, `plezant`, `ge`, `gij`. If a word the situation needs fails, take the nearest word that passes. Naming the problem in `unsure` does not let the row through: Check still refuses it.
 - Check holds `blurb`, `outro`, `ask`, `hint`, `note` and `title` to the language test that Merge would otherwise fail it on (`test/lang.js`, 6d), in `fr` and in `en`: what you put in « » (`fr`) or “ ” (`en`) must be Dutch of the course or of your own lines; a translation goes in parentheses without quotes (`« Best » (il vaut mieux)`); and a Dutch word of the course written the same in French or English, such as `alstublieft`, `juf` or `café`, is never left bare in those fields: quote it, or use the French or English word (`la maîtresse`, `the teacher`). The Dutch of your own `nl` and `be` lines counts as Dutch of the course for the quotes. `title` and `place` carry no quotation marks at all, and `title` leaves no Dutch word of the course bare (`place` has no such check). The lines of `them` and the `fr`/`en` of choices and replies are not read by that test.
@@ -3012,7 +3420,9 @@ Notes:
   `alstublieft`, `juf`, `café`, is quoted or replaced. Task 2's Check runs the same rule (`test/lib/quoted.js`) on
   `blurb`, `outro`, `ask`, `hint`, `note` and `title` before Merge (and a quote at all in `title` or `place`), so a
   row that breaks it never reaches `ok review.json`. What Check does not read is what 6d does not read either: the
-  lines of `them` and the choices and replies. If `lang.js` still fails, never edit the file: stop and report each `FAIL`
+  lines of `them` and the choices and replies. Since task 4a, Check also refuses a `{naam}`, `{stad}` or `{bedrijf}` in
+  `title`, which the screen shows as HTML (6d.7; `place` keeps its `{stad}`, the screen escapes it), and neither Check
+  nor 6d counts a numeral as a word of the course (`courseWords`, `test/lib/dutch.js`). If `lang.js` still fails, never edit the file: stop and report each `FAIL`
   line with its row `id`; the run controller changes that row's verdict in its batch's `review.json` from `keep` to
   `dispute: <the FAIL line>` and dispatches the batch's controller (as task 5, step 7), then this task runs again from
   step 1.
@@ -3038,7 +3448,11 @@ Notes:
   | `node test/lang.js .` (about 8 minutes) | `25201 contrôles, LANGUE CONFORME` | `25431 contrôles, LANGUE CONFORME` |
   | `node test/tools/check-files.js .` | `glosses + sentences + prose = 3401 ; owed() liste 3410 endroits` | `3486 ; owed() liste 3495`, exit 0 |
   | `node test/journey.js .` (about 75 to 80 s) | `2870 checks, NO PROBLEMS` | `2902 checks, NO PROBLEMS` |
-  | `node test/tools/fanout.js .` | `613 contrôles, KIT CONFORME` | `613 contrôles, KIT CONFORME` |
+  | `node test/tools/fanout.js .` | `618 contrôles, KIT CONFORME` | `618 contrôles, KIT CONFORME` |
+
+  The proof ran before task 4a and printed `613` in both cells; task 4a adds five checks to `test/tools/fanout.js`, and
+  this task adds none. The proof's other counts were measured with task 5's proof rows (`7732`, `25201`), not the merged
+  ones: measure them again.
 
   In `lang.js`, `néerlandais nu 1459` rose to `1492` with 13 exceptions, and `guillemets 0 … 11 exceptions` stayed as it was; the run took 7m52s (alone, after the other suites). The run time of `journey.js` did not move (1m17.4s before, 1m18.7s after, run alone, one after the other).
   `test/sim.js:79` takes `scenarios[3]`, and the four are appended after the six, so its index is unchanged; it was
@@ -3046,7 +3460,9 @@ Notes:
 
 - [ ] **Step 1: Check task 6's batches.** For each of `s-cafe`, `s-afspraak`, `s-school`, `s-gemeente`:
   `node tools/content/check.js "<WS>/drafts/scenarios/<batch>"`. Expected, each: `ok input.json 1 rows`,
-  `ok draft.json 1 rows`, `ok review.json 1 keep, 0 dispute` (exit 0).
+  `ok draft.json 1 rows`, `ok review.json 1 keep, 0 dispute` (exit 0). This is task 4a's Check, which also refuses a
+  token in `title`; task 4a's step 7 already ran it over the four batches. A `fail` here: stop and report it with its row
+  `id`, as for `lang.js` in the notes.
 
 - [ ] **Step 2: Merge.** `node tools/content/merge.js . "<WS>/drafts/scenarios"`. Expected the two lines in the notes.
   Run it a second time and confirm that `git diff --stat` has not changed.
@@ -3214,7 +3630,8 @@ Files:
 - Modify: `src/content/lexicon.a1c.js` (the header comment, lines 3 and 4)
 - Modify: `TESTING.md` (the `tools/fanout.js` row; the `tools/learner-pass.js` row; the passage on the learner pass; the
   paragraph on what the kit's checks cannot see; the paragraph on `test/lib/` (`test/lib/quoted.js`); the grown course
-  of `pace.js` (`node test/pace.js . 200 one groot`); « Encore ouvert »)
+  of `pace.js` (`node test/pace.js . 200 one groot`); « Encore ouvert »; the passage on the budgets, which says 129 and
+  « Une seule exception » for `AHEAD_BUDGET`)
 - Modify: `tools/learner-pass/README.md` (the `corners.js` row, a `rules.js` row, the timing sentence)
 - Modify: `README.md` (« État », two places)
 - Modify (the build writes them): `index.html`, `artifact.html`
@@ -3225,7 +3642,8 @@ Files:
 
 Interfaces:
 - Consumes: tasks 1 and 2 (the kinds `grammar` and `scenarios`, whose empty files carry a `HEADER` each), task 3
-  (`corners.js` plays every conversation; `rules.js`), tasks 5 and 7 (the merged files).
+  (`corners.js` plays every conversation; `rules.js`), task 4a (`courseWords`, `htmlTokens`), tasks 5 and 7 (the merged
+  files; task 5's `AHEAD_BUDGET` in `test/content.js`).
 - Produces: one new group of checks in `test/tools/fanout.js`, three `ok(...)` calls, named
   `l'en-tête de src/content/<file> est celui que son genre écrit (HEADER)` for `<file>` in `lexicon.a1c.js`,
   `grammar.a1c.js`, `scenarios.a1c.js`.
@@ -3233,9 +3651,10 @@ Interfaces:
 Notes:
 - **Languages.** `README.md` and `TESTING.md` are French; `tools/learner-pass/README.md` is English; the comment in
   `lexicon.a1c.js` and `HEADER` is French.
-- **Line endings.** On this machine the working tree is CRLF (`core.autocrlf=true`) except `*.sh`, `index.html` and
-  `artifact.html`. A literal `\n` in an anchor does not match a CRLF file: the script of step 5 reads each file's
-  line ending and adapts both the anchor and the replacement. `git diff` is the judge. The sources of the kit and of
+- **Line endings.** This run's worktree is LF (`core.autocrlf=input`; `git ls-files --eol` shows `w/lf` for the three
+  docs); the proof's copy was CRLF (`core.autocrlf=true`) except `*.sh`, `index.html` and `artifact.html`. A literal
+  `\n` in an anchor does not match a CRLF file: the script of step 5 reads each file's line ending and adapts both the
+  anchor and the replacement, so it runs on either. `git diff` is the judge. The sources of the kit and of
   `src/` are LF-tolerant in the pin because it removes `\r` from the file it reads.
 - **The pin reads the first block of each file.** `headOf(lines)` is the lines up to the first empty one, or up to the
   last (the files' last line is empty after the final newline), joined and ended by a newline. Each kind's empty run
@@ -3250,8 +3669,14 @@ Notes:
   `scenarios 10`, `patterns 22` are fixed by the design (1035 + 13), so `README.md` carries them as digits; nothing
   else in the docs is a count that depends on the drafted rows, but the grown course of `pace.js` (1 172 = 1 048 + 124
   copies, from `test/lib/grow.js`, counted by `node test/pace.js . 200 one groot`, about 2m30). The `fanout.js` count
-  (616 here) moves with every earlier block: re-measure it, and use the printed one. `AHEAD_BUDGET` (task 5) is in `test/content.js`, not in
-  the docs.
+  moves with every earlier block: re-measure it, and use the printed one. On this run's chain it is 621 (618 after
+  task 4a, plus this task's three); the proof, which ran before task 4a, printed 616.
+- **`AHEAD_BUDGET` in `TESTING.md`.** Its passage on the budgets says « 129 phrases d'exemple empruntent » and « Une
+  seule exception, le premier : il est monté de 61 à 129 ». Task 5 raised the budget a second time, under D24, to the
+  count it measured (136 in its first run). The maintainer ruled (« tasks 5, 8 ») that this task updates the passage
+  to the measured figure and the second exception. Step 5's script reads the figure from the line
+  `const AHEAD_BUDGET = <n>;` of `test/content.js` and throws if it is missing or not above 129. Issue #12's « may only
+  ever decrease » line stays the maintainer's to edit: this task does not touch the issue.
 - **What this task leaves alone, and why.** `TESTING.md`'s paragraphs on `pace.js` (« sur ses 1 035 éléments … ») are
   a record of a simulation measured on 29 October; `test/pace.js`'s comments say « Le vrai cours en compte 1 035 ».
   Task 5 notes that `pace.js` moved (the catalogue and a few cells); the figures there are the simulation's, with a
@@ -3273,7 +3698,9 @@ Notes:
   `days.js` 93 s, `corners.js` 165 s (241 lines, 22 `finished after`), `sweep.js` 261 s, `rules.js` 15 s, run one after
   the other in Edge on fixZ at that commit's parent with the hand rows (no `PROBLEM:` line); `node test/pace.js . 200
   one groot` printed `éléments au catalogue 1172` (2m31). The counts move with the real rows and with earlier blocks:
-  use the ones printed.
+  use the ones printed. The proof predates task 4a and the ruling on `AHEAD_BUDGET`: on this run's chain the
+  `fanout.js` count is 621 where the proof printed 616, and the stats are larger by the lines that step 5's later
+  additions write (measured in step 5).
 
 - [ ] **Step 1: Measure.** From the tree as task 7 left it:
   ```
@@ -3308,7 +3735,7 @@ Notes:
   ```
   (The file is CRLF here: make the edit with the Edit tool on the one-line anchor, or with a script that reads the
   file's line ending. `git` normalises a mixed ending on commit.) Run `node test/tools/fanout.js . 2>&1 | grep -E "FAIL|ÉCHEC|contrôles"`.
-  Expected: `616 contrôles, KIT CONFORME`, no `FAIL`. If `K.lexicon`, `patterns` or `scenarios` is not the name the
+  Expected: `621 contrôles, KIT CONFORME` (616 in the proof, before task 4a), no `FAIL`. If `K.lexicon`, `patterns` or `scenarios` is not the name the
   kit's file exports, read the block's other uses (`grep -n "K.lexicon\|\.patterns(\|\.scenarios(" test/tools/fanout.js`)
   and use the same call; the three names are those of tasks 1 and 2.
 
@@ -3325,13 +3752,13 @@ Notes:
   Run the same command. Expected, exactly:
   ```
     FAIL: l'en-tête de src/content/lexicon.a1c.js est celui que son genre écrit (HEADER)
-  616 contrôles, 1 ÉCHEC(S)
+  621 contrôles, 1 ÉCHEC(S)
   ```
   Then, for each of `tools/content/kinds/grammar.js` and `tools/content/kinds/scenarios.js`, change the first `HEADER`
   line alone (insert `X ` after its `/* `: `'/* Règles de grammaire …` becomes `'/* X Règles de grammaire …`), run the same command, expect
   `FAIL: l'en-tête de src/content/<file> est celui que son genre écrit (HEADER)` for `grammar.a1c.js`, then for
   `scenarios.a1c.js`, each after the `lexicon.a1c.js` line (still red, `words.js` being changed) and each with
-  `616 contrôles, 2 ÉCHEC(S)`, and put the line back (`git checkout <that file>`;
+  `621 contrôles, 2 ÉCHEC(S)`, and put the line back (`git checkout <that file>`;
   `git diff --stat` then shows the `words.js` change only).
 
 - [ ] **Step 4: Green.** In `src/content/lexicon.a1c.js`, replace its lines 3 and 4
@@ -3345,12 +3772,14 @@ Notes:
      leurs règles viennent de grammar.a1c.js (une boucle au chargement les range dans leur unité), leurs phrases du plan 4c. */
   ```
   (the same two lines, three spaces of indent; the apostrophe of `n’ont` is gone). Run the same command. Expected:
-  `616 contrôles, KIT CONFORME`.
+  `621 contrôles, KIT CONFORME`.
 
 - [ ] **Step 5: The prose.** Write the script below to `<WS>/tmp/docs8.js` and run `node <WS>/tmp/docs8.js .` from the
   repository root. It prints nothing; it throws `anchor found N times` when a text is not found exactly once
-  (so a second run on the same tree throws). It reads each file's line ending and adapts both sides. Edits:
-  `TESTING.md` (seven places, then « Encore ouvert »), `tools/learner-pass/README.md` (the `corners.js` row, a new
+  (so a second run on the same tree throws). It reads each file's line ending and adapts both sides. Before it writes
+  anything it reads `AHEAD_BUDGET` from `test/content.js`, and it stops on an untouched tree if the line is missing or
+  the figure is not above 129. Edits: `TESTING.md` (seven places, then « Encore ouvert », then the passage on the
+  budgets: the figure, and « Une seule exception » becomes the two rises, the second with the rules of `grammar.a1c.js`), `tools/learner-pass/README.md` (the `corners.js` row, a new
   `rules.js` row, the timing sentence), `README.md` (« État »). The timing sentence carries the figures measured on
   fixZ in Edge, each script run alone, one after the other, on the hand rows (`days.js` 93 s, `corners.js` 165 s,
   `sweep.js` 261 s, `rules.js` 15 s); gate 9 plays the real rows and may print other times: its fix loop corrects
@@ -3358,6 +3787,10 @@ Notes:
   ```js
   const fs = require('fs');
   const R = process.argv[2];
+  // AHEAD_BUDGET, lu avant toute écriture : sans lui, le script s'arrête sur un arbre intact.
+  const a = (fs.readFileSync(R + '/test/content.js', 'utf8').match(/const AHEAD_BUDGET = (\d+);/) || [])[1];
+  if (!a) throw new Error('test/content.js: const AHEAD_BUDGET = <n>; not found');
+  if (+a <= 129) throw new Error('AHEAD_BUDGET ' + a + ' did not rise: the sentence on its rises needs other words');
   function edit(R, file, pairs) {
     let t = fs.readFileSync(R + '/' + file, 'utf8');
     const E = /\r\n/.test(t) ? '\r\n' : '\n';
@@ -3373,7 +3806,7 @@ Notes:
   edit(R, 'TESTING.md', [
     // 1. la ligne de tools/fanout.js : les deux genres, et l'en-tête de chaque fichier que Merge écrit entier
     ["et un second Split qui ne recoupe pas une unité fondue) |",
-     "et un second Split qui ne recoupe pas une unité fondue ; `grammar`, dont la source est une règle à venir : ses 13 règles et leurs 9 unités, chaque garde de Check (cinq exercices, un trou d'une seule tuile qui n'est pas écrit deux fois, de 3 à 8 tuiles par exercice, rien que l'unité de la règle n'ait enseigné, l'orthographe, le néerlandais de l'explication dans `<i class=\"nl\">` ou `<span class=\"ex\">`, les citations et le néerlandais nu que 6d de `lang.js` refuserait), la boucle de `src/content/grammar.a1c.js` qui range chaque règle dans la liste de son unité au chargement et lève une erreur nommant la règle quand l'unité manque, et son Merge de bout en bout ; `scenarios`, dont la source est une conversation à venir : ses 4 conversations, la forme d'un scénario et les bornes des six du cours, une réplique de l'autre sans `be`, un sens manquant, un `{jeton}` hors `{naam}` `{stad}` `{bedrijf}`, les mêmes citations et le même néerlandais nu, et son Merge qui récrit `src/content/scenarios.a1c.js` ; et, pour les trois fichiers qu'un Merge écrit entiers (`lexicon.a1c.js`, `grammar.a1c.js`, `scenarios.a1c.js`), que son en-tête est celui que son genre écrit (`HEADER`), puisque Merge ne lit pas l'ancien) |"],
+     "et un second Split qui ne recoupe pas une unité fondue ; `grammar`, dont la source est une règle à venir : ses 13 règles et leurs 9 unités, chaque garde de Check (cinq exercices, un trou d'une seule tuile qui n'est pas écrit deux fois, de 3 à 8 tuiles par exercice, rien que l'unité de la règle n'ait enseigné, l'orthographe, le néerlandais de l'explication dans `<i class=\"nl\">` ou `<span class=\"ex\">`, les citations et le néerlandais nu que 6d de `lang.js` refuserait, et un `{jeton}` dans le titre ou l'explication, que la feuille montre en HTML et que 6d.7 refuserait), la boucle de `src/content/grammar.a1c.js` qui range chaque règle dans la liste de son unité au chargement et lève une erreur nommant la règle quand l'unité manque, et son Merge de bout en bout ; `scenarios`, dont la source est une conversation à venir : ses 4 conversations, la forme d'un scénario et les bornes des six du cours, une réplique de l'autre sans `be`, un sens manquant, un `{jeton}` hors `{naam}` `{stad}` `{bedrijf}`, un jeton dans le titre, que l'écran montre en HTML (6d.7), les mêmes citations et le même néerlandais nu, et son Merge qui récrit `src/content/scenarios.a1c.js` ; et, pour les trois fichiers qu'un Merge écrit entiers (`lexicon.a1c.js`, `grammar.a1c.js`, `scenarios.a1c.js`), que son en-tête est celui que son genre écrit (`HEADER`), puisque Merge ne lit pas l'ancien) |"],
     // 2. la ligne de tools/learner-pass.js
     ["une séance qui ne finit pas est dite, et `sweep.js` ne s'arrête pas à un nombre fixe de touchers. |",
      "une séance qui ne finit pas est dite, une conversation est jouée une fois par position de choix et dite bloquée quand elle l'est, `sweep.js` ne s'arrête pas à un nombre fixe de touchers, et la feuille d'une règle est jugée (`judgeSheet` : titre, règle, explication, exemples, rien qui déborde de 390 px). |"],
@@ -3387,7 +3820,7 @@ Notes:
      "phrase vaut la peine d'être apprise. Les six scénarios écrits à la main et les\nantisèches ne passent pas par le contrôle d'orthographe ; les quatre conversations du\ngenre `scenarios` y passent, par son Check. Et aucun contrôle ne dit si la règle\nd'une fiche est vraie ni si une conversation sonne flamand : ce sont les 17 lignes\ndu genre `grammar` et du genre `scenarios` que le mainteneur lit entières."],
     // 5. test/lib/quoted.js
     ["pour un bloc le fait par `inZone()` de `test/lib/zone.js`, qui le remet ensuite.",
-     "pour un bloc le fait par `inZone()` de `test/lib/zone.js`, qui le remet ensuite.\n`test/lib/quoted.js` dit ce qu'une prose du cours cite et ce qu'elle laisse nu : `test/lang.js`\n(6d.3 et 6d.4) le lit sur tout le cours, le Check des genres `grammar` et `scenarios` sur une\nligne avant Merge."],
+     "pour un bloc le fait par `inZone()` de `test/lib/zone.js`, qui le remet ensuite.\n`test/lib/quoted.js` dit ce qu'une prose du cours cite et ce qu'elle laisse nu : `test/lang.js`\n(6d.3 et 6d.4) le lit sur tout le cours, le Check des genres `grammar` et `scenarios` sur une\nligne avant Merge. Ni l'un ni l'autre ne prend un nombre pour un mot du cours : `courseWords`,\nde `test/lib/dutch.js`, l'ôte des mots qu'ajoutent `dutchWords` et les deux genres. Et\n`htmlTokens` fait refuser à Check un `{jeton}` dans un champ que l'écran montre en HTML,\ncomme 6d.7 le refuse sur le cours."],
     // 6. le grand cours de pace.js, recompté
     ["ses 1 192 éléments sont les 1 035 du cours, et\n157 repris avec un suffixe (`test/lib/grow.js`)",
      "ses 1 172 éléments (comptés le 3 novembre 2026 par `node test/pace.js . 200 one groot`) sont\nles 1 048 du cours, et 124 repris avec un suffixe (`test/lib/grow.js`)"]
@@ -3415,9 +3848,19 @@ Notes:
     ["`days.js` takes about two minutes, `corners.js` half a minute, `sweep.js` about four.",
      "`days.js` takes about a minute and a half, `corners.js` under three minutes (it plays every conversation once per choice position), `rules.js` about fifteen seconds, `sweep.js` a little over four minutes."]
   ]);
+
+  // Le budget des phrases qui empruntent en avant : le compte que la tâche 5 a mesuré, et sa seconde hausse (D24).
+  edit(R, 'TESTING.md', [
+    ["que le contenu actuel enfreint déjà la règle : 129 phrases d'exemple empruntent du",
+     "que le contenu actuel enfreint déjà la règle : " + a + " phrases d'exemple empruntent du"],
+    ["dessous, pour que le gain soit verrouillé. Une seule exception, le premier : il est\nmonté de 61 à 129 avec les unités 13–34, sans qu'aucune phrase change. Ces phrases\nemployaient déjà des mots que le cours n'enseignait nulle part, un emprunt que rien ne\ncomptait ; les unités, en les enseignant plus tard, l'ont révélé.",
+     "dessous, pour que le gain soit verrouillé. Le premier a fait deux exceptions : il est\nmonté de 61 à 129 avec les unités 13–34, puis de 129 à " + a + " avec les règles de\n`grammar.a1c.js`, sans qu'aucune phrase change. Ces phrases employaient déjà des mots\nque le cours n'enseignait nulle part, un emprunt que rien ne comptait ; les unités,\npuis les règles, en les enseignant plus tard, l'ont révélé."]
+  ]);
   ```
   Then `git diff --stat` lists `README.md`, `TESTING.md` and `tools/learner-pass/README.md` over the files of steps 2
-  to 4 (the copy: `31 insertions(+), 15 deletions(-)` over the three, on a CRLF clone). `GLOSSARY.md` is not in the script: it was read
+  to 4 (the copy: `31 insertions(+), 15 deletions(-)` over the three, on a CRLF clone; with task 4a's clauses and
+  sentence in edits 1 and 5 and the budget passage, `40 insertions(+), 20 deletions(-)`, measured on a copy of the
+  three docs at `46bba2b` with `AHEAD_BUDGET` at 136, in LF and in CRLF alike). `GLOSSARY.md` is not in the script: it was read
   for « Listening set » and « Conversation », neither of which names a count.
 
 - [ ] **Step 6: Build and verify.** `sh build.sh`, then
@@ -3429,12 +3872,22 @@ Notes:
   git diff --stat
   ```
   Expected: `built (local only) index.html (893863 bytes), artifact.html (893249 bytes)` on the copy (the sizes depend on
-  the rows; the two comment lines are in the build); `616 contrôles, KIT CONFORME` (613 after tasks 1, 2, 3 and 5, plus the three
-  of this task; it moves with every earlier block); the smoke lines of Step 1 and `ALL CHECKS PASSED`;
+  the rows; the two comment lines are in the build); `621 contrôles, KIT CONFORME` (618 after tasks 1, 2, 3, 4a and 5,
+  plus the three of this task; it moves with every earlier block; the proof, before task 4a, printed 616); the smoke lines of Step 1 and `ALL CHECKS PASSED`;
   `21 checks, LEARNER PASS TOOLS OK`; `LANGUE CONFORME` (about 8 minutes: run it once, here, at the end); the stat lists exactly `README.md`, `TESTING.md`, `artifact.html`, `index.html`,
   `src/content/lexicon.a1c.js`, `test/tools/fanout.js`, `tools/content/kinds/words.js` and
   `tools/learner-pass/README.md`, and no other file (the copy: `8 files changed, 49 insertions(+), 23 deletions(-)`
-  against the commit before this task).
+  against the commit before this task, before step 5's later additions). Expect `58 insertions(+), 28 deletions(-)`,
+  but this figure is **derived, not measured**: the copy's 49 and 23, plus the 9 insertions and 5 deletions that the
+  later additions make on the three docs (31/15 becomes 40/20 in step 5). No full chain has run with those additions. If
+  the measured stat differs, the counts are not the check; the eight files are. Run
+  `git diff --stat -- README.md TESTING.md tools/learner-pass/README.md`: it must end `40 insertions(+), 20 deletions(-)`,
+  as in step 5. Then read `git diff` on the five other files: every changed line must be one that steps 2 to 4 write, or
+  one of `lexicon.a1c.js`'s two new lines as the build carries them into `index.html` and `artifact.html`. If both hold,
+  commit and give the measured stat in the return. Stop and report with `git diff --stat` if the docs count is not
+  40/20, if a line is written by no step, or if a file is missing or extra. `TESTING.md` now says
+  `<AHEAD_BUDGET> phrases d'exemple empruntent` and « Le premier a fait deux exceptions »: check it with
+  `grep -n "phrases d'exemple empruntent\|deux exceptions" TESTING.md`.
 
 - [ ] **Step 7: Commit.** `docs: the two kinds, the learner pass, the a1c header; pin each written header to its kind`
   (no ticket, so no placeholder in the subject), with the stat's eight files.
@@ -3443,7 +3896,8 @@ Done when: `node test/tools/fanout.js .` ends `KIT CONFORME` with the three head
 red with `HEADER` changed alone; `src/content/lexicon.a1c.js` and `HEADER` say the same; `sh build.sh` leaves
 `index.html` and `artifact.html` rebuilt and committed; `TESTING.md`, `tools/learner-pass/README.md` and `README.md`
 carry the two kinds, the conversations (played once per choice position), `rules.js`, `test/lib/quoted.js` and the counts
-10 and 22 and 1048; `GLOSSARY.md` is untouched;
+10 and 22 and 1048; `TESTING.md`'s passage on the budgets gives `AHEAD_BUDGET`'s figure from `test/content.js` and its
+two rises; `GLOSSARY.md` is untouched, and issue #12 too;
 nothing else changed.
 
 ### Task 9: GATE: the learner pass in Edge

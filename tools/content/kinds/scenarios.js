@@ -19,8 +19,8 @@ const fs = require('fs'), path = require('path');
 const spelling = require(path.join(__dirname, '..', '..', '..', 'test', 'lib', 'spelling'));
 const { literal: lit } = require('../lib/table');
 const { oneLine, sig, quotes, strayQuotes } = require(path.join(__dirname, '..', '..', '..', 'test', 'lib', 'text'));
-const { dutchWords, words } = require(path.join(__dirname, '..', '..', '..', 'test', 'lib', 'dutch'));
-const { names, foreignQuotes, bareDutch } = require(path.join(__dirname, '..', '..', '..', 'test', 'lib', 'quoted'));
+const { dutchWords, courseWords } = require(path.join(__dirname, '..', '..', '..', 'test', 'lib', 'dutch'));
+const { names, foreignQuotes, bareDutch, htmlTokens } = require(path.join(__dirname, '..', '..', '..', 'test', 'lib', 'quoted'));
 
 /* Les 4 conversations (phase 4b, approuvées le 28 octobre 2026), dans l'ordre où le fichier les écrit.
    Leurs ids se rangent dans scenariosDone de chaque apprenant : ils ne changent plus. s-afspraak est
@@ -114,7 +114,7 @@ function check(row, input, ctx) {
     if (l === 'nl' && /["«»“”]/.test(s)) say(where, 'writes no quotation mark');
     if ((l === 'nl' || l === 'fr') && /'/.test(s)) say(where, 'writes the typographic apostrophe « ’ » and no straight quote');
     (s.match(/\{[^}]*\}/g) || []).forEach(t => { if (TOKENS.indexOf(t.slice(1, -1)) < 0) say(where, 'the token ' + t + ' is not one of {naam}, {stad}, {bedrijf}'); });
-    if (l === 'nl') { spelling.tokens(s).filter(t => !S.known(t)).forEach(t => bad.add(t)); words(s).forEach(w => mine.add(w)); }
+    if (l === 'nl') { spelling.tokens(s).filter(t => !S.known(t)).forEach(t => bad.add(t)); courseWords(s).forEach(w => mine.add(w)); }
     return true;
   };
   /* { fr, en } : les deux sens, avec les mêmes chiffres et les mêmes {jetons}. f est le champ, que 6d lit. */
@@ -169,12 +169,14 @@ function check(row, input, ctx) {
      les réponses, que l'écran ne cite pas). title et place ne citent rien. Ailleurs, ce qu'une prose cite est du
      néerlandais du cours (ou de la ligne), et une traduction va entre parenthèses ; et un mot du néerlandais du
      cours que le français et l'anglais écrivent tous deux nu se cite. place ne montre pas de mot nu : {stad} y
-     entre. */
+     entre. Le texte de l'apprenant n'entre pas dans title, que l'écran montre en HTML (6d.7) : place, échappé, le
+     garde. */
   const dutch = new Set(T.dutch);
   mine.forEach(w => dutch.add(w));
   const fill = s => T.NL.content.fill(s), list = a => a.map(t => '« ' + t + ' »').join(', ');
   prose.forEach(({ where, f, v }) => {
     LANGS.forEach(l => {
+      htmlTokens(f, v[l]).forEach(t => say(where + '.' + l, t + ' is the learner\'s text, and ' + f + ' is shown as HTML: write no token there'));
       if (f === 'title' || f === 'place') { if (/[«»“”]/.test(v[l])) say(where + '.' + l, 'carries no quotation marks: the screen cites nothing there'); return; }
       const r = foreignQuotes(T.NL, fill(v[l]), dutch);
       if (!r.paired && !why.some(w => w.indexOf(where + '.' + l + ': ') === 0)) say(where + '.' + l, 'has a quote mark with no partner, or an empty quote');

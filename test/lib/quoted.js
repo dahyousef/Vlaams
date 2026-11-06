@@ -5,7 +5,7 @@
    (quotes, test/lib/text.js) : il dit si ce qu'une prose cite est du néerlandais du cours, et si elle
    en laisse nu.
 
-     const { QUOTE_OK, SHARED_OK, QUOTED_FIELDS, HTML_FIELDS, names, quotedSegments, foreignQuotes, bareDutch }
+     const { QUOTE_OK, SHARED_OK, QUOTED_FIELDS, HTML_FIELDS, names, quotedSegments, foreignQuotes, bareDutch, htmlTokens }
        = require('./lib/quoted');
      QUOTE_OK        les mots cités hors du néerlandais du cours qui sont pourtant du néerlandais, avec la raison
      SHARED_OK       les mots que le français et l'anglais écrivent tous deux et que le cours a aussi, avec la raison
@@ -28,7 +28,11 @@
                      d'un même champ écrivent tous deux hors de tout passage nl-BE, sans les mots de `named` :
                      bare, ceux qu'aucune exception de SHARED_OK n'excuse ; shared, ceux qu'elle excuse.
                      `field` dit comment l'écran montre le texte (HTML_FIELDS : NL.gloss.prose ; sinon
-                     NL.gloss.quoted) ; fr et en sont les textes écrits, jetons déjà remplis (NL.content.fill) */
+                     NL.gloss.quoted) ; fr et en sont les textes écrits, jetons déjà remplis (NL.content.fill)
+     htmlTokens(field, text)
+                     les {jetons} de `text` quand `field` est dans HTML_FIELDS : le texte de l'apprenant ({naam},
+                     {stad}, {bedrijf}) y serait lu comme du balisage, sans échappement (test/lang.js 6d.7) ;
+                     [] pour un autre champ, que l'écran échappe */
 const { words } = require('./dutch');
 const { runs } = require('./langs');
 
@@ -98,4 +102,8 @@ function bareDutch(NL, dutch, named, field, fr, en) {
   return { bare: both.filter(w => !SHARED_OK[w]), shared: both.filter(w => SHARED_OK[w]) };
 }
 
-module.exports = { QUOTE_OK, SHARED_OK, QUOTED_FIELDS, HTML_FIELDS, names, quotedSegments, foreignQuotes, bareDutch };
+/* Les {jetons} d'un texte écrit dans un champ que l'écran montre en HTML : ce que la page y substitue, elle ne
+   l'échappe pas. */
+const htmlTokens = (field, s) => HTML_FIELDS.indexOf(field) >= 0 ? (String(s).match(/\{[^}]*\}/g) || []) : [];
+
+module.exports = { QUOTE_OK, SHARED_OK, QUOTED_FIELDS, HTML_FIELDS, names, quotedSegments, foreignQuotes, bareDutch, htmlTokens };
