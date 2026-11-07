@@ -1716,7 +1716,7 @@ module.exports = {
     const chk = more => K.check(Object.assign({}, GOOD, more), IN, ctxG);
     const drillsWith = (k, d) => GOOD.drills.map((x, i) => i === k ? Object.assign({}, x, d) : x);
     same(chk({}), [], 'une ligne juste passe');
-    /* Review Focus 2 : un trou en tête de phrase passe (le 3e exercice de GOOD) ; un trou écrit deux fois est refusé, avec l'exercice. */
+    /* Un trou en tête de phrase passe (le 3e exercice de GOOD) ; un trou écrit deux fois est refusé, avec l'exercice. */
     same(chk({ drills: drillsWith(2, { gap: 'Geen' }) }), [], 'un trou en tête de phrase est accepté');
     same(chk({ drills: drillsWith(0, { nl: 'Ik heb geen tijd en geen geld.', fr: 'Je n’ai pas de temps ni d’argent.', en: 'I have no time and no money.' }) }),
       ['drill 1 « Ik heb geen tijd en geen geld. »: gap « geen » occurs 2 times in the drill: the cloze hides the first, and the learner cannot tell which'], 'un trou écrit deux fois est refusé, en nommant l\'exercice');
@@ -1792,7 +1792,7 @@ module.exports = {
       ['drill 1 « ' + hd.nl + ' » is also written by ' + handP.id], 'une phrase d\'exercice d\'un pattern du cours est refusée, avec le pattern');
     same(chk({ rule: { fr: 'x'.repeat(71), en: 'ok' } }), ['rule.fr is 71 signs, 70 at most: the sheet shows it on one line'], 'la règle tient sur une ligne');
 
-    /* Review Focus 3 et 4 : une unité que le cours n'a pas, un id que le cours a déjà. Chaque cas est une copie dont on change le genre ou le cours. */
+    /* Une unité que le cours n'a pas, un id que le cours a déjà. Chaque cas est une copie dont on change le genre ou le cours. */
     const rewrite = (dir, file, from, to) => {
       const f = path.join(dir, file), t = text(f);
       ok(t.indexOf(from) >= 0, 'le texte à changer est dans ' + file + ' : ' + from);
@@ -1812,7 +1812,7 @@ module.exports = {
     const itemLine = runIn(I1, 'split.js', [I1, path.join(I1, 'drafts', 'grammar')]);
     same([itemLine.code, itemLine.lines.length, /^fail grammar -: the kind's split threw: rule overleven:w1 is already the id of the item overleven:w1 « .+ » of the course$/.test(itemLine.lines[0] || '')], [1, 1, true], 'Split refuse un id d\'élément du cours, en nommant les deux');
 
-    /* Review Focus 3, côté Merge : write refuse la même unité inconnue et le même numéro faux, et deux règles qui écrivent une phrase
+    /* Côté Merge : write refuse la même unité inconnue et le même numéro faux, et deux règles qui écrivent une phrase
        (Check ne voit que les lots déjà écrits). Ces gardes n'ont pas de « vieux code » : le genre n'existait pas. */
     const takeOf = id => ({ id, row: GOOD });
     const r0 = K.RULES[0];
