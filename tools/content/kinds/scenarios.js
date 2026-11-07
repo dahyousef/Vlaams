@@ -157,8 +157,8 @@ function check(row, input, ctx) {
         const cw = w + '.choices[' + k + ']';
         if (!keysOf(c, ['nl', 'fr', 'en', 'reply', 'note'])) return say(cw, 'is { nl, fr, en, reply, note } and nothing else: reply and note are null when absent');
         line(cw, { nl: c.nl, fr: c.fr, en: c.en }, []);
-        if (oneLine(c.nl) && dutch.has(c.nl)) say(cw, 'says what another choice of the step says');
-        dutch.add(c.nl);
+        if (oneLine(c.nl) && seenNl.has(c.nl)) say(cw, 'says what another choice of the step says');
+        seenNl.add(c.nl);
         if (c.reply !== null) line(cw + '.reply', c.reply, ['be']);
         if (c.note !== null) pair(cw + '.note', c.note, 'note');
       });
