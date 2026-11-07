@@ -2,7 +2,7 @@
    (chacune du cours) et le défi, joués en touchant l'écran.
      node tools/learner-pass/corners.js [dossier] */
 const { open, verdict, sleep } = require('./common');
-const { playSession, playConversation, shot, STUCK } = require('./session');
+const { playSession, playConversation, shot, passesOf, STUCK } = require('./session');
 
 (async () => {
   const A = await open();
@@ -58,9 +58,10 @@ const { playSession, playConversation, shot, STUCK } = require('./session');
      une passe par rang de choix : à la passe q, le choix q % n à chaque tour « vous » (playConversation),
      de 0 au plus grand nombre de choix d'un tour, moins un. */
   const ids = await p.evaluate(() => NL.content.scenarios.map(s => s.id));
-  const passes = await p.evaluate(() => NL.content.scenarios.map(s => Math.max.apply(null, s.steps.filter(x => x.you).map(x => x.you.choices.length))));
+  const passes = (await p.evaluate(() => NL.content.scenarios.map(s => s.steps.filter(x => x.you).map(x => x.you.choices.length)))).map(passesOf);
   for (let c = 0; c < ids.length; c++) {
     console.log('\nCONVERSATION ' + ids[c]);
+    if (!passes[c]) { console.log('  NO STEP OF YOURS'); problems.push('conversation ' + ids[c] + ' has no step of yours'); continue; }
     for (let q = 0; q < passes[c]; q++) {
       console.log('  pass ' + (q + 1) + ' of ' + passes[c]);
       await p.evaluate(() => NL.ui.go('praten'));

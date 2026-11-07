@@ -11,7 +11,7 @@ const ok = (c, m) => { checks++; if (!c) { console.log('  FAIL: ' + m); fails++;
 /* common.js charge Playwright et ouvre un navigateur : session.js n'en veut que ces deux noms. */
 const common = path.join(ROOT, 'tools', 'learner-pass', 'common.js');
 require.cache[common] = { id: common, filename: common, loaded: true, exports: { sleep: () => Promise.resolve(), SHOTS: os.tmpdir(), open: () => Promise.reject(new Error('pas de navigateur')), verdict: () => {} } };
-const { playSession, playConversation, STUCK } = require(path.join(ROOT, 'tools', 'learner-pass', 'session.js'));
+const { playSession, playConversation, passesOf, STUCK } = require(path.join(ROOT, 'tools', 'learner-pass', 'session.js'));
 const rules = require(path.join(ROOT, 'tools', 'learner-pass', 'rules.js'));
 
 /* Une séance de `cards` cartes à un seul bouton ; sans limite, elle ne finit jamais. */
@@ -95,7 +95,10 @@ function fakeConversation(spec, stuck) {
   const corners = fs.readFileSync(path.join(ROOT, 'tools', 'learner-pass', 'corners.js'), 'utf8');
   ok(/NL\.content\.scenarios\.map/.test(corners) && /'\\nCONVERSATION ' \+ ids\[c\]/.test(corners) && !/s-bakker/.test(corners),
     'corners.js must play every scenario of NL.content.scenarios, print one CONVERSATION <id> line each, and name none');
-  ok(/pass: q/.test(corners) && /Math.max.apply/.test(corners), 'corners.js must play one pass per choice position, q from 0 to the largest choice count of a you step');
+  ok(typeof passesOf === 'function' && passesOf([3, 2, 3]) === 3 && passesOf([2]) === 2 && passesOf([]) === 0,
+    'passesOf gives the largest choice count of a you step, and 0 for a conversation with none');
+  ok(/pass: q/.test(corners) && /passesOf/.test(corners) && /has no step of yours/.test(corners),
+    'corners.js must play one pass per choice position (passesOf), and report a conversation with no step of yours');
 
   console.log('\nLES FICHES DE RÈGLE');
   const good = { title: 'Titre', rule: 'La règle', explain: 'Pourquoi', rows: 3, sw: 390, cardOver: 0, wide: [] };

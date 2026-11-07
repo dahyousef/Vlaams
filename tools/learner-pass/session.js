@@ -207,4 +207,6 @@ function speakProblem(e) {
   return good(e) ? null : 'said right (' + e.speakMode + '), not marked right: ' + JSON.stringify({ panel: e.panel, heard: e.heard });
 }
 
-module.exports = { playSession, playConversation, speakProblem, STUCK, shot };
+/* Le nombre de passes d'une conversation dans corners.js : le plus grand nombre de choix d'un tour « vous », 0 sans tour. */
+const passesOf = counts => counts.reduce((m, n) => Math.max(m, n), 0);
+module.exports = { playSession, playConversation, speakProblem, passesOf, STUCK, shot };
