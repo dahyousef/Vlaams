@@ -68,8 +68,9 @@ L'arriéré d'un cours de phase 4 se voit désormais sur le vrai cours : sur ses
 séance qui suit l'arriéré (ADR 0007) le tient à 654 sur 1 048 éléments, sous les trois
 quarts du cours (786) qu'exige chaque apprenant à une séance par jour. L'apprenant du
 grand cours (`groot`) regarde un peu au-delà : 993 sur 1 192 éléments avec 22 places
-fixes, 731 sur 1 172 (plafond 879) avec la séance qui suit l'arriéré. Ces pics bougent de quelques dizaines dès que le contenu change : c'est
-le plafond qui est exigé, pas le chiffre.
+fixes, 731 sur 1 172 (plafond 879) avec la séance qui suit l'arriéré. Ces pics
+bougent de quelques dizaines dès que le contenu change : c'est le plafond qui est
+exigé, pas le chiffre.
 
 Ce plafond a une limite, et `pace.js` la dit : il ne juge qu'un cours rencontré à
 temps. Sur 1 580 éléments, 200 jours ne suffisent plus : 22 places fixes restent à
