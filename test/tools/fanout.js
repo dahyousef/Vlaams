@@ -37,6 +37,13 @@ fs.mkdirSync(KINDS, { recursive: true });
 const kindFile = (name, text) => fs.writeFileSync(path.join(KINDS, name + '.js'), text);
 const text = f => fs.readFileSync(f, 'utf8');
 const put = (dir, file, v) => fs.writeFileSync(path.join(dir, file), typeof v === 'string' ? v : JSON.stringify(v, null, 2) + '\n');
+/* Les pièces d'une copie du dépôt où les outils du kit se lancent, et l'outil lancé comme un agent le lance. */
+const KIT = ['build.sh', 'src', 'test/lib', 'test/data', 'tools'];
+const copyKit = (from, dest, pieces) => { (pieces || KIT).forEach(p => fs.cpSync(path.join(from, p), path.join(dest, p), { recursive: true })); return dest; };
+const runIn = (dir, script, args) => {
+  const r = spawnSync(process.execPath, [path.join(dir, 'tools', 'content', script)].concat(args), { encoding: 'utf8' });
+  return { code: r.status, lines: (r.stdout || '').split(/\r?\n/).filter(Boolean) };
+};
 /* Et grammar.a1c.js vidé par l'écrivain du genre grammar : ses règles veulent des unités du lexique, que le lexique vidé n'a plus. */
 const beforeGrammar = dir => fs.writeFileSync(path.join(dir, 'src', 'content', 'grammar.a1c.js'),
   require(path.join(dir, 'tools', 'content', 'kinds', 'grammar')).patterns([]).map(l => l + '\n').join(''));
@@ -51,10 +58,7 @@ const beforeWords = dir => {
   fs.writeFileSync(ids, text(ids).split(/\r?\n/).filter(l => l && !own.has(l.split(':')[0])).map(l => l + '\n').join(''));
 };
 /* Un outil du kit, lancé comme un agent le lance : ses lignes et son code de sortie. */
-const run = (script, args) => {
-  const r = spawnSync(process.execPath, [path.join(TMP, 'tools', 'content', script)].concat(args), { encoding: 'utf8' });
-  return { code: r.status, lines: (r.stdout || '').split(/\r?\n/).filter(Boolean) };
-};
+const run = (script, args) => runIn(TMP, script, args);
 
 /* Le genre d'essai : « mot » est le néerlandais de la source en capitales, « raison » est
    facultative, et une ligne dont la raison est « maître » va au mainteneur. Un verdict
@@ -642,12 +646,9 @@ module.exports = {
        se lancent donc depuis celui-ci. */
     const spelling = require('../lib/spelling');
     const FR = path.join(TMP, 'flamand');
-    ['build.sh', 'src', 'test/lib', 'test/data', 'tools'].forEach(p => fs.cpSync(path.join(ROOT, p), path.join(FR, p), { recursive: true }));
+    copyKit(ROOT, FR);
     beforeWords(FR);
-    const runFr = (script, args) => {
-      const r = spawnSync(process.execPath, [path.join(FR, 'tools', 'content', script)].concat(args), { encoding: 'utf8' });
-      return { code: r.status, lines: (r.stdout || '').split(/\r?\n/).filter(Boolean) };
-    };
+    const runFr = (script, args) => runIn(FR, script, args);
     const PICK = {
       'overleven:p3': { be: 'Sorry, ik heb da nie verstaan.', evidence: 'rule:da+nie' },
       'dokter:p6': { be: 'Hebde een voorschrift nodig?', evidence: 'rule:kunde' },
@@ -827,12 +828,9 @@ module.exports = {
        Tatoeba fait ici, de cinq phrases, sous les vraies épingles. check.js lit le dépôt qui le
        contient : les outils se lancent donc depuis celui-ci. */
     const EX = path.join(TMP, 'exemples');
-    ['build.sh', 'src', 'test/lib', 'test/data', 'tools', 'docs/attribution'].forEach(p => fs.cpSync(path.join(ROOT, p), path.join(EX, p), { recursive: true }));
+    copyKit(ROOT, EX, KIT.concat('docs/attribution'));
     beforeWords(EX);
-    const runEx = (script, args) => {
-      const r = spawnSync(process.execPath, [path.join(EX, 'tools', 'content', script)].concat(args), { encoding: 'utf8' });
-      return { code: r.status, lines: (r.stdout || '').split(/\r?\n/).filter(Boolean) };
-    };
+    const runEx = (script, args) => runIn(EX, script, args);
     const SOURCED = path.join(EX, 'src', 'content', 'sourced.js');
     const emptied = {};
     Object.keys(table.load(SOURCED).entries).forEach(nl => { emptied[nl] = null; });
@@ -1073,12 +1071,9 @@ module.exports = {
        épelle l'exemple par test/lib/spelling.js) : check.js lit le dépôt qui le contient, les
        outils se lancent donc depuis celui-ci. Les lignes écrites ici sont faites à la main. */
     const OP = path.join(TMP, 'open');
-    ['build.sh', 'src', 'test/lib', 'test/data', 'tools'].forEach(p => fs.cpSync(path.join(ROOT, p), path.join(OP, p), { recursive: true }));
+    copyKit(ROOT, OP);
     beforeWords(OP);
-    const runOp = (script, args) => {
-      const r = spawnSync(process.execPath, [path.join(OP, 'tools', 'content', script)].concat(args), { encoding: 'utf8' });
-      return { code: r.status, lines: (r.stdout || '').split(/\r?\n/).filter(Boolean) };
-    };
+    const runOp = (script, args) => runIn(OP, script, args);
     const K = kit.loadKind(OP, 'open'), CO = course(OP), U = CO.NL.util;
     const ctx = { repo: OP, course: () => CO };
     const KD = path.join(OP, 'drafts', 'open'), LOTS = ['units-1-6', 'units-7-12'];
@@ -1255,13 +1250,10 @@ module.exports = {
        Nederlands aan het leren. » et hallo gardent leur forme flamande, et « het gemeentehuis »
        n'en a pas. */
     const EX = path.join(TMP, 'explications');
-    ['build.sh', 'src', 'test/lib', 'test/data', 'tools'].forEach(p => fs.cpSync(path.join(ROOT, p), path.join(EX, p), { recursive: true }));
+    copyKit(ROOT, EX);
     beforeWords(EX);
     const X = require(path.join(EX, 'tools', 'content', 'lib', 'explain'));
-    const runEx = (script, args) => {
-      const r = spawnSync(process.execPath, [path.join(EX, 'tools', 'content', script)].concat(args), { encoding: 'utf8' });
-      return { code: r.status, lines: (r.stdout || '').split(/\r?\n/).filter(Boolean) };
-    };
+    const runEx = (script, args) => runIn(EX, script, args);
     const LEREN = C.byId('overleven:p0').nl, HALLO = C.byId('overleven:w0').nl, HUIS = C.byId('thuis:w12').nl;
     const BE = path.join(EX, 'src', 'content', 'be.js'), fixed = {};
     fixed[LEREN] = 'Ik ben Nederlands aan het leren, hè.';
@@ -1503,12 +1495,9 @@ module.exports = {
     same(lexica.filter(f => text(path.join(ROOT, 'test', 'smoke.js')).indexOf('\'src/content/' + f + '\'') < 0), [], 'la liste de test/smoke.js nomme chaque lexique de src/content');
     same(lexica.filter(f => text(path.join(ROOT, 'build.sh')).split(/\r?\n/).indexOf('src/content/' + f) < 0), [], 'le SRC de build.sh nomme chaque lexique de src/content');
     const WD = path.join(TMP, 'mots');
-    ['build.sh', 'src', 'test/lib', 'test/data', 'tools'].forEach(p => fs.cpSync(path.join(ROOT, p), path.join(WD, p), { recursive: true }));
+    copyKit(ROOT, WD);
     beforeWords(WD);
-    const runWd = (script, args) => {
-      const r = spawnSync(process.execPath, [path.join(WD, 'tools', 'content', script)].concat(args), { encoding: 'utf8' });
-      return { code: r.status, lines: (r.stdout || '').split(/\r?\n/).filter(Boolean) };
-    };
+    const runWd = (script, args) => runIn(WD, script, args);
     const SENSES = path.join(WD, '.cache', 'kaikki', 'senses.tsv');
     fs.mkdirSync(path.dirname(SENSES), { recursive: true });
     fs.writeFileSync(SENSES, '# kaikki/nl.jsonl sha256 ' + cache.PINS['kaikki/nl.jsonl'].sha256 + '\n' + [
@@ -1677,19 +1666,10 @@ module.exports = {
        cours y est celui d'avant la fusion, grammar.a1c.js vidé par l'écrivain du genre. Sa source est une
        règle de RULES, nommée par son id ; Split coupe les 13 en 9 lots, un par unité. */
     const GR = path.join(TMP, 'regles');
-    const PIECES = ['build.sh', 'src', 'test/lib', 'test/data', 'tools'];
-    PIECES.forEach(p => fs.cpSync(path.join(ROOT, p), path.join(GR, p), { recursive: true }));
+    copyKit(ROOT, GR);
     beforeGrammar(GR);
-    const runIn = (dir, script, args) => {
-      const r = spawnSync(process.execPath, [path.join(dir, 'tools', 'content', script)].concat(args), { encoding: 'utf8' });
-      return { code: r.status, lines: (r.stdout || '').split(/\r?\n/).filter(Boolean) };
-    };
     const runGr = (script, args) => runIn(GR, script, args);
-    const copyGr = name => {
-      const d = path.join(TMP, name);
-      PIECES.forEach(p => fs.cpSync(path.join(GR, p), path.join(d, p), { recursive: true }));
-      return d;
-    };
+    const copyGr = name => copyKit(GR, path.join(TMP, name));
     const K = require(path.join(GR, 'tools', 'content', 'kinds', 'grammar'));
     const CG = course(GR), ctxG = { repo: GR, course: () => CG };
 
@@ -1896,11 +1876,8 @@ module.exports = {
     const srcLines = text(path.join(ROOT, 'build.sh')).split(/\r?\n/);
     same(srcLines.indexOf('src/content/scenarios.a1c.js') - srcLines.indexOf('src/content/scenarios.js'), 1, 'le SRC de build.sh nomme scenarios.a1c.js juste après scenarios.js');
     const SD = path.join(TMP, 'conversations');
-    ['build.sh', 'src', 'test/lib', 'test/data', 'tools'].forEach(p => fs.cpSync(path.join(ROOT, p), path.join(SD, p), { recursive: true }));
-    const runSd = (script, args) => {
-      const r = spawnSync(process.execPath, [path.join(SD, 'tools', 'content', script)].concat(args), { encoding: 'utf8' });
-      return { code: r.status, lines: (r.stdout || '').split(/\r?\n/).filter(Boolean) };
-    };
+    copyKit(ROOT, SD);
+    const runSd = (script, args) => runIn(SD, script, args);
     const KS = require(path.join(SD, 'tools', 'content', 'kinds', 'scenarios')), KWS = require(path.join(SD, 'tools', 'content', 'kinds', 'words'));
     const A1C = path.join(SD, 'src', 'content', 'scenarios.a1c.js'), emptyFile = KS.scenarios([]).map(l => l + '\n').join('');
     fs.writeFileSync(A1C, emptyFile);
