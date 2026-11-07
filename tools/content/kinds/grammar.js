@@ -201,7 +201,7 @@ function check(row, input, ctx) {
   /* Le texte de l'apprenant n'entre pas dans un champ que la feuille montre en HTML (title, explain) : il y serait lu
      comme du balisage (test/lang.js 6d.7). HTML_FIELDS en décide : rule, que la feuille cite, et les phrases, qu'elle
      échappe, gardent leurs jetons. */
-  ['title', 'rule', 'explain'].forEach(f => LANGS.forEach(l => htmlTokens(f, row[f][l]).forEach(t =>
+  ['title', 'explain'].forEach(f => LANGS.forEach(l => htmlTokens(f, row[f][l]).forEach(t =>
     why.push(f + '.' + l + ': ' + t + ' is the learner\'s text, and ' + f + ' is shown as HTML: write no token there'))));
 
   /* L'explication : quatre balises, le néerlandais marqué (et connu), aucun néerlandais hors des marques. */
