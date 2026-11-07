@@ -152,7 +152,7 @@ function check(row, input, ctx) {
       pair(w + '.ask', y.ask, 'ask');
       if (y.hint !== null) pair(w + '.hint', y.hint, 'hint');
       if (!Array.isArray(y.choices) || !within(y.choices.length, CHOICES)) return say(w + '.choices', 'holds ' + CHOICES[0] + ' or ' + CHOICES[1] + ' choices, like the six conversations of the course');
-      const dutch = new Set();
+      const seenNl = new Set();
       y.choices.forEach((c, k) => {
         const cw = w + '.choices[' + k + ']';
         if (!keysOf(c, ['nl', 'fr', 'en', 'reply', 'note'])) return say(cw, 'is { nl, fr, en, reply, note } and nothing else: reply and note are null when absent');
