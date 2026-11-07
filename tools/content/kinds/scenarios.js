@@ -139,7 +139,6 @@ function check(row, input, ctx) {
   if (!Array.isArray(row.steps)) say('steps', 'is a list');
   else {
     const them = row.steps.filter(s => isObj(s) && 'them' in s).length, you = row.steps.filter(s => isObj(s) && 'you' in s).length;
-    if (row.steps.length <= 2) say('steps', 'holds more than 2 steps');
     if (!within(them, THEM)) say('steps', 'holds ' + THEM[0] + ' to ' + THEM[1] + ' steps of theirs (them), like the six conversations of the course: ' + them + ' here');
     if (!within(you, YOU)) say('steps', 'holds ' + YOU[0] + ' to ' + YOU[1] + ' steps of yours (you), like the six conversations of the course: ' + you + ' here');
     row.steps.forEach((st, i) => {

@@ -1964,6 +1964,9 @@ module.exports = {
       [['steps: holds 3 to 4 steps of yours (you), like the six conversations of the course: 2 here'],
         ['steps[1]: two steps of theirs in a row: the learner answers in between'], ['steps[0]: the first step is theirs (them): the other speaks first']],
       'les bornes des six : étapes de l\'autre, étapes à toi, la première est à l\'autre, jamais deux à la suite');
+    const two = wrongS(r => { r.steps.splice(2); });
+    ok(!two.some(m => /more than 2 steps/.test(m)) && two.some(m => /steps of theirs \(them\)/.test(m)) && two.some(m => /steps of yours \(you\)/.test(m)),
+      'une conversation de deux étapes est refusée par les bornes des six, sans ligne qui dise la règle comme une faute : ' + JSON.stringify(two));
     same([wrongS(r => { delete r.steps[0].them.be; }), wrongS(r => { r.steps[0].them.be = ''; }), wrongS(r => { r.steps[0].them.en = ''; })],
       [['steps[0].them: is { nl, fr, en, be } and nothing else'], ['steps[0].them.be: is a text on one line with no space at either end'], ['steps[0].them.en: is a text on one line with no space at either end']],
       'une réplique de l\'autre porte son be et ses deux sens');
