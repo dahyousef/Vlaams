@@ -278,8 +278,9 @@ NL.state.open().then(async () => {
     const backlog = (n, src) => { X.state.clearAll(); dueReviews(X, n, T0); return X.srs.compose(src || 'vandaag'); };
     /* Les rencontres viennent de l'unité où s'arrêtent les dus : le dernier arriéré doit en laisser au moins la
        réserve dans cette unité. Le plus grand nombre de dus jusqu'à 1 000 qui la laisse se calcule sur le cours,
-       dans l'ordre où les rend dus test/lib/seed.js (dueOrder) : 1 000 tout rond s'arrêtait à huit mots de la fin de « reis »
-       quand les 13 règles de grammar.a1c.js ont décalé les éléments, et le prochain contenu le déplacera encore. */
+       dans l'ordre où les rend dus test/lib/seed.js (dueOrder) : 1 000 tout rond s'arrêtait à huit mots de la fin
+       de « reis » quand les 13 règles de grammar.a1c.js ont décalé les éléments, et le prochain contenu le
+       déplacera encore. */
     const order = dueOrder(X);
     const leaves = n => order.slice(n).filter(it => it.unit === order[n - 1].unit).length;
     let deep = 1000;
