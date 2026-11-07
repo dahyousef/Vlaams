@@ -1,5 +1,5 @@
 /* Une séance jouée comme un apprenant la joue : de vrais touchers, de vraies frappes.
-   playSession() est utilisé par days.js, corners.js et sweep.js. */
+   playSession() est utilisé par days.js, corners.js et sweep.js ; playConversation() par corners.js. */
 const path = require('path');
 const { sleep, SHOTS } = require('./common');
 const shot = (p, name, full) => p.screenshot({ path: path.join(SHOTS, name + '.png'), fullPage: !!full });
@@ -122,6 +122,50 @@ async function playSession(page, label, opts) {
   return { log, endText };
 }
 
+/* Une conversation, jouée jusqu'à son écran de fin : chaque réplique à dire est dite telle qu'elle
+   s'affiche. À chaque tour « vous » de n choix, on touche le choix `opts.pass % n` (passe 0 par défaut) :
+   en jouant les passes 0 à (plus grand n) - 1, chaque choix de chaque tour est touché. Rend { turns, finished, picks, lines, problems }. */
+async function playConversation(p, id, opts) {
+  const o = opts || {}, lines = [], problems = [], picks = [];
+  let turns = 0, finished = false, youSteps = 0;
+  for (let k = 0; k < 60; k++) {
+    await sleep(300);
+    if (await p.$('[data-step="again"]')) { finished = true; await shot(p, 'conversation-' + id + '-end', true); break; }
+    if (await p.$('[data-step="next"]')) { await p.click('[data-step="next"]'); continue; }
+    if (await p.$('[data-choice]')) {
+      const n = await p.evaluate(() => document.querySelectorAll('[data-choice]').length);
+      const pick = (o.pass || 0) % n;
+      picks.push(pick); youSteps++;
+      lines.push('  you step ' + (youSteps - 1) + ': choice ' + pick + ' of ' + n);
+      await p.click('[data-choice="' + pick + '"]');
+      continue;
+    }
+    if (await p.$('[data-act="accept"]')) { await p.click('[data-act="accept"]'); continue; }
+    const mic = await p.$('[data-mic="start"]');
+    if (!mic) {
+      const buttons = await p.evaluate(() => Array.from(document.querySelectorAll('button')).map(b => JSON.stringify(b.dataset)).join(' '));
+      problems.push('conversation ' + id + ': no known button at step ' + k + ': ' + buttons);
+      await shot(p, 'conversation-' + id + '-unknown-' + k);
+      break;
+    }
+    const target = await p.evaluate(() => { const s = document.querySelector('[data-say][data-slow]'); return s ? s.dataset.say : ''; });
+    await p.evaluate(s => { window.__say = s; }, target);
+    await mic.click();
+    await sleep(450);
+    if (turns === 0 && o.firstShots) await shot(p, 'conversation-listening');
+    await p.click('[data-mic="stop"]', { force: true, timeout: 3000 });
+    const panel = await p.waitForSelector('.mic-panel.good, .mic-panel.bad', { timeout: 4000 }).then(e => e.getAttribute('class'), () => 'NEVER SCORED');
+    lines.push('  turn ' + turns + ' said ' + JSON.stringify(target) + ' -> ' + panel);
+    if (!/\bgood\b/.test(panel)) problems.push('conversation ' + id + ' turn ' + turns + ': « ' + target + ' » -> ' + panel);
+    if (turns === 0 && o.firstShots) await shot(p, 'conversation-scored');
+    turns++;
+    if (panel === 'NEVER SCORED') break;
+  }
+  lines.push('  ' + (finished ? 'finished after ' + turns + ' spoken turn(s)' : 'NOT FINISHED'));
+  if (!finished) problems.push('conversation ' + id + ' did not reach its end');
+  return { turns, finished, picks, lines, problems };
+}
+
 /* Une carte parlée : toucher le micro, « dire » la réponse (ou autre chose), toucher pour finir. */
 async function speak(p, label, opts, entry, answer) {
   const how = (opts.speakModes || [])[opts.speakCount.n] || 'mic-right';
@@ -163,4 +207,6 @@ function speakProblem(e) {
   return good(e) ? null : 'said right (' + e.speakMode + '), not marked right: ' + JSON.stringify({ panel: e.panel, heard: e.heard });
 }
 
-module.exports = { playSession, speakProblem, STUCK, shot };
+/* Le nombre de passes d'une conversation dans corners.js : le plus grand nombre de choix d'un tour « vous », 0 sans tour. */
+const passesOf = counts => counts.reduce((m, n) => Math.max(m, n), 0);
+module.exports = { playSession, playConversation, speakProblem, passesOf, STUCK, shot };

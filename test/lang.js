@@ -6,6 +6,7 @@ const browser = require('./lib/browser');
 const { PROSE } = require('./lib/prose');
 const tree = require('./lib/tree');
 const { dutchWords, words } = require('./lib/dutch');
+const { SHARED_OK, QUOTED_FIELDS, HTML_FIELDS, names, quotedSegments, foreignQuotes, bareDutch, QUOTE_OK } = require('./lib/quoted');
 const spelling = require('./lib/spelling');
 const { text, joined, runs, count, argsOf } = require('./lib/langs');
 const { fakeSupabase } = require('./lib/supabase');
@@ -911,46 +912,9 @@ function displayChecks() {
    {bedrijf}), reste du texte échappé (6d.7). Les tables de référence, écrites dans une
    seule langue (NL.content.anchors), se lisent de même : say, la prose des sons, comme explain ;
    trap, le piège d'un faux ami, comme une note. */
-const QUOTED_FIELDS = ['note', 'blurb', 'rule', 'ask', 'what', 'outro', 'hint', 'trap'];
-/* Les champs écrits en HTML, montrés par NL.gloss.prose : g est la tête d'une ligne de la table des sons. */
-const HTML_FIELDS = ['explain', 'say', 'title', 'h', 'g'];
 /* Les tables de référence (src/content/reference.js) lues avec le cours : les emprunts, les sons et les
    deux tables de faux amis. C.TABLES, lui, donne les tables par le néerlandais (byDutch). */
 const REFERENCE_TABLES = ['loans', 'sounds', 'faux', 'fauxEn'];
-/* Les mots cités hors du néerlandais du cours qui sont pourtant du néerlandais, avec la raison. Une note
-   de mot ou de phrase n'en a pas besoin pour un mot que l'orthographe connaît et qu'elle cite dans ses
-   deux langues (6d.3). Cette table, SHARED_OK et SOUND_OK n'ont pas de prototype : un mot lu
-   « constructor » ou « toString » n'y est pas listé. */
-const QUOTE_OK = Object.assign(Object.create(null), {
-  pardon: 'le nord pour excuseer, dans la note d’un choix de la conversation du train',
-  jam: 'le nord pour de confituur, dans sa note d’emprunt',
-  vrachtwagen: 'l’écrit pour de camion, dans sa note d’emprunt',
-  bijgevoegd: 'le nord pour « in bijlage », dans une note de la fiche des mails',
-  werke: 'werken tel qu’il se dit, n final tombé, dans la table des sons',
-  lope: 'lopen tel qu’il se dit, n final tombé, dans la table des sons',
-  uiteindelijk: 'ce que veut dire eventually, dans le piège de eventueel',
-  slank: 'ce que veut dire slim (svelte), dans le piège de slim',
-  zeldzaam: 'ce que veut dire rare, dans le piège de raar',
-  merk: '« het merk », ce que veut dire brand (une marque), dans le piège de de brand',
-  plattegrond: '« de plattegrond », ce que veut dire map (un plan), dans le piège de de map'
-});
-/* Les mots que le français et l'anglais écrivent tous deux et que le cours a aussi en néerlandais :
-   l'anglais du bureau, une marque, un article. 6d.4 ne les prend pas pour du néerlandais laissé nu. */
-const SHARED_OK = Object.assign(Object.create(null), {
-  a: 'le verbe avoir et l’article anglais ; le cours ne l’a que comme lettre, « de a »',
-  ticket: 'l’anglais du bureau, le même en français et en anglais, dans la présentation de l’unité du travail',
-  build: 'l’anglais du bureau, le même en français et en anglais, dans deux présentations',
-  code: 'l’anglais du bureau, le même en français et en anglais, dans la présentation d’une fiche',
-  bancontact: 'la carte de paiement belge, une marque, dans la présentation de l’unité des courses',
-  stand: '« stand-up », la réunion du matin, en français comme en anglais',
-  up: '« stand-up », la réunion du matin, en français comme en anglais',
-  contact: '« premier contact », “first contact”, dans une note de la fiche des mails',
-  direct: '« Être direct », “Being direct”, dans une note de la conversation sur les délais',
-  t: 'la lettre t, nommée de même en français et en anglais, dans les notes de « Dat was plezant. », « Wat betekent dat? », « acht » et « komen »',
-  s: 'la lettre s, nommée de même en français et en anglais, dans la note de « Niks speciaals, en bij u? »',
-  o: 'la lettre o, nommée de même en français et en anglais, dans la note de « goedkoop »',
-  film: 'un film se regarde, en français comme en anglais, dans la note de « kijken »'
-});
 /* Ce que la table des sons met en gras sans le déclarer néerlandais : la lettre ou le mot auquel elle
    compare un son, français (une fois, le w anglais), avec la raison (D5). Le reste de son gras est
    du néerlandais déclaré nl-BE : l'orthographe du son enseigné, ou la syllabe accentuée d'un
@@ -984,8 +948,6 @@ function eachText(C, fn) {
   REFERENCE_TABLES.forEach(k => tree.visit(C[k], read, k, k));
 }
 function quoteChecks() {
-  /* Les mots des noms que {naam}, {stad} et {bedrijf} prennent par défaut, que l'en-tête montre. */
-  const names = NL => new Set([].concat(...Object.keys(NL.content.DEFAULTS).map(k => words(String(NL.content.DEFAULTS[k])))));
   /* 6d.1. La note de trager cite « trager » et « langzamer » : dans le pied d'une réponse fausse,
      chacun est déclaré nl-BE, guillemets dehors, en français comme en anglais. */
   const footNote = (l, to, want) => {
@@ -1062,7 +1024,6 @@ function quoteChecks() {
     return B.NL.state.open().then(() => {
       const NL = B.NL, Q = NL.gloss.quoted, dutch = dutchWords(NL), S = spelling.open(ROOT, NL);
       if (typeof Q !== 'function') { ok(false, '6d : NL.gloss.quoted manque'); return; }
-      const unescape = s => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&amp;/g, '&');
       const foreign = [], excused = new Set();
       /* Deux notes plantées, sous des clés qu'aucun élément n'a : l'une cite en français et en anglais un
          mot que l'orthographe connaît et que le cours n'enseigne pas, l'autre en français seulement. Le
@@ -1076,18 +1037,13 @@ function quoteChecks() {
         const t = HTML_FIELDS.indexOf(f) >= 0 ? joined(s) : s;
         const opened = t.split(/[«“]/).length - 1, closed = t.split(/[»”]/).length - 1;
         if (QUOTED_FIELDS.indexOf(f) < 0 && f !== 'explain' && f !== 'say') { ok(opened + closed === 0, '6d : ' + where + ' cite, mais ' + f + ' ne passe pas par NL.gloss.quoted : « ' + s + ' »'); return; }
-        const segs = Array.from(Q(t).matchAll(/<span lang="nl-BE">([^<]*)<\/span>/g), m => unescape(m[1]));
-        ok(segs.length === opened && opened === closed, '6d : ' + where + ' a un guillemet sans son pendant, ou une citation vide : « ' + s + ' »');
         const note = /^byDutch\.notes(\[.*\])\.(fr|en)$/.exec(where);
         const side = note && (notes[JSON.parse(note[1])[0]] || {})[note[2] === 'fr' ? 'en' : 'fr'];
-        const other = typeof side === 'string' ? Array.from(Q(side).matchAll(/<span lang="nl-BE">([^<]*)<\/span>/g), m => NL.util.norm(unescape(m[1]))) : [];
-        segs.forEach(q => {
-          if (other.indexOf(NL.util.norm(q)) >= 0 && spelling.tokens(q).every(w => S.known(w) || dutch.has(w))) return;
-          const affixes = q.split(/[\s,\/…]+|\.{2,}/).filter(t => /^-\p{L}+$|^\p{L}+-$/u.test(t)).map(t => t.replace('-', '').toLowerCase());
-          const miss = words(q).filter(w => !dutch.has(w) && affixes.indexOf(w) < 0 && !/^\d+$/.test(w));
-          miss.forEach(w => { if (QUOTE_OK[w]) excused.add(w); });
-          if (miss.some(w => !QUOTE_OK[w])) foreign.push(where + ' « ' + q + ' »');
-        });
+        const other = typeof side === 'string' ? quotedSegments(NL, side).map(q => NL.util.norm(q)) : [];
+        const r = foreignQuotes(NL, t, dutch, q => other.indexOf(NL.util.norm(q)) >= 0 && spelling.tokens(q).every(w => S.known(w) || dutch.has(w)));
+        ok(r.paired, '6d : ' + where + ' a un guillemet sans son pendant, ou une citation vide : « ' + s + ' »');
+        r.excused.forEach(w => excused.add(w));
+        r.foreign.forEach(q => foreign.push(where + ' « ' + q + ' »'));
       });
       const plants = foreign.filter(x => /^byDutch\.notes\["zq\d"\]/.test(x));
       ok(plants.join(' ; ') === 'byDutch.notes["zq2"].fr « ' + plant + ' »', '6d : une note cite « ' + plant + ' », que l’orthographe connaît, ' +
@@ -1113,17 +1069,14 @@ function quoteChecks() {
     const B = boot();
     return B.NL.state.open().then(() => {
       const NL = B.NL, dutch = dutchWords(NL), named = names(NL), shared = new Set(), nu = [];
-      const bare = (f, s, l) => new Set([].concat(...runs(HTML_FIELDS.indexOf(f) >= 0 ? NL.gloss.prose(s) : NL.gloss.quoted(s), l)
-        .filter(r => r.lang !== 'nl-BE').map(r => words(r.text))));
       let fields = 0;
       tree.visitCourse(NL.content, (v, key, where) => {
         if (!v || typeof v !== 'object' || typeof v.fr !== 'string' || typeof v.en !== 'string') return;
         if (QUOTED_FIELDS.indexOf(key) < 0 && HTML_FIELDS.indexOf(key) < 0) return;
         fields++;
-        const en = bare(key, NL.content.fill(v.en), 'en');
-        const both = Array.from(bare(key, NL.content.fill(v.fr), 'fr')).filter(w => en.has(w) && dutch.has(w) && !named.has(w));
-        both.forEach(w => { if (SHARED_OK[w]) shared.add(w); });
-        if (both.some(w => !SHARED_OK[w])) nu.push(where + ' [' + both.filter(w => !SHARED_OK[w]).join(', ') + ']');
+        const r = bareDutch(NL, dutch, named, key, NL.content.fill(v.fr), NL.content.fill(v.en));
+        r.shared.forEach(w => shared.add(w));
+        if (r.bare.length) nu.push(where + ' [' + r.bare.join(', ') + ']');
       });
       nu.forEach(n => ok(false, '6d : ' + n + ' : du néerlandais du cours, écrit pareil en français et en anglais hors de nl-BE — le citer, ou dans un champ HTML (' + HTML_FIELDS.join(', ') + ') lui donner class="nl"'));
       Object.keys(SHARED_OK).forEach(w => ok(shared.has(w), '6d : « ' + w + ' » n’est plus écrit pareil dans les deux langues, ou plus du néerlandais du cours : son exception est de trop'));

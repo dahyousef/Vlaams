@@ -177,6 +177,10 @@ A place for one word in a new unit, cut by the kit's `words` kind before the wor
 filled by a drafter; a unit's target is its number of slots. Not a session's place.
 _Avoid_: place, gap, vacancy
 
+**Conversation**:
+A scripted exchange the learner plays through, one step at a time, in a setting of daily life: the other speaker's lines alternate with the learner's choices. It belongs to a track and to no unit, and the kit's `scenarios` kind drafts it. The code calls it a scenario.
+_Avoid_: dialogue, role-play, scene
+
 ### Who the learner is
 
 **Display language**:

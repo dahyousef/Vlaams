@@ -3,3 +3,5 @@ index.html text eol=lf
 artifact.html text eol=lf
 # Shell scripts run under sh, here and on Linux: a CRLF checkout must not reach them.
 *.sh text eol=lf
+# The plan-run kit's pages: test/hooks.js copies verifier.md's lines into a shell script, so a CRLF checkout must not reach them.
+docs/agents/plan-runs/*.md text eol=lf

@@ -200,9 +200,13 @@ NL.state.open().then(() => {
   })));
   /* Révélé par les unités 13–34, qui ont fait monter ce compte de 61 à 129 : chaque phrase comptée en plus
      employait un de leurs mots avant qu'il soit enseigné. Le plan 4c, qui écrit leurs phrases, peut le baisser. */
-  const AHEAD_BUDGET = 129;
+  /* Les règles de grammar.a1c.js l'ont fait monter de 129 à 136 : le trou d'une règle enseigne sa forme à l'unité
+     qui la liste, et « werkt » et « blijf » (g-bijzin, g-vraag, à vragen), « wacht » (g-gebiedend, à cafe) font
+     emprunter en avant sept phrases qui les écrivaient déjà. Les règles n'ont rien emprunté : un mot de plus est
+     enseigné, plus tard que des phrases qui l'ont. */
+  const AHEAD_BUDGET = 136;
   ok(ahead <= AHEAD_BUDGET, ahead + ' phrases d’exemple empruntent du vocabulaire à une unité ultérieure, budget ' + AHEAD_BUDGET +
-    ' — baisser le budget quand on en corrige, jamais le lever (sa seule hausse, de 61 à 129, comptait des emprunts qui existaient déjà : les unités 13–34 les ont révélés)');
+    ' — baisser le budget quand on en corrige, jamais le lever (ses seules hausses, de 61 à 129 puis à 136, comptaient des emprunts qui existaient déjà : les unités 13–34 et les règles de grammar.a1c.js les ont révélés)');
   ok(ahead >= AHEAD_BUDGET, 'seulement ' + ahead + ' phrases empruntent en avant : baisser AHEAD_BUDGET à ' + ahead + ' pour verrouiller le gain');
   console.log('  séquence        ' + ahead + ' / ' + sentences + ' phrases empruntent en avant (budget ' + AHEAD_BUDGET + ')');
 
@@ -479,6 +483,40 @@ NL.state.open().then(() => {
       });
     });
     ok(seenI > 0, 'aucun <i> dans les explications de grammaire : le contrôle est creux'); }
+  /* Une conversation tutoie l'apprenant, comme les six premières (#135) : son français à lui (blurb, outro, la
+     consigne et l'indice d'un tour, la note d'un choix) ne dit ni « vous », ni « votre », ni « vos », ni un impératif
+     en -ez. Ce qui rend le u d'un néerlandophone garde « vous » : une parenthèse qui traduit une citation en u ou
+     en « alstublieft », que la garde ôte avant de lire, comme « rendez-vous », qui est un nom. Les répliques et les
+     choix ne sont pas lus : ce sont les mots des personnages. */
+  { const EZ_OK = ['chez', 'assez', 'nez'];
+    const vouvoie = fr => {
+      const s = String(fr).replace(/rendez-vous/gi, '')
+        .replace(/«([^«»]*)»\s*\(([^()]*)\)/g, (m, nl) => hasU(nl) || /alstublieft/i.test(nl) ? '' : m);
+      return /(^|[^a-zà-ÿ])(vous|votre|vos|dites|faites)(?![a-zà-ÿ])/i.test(s) ||
+        (s.match(/[a-zà-ÿ]+ez(?![a-zà-ÿ])/gi) || []).some(w => EZ_OK.indexOf(w.toLowerCase()) < 0);
+    };
+    [['Commandez une boisson.', 'un impératif en -ez'], ['Vous payez.', '« vous »'], ['Donne votre nom.', '« votre »'],
+      ['Range vos affaires.', '« vos »'], ['Dites merci.', '« dites »'], ['Faites-le.', '« faites »'], ['Écoutez.', 'un impératif en -ez']]
+      .forEach(c => ok(vouvoie(c[0]), 'vouvoie : la garde doit voir ' + c[1] + ' dans « ' + c[0] + ' »'));
+    [['Commande une boisson, chez le boulanger.', '« chez »'], ['Ton rendez-vous est à dix heures.', '« rendez-vous »'],
+      ['Assez, c’est un nez.', '« assez » et « nez »'], ['« Wat raadt u aan? » (Que conseillez-vous ?) se dit au café.', 'la traduction d’un u néerlandais'],
+      ['« alstublieft » (s’il vous plaît)', 'la traduction de « alstublieft »']]
+      .forEach(c => ok(!vouvoie(c[0]), 'vouvoie : la garde doit laisser passer ' + c[1] + ' dans « ' + c[0] + ' »'));
+    let seen = 0;
+    (RAW.scenarios || []).forEach(sc => {
+      const fields = [['blurb', sc.blurb], ['outro', sc.outro]];
+      (sc.steps || []).forEach((st, i) => {
+        if (!st.you) return;
+        fields.push(['steps[' + i + '].ask', st.you.ask], ['steps[' + i + '].hint', st.you.hint]);
+        (st.you.choices || []).forEach((c, j) => fields.push(['steps[' + i + '].choices[' + j + '].note', c.note]));
+      });
+      fields.forEach(f => {
+        if (!f[1] || typeof f[1].fr !== 'string') return;
+        seen++;
+        ok(!vouvoie(f[1].fr), sc.id + ' ' + f[0] + ' vouvoie l’apprenant, que les conversations tutoient (#135) : « ' + f[1].fr + ' »');
+      });
+    });
+    ok(seen > 0, 'aucun français de conversation adressé à l’apprenant : la garde du tutoiement est creuse'); }
   console.log('  gardes         ' + glossed.length + ' éléments glosés en anglais contrôlés');
 
   console.log('\n' + checks + ' contrôles, ' + (fails === 0 ? 'CONTENU CONFORME' : fails + ' ÉCHEC(S)'));

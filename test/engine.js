@@ -7,7 +7,7 @@
    est invisible. */
 const browser = require('./lib/browser');
 const { inZone, offsets } = require('./lib/zone');
-const { dueReviews } = require('./lib/seed');
+const { dueOrder, dueReviews } = require('./lib/seed');
 const ROOT = process.argv[2];
 const T0 = Date.parse('2026-10-05T08:00:00Z');
 const MIN = 60000, HOUR = 3600000, DAY = 86400000;
@@ -276,7 +276,18 @@ NL.state.open().then(async () => {
     ok(size >= 1000, 'the course holds ' + size + ' items, fewer than the 1,000 due this block needs');
     /* n éléments dus, et ce que compose() en fait. */
     const backlog = (n, src) => { X.state.clearAll(); dueReviews(X, n, T0); return X.srs.compose(src || 'vandaag'); };
-    [[39, 30], [40, 31], [440, 41], [1000, 41]].forEach(([n, places]) => {
+    /* Les rencontres viennent de l'unité où s'arrêtent les dus : le dernier arriéré doit en laisser au moins la
+       réserve dans cette unité. Le plus grand nombre de dus jusqu'à 1 000 qui la laisse se calcule sur le cours,
+       dans l'ordre où les rend dus test/lib/seed.js (dueOrder) : 1 000 tout rond s'arrêtait à huit mots de la fin
+       de « reis » quand les 13 règles de grammar.a1c.js ont décalé les éléments, et le prochain contenu le
+       déplacera encore. */
+    const order = dueOrder(X);
+    const leaves = n => order.slice(n).filter(it => it.unit === order[n - 1].unit).length;
+    let deep = 1000;
+    while (leaves(deep) < RESERVED) deep--;
+    console.log('  arriéré profond : ' + deep + ' dus, ' + leaves(deep) + ' à rencontrer dans « ' + order[deep - 1].unit + ' »');
+    ok(deep >= 900, 'the deepest backlog that leaves the reserve in its unit is ' + deep + ' items due: the block wants one near 1,000');
+    [[39, 30], [40, 31], [440, 41], [deep, 41]].forEach(([n, places]) => {
       const c = backlog(n), held = c.due.length + c.fresh.length;
       console.log('  ' + String(n).padStart(4) + ' dus : ' + c.due.length + ' révisions + ' + c.fresh.length + ' rencontres = ' + held + ' places');
       ok(held === places, n + ' items due: the session holds ' + held + ' items, not ' + places + ' (30 base places, one more per 40 due, 11 at most)');
