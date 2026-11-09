@@ -220,7 +220,9 @@ que le cours n'enseignait nulle part, un emprunt que rien ne comptait ; les unit
 puis les règles, en les enseignant plus tard, l'ont révélé. Les leurres, les explications et les
 guillemets n'en ont plus : `content.js` exige que chaque élément de « Comment le
 dit-on ici ? » ait ses leurres et chaque élément son explication en français et
-en anglais (la note d'un mot ou d'une phrase, la règle d'un motif), et
+en anglais (la note d'un mot ou d'une phrase, la règle d'un motif) — sauf, jusqu'au
+plan 4d, les phrases des unités 13 à 34, que `NOTE_BUDGET` compte, épinglé dans les
+deux sens —, et
 `lang.js` que la prose du cours ne mette entre guillemets que du néerlandais
 (une traduction va entre parenthèses).
 
@@ -309,5 +311,5 @@ test de placement, la dictée plus tôt, la série et le défi.
 
 ## Encore ouvert
 
-- Le contenu reste le plafond : 1048 éléments, tous de niveau A1 ; les unités 13 à 34 ont leurs mots, treize règles de grammaire (neuf unités) et quatre conversations, et pas encore leurs phrases.
+- Le contenu reste le plafond : 1158 éléments, tous de niveau A1 ; les unités 13 à 34 ont leurs mots, treize règles de grammaire (neuf unités), quatre conversations et leurs phrases prises dans Tatoeba (cinq par unité, Merge phrases du plan 4c), dont les explications attendent le plan 4d (`NOTE_BUDGET` dans `test/content.js`).
 - 80 mots sur 912 n'ont pas encore de phrase d'exemple (comptés après Merge examples du plan 4c) : les 63 mots que Tatoeba ne sert pas et que D25 nomme pour une phrase écrite (tâche 10 du plan 4c), et ceux que le rédacteur a passés faute de candidate qui convienne, qui attendent (D14).

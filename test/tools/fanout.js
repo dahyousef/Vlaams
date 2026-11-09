@@ -62,9 +62,22 @@ const runIn = (dir, script, args) => {
 /* Et grammar.a1c.js vidé par l'écrivain du genre grammar : ses règles veulent des unités du lexique, que le lexique vidé n'a plus. */
 const beforeGrammar = dir => fs.writeFileSync(path.join(dir, 'src', 'content', 'grammar.a1c.js'),
   require(path.join(dir, 'tools', 'content', 'kinds', 'grammar')).patterns([]).map(l => l + '\n').join(''));
-/* Et phrases.a1c.js vidé par l'écrivain du genre phrases : ses phrases veulent leurs unités, de même. */
-const beforePhrases = dir => fs.writeFileSync(path.join(dir, 'src', 'content', 'phrases.a1c.js'),
-  require(path.join(dir, 'tools', 'content', 'kinds', 'phrases')).file([]).map(l => l + '\n').join(''));
+/* Et phrases.a1c.js vidé par l'écrivain du genre phrases : ses phrases veulent leurs unités, de même ; les
+   lignes <unité>:p<n> de ces unités ôtées de ids.tsv ; et son crédit (docs/attribution/tatoeba-phrases.tsv,
+   quand la copie l'a) remis à ses lignes « # » et ses colonnes, comme Merge le récrit pour un fichier sans
+   phrase. Chaque fichier garde ses fins de ligne : les nombres attendus ne bougent pas avec le cours. */
+const beforePhrases = dir => {
+  const K = require(path.join(dir, 'tools', 'content', 'kinds', 'phrases'));
+  const own = new Set(require(path.join(dir, 'tools', 'content', 'kinds', 'words')).UNITS.map(u => u.id));
+  fs.writeFileSync(path.join(dir, 'src', 'content', 'phrases.a1c.js'), K.file([]).map(l => l + '\n').join(''));
+  const rewrite = (f, keep, tail) => {
+    if (!fs.existsSync(f)) return;
+    const was = text(f), eol = /\r\n/.test(was) ? '\r\n' : '\n';
+    fs.writeFileSync(f, was.split(/\r?\n/).filter(keep).concat(tail).join(eol) + eol);
+  };
+  rewrite(path.join(dir, 'test', 'data', 'ids.tsv'), l => !!l && !(/^[^:\t]+:p\d+\t/.test(l) && own.has(l.split(':')[0])), []);
+  rewrite(path.join(dir, 'docs', 'attribution', 'tatoeba-phrases.tsv'), l => l[0] === '#', [K.CREDITS]);
+};
 /* Le cours d'une copie de fixture tel qu'il était avant la tranche des unités 13 à 34 : le lexique vidé par
    l'écrivain du genre words sans ligne, et les lignes de ces unités ôtées de ids.tsv. Le kit se teste sur
    ses propres exemples, pas sur le cours que la fusion change ; les nombres attendus ne bougent pas avec lui. */
