@@ -199,7 +199,9 @@ NL.state.open().then(() => {
     if (sequence.ahead(d.nl, ui, first).length) ahead++;
   })));
   /* Révélé par les unités 13–34, qui ont fait monter ce compte de 61 à 129 : chaque phrase comptée en plus
-     employait un de leurs mots avant qu'il soit enseigné. Le plan 4c, qui écrit leurs phrases, peut le baisser. */
+     employait un de leurs mots avant qu'il soit enseigné. Ces 136 phrases sont écrites à la main dans les unités
+     1 à 12 ; les phrases sourcées des unités 13 à 34 (plan 4c) n'empruntent rien en avant, Check le refuse avant
+     Merge, et ne changent donc pas ce compte : il reste à 136 tant que ces phrases-là ne sont pas corrigées (D26). */
   /* Les règles de grammar.a1c.js l'ont fait monter de 129 à 136 : le trou d'une règle enseigne sa forme à l'unité
      qui la liste, et « werkt » et « blijf » (g-bijzin, g-vraag, à vragen), « wacht » (g-gebiedend, à cafe) font
      emprunter en avant sept phrases qui les écrivaient déjà. Les règles n'ont rien emprunté : un mot de plus est

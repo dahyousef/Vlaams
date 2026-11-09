@@ -310,4 +310,4 @@ test de placement, la dictée plus tôt, la série et le défi.
 ## Encore ouvert
 
 - Le contenu reste le plafond : 1048 éléments, tous de niveau A1 ; les unités 13 à 34 ont leurs mots, treize règles de grammaire (neuf unités) et quatre conversations, et pas encore leurs phrases.
-- 613 mots sur 912 n'ont pas encore de phrase d'exemple (comptés le 1er novembre 2026) : les 8 d'octobre, et les 605 mots des unités 13 à 34, dont les phrases viennent avec un plan suivant de la phase 4.
+- 80 mots sur 912 n'ont pas encore de phrase d'exemple (comptés après Merge examples du plan 4c) : les 63 mots que Tatoeba ne sert pas et que D25 nomme pour une phrase écrite (tâche 10 du plan 4c), et ceux que le rédacteur a passés faute de candidate qui convienne, qui attendent (D14).
