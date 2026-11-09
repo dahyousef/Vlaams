@@ -76,8 +76,10 @@ each verifier, and start no second suite beside a running one.
 
 - Only a line starting `VERIFIER:` is the verifier's result, never the script's output. If the script's notice
   comes first, wait on. Any other message from the verifier, « suite started » or a notice that it waits on its own
-  background work, is not a result either: wait on. If it has stopped without that line, send it on with
-  `SendMessage`.
+  background work, is not a result either: wait on. If it has stopped without that line, read
+  `<WS>/tmp/verifier.txt`: the verifier writes its return there before sending it. When its first line is
+  `verified <the commit you gave it>`, the `VERIFIER:` line under it is the result, as if returned. Otherwise
+  (`verifying <commit>`, another commit, or no file) the verifier gave no result: send it on with `SendMessage`.
 - A suite past fifteen minutes in all is no stop: the script counts silence, not time. `STALE` means no suite has
   ended since the script started and nothing has written to the file for fifteen minutes. Its line ends by saying
   which case it is:
@@ -104,7 +106,9 @@ each verifier, and start no second suite beside a running one.
    <WS>/run.md. Ticket: <…>. [Ruling: …] Report to <WS>/reports/task-<N>-impl.md." On `BLOCKED` or
    `NEEDS_RULING` with a question the brief does not answer: return `needs ruling` with that question.
 3. Dispatch the verifier with the run file and the commit hash. On `fail`: a fix round (step 6) with the failing
-   lines, unless it says `suite cut off` or `a suite still runs` (« Waiting »).
+   lines, unless it says `suite cut off` or `a suite still runs` (« Waiting »), or its failing lines hold
+   `DÉLAI DÉPASSÉ` (the kit's suite ran past its time limit, which says nothing of the commit): dispatch a new
+   verifier with a new wait, once; a second time on the same commit, return `needs ruling` with the line.
 4. Write the review diff — with a `.sh` file in `<WS>/tmp/`, run with `sh`:
 
        git log --format='%h %s%n%b' BASE..HEAD > "<WS>/reviews/task-<N>.diff"

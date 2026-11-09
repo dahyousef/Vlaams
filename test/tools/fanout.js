@@ -12,6 +12,21 @@
    règles sont les bonnes. Chaque genre a ses contrôles, dans sa propre suite. */
 const fs = require('fs'), path = require('path'), os = require('os'), http = require('http'), crypto = require('crypto');
 const { spawnSync } = require('child_process');
+/* La limite de temps. En plan 4b, un passage est resté plus de dix minutes dans le lot words, dans un check.js que
+   spawnSync attendait ; relancé, il a passé en 34 s, et la cause reste inconnue. Un minuteur ne couperait rien :
+   spawnSync bloque la boucle d'événements, et aucun minuteur ne tire avant son retour (mesuré sous Node 24 : un
+   setTimeout de 200 ms tire après un spawnSync de 1,5 s). Le fichier se relance donc lui-même en enfant, sous le délai
+   de spawnSync, qui le tue de l'extérieur : passé le délai, une ligne nommée, sortie 1, et un contrôleur relance la
+   commande. Un passage entier prend 24 s sur ce poste (mesuré deux fois, 24,1 s et 24,0 s) ; la limite est 300 s, et
+   FANOUT_LIMIT=<secondes> la change, pour l'essayer. Un enfant tué laisse son dossier vlaams-fanout-* dans le dossier
+   temporaire, et le check.js qui le bloquait. */
+const LIMIT = Number(process.env.FANOUT_LIMIT) || 300;
+if (!process.env.FANOUT_CHILD) {
+  const child = spawnSync(process.execPath, [__filename].concat(process.argv.slice(2)),
+    { stdio: 'inherit', timeout: LIMIT * 1000, env: Object.assign({}, process.env, { FANOUT_CHILD: '1' }) });
+  if (child.error && child.error.code === 'ETIMEDOUT') console.log('DÉLAI DÉPASSÉ : test/tools/fanout.js n\'a pas fini en ' + LIMIT + ' s ; à relancer');
+  process.exit(child.status === null ? 1 : child.status);
+}
 const ROOT = path.resolve(process.argv[2] || path.join(__dirname, '..', '..'));
 const LIB = path.join(ROOT, 'tools', 'content', 'lib');
 const kit = require(path.join(LIB, 'kit'));

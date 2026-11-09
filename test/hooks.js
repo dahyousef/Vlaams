@@ -1,9 +1,10 @@
 /* Les deux crochets de SessionStart et l'ordre du vérificateur. Le rappel de reprise : .claude/settings.json le
    branche sur SessionStart (compact|resume), et ce qu'il imprime entre dans le contexte de la session. Le crochet
    du transcript (startup|clear) imprime le chemin que Claude Code lui donne sur stdin. verifier.md remet les
-   sorties du build avant de vérifier l'arbre. Le texte du kit ne porte aucun caractère de contrôle, et sa commande
-   de lancement nomme claude.exe en entier. Le kit dit comment un agent en attend un autre, et wait-suite.sh attend
-   la fin de la suite. On lance les commandes telles que Claude Code les lance. */
+   sorties du build avant de vérifier l'arbre et laisse son retour dans un fichier que son contrôleur lit. Le texte
+   du kit ne porte aucun caractère de contrôle, et sa commande de lancement nomme claude.exe en entier. Le kit dit
+   comment un agent en attend un autre, wait-suite.sh attend la fin de la suite, et fanout.js s'arrête à sa limite
+   de temps. On lance les commandes telles que Claude Code les lance. */
 const path = require('path'), fs = require('fs'), os = require('os'), { spawnSync } = require('child_process');
 const ROOT = process.argv[2];
 let fails = 0;
@@ -90,6 +91,15 @@ ok(/`<WS>` out[^.]*absolute path/.test(tc), 'task-controller.md écrit <WS> en c
 ok(/UNFINISHED: /.test(tc) && /`UNFINISHED:`/.test(oneLine('run-controller.md')), 'un retour forcé se reconnaît à sa ligne UNFINISHED');
 ok(/forced hand-back/.test(oneLine('batch-controller.md')) && /forced hand-back/.test(oneLine('one-session.md')), 'un lot rendu de force se reconnaît à sa raison');
 ok(/Write no `VERIFIER:` line before step 4/.test(oneLine('verifier.md')), 'verifier.md n\'écrit sa ligne qu\'à la fin');
+// Le vérificateur laisse son retour dans un fichier avant de le rendre, et son contrôleur le lit là quand le retour n'a
+// pas sa ligne : en plan 4b, trois vérificateurs sur dix ont rendu la main sans elle, et leurs contrôleurs ont lu tmp/suite.txt.
+ok(/with the one line `verifying <commit>`/.test(oneLine('verifier.md')) && /goes first to `<WS>\/tmp\/verifier\.txt`[^.]*`verified <commit>`/.test(oneLine('verifier.md')), 'verifier.md ouvre tmp/verifier.txt sur « verifying », puis y écrit son retour sous le commit vérifié');
+ok(/stopped without that line, read `<WS>\/tmp\/verifier\.txt`[^.]*\. When its first line is `verified <the commit you gave it>`/.test(tc), 'task-controller.md lit tmp/verifier.txt quand le retour n\'a pas sa ligne, et vérifie le commit');
+ok(/`DÉLAI DÉPASSÉ`[^.]*dispatch a new verifier with a new wait, once/.test(tc), 'task-controller.md relance le vérificateur, une fois, quand fanout.js a passé sa limite de temps');
+ok(/Search the file for `FAIL` and for `DÉLAI DÉPASSÉ`/.test(oneLine('verifier.md')), 'verifier.md relève la ligne DÉLAI DÉPASSÉ, que FAIL ne trouve pas');
+// La limite de temps de test/tools/fanout.js : relancé sous un délai d'un millième de seconde, il imprime sa ligne et sort en 1.
+const cut = spawnSync(process.execPath, [path.join(ROOT, 'test/tools/fanout.js'), ROOT], { encoding: 'utf8', env: Object.assign({}, env, { FANOUT_LIMIT: '0.001' }) });
+ok(cut.status === 1 && /^DÉLAI DÉPASSÉ : test\/tools\/fanout\.js n'a pas fini en 0\.001 s ; à relancer$/m.test(cut.stdout), 'fanout.js coupe son passage à sa limite de temps et le dit');
 for (const f of ['task-controller.md', 'batch-controller.md', 'closing-review.md', 'verifier.md']) {
   ok(/naming what you wait for, never in your return's form/.test(oneLine(f)), f + ' dit avec quoi terminer son tour');
 }
