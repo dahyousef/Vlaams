@@ -41,8 +41,8 @@ or `src/ui/` changes.
   (D14), Flemish forms »), and its answer of 28 October 2026 to « phrases for the new units? »: « Add them ».
 - The maintainer's decisions D9–D30, stated below. The unit list of plan 4a (`UNITS` in `tools/content/kinds/words.js`).
 - `GLOSSARY.md`; ADR 0005 (amended); `ATTRIBUTION.md`.
-- The tickets, sub-issues of #12: `{T-kit}` (task 1), `{T-tatoeba}` (task 2), `{T-sentences}` (tasks 5, 6, 9, 10),
-  `{T-phrases}` (tasks 3, 7, 8), `{T-flemish}` (tasks 4, 11, 12). Gate 13 carries none.
+- The tickets, sub-issues of #12: `#138` (task 1), `#139` (task 2), `#140` (tasks 5, 6, 9, 10),
+  `#141` (tasks 3, 7, 8), `#142` (tasks 4, 11, 12). Gate 13 carries none.
 
 ## The maintainer's decisions
 
@@ -124,9 +124,8 @@ the readers' job, and the maintainer's reading list's (D15, D17): gate 13 shows 
 - **Who rules, and gate 13:** the run controller, on the maintainer's behalf (D28). Gate 13's run controller reads
   that gate's « Then » in the plan: an exception to run-controller.md's « Never read a diff, a report, a brief or
   source code ».
-- **Tickets.** Five sub-issues of #12, filed on the maintainer's word after the plan is approved: `{T-kit}`,
-  `{T-tatoeba}`, `{T-sentences}`, `{T-phrases}`, `{T-flemish}`; the placeholders are replaced in the plan and the
-  briefs at set-up.
+- **Tickets.** Five sub-issues of #12, filed on the maintainer's word on 9 November 2026: #138 (kit), #139
+  (Tatoeba), #140 (sentences), #141 (phrases), #142 (Flemish forms); #140 and #141 blocked by #139, #142 by #141.
 - **External data.** Tatoeba's six files of 7 November 2026 are kept, decompressed, in the main checkout's
   git-ignored `.superpowers/sdd/phase-4-design/tatoeba-2026-11-07/` (`<TD>` below); Tatoeba rewrites its files
   weekly, so the run never downloads them. Task 2 pins them; from task 2 on, the set-up's
@@ -223,18 +222,18 @@ Public repository:
 ## Run order
 
 ```
-1. The kit: the verifier's line in a file; a time limit on fanout.js — mechanical — {T-kit} — waits none
-2. Tatoeba re-pinned to 7 November; a sentence with one translation — mechanical — {T-tatoeba} — waits none
-3. The phrases kind, and an empty phrases.a1c.js — mechanical — {T-phrases} — waits 2
-4. The Flemish Split held to units 13–34 — mechanical — {T-flemish} — waits none
-5. FAN examples — fan-out — {T-sentences} — waits 2
-6. Merge examples — mechanical — {T-sentences} — waits 5
-7. FAN phrases — fan-out — {T-phrases} — waits 3, 6
-8. Merge phrases — mechanical — {T-phrases} — waits 7
-9. FAN examples-gen — fan-out — {T-sentences} — waits 6
-10. Merge examples-gen — mechanical — {T-sentences} — waits 9
-11. FAN flemish — fan-out — {T-flemish} — waits 4, 8
-12. Merge flemish — mechanical — {T-flemish} — waits 11
+1. The kit: the verifier's line in a file; a time limit on fanout.js — mechanical — #138 — waits none
+2. Tatoeba re-pinned to 7 November; a sentence with one translation — mechanical — #139 — waits none
+3. The phrases kind, and an empty phrases.a1c.js — mechanical — #141 — waits 2
+4. The Flemish Split held to units 13–34 — mechanical — #142 — waits none
+5. FAN examples — fan-out — #140 — waits 2
+6. Merge examples — mechanical — #140 — waits 5
+7. FAN phrases — fan-out — #141 — waits 3, 6
+8. Merge phrases — mechanical — #141 — waits 7
+9. FAN examples-gen — fan-out — #140 — waits 6
+10. Merge examples-gen — mechanical — #140 — waits 9
+11. FAN flemish — fan-out — #142 — waits 4, 8
+12. Merge flemish — mechanical — #142 — waits 11
 13. GATE: the learner pass in Edge, and the reading page — gate — none — waits 6, 8, 10, 12
 ```
 
@@ -316,7 +315,7 @@ Left out of this plan, for the maintainer:
 
 ### Task 1: The kit: the verifier's line in a file; a time limit on fanout.js
 Class: mechanical
-Ticket: {T-kit}
+Ticket: #138
 Promises: none
 Why: Q4 (7 November 2026): both kit fixes, as one task. (1) In plan 4b's run, three of the ten verified code-lane
 tasks (7, 7a and the closing task) record in the ledger the controller reading `tmp/suite.txt` itself because the
@@ -492,7 +491,7 @@ Notes:
   `` puisque Merge ne lit pas l'ancien) ; et le fichier se relance en enfant sous une limite de temps (300 s ; `FANOUT_LIMIT=<s>` la change), passée laquelle il imprime `DÉLAI DÉPASSÉ` et sort en 1 |``.
 
 - [ ] **Step 6: Commit.** `git add TESTING.md docs/agents/plan-runs/run-notes.md docs/agents/plan-runs/task-controller.md docs/agents/plan-runs/verifier.md test/hooks.js test/tools/fanout.js`;
-  `git commit -m "chore(kit): the verifier's return in tmp/verifier.txt; a time limit on test/tools/fanout.js ({T-kit})"`.
+  `git commit -m "chore(kit): the verifier's return in tmp/verifier.txt; a time limit on test/tools/fanout.js (#138)"`.
   Expected `git show --stat HEAD`: 6 files changed, 52 insertions(+), 12 deletions(-).
 
 Done when: `node test/hooks.js .` ends `ALL CHECKS PASSED`; `node test/tools/fanout.js .` ends `622 contrôles, KIT CONFORME`
@@ -501,7 +500,7 @@ with exit 0; the `.sh` file of step 3 ends `DÉLAI DÉPASSÉ : test/tools/fanout
 
 ### Task 2: Tatoeba re-pinned to 7 November; a sentence with one translation
 Class: mechanical
-Ticket: {T-tatoeba}
+Ticket: #139
 Promises: none
 Why: D17 (a Tatoeba sentence with one translation is kept, the drafter writes the other, each written translation is
 read whole: D15), D19 (Split runs on the real files before drafting) and the header's calls 3 and 7. The six pins of
@@ -723,7 +722,7 @@ Notes:
   448 / 95 / 7). Write these lines to the ledger's Measures.
 
 - [ ] **Step 9: Commit.** `git add ATTRIBUTION.md TESTING.md docs/attribution/tatoeba.tsv test/content.js test/tools/fanout.js test/tools/sources.js tools/content/kinds/examples-gen.js tools/content/kinds/examples.js tools/content/lib/cache.js tools/content/lib/reading.js tools/content/tatoeba.js`;
-  `git commit -m "feat(content): Tatoeba re-pinned to 7 November; a sentence with one translation is kept, the other written ({T-tatoeba})"`.
+  `git commit -m "feat(content): Tatoeba re-pinned to 7 November; a sentence with one translation is kept, the other written (#139)"`.
 
 Done when: `node tools/content/fetch.js . tatoeba --from "<TD>"` prints six `ok` lines; `node tools/content/tatoeba.js .`
 prints `ok .cache/tatoeba/extract.tsv 162245 Dutch sentences, 144103 English, 54891 French`; `node test/tools/sources.js .`
@@ -733,7 +732,7 @@ of step 9 and nothing under `src/`.
 
 ### Task 3: The phrases kind, and an empty phrases.a1c.js
 Class: mechanical
-Ticket: {T-phrases}
+Ticket: #141
 Promises: none
 Why: the header's calls 1, 2, 3 and 7, D17, D19. `lexicon.a1c.js` is written whole by `words` and has no re-Merge
 path, so the 110 phrases of units 13–34 get their own kind and file, `src/content/phrases.a1c.js`, written whole by its
@@ -938,7 +937,7 @@ Notes:
   unit, after task 6's Merge has taken its examples out). Write these lines to the ledger's Measures.
 
 - [ ] **Step 7: Commit.** `git add` the 15 files above (`docs/attribution/tatoeba-phrases.tsv` included);
-  `git commit -m "feat(content): the phrases kind, and an empty phrases.a1c.js ({T-phrases})"`. `git show --stat HEAD`:
+  `git commit -m "feat(content): the phrases kind, and an empty phrases.a1c.js (#141)"`. `git show --stat HEAD`:
   `15 files changed, 658 insertions(+), 10 deletions(-)` (measured on tasks 1–2; the insertions follow the length of `phrases.js` and the wrapping of the doc sentences, which the plan leaves to the implementer).
 
 Done when: fanout `699 contrôles, KIT CONFORME` and content `8006 contrôles, CONTENU CONFORME`, both red in step 1;
@@ -946,7 +945,7 @@ smoke `ALL CHECKS PASSED`; Split printed step 6's four lines; `git status --shor
 
 ### Task 4: The Flemish Split held to units 13–34
 Class: mechanical
-Ticket: {T-flemish}
+Ticket: #142
 Promises: none
 Why: Review Focus 4 and the header's call 5. The `flemish` kind's `split(C)` cuts every item of every unit that has
 no `be`: on today's course the 605 words of units 13–34 and, again, the 267 words and 65 phrases of units 1–12 that
@@ -1194,7 +1193,7 @@ Notes:
   ``et un Merge de bout en bout (`flemish`, dont le Split se tient aux 22 unités de `UNITS`, en lots d'unités entières de 80 lignes au plus, ne recoupe rien des unités 1 à 12 sans id nommé et recoupe une ligne nommée, `be` ou non, et dont Check refuse une forme qui est un leurre écrit d'un autre élément, l'apostrophe droite, la preuve `none` d'une forme qu'une règle donne et, pour un mot, le néerlandais à l'article près ; `examples` et `examples-gen`, `open`,``.
 
 - [ ] **Step 9: Commit.** `git add TESTING.md test/tools/fanout.js tools/content/kinds/flemish.js`;
-  `git commit -m "fix(content): flemish Split held to units 13–34 in whole-unit batches of 80 rows at most; Check refuses a written wrong option, a straight apostrophe, none for a rule's form and a word's Dutch ({T-flemish})"`.
+  `git commit -m "fix(content): flemish Split held to units 13–34 in whole-unit batches of 80 rows at most; Check refuses a written wrong option, a straight apostrophe, none for a rule's form and a word's Dutch (#142)"`.
   Nothing under `src/` changes: no build, no `index.html`.
 
 Done when: `node test/tools/fanout.js .` prints the `flemish` line of step 3 and ends `711 contrôles, KIT CONFORME`;
@@ -1202,7 +1201,7 @@ step 7 prints the 10 lines exactly; the commit holds the three files and no othe
 
 ### Task 5: FAN examples
 Class: fan-out
-Ticket: {T-sentences}
+Ticket: #140
 Kind: examples
 Drafting after: 2
 Split: node tools/content/split.js . "<WS>/drafts/examples"
@@ -1347,7 +1346,7 @@ variant (`Xc5\tmp\variants.txt`).
 
 ### Task 6: Merge examples
 Class: mechanical
-Ticket: {T-sentences}
+Ticket: #140
 Merges: examples
 Promises: none
 Why: D14, D17 and D26. Task 5's drafters, its readers and the run controller have settled every row of the kind
@@ -1514,7 +1513,7 @@ Notes:
 - [ ] **Step 8: Commit.**
   ```
   git add TESTING.md artifact.html docs/attribution/tatoeba.tsv index.html src/content/sourced.js test/content.js
-  git commit -m "feat(content): Merge examples: one or two Tatoeba sentences for the words of units 13–34, the translation Tatoeba lacks written for the course; AHEAD_BUDGET stays 136 (D26) ({T-sentences})"
+  git commit -m "feat(content): Merge examples: one or two Tatoeba sentences for the words of units 13–34, the translation Tatoeba lacks written for the course; AHEAD_BUDGET stays 136 (D26) (#140)"
   ```
   `git diff --stat HEAD~1` shows these six files and nothing else.
 
@@ -1526,7 +1525,7 @@ ouvert » line carries the script's count; `node test/smoke.js .` ends `ALL CHEC
 
 ### Task 7: FAN phrases
 Class: fan-out
-Ticket: {T-phrases}
+Ticket: #141
 Kind: phrases
 Drafting after: 3, 6
 Split: node tools/content/split.js . "<WS>/drafts/phrases"
@@ -1649,7 +1648,7 @@ The row is the proof copy's: a sentence task 6 took as a word's example is not a
 
 ### Task 8: Merge phrases
 Class: mechanical
-Ticket: {T-phrases}
+Ticket: #141
 Merges: phrases
 Promises: none
 Why: D17 and the header's calls 1 and 2. Task 7's drafters, its readers and the run controller have settled every
@@ -1829,7 +1828,7 @@ Notes:
 - [ ] **Step 9: Commit.**
   ```
   git add TESTING.md artifact.html docs/attribution/tatoeba-phrases.tsv index.html src/content/phrases.a1c.js test/content.js test/data/ids.tsv test/tools/fanout.js
-  git commit -m "feat(content): Merge phrases: five Tatoeba phrases for each unit 13 to 34, credited in tatoeba-phrases.tsv; NOTE_BUDGET pinned both ways until plan 4d writes their notes; the kit's fixture resets the credit file and the phrase ids ({T-phrases})"
+  git commit -m "feat(content): Merge phrases: five Tatoeba phrases for each unit 13 to 34, credited in tatoeba-phrases.tsv; NOTE_BUDGET pinned both ways until plan 4d writes their notes; the kit's fixture resets the credit file and the phrase ids (#141)"
   ```
   `git diff --stat HEAD~1` shows these eight files and nothing else.
 
@@ -1839,7 +1838,7 @@ suites failed at step 4 as quoted and end `CONTENU CONFORME` and `KIT CONFORME` 
 
 ### Task 9: FAN examples-gen
 Class: fan-out
-Ticket: {T-sentences}
+Ticket: #140
 Kind: examples-gen
 Drafting after: 6
 Split: node tools/content/split.js . "<WS>/drafts/examples-gen"
@@ -2033,7 +2032,7 @@ and the reader's verdict on it:
 
 ### Task 10: Merge examples-gen
 Class: mechanical
-Ticket: {T-sentences}
+Ticket: #140
 Merges: examples-gen
 Promises: none
 Why: D14, D15 and D25. Task 9's drafters, its Opus readers and the run controller have settled every row of the kind
@@ -2181,7 +2180,7 @@ Notes:
 - [ ] **Step 7: Commit.**
   ```
   git add TESTING.md artifact.html index.html src/content/sourced.js
-  git commit -m "feat(content): Merge examples-gen: one sentence written for the course for each of the 63 words D25 names, read whole and merged into sourced.js with src gen; TESTING.md recounts the words without a sentence ({T-sentences})"
+  git commit -m "feat(content): Merge examples-gen: one sentence written for the course for each of the 63 words D25 names, read whole and merged into sourced.js with src gen; TESTING.md recounts the words without a sentence (#140)"
   ```
   `git diff --stat HEAD~1` shows these four files and nothing else.
 
@@ -2195,7 +2194,7 @@ the four files of step 7.
 
 ### Task 11: FAN flemish
 Class: fan-out
-Ticket: {T-flemish}
+Ticket: #142
 Kind: flemish
 Drafting after: 4, 8
 Split: node tools/content/split.js . "<WS>/drafts/flemish"
@@ -2337,7 +2336,7 @@ batch (`variants-11.txt`: 29 drafts, 3 reviews); « het bureel » for « de boom
 
 ### Task 12: Merge flemish
 Class: mechanical
-Ticket: {T-flemish}
+Ticket: #142
 Merges: flemish
 Promises: none
 Why: D15 and D29. Task 11's drafters, its readers and the run controller have settled every row of the kind `flemish`,
@@ -2502,7 +2501,7 @@ Notes:
 - [ ] **Step 9: Commit.**
   ```
   git add TESTING.md artifact.html index.html src/content/be.js test/content.js
-  git commit -m "feat(content): Merge flemish: the Flemish form of every word and phrase of units 13 to 34 that has one, each new form with its evidence, in be.js and flemish.tsv; DECOY_BUDGET pinned both ways until plan 4d writes their decoys ({T-flemish})"
+  git commit -m "feat(content): Merge flemish: the Flemish form of every word and phrase of units 13 to 34 that has one, each new form with its evidence, in be.js and flemish.tsv; DECOY_BUDGET pinned both ways until plan 4d writes their decoys (#142)"
   ```
   Add `test/data/flemish.tsv` to the `git add` when step 2 added to it, and `test/lib/quoted.js` when step 8 changed
   it. `git diff --stat HEAD~1` shows these files and nothing else (six in the proof).
