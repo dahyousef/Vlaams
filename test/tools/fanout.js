@@ -734,12 +734,16 @@ module.exports = {
       same([...verbs].filter(f => !SP.forms.has(f)), [], 'la règle ' + r.name + ' ne donne au verbe que des formes qu\'OpenTaal tient');
     });
 
-    /* Split : un lot par unité, ses mots et ses phrases sans forme flamande. */
+    /* Split, sans id nommé : rien des unités 1 à 12, lues en phase 3 (une réponse null n'est pas stockée), même quand
+       le cours n'a qu'elles. Nommées (ctx.ids), leurs lignes se coupent, be ou non, en un lot d'unités entières. */
+    same(runFr('split.js', [FR, path.join(FR, 'vide', 'flemish')]), { code: 0, lines: [] }, 'sans id nommé, Split ne recoupe rien des unités 1 à 12');
+    const IDS = ['overleven:w0', 'overleven:w2', 'overleven:w12', 'overleven:p3', 'overleven:p9', 'ikengij:p4', 'onderweg:w0', 'werkbasis:p7', 'dokter:w2', 'dokter:p6', 'weekend:p1'];
     const KD = path.join(FR, 'drafts', 'flemish');
-    const want = CF.RAW.units.map(u => [u.id, CF.sources.filter(s => s.unit === u.id && !s.be).length]).filter(x => x[1]).map(x => x.join(' '));
-    same(runFr('split.js', [FR, KD]), { code: 0, lines: want }, 'Split coupe un lot par unité, des mots et des phrases que be.js ne tient pas');
-    const rowOf = id => JSON.parse(text(path.join(KD, CF.byId(id).unit, 'input.json'))).find(r => r.id === id);
-    ok(!rowOf('overleven:w0'), 'un mot que be.js tient n\'est pas recoupé');
+    same(runFr('split.js', [FR, KD].concat(IDS)), { code: 0, lines: ['overleven-weekend 11'] },
+      'nommées, des lignes des unités 1 à 12 se coupent, en un lot nommé de sa première et de sa dernière unité');
+    const B1 = path.join(KD, 'overleven-weekend');
+    const rowOf = id => JSON.parse(text(path.join(B1, 'input.json'))).find(r => r.id === id);
+    same((rowOf('overleven:w0') || {}).nl, 'hallo', 'nommé, un mot que be.js tient se recoupe');
     const sorry = CF.byId('overleven:p3');
     same(rowOf('overleven:p3'), {
       id: 'overleven:p3', stamp: kit.stamp(kit.loadKind(FR, 'flemish'), sorry, CF.NL), copies: [],
@@ -747,6 +751,32 @@ module.exports = {
       rules: { 'rule:da': 'Sorry, ik heb da niet verstaan.', 'rule:nie': 'Sorry, ik heb dat nie verstaan.', 'rule:da+nie': 'Sorry, ik heb da nie verstaan.' }
     }, 'une ligne d\'entrée : le néerlandais, son genre, son unité, son sens, ses frères de sens et ce que les règles en font');
     same(rowOf('overleven:w2').siblings.map(s => s.nl), ['de dag'], 'les frères de sens d\'une source sont dans sa ligne');
+
+    /* Split sur le cours entier, be.js vidé des formes des 22 unités de UNITS (words.js). Les nombres suivent le cours
+       (les phrases du plan 4c s'y ajoutent) : rien n'est épinglé. */
+    const FS = path.join(TMP, 'flamand-split');
+    copyKit(ROOT, FS, ['build.sh', 'src', 'test/lib', 'tools']);
+    const OWN = new Set(require(path.join(ROOT, 'tools', 'content', 'kinds', 'words')).UNITS.map(u => u.id));
+    const clear = {};
+    C.sources.filter(s => OWN.has(s.unit)).forEach(s => { clear[s.nl] = null; });
+    table.update(path.join(FS, 'src', 'content', 'be.js'), clear);
+    const KS = path.join(FS, 'drafts', 'flemish'), cutS = runIn(FS, 'split.js', [FS, KS]);
+    const lots = cutS.lines.map(l => ({ batch: l.split(' ')[0], rows: JSON.parse(text(path.join(KS, l.split(' ')[0], 'input.json'))) }));
+    const unitsOf = b => [...new Set(b.rows.map(r => r.unit))], sizes = lots.map(b => b.rows.length);
+    same([cutS.code, [].concat(...lots.map(b => b.rows.map(r => r.id)))], [0, C.sources.filter(s => OWN.has(s.unit)).map(s => s.id)],
+      'Split coupe exactement les mots et les phrases sans forme des 22 unités de UNITS, dans l\'ordre du cours, et rien des unités 1 à 12');
+    same(lots.map(b => b.batch), lots.map(b => { const u = unitsOf(b); return u[0] + (u.length > 1 ? '-' + u[u.length - 1] : ''); }),
+      'un lot porte le nom de sa première unité, et de sa dernière quand il en a plusieurs');
+    ok(lots.every((b, k) => k === 0 || unitsOf(lots[k - 1]).indexOf(unitsOf(b)[0]) < 0), 'un lot tient des unités entières');
+    ok(sizes.every(n => n <= 80), '80 lignes au plus par lot : ' + JSON.stringify(sizes));
+    ok(lots.every((b, k) => k === 0 || sizes[k - 1] + b.rows.filter(r => r.unit === unitsOf(b)[0]).length > 80),
+      'les lots sont serrés : un lot et la première unité du suivant font plus de 80 lignes : ' + JSON.stringify(sizes));
+    ok(lots.length > 1 && lots.length < OWN.size, lots.length + ' lots pour ' + OWN.size + ' unités : des unités entières se groupent');
+    /* Une unité de plus de 80 lignes fait un lot à elle seule. */
+    const grp = (unit, n) => ({ unit, rows: Array.from({ length: n }, (x, k) => ({ id: unit + ':w' + k, unit })) });
+    same(K.pack([grp('a', 40), grp('b', 40), grp('c', 1), grp('d', 90), grp('e', 3)], 80).map(b => b.batch + ' ' + b.rows.length),
+      ['a-b 80', 'c 1', 'd 90', 'e 3'], 'pack : des unités entières jusqu\'à 80 lignes, et une unité plus grande seule dans son lot');
+
 
     /* Check : les raisons du genre, une par une. */
     const ctx = { repo: FR, course: () => CF };
@@ -783,6 +813,20 @@ module.exports = {
       'rule:t gives « ’t Regent weer. », not be',
       '« allez » is not a form OpenTaal knows, and rule:t does not account for it: correct it, or cite evidence none'
     ], 'chaque raison est dite');
+    /* Ce que test/content.js (« leurres ») refuserait à Merge : un leurre écrit d'un autre élément, article ou non. */
+    same([why('overleven:p9', 'Da duurt een half uren.', 'none'), why('dokter:w2', 'vélo, het hoofd', 'none')],
+      [['« Da duurt een half uren. » is a written wrong option of « Dat duurt een half uur. » (src/content/decoys.js): the course would then accept it'],
+        ['« de vélo » is a written wrong option of « de fiets » (src/content/decoys.js): the course would then accept it']],
+      'une forme de be qui est un leurre d\'un autre élément est refusée, article ou non');
+    /* Ce qu'aucun contrôle de la suite ne voit : un mot dont seul l'article change, l'apostrophe droite, none pour la
+       forme qu'une règle donne. */
+    same([why('dokter:w2', 'de hoofd', 'none'), why('dokter:w2', 'een hoofd, het hoofd', 'none')],
+      [['be is the Dutch itself: with nothing Flemish to teach, be is null'], ['a word\'s first form is the Flemish one, and here it is the Dutch itself']],
+      'un mot dont seul l\'article change n\'a rien de flamand à apprendre, comme srs.supports le juge');
+    same(why('weekend:p1', 'Allez, \'t regent weer.', 'none'), ['be writes the typographic apostrophe « ’ », as rules does: « ’t », « da’s »'],
+      'be écrit l\'apostrophe typographique');
+    same(why('overleven:p3', PICK['overleven:p3'].be, 'none'), ['rule:da+nie gives be: cite rule:da+nie, not none'],
+      'une forme qu\'une règle donne se cite par sa règle, pas par none');
     fs.renameSync(EXTRACT, EXTRACT + '.old');
     same(why('onderweg:w0', PICK['onderweg:w0'].be, 'wiktionary:velo', { repo: FR, course: () => CF }), ['.cache/kaikki/belgian.tsv is missing: run node tools/content/kaikki.js .'],
       'sans extrait, une preuve du Wiktionnaire dit la commande qui manque');
@@ -801,24 +845,23 @@ module.exports = {
       put(dir, 'draft.json', inp.map(r => Object.assign({ id: r.id, stamp: r.stamp }, PICK[r.id] || { be: null, evidence: null })));
       put(dir, 'review.json', inp.map(r => ({ id: r.id, verdict: PICK[r.id] && PICK[r.id].evidence === 'none' ? 'for maintainer: evidence none' : 'keep' })));
     });
-    const WEEKEND = path.join(KD, 'weekend'), DOKTER = path.join(KD, 'dokter');
-    const review = text(path.join(WEEKEND, 'review.json'));
-    put(WEEKEND, 'review.json', review.replace('"for maintainer: evidence none"', '"keep"'));
-    same(runFr('check.js', [WEEKEND]).lines.filter(l => /^fail /.test(l)),
-      ['fail review.json weekend:p1: the format sends this row to the maintainer (evidence none): its verdict is « for maintainer: <reason> »'],
-      'une ligne sans preuve va au mainteneur, quoi qu\'en dise la relecture');
-    put(WEEKEND, 'review.json', review);
-    put(WEEKEND, 'disputes.md', '## weekend:p1\nSource: Het regent weer.\nRow: Allez, ’t regent weer. (none)\nFirst reader: for maintainer: evidence none\nYour ruling:\n');
-    put(WEEKEND, 'rulings.json', [{ id: 'weekend:p1', ruling: 'keep', words: null, confirmed: true, date: '2026-10-22' }]);
-    same(runFr('check.js', [WEEKEND]).code, 0, 'le lot, avec la décision du mainteneur, passe');
-    const draft = text(path.join(DOKTER, 'draft.json'));
-    put(DOKTER, 'draft.json', draft.replace('"rule:kunde"', '"rule:ge"'));
-    same(runFr('check.js', [DOKTER]).lines.filter(l => /^fail /.test(l)), [
+    const draft = text(path.join(B1, 'draft.json'));
+    put(B1, 'draft.json', draft.replace('"rule:kunde"', '"rule:ge"'));
+    same(runFr('check.js', [B1]).lines.filter(l => /^fail /.test(l)), [
       'fail draft.json dokter:p6: rule:ge gives « Hebt ge een voorschrift nodig? », not be',
       'fail draft.json dokter:p6: « hebde » is not a form OpenTaal knows, and rule:ge does not account for it: correct it, or cite evidence none',
       'fail review.json -: draft.json missing or failing'
     ], 'check.js dit les raisons du genre, et ne lit pas la suite');
-    put(DOKTER, 'draft.json', draft);
+    put(B1, 'draft.json', draft);
+    const review = text(path.join(B1, 'review.json'));
+    put(B1, 'review.json', review.replace('"for maintainer: evidence none"', '"keep"'));
+    same(runFr('check.js', [B1]).lines.filter(l => /^fail /.test(l)),
+      ['fail review.json weekend:p1: the format sends this row to the maintainer (evidence none): its verdict is « for maintainer: <reason> »'],
+      'une ligne sans preuve va au mainteneur, quoi qu\'en dise la relecture');
+    put(B1, 'review.json', review);
+    put(B1, 'disputes.md', '## weekend:p1\nSource: Het regent weer.\nRow: Allez, ’t regent weer. (none)\nFirst reader: for maintainer: evidence none\nYour ruling:\n');
+    put(B1, 'rulings.json', [{ id: 'weekend:p1', ruling: 'keep', words: null, confirmed: true, date: '2026-10-22' }]);
+    same(runFr('check.js', [B1]).code, 0, 'le lot, avec la décision du mainteneur, passe');
 
     const n0 = Object.keys(table.load(BE).entries).length, tsv0 = text(TSV);
     const MERGED_FR = ['ok flemish ' + rows + ' taken, 0 dropped', 'ok be.js 4 set, 0 removed', 'ok flemish.tsv 2 added: allez, hebde'];
@@ -839,7 +882,7 @@ module.exports = {
       [1, ['overleven:p3', 'onderweg:w0', 'dokter:p6', 'weekend:p1'].map(id => 'fail flemish ' + id + ': stale')],
       'le tampon couvre be : relancée après un succès, Merge refuse comme périmée chaque ligne dont elle a écrit la forme');
     ok(text(BE) === beAfter && text(TSV) === tsvAfter, 'refusée, Merge n\'écrit rien');
-    console.log('  flemish        ' + batches.length + ' lots, ' + rows + ' lignes ; six règles ; Check, Merge et flemish.tsv');
+    console.log('  flemish        ' + lots.length + ' lots sur les 22 unités (' + sizes.reduce((n, k) => n + k, 0) + ' lignes), ' + rows + ' lignes nommées ; six règles ; Check, Merge et flemish.tsv');
   }
 
   /* ==================================================== le genre examples */
