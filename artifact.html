@@ -3993,7 +3993,8 @@ NL.content.units = NL.content.units || [];
 /* Lexique A1, unités 13 à 34. Même forme que lexicon.a1.js.
    Écrit par la fusion du genre words (tools/content/kinds/words.js) depuis ses lignes prises : une
    correction passe par ses lignes, jamais par ce fichier (CLAUDE.md). Les unités gardent grammar: [] ici ;
-   leurs règles viennent de grammar.a1c.js (une boucle au chargement les range dans leur unité), leurs phrases du plan 4c. */
+   leurs règles viennent de grammar.a1c.js (une boucle au chargement les range dans leur unité), leurs phrases de
+   phrases.a1c.js (qui les range de même, cinq par unité, prises dans Tatoeba). */
 NL.content = NL.content || {};
 NL.content.units = NL.content.units || [];
 (function () {
@@ -4803,6 +4804,25 @@ NL.content.units = NL.content.units || [];
     ],
     phrases: []
   });
+})();
+</script>
+<script>
+/* Phrases des unités 13 à 34, prises dans Tatoeba (docs/attribution/tatoeba-phrases.tsv les crédite).
+   Même forme que les phrases de lexicon.a1.js, plus src, le numéro de la phrase de Tatoeba.
+   Écrit par la fusion du genre phrases (tools/content/kinds/phrases.js) depuis ses lignes prises :
+   une correction passe par ses lignes, jamais par ce fichier (CLAUDE.md). Les unités de
+   lexicon.a1c.js gardent phrases: [] dans leur fichier ; U range les phrases de chaque unité dans sa
+   liste au chargement, et lève une erreur, avec l’id de l’unité, quand l’unité manque. */
+NL.content = NL.content || {};
+NL.content.units = NL.content.units || [];
+(function () {
+  'use strict';
+  const P = (nl, g, src) => ({ kind: 'phrase', nl, ...NL.gloss.pair(g), src });
+  const U = (id, phrases) => {
+    const u = NL.content.units.find(x => x.id === id);
+    if (!u) throw new Error('phrases.a1c.js : les phrases de l’unité « ' + id + ' » n’ont pas leur unité dans le cours (lexicon.a1c.js se charge avant)');
+    (u.phrases = u.phrases || []).push(...phrases);
+  };
 })();
 </script>
 <script>

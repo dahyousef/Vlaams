@@ -26,6 +26,7 @@ src/core/sync.js
 src/content/lexicon.a1.js
 src/content/lexicon.a1b.js
 src/content/lexicon.a1c.js
+src/content/phrases.a1c.js
 src/content/be.js
 src/content/grammar.js
 src/content/grammar.a1c.js

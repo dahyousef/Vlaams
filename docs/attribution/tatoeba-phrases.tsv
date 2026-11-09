@@ -1,0 +1,8 @@
+# Les phrases de src/content/phrases.a1c.js, celles des unités 13 à 34, tirées de Tatoeba (https://tatoeba.org),
+# CC BY 2.0 FR (https://creativecommons.org/licenses/by/2.0/fr/) : une ligne par phrase, son unité, puis le
+# numéro et l’auteur de la phrase néerlandaise, de sa traduction anglaise et de sa traduction française.
+# Un auteur que Tatoeba ne nomme pas s’écrit « - ». adapted dit quelle traduction le cours a changée :
+# « - », « en », « fr » ou « en fr ». Une traduction que Tatoeba n’a pas et que le cours a écrite (D17)
+# s’écrit « - » dans ses deux colonnes, et adapted nomme sa langue. Merge du genre phrases
+# (tools/content/kinds/phrases.js) récrit ce fichier entier ; ATTRIBUTION.md dit pourquoi.
+unit	nld	nld_owner	eng	eng_owner	fra	fra_owner	adapted

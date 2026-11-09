@@ -99,6 +99,10 @@ the maintainer answers, runs in sittings.
   The `scenarios` kind's Merge (`tools/content/kinds/scenarios.js`) likewise writes
   `src/content/scenarios.a1c.js` whole, from its `CONVERSATIONS` and the accepted rows: a conversation
   changes through its rows, never by hand.
+  The `phrases` kind's Merge (`tools/content/kinds/phrases.js`) writes `src/content/phrases.a1c.js`
+  whole: the five Tatoeba phrases of each unit 13 to 34, which the page pushes onto its unit at load;
+  it appends their ids to `test/data/ids.tsv` and rewrites `docs/attribution/tatoeba-phrases.tsv`
+  whole, one credit line per phrase. A phrase changes through its unit's row, never by hand.
 
 ## Decisions already taken
 

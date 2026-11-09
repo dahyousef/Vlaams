@@ -62,11 +62,15 @@ const runIn = (dir, script, args) => {
 /* Et grammar.a1c.js vidé par l'écrivain du genre grammar : ses règles veulent des unités du lexique, que le lexique vidé n'a plus. */
 const beforeGrammar = dir => fs.writeFileSync(path.join(dir, 'src', 'content', 'grammar.a1c.js'),
   require(path.join(dir, 'tools', 'content', 'kinds', 'grammar')).patterns([]).map(l => l + '\n').join(''));
+/* Et phrases.a1c.js vidé par l'écrivain du genre phrases : ses phrases veulent leurs unités, de même. */
+const beforePhrases = dir => fs.writeFileSync(path.join(dir, 'src', 'content', 'phrases.a1c.js'),
+  require(path.join(dir, 'tools', 'content', 'kinds', 'phrases')).file([]).map(l => l + '\n').join(''));
 /* Le cours d'une copie de fixture tel qu'il était avant la tranche des unités 13 à 34 : le lexique vidé par
    l'écrivain du genre words sans ligne, et les lignes de ces unités ôtées de ids.tsv. Le kit se teste sur
    ses propres exemples, pas sur le cours que la fusion change ; les nombres attendus ne bougent pas avec lui. */
 const beforeWords = dir => {
   beforeGrammar(dir);
+  beforePhrases(dir);
   const K = require(path.join(dir, 'tools', 'content', 'kinds', 'words'));
   const own = new Set(K.UNITS.map(u => u.id)), ids = path.join(dir, 'test', 'data', 'ids.tsv');
   fs.writeFileSync(path.join(dir, 'src', 'content', 'lexicon.a1c.js'), K.lexicon([]).map(l => l + '\n').join(''));
@@ -1559,7 +1563,8 @@ module.exports = {
        écraserait l'autre, à la prochaine fusion, et aucune autre vérification ne le voit. */
     const headOf = lines => lines.slice(0, lines.indexOf('') >= 0 ? lines.indexOf('') : lines.length - 1).join('\n') + '\n';
     [['lexicon.a1c.js', K.lexicon([])], ['grammar.a1c.js', require(path.join(WD, 'tools', 'content', 'kinds', 'grammar')).patterns([])],
-      ['scenarios.a1c.js', require(path.join(WD, 'tools', 'content', 'kinds', 'scenarios')).scenarios([])]].forEach(([file, empty]) => {
+      ['scenarios.a1c.js', require(path.join(WD, 'tools', 'content', 'kinds', 'scenarios')).scenarios([])],
+      ['phrases.a1c.js', require(path.join(WD, 'tools', 'content', 'kinds', 'phrases')).file([])]].forEach(([file, empty]) => {
       const real = text(path.join(ROOT, 'src', 'content', file)).replace(/\r\n/g, '\n');
       ok(real.startsWith(headOf(empty)), 'l\'en-tête de src/content/' + file + ' est celui que son genre écrit (HEADER)');
     });
@@ -1906,6 +1911,171 @@ module.exports = {
     same(runGr('split.js', [GR, path.join(GR, 'apres', 'grammar')]), { code: 0, lines: ['vragen 2', 'kunnen 1', 'doen 3', 'mensen 1', 'waar 1', 'eten 1', 'cafe 1', 'wonen 1', 'kalender 1'] }, 'un second Split ne coupe plus la règle fondue');
     fs.writeFileSync(GFILE, empty);
     console.log('  grammar        ' + K.RULES.length + ' règles, ' + new Set(K.RULES.map(r => r.unit)).size + ' unités ; chaque garde, la boucle de chargement, Merge de bout en bout, relancée, second Split');
+  }
+
+  /* ==================================================== le genre phrases */
+  {
+    /* tools/content/kinds/phrases.js dans un dépôt à lui sous la copie, avec test/data (l'orthographe) et
+       docs/attribution (le crédit) : le cours y est celui du dépôt, ses 22 unités sans phrase (phrases.a1c.js
+       remis vide, quoi que la fusion y ait écrit), et un extrait de Tatoeba fait ici, de douze phrases autour
+       des mots de vragen, sous les vraies épingles. Sa source est une unité : Split coupe 22 lignes en 4 lots. */
+    const PH = path.join(TMP, 'frasen');
+    copyKit(ROOT, PH, KIT.concat('docs/attribution'));
+    beforePhrases(PH);
+    const runPh = (script, args) => runIn(PH, script, args);
+    const K = require(path.join(PH, 'tools', 'content', 'kinds', 'phrases'));
+    const CP = course(PH), ctxP = { repo: PH, course: () => CP };
+    const PFILE = path.join(PH, 'src', 'content', 'phrases.a1c.js'), PIDS = path.join(PH, 'test', 'data', 'ids.tsv');
+    const PCREDITS = path.join(PH, 'docs', 'attribution', 'tatoeba-phrases.tsv');
+
+    /* Le câblage : la page charge phrases.a1c.js juste après lexicon.a1c.js (dont les unités gardent phrases: []),
+       avant index.js ; test/smoke.js a sa propre liste. Un fichier absent de l'une d'elles ne charge rien. */
+    const srcP = text(path.join(ROOT, 'build.sh')).split(/\r?\n/).map(l => l.trim());
+    same(srcP.indexOf('src/content/phrases.a1c.js') - srcP.indexOf('src/content/lexicon.a1c.js'), 1, 'le SRC de build.sh charge phrases.a1c.js juste après lexicon.a1c.js');
+    same(/'src\/content\/lexicon\.a1c\.js',\s*'src\/content\/phrases\.a1c\.js'/.test(text(path.join(ROOT, 'test', 'smoke.js'))), true, 'la liste de test/smoke.js nomme phrases.a1c.js juste après lexicon.a1c.js');
+    same([K.PHRASES, K.TILES, K.MAX, K.PER_BATCH], [5, { min: 3, max: 8 }, 40, 6], 'cinq phrases par unité, de 3 à 8 tuiles, 40 candidates au plus, 6 unités par lot');
+    same(K.CREDITS, 'unit\tnld\tnld_owner\teng\teng_owner\tfra\tfra_owner\tadapted', 'le crédit a les huit colonnes de tatoeba.tsv, unit pour word');
+    same(text(PCREDITS).split(/\r?\n/).filter(l => l && l[0] !== '#'), [K.CREDITS], 'docs/attribution/tatoeba-phrases.tsv : ses commentaires et son en-tête, aucune ligne avant la première fusion');
+    same(CP.units.filter(u => u.n >= 13).every(u => (u.phrases || []).length === 0), true, 'le fichier vide ne change rien au cours : aucune unité 13 à 34 n\'a de phrase');
+
+    /* L'extrait : douze phrases ; 504 redit 501 sans casse ni ponctuation et partage ses traductions ; 505 n'a que
+       l'anglais, 511 que le français (D17). */
+    const tatoebaP = require(path.join(PH, 'tools', 'content', 'tatoeba'));
+    const PEXTRACT = path.join(PH, '.cache', 'tatoeba', 'extract.tsv');
+    fs.mkdirSync(path.dirname(PEXTRACT), { recursive: true });
+    fs.writeFileSync(PEXTRACT, ['# ' + tatoebaP.KEYS.map(k => k + ' ' + cache.PINS[k].sha256).join(' '),
+      'nld\t501\tanna\t1\tWie is dat?\t601\t701',
+      'nld\t502\t\t0\tWie is dat nu?\t602\t702',
+      'nld\t503\tanna\t1\tWaarom nu?\t603\t703',
+      'nld\t504\tcarl\t0\twie is dat\t601\t701',
+      'nld\t505\tanna\t1\tWanneer is dat?\t605\t',
+      'nld\t506\tanna\t1\tWie heeft de muziek?\t606\t706',
+      'nld\t507\tanna\t1\tHoe gaat het met de familie?\t607\t707',
+      'nld\t508\tanna\t1\tWie ben je?\t608\t708',
+      'nld\t509\tanna\t1\tHoe lang is dat?\t609\t709',
+      'nld\t510\tanna\t1\tWat wilt u?\t610\t710',
+      'nld\t511\tanna\t1\tHoe is het nu?\t\t711',
+      'nld\t512\tbob\t0\tDat is waar.\t612\t712',
+      'eng\t601\tbob\tWho is that?', 'eng\t602\tbob\tWho is that now?', 'eng\t603\tbob\tWhy now?', 'eng\t605\tbob\tWhen is that?',
+      'eng\t606\tbob\tWho has the music?', 'eng\t607\tbob\tHow is the family?', 'eng\t608\tbob\tWho are you?', 'eng\t609\tbob\tHow long is that?',
+      'eng\t610\tbob\tWhat do you want?', 'eng\t612\tbob\tThat is true.',
+      'fra\t701\tdora\tQui est-ce ?', 'fra\t702\tdora\tQui est-ce maintenant ?', 'fra\t703\tdora\tPourquoi maintenant ?', 'fra\t706\tdora\tQui a la musique ?',
+      'fra\t707\tdora\tComment va la famille ?', 'fra\t708\tdora\tQui es-tu ?', 'fra\t709\tdora\tC\'est long comment ?', 'fra\t710\tdora\tQue voulez-vous ?',
+      'fra\t711\tdora\tComment ça va maintenant ?', 'fra\t712\t\tC’est vrai.'].join('\n') + '\n');
+
+    /* Split : une ligne par unité, 4 lots de 6 unités au plus ; la ligne de vragen, ses candidates classées. */
+    const DP = path.join(PH, 'drafts', 'phrases');
+    same(runPh('split.js', [PH, DP]), { code: 0, lines: ['vragen-waar 6', 'landen-kalender 6', 'stad-afspraak 6', 'team-spoed 4'] }, 'Split coupe les 22 unités en 4 lots d\'unités entières');
+    const pin = JSON.parse(text(path.join(DP, 'vragen-waar', 'input.json')));
+    same(pin.map(r => r.id), ['vragen', 'kunnen', 'doen', 'mensen', 'hoeveel', 'waar'], 'une ligne par unité, l\'id de l\'unité');
+    const VR = pin[0];
+    same([Object.keys(VR), VR.unit, VR.n, VR.name.en, VR.words.length, VR.words[0], VR.stamp === kit.stamp(kit.loadKind(PH, 'phrases'), K.sourceOf(CP, 'vragen'), CP.NL)],
+      [['id', 'stamp', 'copies', 'unit', 'n', 'name', 'words', 'candidates'], 'vragen', 13, 'Questions and small words', 30, 'wie', true], 'une ligne d\'entrée : l\'unité, son numéro, son nom, ses mots, l\'empreinte de la source');
+    same(VR.candidates.map(c => c.id), [502, 501, 504, 512, 510, 508, 505, 511],
+      'les candidates : les deux traductions d\'abord, puis l\'anglais seul (505) et le français seul (511) ; dans chaque classe, le plus de mots de l\'unité (502 en écrit trois), puis sans je (510 avant 508), de langue maternelle (501 avant 504), moins de tuiles, l\'id');
+    same(VR.candidates[0], { id: 502, nl: 'Wie is dat nu?', owner: '', en: [{ id: 602, text: 'Who is that now?', owner: 'bob' }], fr: [{ id: 702, text: 'Qui est-ce maintenant ?', owner: 'dora' }], tiles: 4, words: ['wie', 'nu', 'dat'] },
+      'une candidate : ses traductions et leurs auteurs, ses tuiles, les mots de l\'unité qu\'elle écrit, dans l\'ordre de l\'unité');
+    same(VR.candidates[6], { id: 505, nl: 'Wanneer is dat?', owner: 'anna', en: [{ id: 605, text: 'When is that?', owner: 'bob' }], fr: [], tiles: 3, words: ['wanneer', 'dat'] }, 'une candidate à une seule traduction : l\'autre liste vide');
+    same(pin.slice(1).map(r => r.candidates.length), [1, 0, 0, 0, 0], 'kunnen a une candidate (510 écrit « wilt », une forme de willen, et rien que vragen n\'ait enseigné) ; les quatre autres unités du lot, aucune');
+
+    /* Les règles d'une phrase, à l'unité de vragen : ce que la suite tiendrait à Merge, et que Split a écarté. */
+    const uiV = CP.units.findIndex(u => u.id === 'vragen');
+    const rulesP = nl => K.rules(nl, uiV, K.tools(ctxP), 's');
+    same(rulesP('Wie is dat?'), [], 'une phrase qui suit les règles');
+    same(rulesP('Waarom nu?'), ['s has 2 tiles: 3 to 8'], 'de 3 à 8 tuiles : moins, et test/content.js compte un échelon sans exercice');
+    same(rulesP('Wie heeft de muziek?'), ['s borrows from a later unit: muziek (vrijetijd)'], 'rien d\'une unité ultérieure, et l\'unité qui l\'enseigne est nommée');
+    same(rulesP('Wie is dat ginder?'), ['s uses forms no unit up to « vragen » teaches: ginder'], 'rien que le cours n\'ait enseigné jusqu\'à l\'unité : la règle stricte, les mots-outils exceptés');
+    same(rulesP('Wie is dat ginderr?'), ['s uses forms no unit up to « vragen » teaches: ginderr', 's: « ginderr » not a form OpenTaal or flemish.tsv knows'], 'l\'orthographe (test/content.js 1)');
+    same(rulesP('Wie is Tom?'), ['s uses forms no unit up to « vragen » teaches: tom', 's names no one by default and holds no {…} token'], 'ni nom par défaut ni jeton');
+    same(rulesP('Hoe lang is dat?'), ['s writes « hoe lang »: the course writes the duration « hoelang » (#128)'], 'hoelang, en un mot (test/content.js)');
+    same(rulesP('Hoe gaat het met de familie?'), ['s « Hoe gaat het met de familie? » is already the Dutch of familie:p3'], 'pas le néerlandais d\'un élément (course() le refuserait)');
+    same(rulesP('Dat is niet waar.'), ['s « Dat is niet waar. » is already an example sentence of overleven:w12'], 'pas une phrase d\'exemple d\'un mot');
+    same(rulesP('Wat is de date?'), ['s uses forms no unit up to « vragen » teaches: date', 's: « date » would become Dutch of the course, and units[23].blurb writes it bare in French and in English (test/lang.js 6d.4)'],
+      'une forme nouvelle qu\'une prose écrit déjà nue dans les deux langues (test/lang.js 6d.4)');
+
+    /* Check, raison par raison, sur la ligne de vragen. */
+    const cand = id => VR.candidates.find(c => c.id === id);
+    const take = (id, more) => Object.assign({ src: id, nl: cand(id).nl, en: cand(id).en.length ? cand(id).en[0].text : '', enSrc: cand(id).en.length ? cand(id).en[0].id : null,
+      fr: cand(id).fr.length ? cand(id).fr[0].text : '', frSrc: cand(id).fr.length ? cand(id).fr[0].id : null }, more);
+    const GOODP = [take(502), take(501), take(512), take(505, { fr: 'Quand est-ce ?' }), take(510, { en: 'What do you want? (formal)' })];
+    const whyP = (phrases, more) => K.check(Object.assign({ id: 'vragen', stamp: VR.stamp, phrases }, more), VR, ctxP);
+    const withP = (k, d) => GOODP.map((x, i) => (i === k ? Object.assign({}, x, d) : x));
+    const ROW = { edited: 'the learner reads the register of u' };
+    same(whyP(GOODP, ROW), [], 'cinq phrases prises telles que Tatoeba les écrit, un français écrit (D17), un anglais changé et sa raison : la ligne passe');
+    same(whyP(GOODP.slice(0, 4), ROW), ['phrases is a list of 5 phrases, not 4'], 'cinq phrases exactement');
+    same(whyP(GOODP, { edited: ' x' }), ['edited is a reason on one line with no space at either end',
+      'phrase 5: en « What do you want? (formal) » is not Tatoeba\'s 610, « What do you want? »: take it as written, or say why in edited, on one line with no space at either end'], 'edited sans blanc autour : la raison ne compte pas');
+    same(whyP(withP(0, { gap: 'nu' }), ROW), ['phrase 1 has the fields src, nl, en, enSrc, fr, frSrc, not src, nl, en, enSrc, fr, frSrc, gap'], 'les champs d\'une phrase');
+    same(whyP(withP(0, { en: 'two\nlines' }), ROW), ['phrase 1: nl, en and fr are each a string on one line with no space at either end'], 'une traduction sur plusieurs lignes, non');
+    same(whyP(withP(0, { src: 503, nl: 'Waarom nu?' }), ROW), ['phrase 1: src 503 is not one of the row\'s candidates'], 'une phrase de l\'extrait qui n\'est pas une candidate, non');
+    same(whyP(withP(0, { nl: 'Wie is dat nu ?' }), ROW), ['phrase 1: nl is not Tatoeba\'s sentence 502, « Wie is dat nu? »: a phrase is taken as Tatoeba writes it'], 'la phrase telle que Tatoeba l\'écrit');
+    same(whyP(withP(0, { enSrc: null }), ROW), ['phrase 1: enSrc is null, but Tatoeba links 602 to 502: take one'], 'null quand Tatoeba lie une traduction, non');
+    same(whyP(withP(3, { enSrc: null }), ROW), ['phrase 4: enSrc and frSrc are both null: a phrase keeps at least one translation Tatoeba links'], 'les deux null, non');
+    same(whyP(withP(0, { frSrc: 701 }), ROW), ['phrase 1: frSrc 701 is not a translation Tatoeba links to 502'], 'une traduction que Tatoeba ne lie pas à la phrase');
+    same(whyP(GOODP), ['phrase 5: en « What do you want? (formal) » is not Tatoeba\'s 610, « What do you want? »: take it as written, or say why in edited, on one line with no space at either end'],
+      'une traduction changée sans raison, non');
+    same(whyP(withP(4, take(510)), ROW), ['phrase 5: nl says « u » and en « you »: en carries « (formal) » (« (informal, Flemish u) » when fr says tu, « (formal) » otherwise), as test/content.js asks',
+      'edited is for a translation that is not Tatoeba\'s, and every linked one is taken as written'], 'un u glosé you sans son étiquette, non ; edited sans traduction changée, non');
+    same(whyP(withP(2, take(504)), ROW), ['phrase 3 « wie is dat » repeats phrase 2'], 'deux fois la même phrase, à la casse et à la ponctuation près, non');
+    same(whyP(withP(3, { en: 'When is that at 3?' }), ROW), ['phrase 4: en and fr do not hold the same digits'], 'les mêmes chiffres en fr et en en (test/content.js 6)');
+    same(whyP(withP(3, { fr: 'C\'est quand ?' }), ROW), ['phrase 4: a written fr takes the apostrophe « ’ », not « \' »'], 'un côté écrit pour le cours prend l\'apostrophe « ’ », comme le cours');
+    same(whyP(withP(3, { fr: 'Quand vient Tom ?' }), ROW), ['phrase 4: en and fr name no one by default and hold no {…} token'], 'ni nom par défaut ni jeton dans les sens');
+    same(whyP(withP(2, take(511, { en: 'How is the family?' })), ROW), ['phrase 3: en « How is the family? » shares a sense with familie:p3 « Hoe gaat het met de familie? » (How is the family?), which shares no French sense and no Dutch: give one of them another English, or the French they share'],
+      'un anglais qu\'un élément dit déjà sans sens français commun, non (bySense, test/content.js)');
+    same(whyP(withP(2, take(511, { en: 'Who is that now?' })), ROW), ['phrase 3: en « Who is that now? » shares a sense with vragen:p0 « Wie is dat nu? » (Who is that now?), which shares no French sense and no Dutch: give one of them another English, or the French they share'],
+      'le même anglais pour deux phrases de la ligne, non');
+    /* Un passage de Check (un ctx par lot, kit.js) tient les lignes déjà vues : une autre ligne qui dit le même anglais
+       sans sens français commun est refusée ; la même ligne relue (retry, change) remplace la précédente. */
+    const ctxR = { repo: PH, course: () => CP }, KUN = Object.assign({}, VR, { id: 'kunnen', unit: 'kunnen' });
+    const passP = (id, input, phrases) => K.check(Object.assign({ id, stamp: input.stamp, phrases }, ROW), input, ctxR);
+    same([passP('vragen', VR, GOODP), passP('vragen', VR, GOODP), passP('kunnen', KUN, withP(2, take(508, { en: 'That is true.' })))],
+      [[], [], ['phrase 3: en « That is true. » shares a sense with vragen:p2 « Dat is waar. » (That is true.), which shares no French sense and no Dutch: give one of them another English, or the French they share']],
+      'le même anglais dans deux lignes du lot sans sens français commun, non ; la même ligne relue ne se heurte pas à elle-même');
+    same([K.readWhole({ phrases: GOODP, edited: 'x' }), K.readWhole({ phrases: [take(502)], edited: 'x' }), K.readWhole({ phrases: [take(502)] })], ['written translation', 'edited translation', ''],
+      'la lecture entière : une traduction écrite pour le cours avant une changée (D15, D17), rien sinon');
+
+    /* Le fichier : l'unité absente lève une erreur qui la nomme ; présente, ses phrases y sont rangées, avec src. */
+    const withUnit = unit => K.file([{ unit, phrases: GOODP }]).map(l => l + '\n').join('');
+    const loadP = (code, units) => { const NLs = { content: { units }, gloss: { pair: g => ({ fr: g.fr, en: g.en }) } }; new Function('NL', code)(NLs); return NLs.content; };
+    throws(() => loadP(withUnit('zzz'), [{ id: 'vragen', phrases: [] }]), /phrases\.a1c\.js : les phrases de l’unité « zzz »/, 'le chargement lève une erreur qui nomme l\'unité');
+    same(loadP(withUnit('vragen'), [{ id: 'vragen', phrases: [] }]).units[0].phrases.map(p => [p.kind, p.nl, p.fr, p.en, p.src]).slice(0, 2),
+      [['phrase', 'Wie is dat nu?', 'Qui est-ce maintenant ?', 'Who is that now?', 502], ['phrase', 'Wie is dat?', 'Qui est-ce ?', 'Who is that?', 501]], 'avec son unité, chaque phrase est rangée dans sa liste, avec son numéro');
+
+    /* Merge refuse deux lignes qui écrivent la même phrase, et un id qu'ids.tsv épingle à une autre phrase. */
+    const takeOf = (id, phrases) => ({ id, row: { phrases }, input: VR });
+    throws(() => K.write([takeOf('vragen', GOODP), takeOf('kunnen', GOODP)], ctxP), /^kunnen and vragen both write « Wie is dat nu\? »; .*« Wat wilt u\? »: one phrase, one unit$/, 'Merge refuse deux unités qui écrivent la même phrase, en les nommant toutes');
+    throws(() => K.write([takeOf('vragen', GOODP), takeOf('kunnen', [take(508, { en: 'That is true.' })])], ctxP),
+      /^vragen:p2 « Dat is waar\. » and kunnen:p0 « Wie ben je\? » share the English sense « That is true\. » with no French sense in common: give one of them another English$/,
+      'Merge refuse deux unités dont les phrases disent le même anglais sans sens français commun');
+    const I2 = copyKit(PH, path.join(TMP, 'frasen-ids'), KIT.concat('docs/attribution'));
+    fs.appendFileSync(path.join(I2, 'test', 'data', 'ids.tsv'), 'vragen:p1\tWie is daar?\n');
+    throws(() => K.write([takeOf('vragen', GOODP)], { repo: I2, course: () => course(I2) }), /test\/data\/ids\.tsv pins vragen:p1 to « Wie is daar\? », and Merge writes « Wie is dat\? » there/, 'Merge refuse un id qu\'ids.tsv épingle à une autre phrase');
+
+    /* De bout en bout : Split nommé, le lot rédigé et relu, check.js, Merge, les trois fichiers écrits et le cours
+       rechargé, Merge relancée à l'identique, un second Split. */
+    const E2P = path.join(PH, 'bout-en-bout', 'phrases');
+    same(runPh('split.js', [PH, E2P, 'vragen']), { code: 0, lines: ['vragen-waar 1'] }, 'Split nommé coupe une unité');
+    const dirP = path.join(E2P, 'vragen-waar'), inpP = JSON.parse(text(path.join(dirP, 'input.json')));
+    put(dirP, 'draft.json', [Object.assign({ id: 'vragen', stamp: inpP[0].stamp, phrases: GOODP }, ROW)]);
+    put(dirP, 'review.json', [{ id: 'vragen', verdict: 'keep' }]);
+    same(runPh('check.js', [dirP]), { code: 0, lines: ['ok input.json 1 rows', 'ok draft.json 1 rows', 'ok review.json 1 keep, 0 dispute'] }, 'le lot, rédigé et relu, passe check.js');
+    const emptyP = text(PFILE), idsBefore = text(PIDS), creditsBefore = text(PCREDITS);
+    const MERGED_P = ['ok phrases 1 taken, 0 dropped', 'ok phrases.a1c.js 5 phrases in 1 units', 'ok ids.tsv 5 added', 'ok tatoeba-phrases.tsv 5 rows'];
+    same(runPh('merge.js', [PH, E2P]), { code: 0, lines: MERGED_P }, 'Merge écrit le fichier, ids.tsv et le crédit');
+    const mergedP = text(PFILE);
+    ok(mergedP !== emptyP && mergedP.indexOf('  U(\'vragen\', [') > 0 && mergedP.indexOf('P(\'Wanneer is dat?\', { fr: \'Quand est-ce ?\', en: \'When is that?\' }, 505)') > 0, 'phrases.a1c.js tient l\'unité et ses phrases, avec leur numéro');
+    const CMP = course(PH), vr = CMP.units.find(u => u.id === 'vragen');
+    same([vr.phrases.length, vr.phrases.map(p => p.nl), CMP.byId('vragen:p0').nl, CMP.byId('vragen:p4').en], [5, GOODP.map(d => d.nl), 'Wie is dat nu?', 'What do you want? (formal)'], 'la page chargée a les cinq phrases de vragen, à leurs ids');
+    const ieolP = /\r\n/.test(idsBefore) ? '\r\n' : '\n';
+    same(text(PIDS), idsBefore + GOODP.map((d, i) => 'vragen:p' + i + '\t' + d.nl + ieolP).join(''), 'ids.tsv : une ligne par phrase, vragen:p0 à p4, aux fins de ligne du fichier');
+    const peol = /\r\n/.test(creditsBefore) ? '\r\n' : '\n';
+    same(text(PCREDITS), creditsBefore + ['vragen\t502\t-\t602\tbob\t702\tdora\t-', 'vragen\t501\tanna\t601\tbob\t701\tdora\t-', 'vragen\t512\tbob\t612\tbob\t712\t-\t-',
+      'vragen\t505\tanna\t605\tbob\t-\t-\tfr', 'vragen\t510\tanna\t610\tbob\t710\tdora\ten'].join(peol) + peol,
+    'le crédit : une ligne par phrase, dans l\'ordre du fichier, l\'auteur absent écrit « - », une traduction écrite pour le cours « - » dans ses deux colonnes et sa langue dans adapted, une changée sa langue (D17)');
+    same(runPh('merge.js', [PH, E2P]), { code: 0, lines: ['ok phrases 1 taken, 0 dropped', 'ok phrases.a1c.js 5 phrases in 1 units', 'ok ids.tsv 0 added', 'ok tatoeba-phrases.tsv 5 rows'] }, 'Merge relancée écrit la même chose, et n\'ajoute rien à ids.tsv');
+    ok(text(PFILE) === mergedP, 'Merge relancée laisse le fichier à l\'identique');
+    same(runPh('split.js', [PH, path.join(PH, 'apres', 'phrases')]), { code: 0, lines: ['kunnen-landen 6', 'eten-stad 6', 'vrijetijd-team 6', 'reis-spoed 3'] }, 'un second Split ne coupe plus l\'unité fondue');
+    console.log('  phrases        22 unités, 4 lots ; les règles d\'une candidate, chaque garde de Check, le chargement, Merge de bout en bout, relancée, second Split');
   }
 
   /* ==================================================== le genre scenarios */

@@ -16,7 +16,8 @@
    seconde Merge ne doit pas trouver ses propres lignes périmées.
 
    Le genre examples-gen (tools/content/kinds/examples-gen.js) reprend d'ici RULES, cut, MAX et
-   stamp. Ce que Check imprime est en anglais, comme le reste du kit. */
+   stamp ; le genre phrases (phrases.js), cut et bareOf. Ce que Check imprime est en anglais, comme
+   le reste du kit. */
 const fs = require('fs'), path = require('path');
 const tatoeba = require('../tatoeba');
 const table = require('../lib/table');

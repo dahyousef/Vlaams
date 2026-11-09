@@ -308,6 +308,35 @@ NL.state.open().then(() => {
   fs.rmSync(TMP, { recursive: true, force: true });
   console.log('  sourcées        ' + fromSource + ' phrase(s) sur ' + keys.size + ' mot(s), ' + credited.length + ' de Tatoeba créditée(s)');
 
+  /* Les phrases prises dans Tatoeba, src/content/phrases.a1c.js (plan 4c) : chacune porte src, le numéro de sa
+     phrase, et une ligne de docs/attribution/tatoeba-phrases.tsv la crédite sous son unité ; le fichier ne crédite
+     qu'elles, une fois chacune, et ses lignes ont la forme de celles de tatoeba.tsv (creditFaults), unit pour word. */
+  const PCREDITS = 'unit\tnld\tnld_owner\teng\teng_owner\tfra\tfra_owner\tadapted';
+  const pFile = path.join(ROOT, 'docs', 'attribution', 'tatoeba-phrases.tsv');
+  const pRows = fs.existsSync(pFile) ? fs.readFileSync(pFile, 'utf8').split(/\r?\n/).filter(l => l && l[0] !== '#') : [];
+  ok(pRows[0] === PCREDITS, 'docs/attribution/tatoeba-phrases.tsv manque, ou sa première ligne n’est pas « ' + PCREDITS.replace(/\t/g, ' ') + ' »');
+  const pCells = pRows.slice(1).map(l => l.split('\t'));
+  pCells.forEach(c => ok(c.length === 8 && c.every(x => x !== ''), 'docs/attribution/tatoeba-phrases.tsv : « ' + c.join(' ') + ' » n’a pas ses huit colonnes remplies'));
+  const pWrong = creditFaults(pCells);
+  ok(pWrong.length === 0, 'docs/attribution/tatoeba-phrases.tsv : ' + pWrong.join(' ; '));
+  const pCredited = [];
+  RAW.units.forEach(u => (u.phrases || []).forEach((p, i) => {
+    if (p.src === undefined) return;
+    ok(Number.isInteger(p.src) && p.src > 0, u.id + ':p' + i + ' « ' + p.nl + ' » : src vaut le numéro d’une phrase de Tatoeba, pas ' + JSON.stringify(p.src));
+    pCredited.push(u.id + '\t' + p.src);
+  }));
+  const pInFile = pCells.map(c => c[0] + '\t' + c[1]);
+  /* Les fautes des paires unité et numéro : une phrase du fichier sans crédit, un crédit sans phrase, un
+     crédit en double. Le cours n'a pas encore de phrase : le contrôle est d'abord essayé sur des paires plantées. */
+  const pairFaults = (credited, inFile) => credited.filter(p => inFile.indexOf(p) < 0)
+    .map(p => 'la phrase Tatoeba ' + p.split('\t')[1] + ' de l’unité « ' + p.split('\t')[0] + ' » n’est pas créditée dans docs/attribution/tatoeba-phrases.tsv : relancer Merge')
+    .concat(...inFile.map((p, k) => (credited.indexOf(p) < 0 ? ['docs/attribution/tatoeba-phrases.tsv crédite la phrase ' + p.split('\t')[1] + ' de l’unité « ' + p.split('\t')[0] + ' », qui n’est pas dans src/content/phrases.a1c.js : relancer Merge'] : [])
+      .concat(inFile.indexOf(p) < k ? ['docs/attribution/tatoeba-phrases.tsv crédite deux fois la phrase ' + p.split('\t')[1] + ' de l’unité « ' + p.split('\t')[0] + ' »'] : [])));
+  const plantedPairs = pairFaults(['x\t1', 'x\t3'], ['x\t3', 'x\t2', 'x\t3']);
+  ok(plantedPairs.length === 3, 'les crédits plantés donnent ' + plantedPairs.length + ' faute(s), pas 3 : ' + plantedPairs.join(' ; '));
+  pairFaults(pCredited, pInFile).forEach(m => ok(false, m));
+  console.log('  phrases         ' + pCredited.length + ' phrase(s) de Tatoeba dans les unités, ' + pCells.length + ' créditée(s)');
+
   /* ========================================================== 4. alias */
   /* Un mot ou une phrase listé dans deux unités est un seul élément : build() garde le
      premier listage, dans l'ordre du cours, et fait des suivants ses alias. Sinon il serait
