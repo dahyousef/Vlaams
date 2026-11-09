@@ -64,8 +64,8 @@ D9–D20 were taken at the phase 4 design sitting and for plan 4a (25–31 Octob
 | D26 | `AHEAD_BUDGET` stays 136, pinned both ways; task 6 corrects the comment in `test/content.js` that forecasts 4c lowering it. Units 1–12's sentences are not touched. | 6 |
 | D27 | Readers on Sonnet for examples, phrases and flemish (`reader model: sonnet` on their `Fan-out:` lines); readers on Opus, the kit's default, for generated sentences. | 5, 7, 9, 11 |
 | D28 | This plan's run controller rules on the maintainer's behalf (a row still disputed after its second reader) and answers gate 13; every fault the gate confirms is fixed in the run, except one needing a decision no document holds; the rows D15 names stay on the maintainer's reading list. Mode: one session. | 5, 7, 9, 11, 13 |
-| D29 | Flemish forms land in 4c without their written decoys (plan 4d's): task 12 pins `DECOY_BUDGET` in `test/content.js` both ways, as `AHEAD_BUDGET` is, at the count of items with a Flemish form and no decoys after Merge flemish; plan 4d's `explanations-be` Merge lowers it to 0. 4c does not ship, so no learner meets the random options in between. | 12, 13 |
-| D30 | The new phrases land in 4c without their notes (plan 4d's): task 8 pins `NOTE_BUDGET` in `test/content.js` both ways, as D29 pins `DECOY_BUDGET`, at the count of items with no explanation in both languages after Merge phrases; the printed line shows the budget; plan 4d's `explanations` Merge writes the notes and lowers it to 0. | 8, 13 |
+| D29 | Flemish forms land in 4c without their written decoys (plan 4d's): task 12 pins `DECOY_BUDGET` in `test/content.js` both ways, as `AHEAD_BUDGET` is, at the count of items with a Flemish form and no decoys after Merge flemish; plan 4d's `explanations-be` Merge lowers it to 0. 4c does not ship, so no learner meets the random options in between. #12 names this rise and D30's as its third exception to « may only ever decrease », temporary (the maintainer, 2026-11-09). | 12, 13 |
+| D30 | The new phrases land in 4c without their notes (plan 4d's): task 8 pins `NOTE_BUDGET` in `test/content.js` both ways, as D29 pins `DECOY_BUDGET`, at the count of items with no explanation in both languages after Merge phrases; the printed line shows the budget; plan 4d's `explanations` Merge writes the notes and lowers it to 0. #12 names it with D29's (the third exception). | 8, 13 |
 
 ## How far to trust this plan
 
@@ -87,8 +87,9 @@ outline, the replay's word « chain »); a file named wrongly; task 4's missing 
 as plan 4b's measure names it; D15's « 1 in 20 » quoted as D15 says it; `pack`'s body cut to the rule it follows,
 proved on a clone (the kit's test green, and red with `<` for `<=`); and task 10's fix for a wrong generated
 sentence, now put in place by an implementer as gate 13's fix loop says, not by the run controller. It raised one
-point that is a decision, put to the maintainer before the run: D29 and D30 raise two budgets from 0, where #12 says
-such a budget « may only ever decrease » and names two other exceptions.
+point that is a decision: D29 and D30 raise two budgets from 0, where #12 said such a budget « may only ever
+decrease » and named two other exceptions. The maintainer ruled on 2026-11-09: #12 now names both as a third
+exception, temporary, which plan 4d returns to 0 before the release.
 
 What the checks found that the writers' own proofs had not, all fixed in this text:
 - **A batch that could never pass.** No sentence for « u » could pass Check: the gap rule took no word of one letter.
