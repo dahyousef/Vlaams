@@ -143,10 +143,15 @@ NL.state.open().then(() => {
   console.log('  leurres         ' + decoyed.length + ' élément(s) avec leurs leurres, ' + wrongDecoys.length + ' faute(s)');
 
   /* Un élément de « Comment le dit-on ici ? » sans leurres écrits tire ses options au hasard, et la
-     bonne se devine. Chacun a les siens, que le genre explanations-be écrit dans src/content/decoys.js. */
+     bonne se devine. Chacun a les siens, que le genre explanations-be écrit dans src/content/decoys.js.
+     Les formes flamandes des unités 13 à 34 (Merge flemish du plan 4c) attendent les leurs du plan 4d :
+     DECOY_BUDGET les compte, épinglé dans les deux sens comme AHEAD_BUDGET, et le Merge explanations-be
+     du plan 4d, qui écrit leurs leurres, le ramène à 0 dans le même commit (D29). */
+  const DECOY_BUDGET = 34;
   const undecoyed = items.filter(x => NL.srs.supports(x, 'vlaams') && !x.decoys).map(x => x.id);
-  ok(undecoyed.length === 0, undecoyed.length + ' élément(s) de « Comment le dit-on ici ? » sans leurres écrits : ' + undecoyed.slice(0, 6).join(', '));
-  console.log('  sans leurres    ' + undecoyed.length + ' élément(s) de « Comment le dit-on ici ? » (exigé : 0)');
+  ok(undecoyed.length <= DECOY_BUDGET, undecoyed.length + ' élément(s) de « Comment le dit-on ici ? » sans leurres écrits, budget ' + DECOY_BUDGET + ' : ' + undecoyed.slice(0, 6).join(', '));
+  ok(undecoyed.length >= DECOY_BUDGET, 'seulement ' + undecoyed.length + ' élément(s) sans leurres écrits : baisser DECOY_BUDGET à ' + undecoyed.length + ' pour verrouiller le gain');
+  console.log('  sans leurres    ' + undecoyed.length + ' élément(s) de « Comment le dit-on ici ? » (budget ' + DECOY_BUDGET + ')');
 
   /* L'explication d'un élément (NL.ex.explanation : la note d'un mot ou d'une phrase, la règle d'un
      motif) se lit dans les deux langues d'affichage. Chacun a la sienne : les genres explanations-be
