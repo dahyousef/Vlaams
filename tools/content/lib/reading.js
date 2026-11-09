@@ -23,7 +23,7 @@ const table = require('./table');
 const { course } = require('./course');
 
 const SENTENCES = 'examples';
-const INTRO = 'Read for the content check, at HEAD: every row its kind marks to read whole (a new Flemish form, a generated sentence), every row the maintainer ruled, and a sample of the other taken rows, 1 in 10 and at least 10 per kind, the same on every run. Under each row, what each of its kind\'s tables holds for it.';
+const INTRO = 'Read for the content check, at HEAD: every row its kind marks to read whole (a new Flemish form, a generated sentence, a written or edited translation), every row the maintainer ruled, and a sample of the other taken rows, 1 in 10 and at least 10 per kind, the same on every run. Under each row, what each of its kind\'s tables holds for it.';
 
 /* L'échantillon : 1 ligne sur 10, au moins 10, au plus toutes. Ses lignes sont celles dont
    le sha1 de « <genre> <id> » est le plus petit : la même liste à chaque lecture, et une

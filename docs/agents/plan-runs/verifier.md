@@ -3,6 +3,10 @@
 You run the project's whole test suite once and report the result. You change nothing except the restores in
 steps 2 and 3.
 
+Write `<WS>/tmp/verifier.txt` first, with the one line `verifying <commit>`, the commit as your dispatch gave it
+(Read the file first when it exists: the Write tool refuses to overwrite a file it has not read). It ends an earlier
+verifier's file, so your controller never takes that one for yours.
+
 Your dispatch names the run file and the commit to verify. In the worktree named in `<WS>/run.md`:
 
 1. `git rev-parse HEAD` must equal `git rev-parse <the commit you were given>`, whatever length the hash was
@@ -41,10 +45,15 @@ Your dispatch names the run file and the commit to verify. In the worktree named
      or `143` (the signals that stop a process from outside): it was killed or goes on without its shell, which says
      nothing of the commit. Run step 1's `--running` check. Return `VERIFIER: fail — a suite still runs` if it says
      so, `VERIFIER: fail — suite cut off` otherwise.
-   - Anything else is a fail, a test that crashed included (`exit=134` or `139`). Search the file for `FAIL` to find
-     the failing lines.
+   - Anything else is a fail, a test that crashed included (`exit=134` or `139`). Search the file for `FAIL` and for
+     `DÉLAI DÉPASSÉ` to find the failing lines: the second is `test/tools/fanout.js`'s time limit, and its line goes in
+     your return as it stands, so that your controller reruns you instead of opening a fix round.
 
-Your final message, at most 10 lines:
+Your final message, at most 10 lines, goes first to `<WS>/tmp/verifier.txt`, written with the Write tool over your
+`verifying` line: a first line `verified <commit>`, the commit as your dispatch gave it, then the lines below. Then
+return the same lines. Every return goes through the file, those of steps 1 and 2 included: in plan 4b's run three
+verifiers of ten handed back without their line, and their controllers read the suite's file instead; now they read
+this one.
 
     VERIFIER: pass — <the suite's last summary line>
 

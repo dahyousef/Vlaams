@@ -1042,3 +1042,113 @@ spoed:w11	allergisch
 spoed:w12	gevaarlijk
 spoed:w13	de hulp
 spoed:w14	de tandarts
+vragen:p0	Wie doet dat?
+vragen:p1	Wanneer was dat?
+vragen:p2	Hoe werkt dat?
+vragen:p3	Ik heb nu geen tijd.
+vragen:p4	Waarom doet hij dat?
+kunnen:p0	Hoe laat kun je komen?
+kunnen:p1	Ik wil het niet vergeten.
+kunnen:p2	Hoe moet ik dat weten?
+kunnen:p3	We kunnen alleen maar hopen.
+kunnen:p4	Jullie kunnen me geloven.
+doen:p0	Ik neem het.
+doen:p1	Ga even zitten.
+doen:p2	Dat kan wachten.
+doen:p3	Kan ik beginnen?
+doen:p4	Zijn er vragen?
+mensen:p0	Kan iemand helpen?
+mensen:p1	Mag ik hem iets vragen?
+mensen:p2	Kennen we elkaar?
+mensen:p3	Doe het zelf!
+mensen:p4	Ik wil niets.
+hoeveel:p0	Dat is te veel.
+hoeveel:p1	Is hij nog steeds hier?
+hoeveel:p2	Nog een keer?
+hoeveel:p3	Hoeveel van jullie drinken elke dag koffie?
+hoeveel:p4	Wie gaat er nog meer met ons mee?
+waar:p0	Ik ga met de fiets naar het werk.
+waar:p1	Onder welke naam?
+waar:p2	Kijk eens rond.
+waar:p3	Over een uur kom ik bij je.
+waar:p4	Ga door met werken!
+landen:p0	Spreekt u Duits?
+landen:p1	Ik kan deze zin niet vertalen.
+landen:p2	Zoek dat woord op in het woordenboek.
+landen:p3	Er is geen antwoord op je vraag.
+landen:p4	Hij was in Frankrijk.
+eten:p0	Wilt u suiker of melk?
+eten:p1	De soep is te zout.
+eten:p2	Ik wil pizza.
+eten:p3	Vlees is duur.
+eten:p4	Hebben jullie rijst?
+cafe:p0	De rekening, alstublieft.
+cafe:p1	We willen graag nog een fles wijn.
+cafe:p2	We bestellen iets.
+cafe:p3	Er is geen lepel.
+cafe:p4	Hebben jullie een mes?
+kleren:p0	Doe uw schoenen uit, alstublieft.
+kleren:p1	Ik wil deze rok kopen.
+kleren:p2	Mijn fiets is rood.
+kleren:p3	Is deze appel geel?
+kleren:p4	Dit is een blauw huis.
+wonen:p0	Open het raam!
+wonen:p1	We verhuizen volgende maand.
+wonen:p2	Een tafel voor twee, alstublieft.
+wonen:p3	Ik moet naar bed.
+wonen:p4	Ik wil een douche nemen.
+kalender:p0	Ik ben jarig!
+kalender:p1	Zijn jullie klaar voor Kerstmis?
+kalender:p2	Ik ben met vakantie.
+kalender:p3	De winter komt.
+kalender:p4	Vandaag is het twee januari.
+stad:p0	Ik ga naar het park.
+stad:p1	Ze zijn in de bibliotheek.
+stad:p2	Is het museum vandaag open?
+stad:p3	Woon je hier in de buurt?
+stad:p4	Ze is kapper.
+vrijetijd:p0	Wil je spelen?
+vrijetijd:p1	Ik kan zwemmen.
+vrijetijd:p2	Kan zij fietsen?
+vrijetijd:p3	Ik wil dansen.
+vrijetijd:p4	Ik kan zingen.
+gevoel:p0	Ik ben bang.
+gevoel:p1	Was het interessant?
+gevoel:p2	Dat is jammer.
+gevoel:p3	Frans is moeilijk.
+gevoel:p4	Ik ben zenuwachtig.
+beschrijven:p0	Is het kapot?
+beschrijven:p1	Het is donker.
+beschrijven:p2	Ze zijn snel.
+beschrijven:p3	Ze is sterk.
+beschrijven:p4	Ze werkt hard.
+school:p0	Heb je huiswerk?
+school:p1	Ik moet studeren.
+school:p2	Je bent leerkracht.
+school:p3	Waar is mijn potlood?
+school:p4	Wij geven les.
+afspraak:p0	Waar is de gsm?
+afspraak:p1	Wanneer kan ik je bellen?
+afspraak:p2	We zijn beschikbaar.
+afspraak:p3	Ik moet opnemen.
+afspraak:p4	Stuur me een bericht.
+team:p0	Laten we samenwerken.
+team:p1	Wat een team!
+team:p2	Van wie is deze computer?
+team:p3	Het ligt op mijn bureau.
+team:p4	De printer werkt niet.
+reis:p0	Ik ben toerist.
+reis:p1	Neem een taxi naar het hotel.
+reis:p2	Dit is mijn kamer.
+reis:p3	Reis je alleen?
+reis:p4	Mag ik uw paspoort, alstublieft?
+natuur:p0	Ik heb een kat.
+natuur:p1	Waar is mijn hond?
+natuur:p2	Is het een koe?
+natuur:p3	Deze bloem is mooi.
+natuur:p4	Mijn paard is wit.
+spoed:p0	Ik ben allergisch voor melk.
+spoed:p1	Wie heeft dit gebroken?
+spoed:p2	Het is gevaarlijk.
+spoed:p3	Ze heeft hulp nodig.
+spoed:p4	Ik was bij de tandarts.

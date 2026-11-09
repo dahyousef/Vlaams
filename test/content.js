@@ -11,7 +11,7 @@ const spelling = require('./lib/spelling');
 const sequence = require('./lib/sequence');
 const { raw, owed, at, owedTables, has } = require('./lib/prose');
 const tree = require('./lib/tree');
-const { oneLine, sig } = require('./lib/text');
+const { oneLine, sig, hasU, uTag } = require('./lib/text');
 const ROOT = process.argv[2] || path.join(__dirname, '..');
 
 let fails = 0, checks = 0;
@@ -143,18 +143,28 @@ NL.state.open().then(() => {
   console.log('  leurres         ' + decoyed.length + ' élément(s) avec leurs leurres, ' + wrongDecoys.length + ' faute(s)');
 
   /* Un élément de « Comment le dit-on ici ? » sans leurres écrits tire ses options au hasard, et la
-     bonne se devine. Chacun a les siens, que le genre explanations-be écrit dans src/content/decoys.js. */
+     bonne se devine. Chacun a les siens, que le genre explanations-be écrit dans src/content/decoys.js.
+     Les formes flamandes des unités 13 à 34 (Merge flemish du plan 4c) attendent les leurs du plan 4d :
+     DECOY_BUDGET les compte, épinglé dans les deux sens comme AHEAD_BUDGET, et le Merge explanations-be
+     du plan 4d, qui écrit leurs leurres, le ramène à 0 dans le même commit (D29). */
+  const DECOY_BUDGET = 34;
   const undecoyed = items.filter(x => NL.srs.supports(x, 'vlaams') && !x.decoys).map(x => x.id);
-  ok(undecoyed.length === 0, undecoyed.length + ' élément(s) de « Comment le dit-on ici ? » sans leurres écrits : ' + undecoyed.slice(0, 6).join(', '));
-  console.log('  sans leurres    ' + undecoyed.length + ' élément(s) de « Comment le dit-on ici ? » (exigé : 0)');
+  ok(undecoyed.length <= DECOY_BUDGET, undecoyed.length + ' élément(s) de « Comment le dit-on ici ? » sans leurres écrits, budget ' + DECOY_BUDGET + ' : ' + undecoyed.slice(0, 6).join(', '));
+  ok(undecoyed.length >= DECOY_BUDGET, 'seulement ' + undecoyed.length + ' élément(s) sans leurres écrits : baisser DECOY_BUDGET à ' + undecoyed.length + ' pour verrouiller le gain');
+  console.log('  sans leurres    ' + undecoyed.length + ' élément(s) de « Comment le dit-on ici ? » (budget ' + DECOY_BUDGET + ')');
 
   /* L'explication d'un élément (NL.ex.explanation : la note d'un mot ou d'une phrase, la règle d'un
      motif) se lit dans les deux langues d'affichage. Chacun a la sienne : les genres explanations-be
-     et explanations écrivent celles des mots et des phrases dans src/content/notes.js. */
+     et explanations écrivent celles des mots et des phrases dans src/content/notes.js. Les phrases prises
+     dans Tatoeba pour les unités 13 à 34 (plan 4c, src/content/phrases.a1c.js) attendent la leur du plan 4d :
+     NOTE_BUDGET les compte, épinglé dans les deux sens comme AHEAD_BUDGET, et le Merge explanations du plan 4d,
+     qui écrit leurs notes, le ramène à 0 dans le même commit (D30). */
+  const NOTE_BUDGET = 110;
   const bilingual = x => !!x && has(x.fr) && has(x.en);
   const unexplained = items.filter(x => !bilingual(NL.ex.explanation(x))).map(x => x.id);
-  ok(unexplained.length === 0, unexplained.length + ' élément(s) sans explication en français et en anglais : ' + unexplained.slice(0, 6).join(', '));
-  console.log('  explications    ' + unexplained.length + ' / ' + items.length + ' élément(s) sans explication dans les deux langues (exigé : 0)');
+  ok(unexplained.length <= NOTE_BUDGET, unexplained.length + ' élément(s) sans explication en français et en anglais, budget ' + NOTE_BUDGET + ' : ' + unexplained.slice(0, 6).join(', '));
+  ok(unexplained.length >= NOTE_BUDGET, 'seulement ' + unexplained.length + ' élément(s) sans explication : baisser NOTE_BUDGET à ' + unexplained.length + ' pour verrouiller le gain');
+  console.log('  explications    ' + unexplained.length + ' / ' + items.length + ' élément(s) sans explication dans les deux langues (budget ' + NOTE_BUDGET + ')');
 
   /* Une réponse libre se note sur ce qu'elle contient, par le barème de la séance
      (NL.ex.rubric). L'exemple, montré après « Vérifier », coche chaque besoin. Et chaque
@@ -199,7 +209,9 @@ NL.state.open().then(() => {
     if (sequence.ahead(d.nl, ui, first).length) ahead++;
   })));
   /* Révélé par les unités 13–34, qui ont fait monter ce compte de 61 à 129 : chaque phrase comptée en plus
-     employait un de leurs mots avant qu'il soit enseigné. Le plan 4c, qui écrit leurs phrases, peut le baisser. */
+     employait un de leurs mots avant qu'il soit enseigné. Ces 136 phrases sont écrites à la main dans les unités
+     1 à 12 ; les phrases sourcées des unités 13 à 34 (plan 4c) n'empruntent rien en avant, Check le refuse avant
+     Merge, et ne changent donc pas ce compte : il reste à 136 tant que ces phrases-là ne sont pas corrigées (D26). */
   /* Les règles de grammar.a1c.js l'ont fait monter de 129 à 136 : le trou d'une règle enseigne sa forme à l'unité
      qui la liste, et « werkt » et « blijf » (g-bijzin, g-vraag, à vragen), « wacht » (g-gebiedend, à cafe) font
      emprunter en avant sept phrases qui les écrivaient déjà. Les règles n'ont rien emprunté : un mot de plus est
@@ -262,11 +274,34 @@ NL.state.open().then(() => {
   ok(rows[0] === CREDITS, 'docs/attribution/tatoeba.tsv manque, ou sa première ligne n’est pas « ' + CREDITS.replace(/\t/g, ' ') + ' »');
   const cells = rows.slice(1).map(l => l.split('\t'));
   cells.forEach(c => ok(c.length === 8 && c.every(x => x !== ''), 'docs/attribution/tatoeba.tsv : « ' + c.join(' ') + ' » n’a pas ses huit colonnes remplies'));
-  const inFile = cells.map(c => c[0] + '\t' + c[1]);
-  credited.filter(p => inFile.indexOf(p) < 0).forEach(p => ok(false, 'la phrase Tatoeba ' + p.split('\t')[1] + ' de « ' + p.split('\t')[0] +
-    ' » n’est pas créditée dans docs/attribution/tatoeba.tsv : relancer Merge'));
-  inFile.filter(p => credited.indexOf(p) < 0).forEach(p => ok(false, 'docs/attribution/tatoeba.tsv crédite la phrase ' + p.split('\t')[1] + ' de « ' +
-    p.split('\t')[0] + ' », qui n’est pas dans src/content/sourced.js : relancer Merge'));
+  /* Une traduction écrite pour le cours (D17), que Tatoeba n'a pas, s'écrit « - » dans ses deux colonnes, et adapted nomme sa langue ;
+     une phrase garde au moins une traduction de Tatoeba. Les Merges des genres examples et examples-gen l'écrivent ainsi : le fichier
+     d'aujourd'hui n'a pas encore de côté écrit, ce contrôle est planté d'abord. */
+  const creditFaults = list => [].concat(...list.map(c => {
+    const row = '« ' + c.join(' ') + ' » : ', out = [], adapted = c[7] || '';
+    [['en', 3, 4], ['fr', 5, 6]].forEach(([l, n, o]) => {
+      if (c[n] === '-') {
+        if (c[o] !== '-') out.push(row + l + ' : « - », mais un auteur');
+        if (adapted.split(' ').indexOf(l) < 0) out.push(row + l + ' : « - », et adapted ne la nomme pas');
+      } else if (!/^[1-9]\d*$/.test(c[n] || '')) out.push(row + l + ' : ni « - » ni le numéro d’une phrase de Tatoeba');
+    });
+    if (c[3] === '-' && c[5] === '-') out.push(row + 'aucune traduction de Tatoeba');
+    if (['-', 'en', 'fr', 'en fr'].indexOf(adapted) < 0) out.push(row + 'adapted vaut « - », « en », « fr » ou « en fr »');
+    return out;
+  }));
+  const plantedCredits = creditFaults([['x', '1', '-', '-', '-', '3', '-', '-'], ['x', '1', '-', '-', '-', '-', '-', 'en fr'], ['x', '1', '-', 'a', 'b', '3', '-', 'fr en']]);
+  ok(plantedCredits.length === 4, 'les crédits plantés donnent ' + plantedCredits.length + ' faute(s), pas 4 : ' + plantedCredits.join(' ; '));
+  ok(creditFaults(cells).length === 0, 'docs/attribution/tatoeba.tsv : ' + creditFaults(cells).join(' ; '));
+  /* Les fautes des paires unité et numéro d'un fichier de crédits : une phrase du cours sans crédit, un crédit sans
+     phrase, un crédit en double. file dit le fichier de crédits, unitCol la première colonne, where le fichier
+     du cours où les phrases se trouvent. */
+  const pairFaults = (credited, inFile, file, unitCol, where) => credited.filter(p => inFile.indexOf(p) < 0)
+    .map(p => 'la phrase Tatoeba ' + p.split('\t')[1] + ' de ' + unitCol + ' « ' + p.split('\t')[0] + ' » n’est pas créditée dans ' + file + ' : relancer Merge')
+    .concat(...inFile.map((p, k) => (credited.indexOf(p) < 0 ? [file + ' crédite la phrase ' + p.split('\t')[1] + ' de ' + unitCol + ' « ' + p.split('\t')[0] + ' », qui n’est pas dans ' + where + ' : relancer Merge'] : [])
+      .concat(inFile.indexOf(p) < k ? [file + ' crédite deux fois la phrase ' + p.split('\t')[1] + ' de ' + unitCol + ' « ' + p.split('\t')[0] + ' »'] : [])));
+  const plantedPairs = pairFaults(['x\t1', 'x\t3'], ['x\t3', 'x\t2', 'x\t3'], 'f.tsv', 'l’unité', 'g.js');
+  ok(plantedPairs.length === 3, 'les crédits plantés donnent ' + plantedPairs.length + ' faute(s), pas 3 : ' + plantedPairs.join(' ; '));
+  pairFaults(credited, cells.map(c => c[0] + '\t' + c[1]), 'docs/attribution/tatoeba.tsv', 'du mot', 'src/content/sourced.js').forEach(m => ok(false, m));
   /* Une phrase sourcée n'emploie, hors des formes de son mot et de son trou, que ce que le cours
      a enseigné jusqu'à l'unité du mot (#12, récit 39) : pas une forme jamais enseignée, pas même
      fléchie d'un mot vu (test/lib/sequence.js dit pourquoi). Check le tient phrase par phrase ;
@@ -289,6 +324,26 @@ NL.state.open().then(() => {
     'une phrase de src/content/sourced.js ne donne pas à ' + lone.id + ' « ' + lone.nl + ' » son texte à trous');
   fs.rmSync(TMP, { recursive: true, force: true });
   console.log('  sourcées        ' + fromSource + ' phrase(s) sur ' + keys.size + ' mot(s), ' + credited.length + ' de Tatoeba créditée(s)');
+
+  /* Les phrases prises dans Tatoeba, src/content/phrases.a1c.js (plan 4c) : chacune porte src, le numéro de sa
+     phrase, et une ligne de docs/attribution/tatoeba-phrases.tsv la crédite sous son unité ; le fichier ne crédite
+     qu'elles, une fois chacune, et ses lignes ont la forme de celles de tatoeba.tsv (creditFaults), unit pour word. */
+  const PCREDITS = 'unit\tnld\tnld_owner\teng\teng_owner\tfra\tfra_owner\tadapted';
+  const pFile = path.join(ROOT, 'docs', 'attribution', 'tatoeba-phrases.tsv');
+  const pRows = fs.existsSync(pFile) ? fs.readFileSync(pFile, 'utf8').split(/\r?\n/).filter(l => l && l[0] !== '#') : [];
+  ok(pRows[0] === PCREDITS, 'docs/attribution/tatoeba-phrases.tsv manque, ou sa première ligne n’est pas « ' + PCREDITS.replace(/\t/g, ' ') + ' »');
+  const pCells = pRows.slice(1).map(l => l.split('\t'));
+  pCells.forEach(c => ok(c.length === 8 && c.every(x => x !== ''), 'docs/attribution/tatoeba-phrases.tsv : « ' + c.join(' ') + ' » n’a pas ses huit colonnes remplies'));
+  const pWrong = creditFaults(pCells);
+  ok(pWrong.length === 0, 'docs/attribution/tatoeba-phrases.tsv : ' + pWrong.join(' ; '));
+  const pCredited = [];
+  RAW.units.filter(u => u.n >= 13 && u.n <= 34).forEach(u => (u.phrases || []).forEach((p, i) => {
+    ok(Number.isInteger(p.src) && p.src > 0, u.id + ':p' + i + ' « ' + p.nl + ' » : src vaut le numéro d’une phrase de Tatoeba, pas ' + JSON.stringify(p.src));
+    pCredited.push(u.id + '\t' + p.src);
+  }));
+  const pInFile = pCells.map(c => c[0] + '\t' + c[1]);
+  pairFaults(pCredited, pInFile, 'docs/attribution/tatoeba-phrases.tsv', 'l’unité', 'src/content/phrases.a1c.js').forEach(m => ok(false, m));
+  console.log('  phrases         ' + pCredited.length + ' phrase(s) de Tatoeba dans les unités, ' + pCells.length + ' créditée(s)');
 
   /* ========================================================== 4. alias */
   /* Un mot ou une phrase listé dans deux unités est un seul élément : build() garde le
@@ -428,9 +483,6 @@ NL.state.open().then(() => {
       p[0].id + ' « ' + p[0].nl + ' » et ' + p[1].id + ' « ' + p[1].nl + ' »');
   }));
   /* Le néerlandais u/uw glosé « you » : en Flandre, u est aussi le tutoiement, et c'est le français qui le dit. */
-  const hasU = nl => /(^|[^a-zà-ÿ])uw?(?![a-zà-ÿ])/i.test(nl);
-  const frTu = fr => /(^|[^a-zà-ÿ])((tu|te|toi|ton|ta|tes)(?![a-zà-ÿ])|t['’])/i.test(fr);
-  const uTag = fr => frTu(fr) ? '(informal, Flemish u)' : '(formal)';
   ok(uTag('C’était comment, ton week-end ?') === '(informal, Flemish u)', 'uTag : « ton » est un tutoiement');
   ok(uTag('Et vous ?') === '(formal)', 'uTag : « vous » est formel');
   ok(uTag('Je t’appelle demain.') === '(informal, Flemish u)', 'uTag : « t’ » est un tutoiement');

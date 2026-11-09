@@ -1,4 +1,4 @@
-/* Les phrases de Tatoeba (tatoeba.org, CC BY 2.0 FR) traduites en anglais ET en français, avec
+/* Les phrases de Tatoeba (tatoeba.org, CC BY 2.0 FR) traduites en anglais ou en français, les deux de préférence (D17), avec
    leurs auteurs, tirées des fichiers épinglés tatoeba/… (tools/content/lib/cache.js). L'extrait
    vit dans .cache/tatoeba/extract.tsv, jamais dans un fichier versionné : seules les phrases
    choisies entrent au dépôt, chacune créditée dans docs/attribution/tatoeba.tsv (ATTRIBUTION.md).
@@ -26,13 +26,15 @@
    mot que ce que le cours a enseigné jusqu'à l'unité du mot (#12, récit 39 : pas une forme jamais
    enseignée, pas même fléchie d'un mot vu ; test/lib/sequence.js dit pourquoi), ne nomme ni le
    prénom, ni la commune, ni l'employeur par défaut, et, quand seq.known est donné, n'a que des
-   formes qu'il connaît. Le classement : sans je, jij, jou ni jouw d'abord (le cours enseigne ge
-   et gij), puis d'un auteur de langue maternelle, puis moins de tuiles, et l'id.
+   formes qu'il connaît. Le classement : les phrases traduites dans les deux langues d'abord, puis celles qui n'ont
+   que l'anglais, puis que le français (moins il faut écrire de traductions, plus la lecture est courte), puis sans
+   je, jij, jou ni jouw (le cours enseigne ge et gij), puis d'un auteur de langue maternelle, puis moins de
+   tuiles, et l'id.
 
    L'extrait est une ligne d'en-tête qui nomme les épingles lues, puis une ligne par phrase, par
    langue et par id : « nld », id, auteur, 1 ou 0, texte, ids anglais et ids français séparés
-   par « , » ; « eng » ou « fra », id, auteur, texte. Une phrase néerlandaise n'y est que si une
-   traduction anglaise ET une française existent. Les fichiers épinglés se lisent ligne à ligne,
+   par « , », une colonne vide quand la langue manque ; « eng » ou « fra », id, auteur, texte. Une phrase
+   néerlandaise n'y est que si une traduction anglaise OU une française existe. Les fichiers épinglés se lisent ligne à ligne,
    comme du texte : rien ne s'en exécute. */
 const fs = require('fs'), path = require('path'), readline = require('readline');
 const cache = require('./lib/cache');
@@ -68,24 +70,24 @@ async function extract(repo, opts) {
   const nld = new Map();
   await each(file[0], c => {
     const id = Number(c[0]);
-    if (c[1] === 'nld' && links.eng.has(id) && links.fra.has(id)) nld.set(id, { id, owner: owner(c[3]), text: cell(c[2]) });
+    if (c[1] === 'nld' && (links.eng.has(id) || links.fra.has(id))) nld.set(id, { id, owner: owner(c[3]), text: cell(c[2]) });
   });
   const tr = { eng: new Map(), fra: new Map() };
   for (const [lang, f] of [['eng', file[1]], ['fra', file[2]]]) {
     const want = new Set();
-    nld.forEach(s => links[lang].get(s.id).forEach(id => want.add(id)));
+    nld.forEach(s => (links[lang].get(s.id) || []).forEach(id => want.add(id)));
     await each(f, c => {
       const id = Number(c[0]);
       if (c[1] === lang && want.has(id)) tr[lang].set(id, { id, owner: owner(c[3]), text: cell(c[2]) });
     });
   }
-  /* Une traduction effacée depuis le lien n'est pas dans son fichier : le lien tombe, et la
-     phrase avec lui si c'était sa seule traduction dans cette langue. */
+  /* Une traduction effacée depuis le lien n'est pas dans son fichier : le lien tombe, et
+     sa langue n'est plus que la colonne vide ; la phrase tombe quand il ne lui reste aucune traduction. */
   const kept = [...nld.values()].map(s => Object.assign(s, {
     native: native.has(s.owner),
-    eng: links.eng.get(s.id).filter(id => tr.eng.has(id)).sort((a, b) => a - b),
-    fra: links.fra.get(s.id).filter(id => tr.fra.has(id)).sort((a, b) => a - b)
-  })).filter(s => s.eng.length && s.fra.length).sort((a, b) => a.id - b.id);
+    eng: (links.eng.get(s.id) || []).filter(id => tr.eng.has(id)).sort((a, b) => a - b),
+    fra: (links.fra.get(s.id) || []).filter(id => tr.fra.has(id)).sort((a, b) => a - b)
+  })).filter(s => s.eng.length || s.fra.length).sort((a, b) => a.id - b.id);
   const used = { eng: new Set(), fra: new Set() };
   kept.forEach(s => ['eng', 'fra'].forEach(l => s[l].forEach(id => used[l].add(id))));
   const lines = [head(pins)].concat(kept.map(s => ['nld', s.id, s.owner, s.native ? 1 : 0, s.text, s.eng.join(','), s.fra.join(',')].join('\t')));
@@ -106,7 +108,7 @@ function load(repo, opts) {
   const lines = fs.readFileSync(file, 'utf8').split('\n').filter(Boolean);
   if (lines[0] !== head(pins)) throw new Error('.cache/' + OUT + ' comes from other pins of tatoeba: run node tools/content/tatoeba.js .');
   const T = { nld: new Map(), eng: new Map(), fra: new Map(), byForm: new Map() };
-  const ids = s => s.split(',').map(Number);
+  const ids = s => (s ? s.split(',').map(Number) : []);
   lines.slice(1).forEach(l => {
     const c = l.split('\t');
     if (c[0] === 'nld') T.nld.set(Number(c[1]), { id: Number(c[1]), text: c[4], owner: c[2], native: c[3] === '1', eng: ids(c[5]), fra: ids(c[6]) });
@@ -127,6 +129,7 @@ function rank(T, item, seq) {
   if (word.length === 1) own.forEach(f => (T.byForm.get(f) || []).forEach(s => pool.add(s)));
   else (T.byForm.get(word[0]) || []).forEach(s => { if (run(s.text)) pool.add(s); });
   const je = c => (tokens(c.nl).some(t => JE.indexOf(t) >= 0) ? 1 : 0);
+  const cls = c => (c.en.length && c.fr.length ? 0 : c.en.length ? 1 : 2);
   return [...pool].map(s => ({ s, tiles: U.tiles(s.text).length }))
     .filter(x => x.tiles >= 4 && x.tiles <= 8 && !sequence.unmet(x.s.text, seq.ui, seq.first, own).length &&
       !sequence.ahead(x.s.text, seq.ui, seq.first).length && !named(x.s.text, NL) && (!seq.known || tokens(x.s.text).every(seq.known)))
@@ -136,7 +139,7 @@ function rank(T, item, seq) {
       fr: x.s.fra.map(id => ({ id, text: T.fra.get(id).text, owner: T.fra.get(id).owner })),
       tiles: x.tiles
     }))
-    .sort((a, b) => je(a) - je(b) || (b.native ? 1 : 0) - (a.native ? 1 : 0) || a.tiles - b.tiles || a.id - b.id)
+    .sort((a, b) => cls(a) - cls(b) || je(a) - je(b) || (b.native ? 1 : 0) - (a.native ? 1 : 0) || a.tiles - b.tiles || a.id - b.id)
     .slice(0, 8)
     .map(c => ({ id: c.id, nl: c.nl, owner: c.owner, en: c.en, fr: c.fr, tiles: c.tiles }));
 }

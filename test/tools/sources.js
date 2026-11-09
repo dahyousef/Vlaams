@@ -157,8 +157,8 @@ async function main() {
   });
   const tPins = pinsOf(files);
   const OUT = path.join(TMP, '.cache', 'tatoeba', 'extract.tsv');
-  same(await tatoeba.extract(TMP, { pins: tPins }), { nld: 22, eng: 23, fra: 22 },
-    'extract garde les phrases traduites en anglais et en français, et leurs traductions');
+  same(await tatoeba.extract(TMP, { pins: tPins }), { nld: 24, eng: 25, fra: 22 },
+    'extract garde les phrases traduites en anglais ou en français, et leurs traductions');
   const lines = fs.readFileSync(OUT, 'utf8').split('\n');
   same(lines[0], '# ' + tatoeba.KEYS.map(k => k + ' ' + tPins[k].sha256).join(' '), 'l\'en-tête nomme les épingles lues');
   same(lines.filter(l => /^nld\t(10|12|18)\t/.test(l)), [
@@ -166,14 +166,16 @@ async function main() {
     'nld\t12\tbob\t0\tDe bakkers zijn er nog niet.\t121,122\t126',
     'nld\t18\t\t0\tWaar is de bakker nu?\t181\t186'
   ], 'une phrase : son auteur (vide pour \\N), langue maternelle ou non, ses traductions');
-  same(lines.filter(l => /^(nld\t(15|23)|eng\t231)\t/.test(l)), [], 'sans traduction française, ou avec un lien vers une phrase effacée, une phrase n\'est pas gardée');
+  same(lines.filter(l => /^(nld\t(15|23)|eng\t231|fra\t236)\t/.test(l)),
+    ['nld\t15\tann\t1\tDe bakker is er.\t151\t', 'nld\t23\tann\t1\tDe bakker is weg.\t231\t', 'eng\t231\tcy\tThe baker is gone.'],
+    'une phrase à une seule traduction est gardée, l\'autre colonne vide ; le lien vers une phrase effacée tombe');
   same(lines.filter(l => /^eng\t12[12]\t/.test(l)), ['eng\t121\tcy\tThe bakers are not there yet.', 'eng\t122\tcy\tThe bakers haven\'t come yet.'],
     'une traduction : son id, son auteur, son texte');
   ok(!fs.existsSync(OUT + '.part'), 'aucun fichier partiel ne reste');
 
   const T = tatoeba.load(TMP, { pins: tPins });
-  same([T.nld.size, T.nld.get(12).eng, T.fra.get(126).text, T.nld.get(10).native, T.nld.get(18).owner],
-    [22, [121, 122], 'Les boulangers ne sont pas encore là.', true, ''], 'load rend les phrases de l\'extrait, par id');
+  same([T.nld.size, T.nld.get(12).eng, T.fra.get(126).text, T.nld.get(10).native, T.nld.get(18).owner, T.nld.get(15).fra],
+    [24, [121, 122], 'Les boulangers ne sont pas encore là.', true, '', []], 'load rend les phrases de l\'extrait, par id');
   const NL = browser.open({ root: ROOT, seed: browser.SEED, skip: [browser.APP] }).NL;
   ok(spelling.named('Dag {naam}.', NL) && !spelling.named('De bakker is er.', NL), 'named écarte une phrase qui garde un jeton {naam}, et garde celle qui n’en a pas');
   /* Gent est vu à la première unité, comme le cours écrit la commune par défaut : seul named l'écarte. */
@@ -196,11 +198,11 @@ async function main() {
     id: 10, nl: 'De bakker is heel oud.', owner: 'ann', en: [{ id: 101, text: 'The baker is very old.', owner: 'cy' }],
     fr: [{ id: 106, text: 'Le boulanger est très vieux.', owner: 'cy' }], tiles: 5
   }, 'une candidate : son id, son texte, son auteur, ses traductions et leurs auteurs, ses tuiles');
-  same(ids('de bakker', 'de', 'the baker'), [10, 18, 12, 22, 11],
-    'le classement : sans je ni jij, d\'un auteur de langue maternelle, moins de tuiles ; ni plus de 8 tuiles, ni la trein d\'une unité ultérieure, ni Gent');
+  same(ids('de bakker', 'de', 'the baker'), [10, 18, 12, 22, 11, 15],
+    'le classement : les deux traductions d\'abord, sans je ni jij, d\'un auteur de langue maternelle, moins de tuiles ; ni plus de 8 tuiles, ni la trein d\'une unité ultérieure, ni Gent');
   same([17, 19].filter(id => ids('de bakker', 'de', 'the baker').indexOf(id) >= 0), [],
     'aucune forme que le cours n\'a pas enseignée, pas même une : ni vriendelijk, ni oude, fléchi d\'un mot vu (#12, récit 39)');
-  same(tatoeba.rank(T, word('de bakker', 'de', 'the baker'), Object.assign({ known: t => t !== 'oud' }, seq)).map(c => c.id), [18, 12, 22, 11],
+  same(tatoeba.rank(T, word('de bakker', 'de', 'the baker'), Object.assign({ known: t => t !== 'oud' }, seq)).map(c => c.id), [18, 12, 22, 11, 15],
     'avec seq.known, une phrase dont une forme ne s\'écrit pas ainsi n\'est pas candidate');
   same(ids('het brood', 'het', 'the bread'), [101, 102, 103, 104, 105, 106, 107, 108], 'huit candidates au plus, par id à rang égal');
   same(ids('tot straks', null, 'see you later'), [21], 'un mot de plusieurs formes s\'y lit à la suite');
@@ -213,7 +215,9 @@ async function main() {
   same(run('tatoeba.js', [EMPTY]), { code: 1, lines: ['fail .cache/tatoeba/nld_sentences_detailed.tsv is missing: run node tools/content/fetch.js . tatoeba/nld_sentences_detailed.tsv'] },
     'tatoeba.js sans les fichiers épinglés dit la commande à lancer');
   same(run('tatoeba.js', []), { code: 1, lines: ['usage: node tools/content/tatoeba.js <repo>'] }, 'tatoeba.js sans dépôt dit son usage');
-  console.log('  tatoeba        22 phrases sur 24 gardées, auteurs et langue maternelle lus, classement sur 4 mots');
+  same(tatoeba.rank(T, word('de bakker', 'de', 'the baker'), seq)[5], { id: 15, nl: 'De bakker is er.', owner: 'ann', en: [{ id: 151, text: 'The baker is here.', owner: 'cy' }], fr: [], tiles: 4 },
+    'une phrase à une seule traduction : fr vide, classée après celles qui ont les deux, bien que native');
+  console.log('  tatoeba        24 phrases sur 24 gardées, 2 à une seule traduction, auteurs et langue maternelle lus, classement sur 4 mots');
 
   console.log('\n' + checks + ' contrôles, ' + (fails === 0 ? 'SOURCES CONFORMES' : fails + ' ÉCHEC(S)'));
 }
