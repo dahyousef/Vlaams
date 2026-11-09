@@ -125,7 +125,8 @@ the readers' job, and the maintainer's reading list's (D15, D17): gate 13 shows 
   that gate's « Then » in the plan: an exception to run-controller.md's « Never read a diff, a report, a brief or
   source code ».
 - **Tickets.** Five sub-issues of #12, filed on the maintainer's word on 9 November 2026: #138 (kit), #139
-  (Tatoeba), #140 (sentences), #141 (phrases), #142 (Flemish forms); #140 and #141 blocked by #139, #142 by #141.
+  (Tatoeba), #140 (sentences), #141 (phrases), #142 (Flemish forms); #140 blocked by #139,
+  #141 by #139 and #140, #142 by #141.
 - **External data.** Tatoeba's six files of 7 November 2026 are kept, decompressed, in the main checkout's
   git-ignored `.superpowers/sdd/phase-4-design/tatoeba-2026-11-07/` (`<TD>` below); Tatoeba rewrites its files
   weekly, so the run never downloads them. Task 2 pins them; from task 2 on, the set-up's
