@@ -777,7 +777,6 @@ module.exports = {
     same(K.pack([grp('a', 40), grp('b', 40), grp('c', 1), grp('d', 90), grp('e', 3)], 80).map(b => b.batch + ' ' + b.rows.length),
       ['a-b 80', 'c 1', 'd 90', 'e 3'], 'pack : des unités entières jusqu\'à 80 lignes, et une unité plus grande seule dans son lot');
 
-
     /* Check : les raisons du genre, une par une. */
     const ctx = { repo: FR, course: () => CF };
     const why = (id, be, evidence, c) => K.check({ id, be, evidence }, rowOf(id), c || ctx);
