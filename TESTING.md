@@ -312,4 +312,4 @@ test de placement, la dictée plus tôt, la série et le défi.
 ## Encore ouvert
 
 - Le contenu reste le plafond : 1158 éléments, tous de niveau A1 ; les unités 13 à 34 ont leurs mots, treize règles de grammaire (neuf unités), quatre conversations et leurs phrases prises dans Tatoeba (cinq par unité, Merge phrases du plan 4c), dont les explications attendent le plan 4d (`NOTE_BUDGET` dans `test/content.js`).
-- 80 mots sur 912 n'ont pas encore de phrase d'exemple (comptés après Merge examples du plan 4c) : les 63 mots que Tatoeba ne sert pas et que D25 nomme pour une phrase écrite (tâche 10 du plan 4c), et ceux que le rédacteur a passés faute de candidate qui convienne, qui attendent (D14).
+- 17 mots sur 912 n'ont pas encore de phrase d'exemple (comptés après Merge examples-gen du plan 4c) : ceux dont Tatoeba avait des candidates mais que le rédacteur a passés faute d'une qui convienne, qui attendent (D14).
