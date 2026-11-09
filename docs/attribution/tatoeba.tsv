@@ -2,7 +2,8 @@
 # (https://creativecommons.org/licenses/by/2.0/fr/) : une ligne par phrase, son mot, puis le numéro
 # et l'auteur de la phrase néerlandaise, de sa traduction anglaise et de sa traduction française.
 # Un auteur que Tatoeba ne nomme pas s'écrit « - ». adapted dit quelle traduction le cours a
-# changée : « - », « en », « fr » ou « en fr ». Merge du genre examples
+# changée : « - », « en », « fr » ou « en fr ». Une traduction que Tatoeba n'a pas et que le cours a écrite (D17) s'écrit « - » dans ses
+# deux colonnes, et adapted nomme sa langue. Merge du genre examples
 # (tools/content/kinds/examples.js) récrit ce fichier entier ; ATTRIBUTION.md dit pourquoi.
 word	nld	nld_owner	eng	eng_owner	fra	fra_owner	adapted
 acht	4627580	PaulP	2763592	CK	390100	Scott	fr

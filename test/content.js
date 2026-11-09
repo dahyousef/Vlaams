@@ -262,6 +262,24 @@ NL.state.open().then(() => {
   ok(rows[0] === CREDITS, 'docs/attribution/tatoeba.tsv manque, ou sa première ligne n’est pas « ' + CREDITS.replace(/\t/g, ' ') + ' »');
   const cells = rows.slice(1).map(l => l.split('\t'));
   cells.forEach(c => ok(c.length === 8 && c.every(x => x !== ''), 'docs/attribution/tatoeba.tsv : « ' + c.join(' ') + ' » n’a pas ses huit colonnes remplies'));
+  /* Une traduction écrite pour le cours (D17), que Tatoeba n'a pas, s'écrit « - » dans ses deux colonnes, et adapted nomme sa langue ;
+     une phrase garde au moins une traduction de Tatoeba. Les Merges des genres examples et examples-gen l'écrivent ainsi : le fichier
+     d'aujourd'hui n'a pas encore de côté écrit, ce contrôle est planté d'abord. */
+  const creditFaults = list => [].concat(...list.map(c => {
+    const row = '« ' + c.join(' ') + ' » : ', out = [], adapted = c[7] || '';
+    [['en', 3, 4], ['fr', 5, 6]].forEach(([l, n, o]) => {
+      if (c[n] === '-') {
+        if (c[o] !== '-') out.push(row + l + ' : « - », mais un auteur');
+        if (adapted.split(' ').indexOf(l) < 0) out.push(row + l + ' : « - », et adapted ne la nomme pas');
+      } else if (!/^[1-9]\d*$/.test(c[n] || '')) out.push(row + l + ' : ni « - » ni le numéro d’une phrase de Tatoeba');
+    });
+    if (c[3] === '-' && c[5] === '-') out.push(row + 'aucune traduction de Tatoeba');
+    if (['-', 'en', 'fr', 'en fr'].indexOf(adapted) < 0) out.push(row + 'adapted vaut « - », « en », « fr » ou « en fr »');
+    return out;
+  }));
+  const plantedCredits = creditFaults([['x', '1', '-', '-', '-', '3', '-', '-'], ['x', '1', '-', '-', '-', '-', '-', 'en fr'], ['x', '1', '-', 'a', 'b', '3', '-', 'fr en']]);
+  ok(plantedCredits.length === 4, 'les crédits plantés donnent ' + plantedCredits.length + ' faute(s), pas 4 : ' + plantedCredits.join(' ; '));
+  ok(creditFaults(cells).length === 0, 'docs/attribution/tatoeba.tsv : ' + creditFaults(cells).join(' ; '));
   const inFile = cells.map(c => c[0] + '\t' + c[1]);
   credited.filter(p => inFile.indexOf(p) < 0).forEach(p => ok(false, 'la phrase Tatoeba ' + p.split('\t')[1] + ' de « ' + p.split('\t')[0] +
     ' » n’est pas créditée dans docs/attribution/tatoeba.tsv : relancer Merge'));

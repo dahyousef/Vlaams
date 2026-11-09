@@ -6,7 +6,8 @@
 
    Une ligne écrite : { id, stamp, sentence: { nl, gap, en, fr } }. Check tient les règles des
    phrases sourcées (tools/content/kinds/examples.js, RULES), et le tutoiement du cours : ge ou
-   gij, jamais je, jij, jou ni jouw. Le lecteur écrit sa propre traduction anglaise et française
+   gij, jamais je, jij, jou ni jouw ; une seule phrase, et l'apostrophe typographique « ’ » en français, jamais
+   l'apostrophe droite ni un guillemet droit. Le lecteur écrit sa propre traduction anglaise et française
    de nl avant de lire celles de la ligne, et les donne dans son verdict (en, fr) : c'est la
    seconde traduction, indépendante, que la décision demande. Chaque phrase écrite est lue en
    entier par le mainteneur (readWhole). Merge l'écrit dans src/content/sourced.js avec
@@ -40,7 +41,7 @@ function split(C, ctx) {
   return examples.cut(groups, examples.MAX);
 }
 
-/* Check : la phrase, ses quatre champs, les règles, et ge ou gij. */
+/* Check : la phrase, ses quatre champs, les règles, ge ou gij, l'apostrophe typographique et une seule phrase. */
 function check(row, input, ctx) {
   const d = row.sentence;
   if (!d || typeof d !== 'object' || Array.isArray(d) || Object.keys(d).sort().join() !== FIELDS.slice().sort().join()) {
@@ -50,6 +51,8 @@ function check(row, input, ctx) {
   const C = ctx.course(), out = examples.RULES(d, 'sentence', C.byId(input.id), C, ctx.repo);
   const je = tokens(d.nl).filter(t => JE.indexOf(t) >= 0);
   if (je.length) out.push('sentence: ' + je.map(t => '« ' + t + ' »').join(', ') + ' is not how the course says you: ge or gij');
+  if (/['"]/.test(d.fr)) out.push('sentence: fr writes the typographic apostrophe « ’ » and no straight quote');
+  if (/[.!?…]\s+\S/.test(d.nl)) out.push('sentence: nl is one sentence, not two');
   return out;
 }
 

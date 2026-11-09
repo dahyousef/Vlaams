@@ -1,5 +1,6 @@
 /* Le genre examples (décision 5a) : une ou deux phrases de Tatoeba pour chaque mot du cours qui
-   n'a pas de phrase d'exemple. Split range les candidates de chacun (tools/content/tatoeba.js) et
+   n'a pas de phrase d'exemple. Une phrase qui n'a qu'une traduction, anglaise ou française, est gardée :
+   le rédacteur écrit l'autre (D17), et chaque traduction écrite est lue en entier (D15). Split range les candidates de chacun (tools/content/tatoeba.js) et
    coupe les mots qui en ont en lots d'unités entières ; le rédacteur en prend une ou deux, telles
    que Tatoeba les écrit (5b), chacune avec une traduction anglaise et une française que Tatoeba
    lui lie ; Check refait à HEAD les règles du classement ; Merge écrit les phrases dans
@@ -7,7 +8,8 @@
 
    Une ligne écrite : { id, stamp, sentences: [phrase…] }, de 0 à 2 phrases, et skip, la raison
    sur une ligne, quand il n'y en a aucune. Une phrase : { src, nl, gap, en, enSrc, fr, frSrc },
-   et edited, la raison sur une ligne, quand en ou fr n'est pas le texte de Tatoeba.
+   enSrc ou frSrc valant null pour la traduction que le rédacteur écrit quand Tatoeba n'en lie pas (jamais
+   les deux), et edited, la raison sur une ligne, quand en ou fr, liée, n'est pas le texte de Tatoeba.
 
    L'empreinte : le sens, l'article et le nombre de phrases écrites à la main
    (src/content/examples.js). Les phrases sourcées n'y sont pas : Merge les écrit, et une
@@ -20,6 +22,9 @@ const tatoeba = require('../tatoeba');
 const table = require('../lib/table');
 const sequence = require('../../../test/lib/sequence');
 const spelling = require('../../../test/lib/spelling');
+const tree = require('../../../test/lib/tree');
+const { dutchWords, courseWords } = require('../../../test/lib/dutch');
+const { QUOTED_FIELDS, HTML_FIELDS, names, bareDutch } = require('../../../test/lib/quoted');
 const { tokens } = spelling;
 const { oneLine, sig } = require('../../../test/lib/text');
 
@@ -41,15 +46,49 @@ const extractOf = (C, repo) => {
   return v.T || (v.T = tatoeba.load(repo));
 };
 
+/* Le néerlandais du cours que la prose du cours écrit nu, en français et en anglais (test/lang.js 6d.4) :
+   dutch, les mots du cours, et bare, chaque mot que 6d.4 lirait comme du néerlandais laissé nu, une fois
+   qu'il en serait, avec le premier champ qui l'écrit. Une phrase qui l'ajouterait au cours ferait échouer 6d.4 à Merge. */
+function bareOf(C, repo) {
+  const v = seen(C, repo);
+  if (v.bare) return v.bare;
+  const NL = C.NL, dutch = dutchWords(NL), named = names(NL), bare = new Map();
+  tree.visitCourse(NL.content, (x, key, where) => {
+    if (!x || typeof x !== 'object' || typeof x.fr !== 'string' || typeof x.en !== 'string') return;
+    if (QUOTED_FIELDS.indexOf(key) < 0 && HTML_FIELDS.indexOf(key) < 0) return;
+    bareDutch(NL, { has: () => true }, named, key, NL.content.fill(x.fr), NL.content.fill(x.en)).bare.forEach(w => {
+      if (!dutch.has(w) && !bare.has(w)) bare.set(w, where);
+    });
+  });
+  v.bare = { dutch, bare };
+  return v.bare;
+}
+
 /* Les règles d'une phrase pour un mot, à l'unité du mot : ce que test/content.js tient des
    phrases sourcées, et ce que le classement de Tatoeba demande. « at » nomme la phrase. */
 function RULES(d, at, src, C, repo) {
   const U = C.NL.util, v = seen(C, repo), out = [];
   const ui = v.order.indexOf(src.unit), own = sequence.forms(src, C.NL);
   const ts = U.tiles(d.nl), gap = tokens(d.gap);
+  if (/\bhoe\s+lang\b/i.test(d.nl)) out.push(at + ' writes « hoe lang »: the course writes the duration « hoelang » (#128)');
+  /* L'article devant le nom du mot : test/dehet.js 2 ne lit que lui, et sûr seulement quand le nom est un seul mot. */
+  const noun = U.bare(src.nl).toLowerCase();
+  if (src.art && noun.indexOf(' ') < 0) {
+    const toks = tokens(d.nl);
+    toks.forEach((t, k) => {
+      if ((t === 'de' || t === 'het') && toks[k + 1] === noun && t !== src.art.toLowerCase()) {
+        out.push(at + ': « ' + t + ' ' + noun + ' » contradicts the article « ' + src.art.toLowerCase() + ' » of the word (test/dehet.js)');
+      }
+    });
+  }
+  const B = bareOf(C, repo);
+  courseWords(d.nl).filter(w => !B.dutch.has(w) && B.bare.has(w)).forEach(w => {
+    out.push(at + ': « ' + w + ' » would become Dutch of the course, and ' + B.bare.get(w) + ' writes it bare in French and in English (test/lang.js 6d.4)');
+  });
   if (ts.length < 4 || ts.length > 8) out.push(at + ' has ' + ts.length + ' tiles: 4 to 8');
   const cloze = C.NL.ex.get('cloze').build(Object.assign({}, src, { drills: [d] }));
-  if (cloze.gap !== d.gap || cloze.shown === d.nl || gap.length !== 1 || !own.has(gap[0])) {
+  const lone = U.tiles(d.gap).length === 1 && U.tiles(U.bare(src.nl)).map(t => t.toLowerCase()).indexOf(d.gap.toLowerCase()) >= 0;
+  if (cloze.gap !== d.gap || cloze.shown === d.nl || !(lone || (gap.length === 1 && own.has(gap[0])))) {
     out.push(at + ': gap « ' + d.gap + ' » is not the word, one tile as nl writes it, that the cloze can hide');
   }
   const ahead = sequence.ahead(d.nl, ui, v.first);
@@ -61,6 +100,7 @@ function RULES(d, at, src, C, repo) {
   if (unknown.length) out.push(at + ': ' + unknown.map(t => '« ' + t + ' »').join(', ') + ' not a form OpenTaal knows');
   if ([d.nl, d.en, d.fr].some(s => spelling.named(s, C.NL))) out.push(at + ' names no one by default and holds no {…} token');
   if (sig(d.en) !== sig(d.fr)) out.push(at + ': en and fr do not hold the same digits');
+  if (/\((formal|informal)/.test(d.en)) out.push(at + ': en carries a register tag, which is for an item\'s meaning, not for a sentence (test/content.js)');
   return out;
 }
 
@@ -119,14 +159,20 @@ function check(row, input, ctx) {
     const s = T.nld.get(d.src);
     if (!(input.candidates || []).some(c => c.id === d.src) || !s) { out.push(at + ': src ' + d.src + ' is not one of the row\'s candidates'); return; }
     if (d.nl !== s.text) out.push(at + ': nl is not Tatoeba\'s sentence ' + d.src + ', « ' + s.text + ' »: a sentence is taken as Tatoeba writes it');
-    const changed = [];
-    [['en', 'eng'], ['fr', 'fra']].forEach(([l, k]) => {
+    const changed = [], sides = [['en', 'eng'], ['fr', 'fra']];
+    const written = sides.filter(([l]) => d[l + 'Src'] === null);
+    if (written.length === 2) { out.push(at + ': enSrc and frSrc are both null: a sentence keeps at least one translation Tatoeba links'); return; }
+    sides.forEach(([l, k]) => {
       const id = d[l + 'Src'], t = T[k].get(id);
+      if (id === null) {
+        if (s[k].length) out.push(at + ': ' + l + 'Src is null, but Tatoeba links ' + s[k].join(', ') + ' to ' + d.src + ': take one');
+        return;
+      }
       if (s[k].indexOf(id) < 0 || !t) { out.push(at + ': ' + l + 'Src ' + id + ' is not a translation Tatoeba links to ' + d.src); return; }
       if (d[l] !== t.text) changed.push(l + ' « ' + d[l] + ' » is not Tatoeba\'s ' + id + ', « ' + t.text + ' »');
     });
     if (changed.length && !oneLine(d.edited)) changed.forEach(c => out.push(at + ': ' + c + ': take it as written, or say why in edited, on one line with no space at either end'));
-    if (!changed.length && 'edited' in d) out.push(at + ': edited is for a translation that is not Tatoeba\'s, and both are');
+    if (!changed.length && 'edited' in d) out.push(at + ': edited is for a translation that is not Tatoeba\'s, and ' + (written.length ? 'the linked one is' : 'both are'));
     RULES(d, at, src, C, ctx.repo).forEach(r => out.push(r));
   });
   if (list.length === 2 && (list[0].src === list[1].src || C.NL.util.norm(list[0].nl) === C.NL.util.norm(list[1].nl))) out.push('the two sentences are one sentence');
@@ -151,8 +197,10 @@ function credit(taken, ctx) {
   taken.forEach(t => (t.row.sentences || []).forEach(d => {
     const c = t.input.candidates.find(x => x.id === d.src);
     const en = c.en.find(x => x.id === d.enSrc), fr = c.fr.find(x => x.id === d.frSrc);
-    const adapted = [d.en !== en.text ? 'en' : '', d.fr !== fr.text ? 'fr' : ''].filter(Boolean).join(' ') || '-';
-    rows.set(t.src.nl + '\t' + d.src, [t.src.nl, d.src, owner(c.owner), d.enSrc, owner(en.owner), d.frSrc, owner(fr.owner), adapted]);
+    const adapted = [!en || d.en !== en.text ? 'en' : '', !fr || d.fr !== fr.text ? 'fr' : ''].filter(Boolean).join(' ') || '-';
+    /* Une traduction écrite pour le cours (D17) n'a ni numéro ni auteur : « - » dans ses deux colonnes. */
+    const side = (id, x) => (x ? [id, owner(x.owner)] : ['-', '-']);
+    rows.set(t.src.nl + '\t' + d.src, [t.src.nl, d.src, owner(c.owner)].concat(side(d.enSrc, en), side(d.frSrc, fr), [adapted]));
   }));
   const sorted = [...rows.values()].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : Number(a[1]) - Number(b[1])));
   fs.writeFileSync(file, head.concat([CREDITS], sorted.map(c => c.join('\t'))).join(eol) + eol);
@@ -168,6 +216,9 @@ module.exports = {
   check,
   merge: row => ({ sourced: row.sentences.length ? row.sentences.map(d => ({ nl: d.nl, fr: d.fr, en: d.en, gap: d.gap, src: d.src })) : undefined }),
   write: credit,
-  readWhole: row => (row.sentences || []).some(d => 'edited' in d) ? 'edited translation' : '',
-  MAX, CREDITS, RULES, cut
+  readWhole: row => {
+    const list = row.sentences || [];
+    return list.some(d => d.enSrc === null || d.frSrc === null) ? 'written translation' : list.some(d => 'edited' in d) ? 'edited translation' : '';
+  },
+  MAX, CREDITS, RULES, cut, bareOf
 };

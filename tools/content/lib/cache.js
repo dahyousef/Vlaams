@@ -20,12 +20,12 @@ const { spawnSync } = require('child_process');
 const TATOEBA = 'https://downloads.tatoeba.org/exports/';
 const PINS = {
   'kaikki/nl.jsonl': { url: 'https://kaikki.org/dictionary/Dutch/kaikki.org-dictionary-Dutch.jsonl', date: '2026-11-01', bytes: 257235436, sha256: '42aaed451d9997e358290e68b0ff723235e2cc2a683edd1d273759d70cef9776' },
-  'tatoeba/eng_sentences_detailed.tsv': { url: TATOEBA + 'per_language/eng/eng_sentences_detailed.tsv.bz2', date: '2026-10-22', bytes: 198805928, sha256: '411dc55ab184c29a052602290faccd19a4090a3d35009b8edc0513caf4f214f5' },
-  'tatoeba/fra_sentences_detailed.tsv': { url: TATOEBA + 'per_language/fra/fra_sentences_detailed.tsv.bz2', date: '2026-10-22', bytes: 76072652, sha256: '81932e9066423e226442b23a06b893af71eb8dc0514b140ef74dd54cb0f6bb18' },
-  'tatoeba/nld-eng_links.tsv': { url: TATOEBA + 'per_language/nld/nld-eng_links.tsv.bz2', date: '2026-10-22', bytes: 2744785, sha256: '6fc7aa1b58b40d9a661113fc05f26a9ca21989330bf0e737eaa32e4be264c6ac' },
-  'tatoeba/nld-fra_links.tsv': { url: TATOEBA + 'per_language/nld/nld-fra_links.tsv.bz2', date: '2026-10-22', bytes: 991928, sha256: '413c5b42bca6a3c4ee9744fbbfc5a80eb4a1b3cf42c7161a0f06ecb9d0e12d2a' },
-  'tatoeba/nld_sentences_detailed.tsv': { url: TATOEBA + 'per_language/nld/nld_sentences_detailed.tsv.bz2', date: '2026-10-22', bytes: 19557176, sha256: '378ba55c8d6512edd09155bca53314b270555367e52b704a2c21aecb869e0f39' },
-  'tatoeba/user_languages.csv': { url: TATOEBA + 'user_languages.tar.bz2', member: 'user_languages.csv', date: '2026-10-22', bytes: 2425571, sha256: '8770cd3ae712fd791fc9370f98f6b17abb6d05d151cc5e5b67fe0494163b9376' }
+  'tatoeba/eng_sentences_detailed.tsv': { url: TATOEBA + 'per_language/eng/eng_sentences_detailed.tsv.bz2', date: '2026-11-07', bytes: 198969137, sha256: 'c9bf156a539da9047818f4dc9544a9da6272f8d3df7ab7bc589622f242a32504' },
+  'tatoeba/fra_sentences_detailed.tsv': { url: TATOEBA + 'per_language/fra/fra_sentences_detailed.tsv.bz2', date: '2026-11-07', bytes: 76213829, sha256: '7c1f4b55ba12f8724f98510e2cfcd2de60c8649973b6384cb965092604e3f7f3' },
+  'tatoeba/nld-eng_links.tsv': { url: TATOEBA + 'per_language/nld/nld-eng_links.tsv.bz2', date: '2026-11-07', bytes: 2746200, sha256: '11cbbb31daa29afd576eba39bc30a16c5beb62f13d5a2504163d695f58f123dc' },
+  'tatoeba/nld-fra_links.tsv': { url: TATOEBA + 'per_language/nld/nld-fra_links.tsv.bz2', date: '2026-11-07', bytes: 992641, sha256: 'efb18932e9abd6da10acc9d6d16ed23d7b37d42b864c4b428ce0267502beb81d' },
+  'tatoeba/nld_sentences_detailed.tsv': { url: TATOEBA + 'per_language/nld/nld_sentences_detailed.tsv.bz2', date: '2026-11-07', bytes: 19573559, sha256: '02c745fc5bac63e035961b16f1a38f07f6d26241e558a55248442753dcf46a68' },
+  'tatoeba/user_languages.csv': { url: TATOEBA + 'user_languages.tar.bz2', member: 'user_languages.csv', date: '2026-11-07', bytes: 2435399, sha256: 'c43d653c044704d726126ae2aba563329a8d1f22fd383e79c983aebec64388f0' }
 };
 
 const dirOf = repo => path.join(path.resolve(repo), '.cache');

@@ -538,6 +538,9 @@ async function main() {
   });
   same(cache.select(['kaikki', 'x'], cache.PINS), { keys: ['kaikki/nl.jsonl'], unknown: ['x'] }, 'un nom est une clé ou son préfixe');
   same(cache.select(['tatoeba'], cache.PINS).keys.length, 6, 'tatoeba désigne ses six fichiers');
+  same(require(path.join(ROOT, 'tools', 'content', 'tatoeba')).KEYS.map(k => cache.PINS[k].date + ' ' + cache.PINS[k].bytes),
+    ['2026-11-07 19573559', '2026-11-07 198969137', '2026-11-07 76213829', '2026-11-07 2746200', '2026-11-07 992641', '2026-11-07 2435399'],
+    'tatoeba : les six fichiers du 7 novembre 2026, par leur date et leur taille');
 
   const sha = s => crypto.createHash('sha256').update(s).digest('hex');
   const PIN = (url, body, more) => Object.assign({ url, date: '2026-10-22', bytes: Buffer.byteLength(body), sha256: sha(body) }, more);
@@ -859,15 +862,19 @@ module.exports = {
       'nld\t104\tanna\t1\tMisschien is het waar.\t204\t304',
       'nld\t105\tbob\t0\tHet is drie uur.\t205\t305',
       'nld\t106\t\t0\tze spreekt goed engels\t202\t302',
+      'nld\t107\tanna\t1\tMisschien is het nu waar.\t207\t',
+      'nld\t108\tanna\t1\tSpreekt u goed Engels?\t\t308',
       'eng\t201\tbob\tSorry, do you speak English?',
       'eng\t202\tbob\tShe speaks good English.',
       'eng\t203\tcarl\tShe speaks English well.',
       'eng\t204\tbob\tMaybe it\'s true.',
       'eng\t205\tcarl\tIt\'s three o\'clock.',
+      'eng\t207\tbob\tMaybe it\'s true now.',
       'fra\t301\t\tPardon, parlez-vous anglais ?',
       'fra\t302\tdora\tElle parle bien anglais.',
       'fra\t304\tdora\tC\'est peut-être vrai.',
-      'fra\t305\tdora\tIl est trois heures.'].join('\n') + '\n');
+      'fra\t305\tdora\tIl est trois heures.',
+      'fra\t308\tdora\tParlez-vous bien anglais ?'].join('\n') + '\n');
     const K = require(path.join(EX, 'tools', 'content', 'kinds', 'examples'));
     const kind = kit.loadKind(EX, 'examples');
     const CE = course(EX);
@@ -896,7 +903,10 @@ module.exports = {
     same(Object.keys(engels), ['id', 'stamp', 'copies', 'nl', 'unit', 'art', 'meaning', 'candidates'], 'une ligne d\'entrée');
     same([engels.nl, engels.unit, engels.art, engels.meaning, input[0].art], ['het Engels', 'ikengij', 'het', { fr: 'l’anglais', en: 'English' }, null],
       'le néerlandais, l\'unité, l\'article (null sans article) et le sens');
-    same(engels.candidates.map(c => c.id), [101, 102, 106], 'l\'auteur de langue maternelle d\'abord');
+    same(engels.candidates.map(c => c.id), [101, 102, 106, 108], 'les deux traductions d\'abord, puis l\'auteur de langue maternelle ; 108, sans traduction anglaise, en dernier');
+    same(engels.candidates[3], { id: 108, nl: 'Spreekt u goed Engels?', owner: 'anna', en: [], fr: [{ id: 308, text: 'Parlez-vous bien anglais ?', owner: 'dora' }], tiles: 4 },
+      'une candidate sans traduction anglaise : en vide');
+    same(input[0].candidates.map(c => c.id), [104, 107], 'misschien : 107, sans traduction française, est candidate après 104');
     same(engels.candidates[1], { id: 102, nl: 'Ze spreekt goed Engels.', owner: '',
       en: [{ id: 202, text: 'She speaks good English.', owner: 'bob' }, { id: 203, text: 'She speaks English well.', owner: 'carl' }],
       fr: [{ id: 302, text: 'Elle parle bien anglais.', owner: 'dora' }], tiles: 4 },
@@ -936,6 +946,12 @@ module.exports = {
       'une traduction changée sans raison, non');
     same(why([as({ en: 'She speaks English very well.', edited: 'the learner hears the adverb' })]), [], 'une traduction changée, et sa raison');
     same(why([as({ edited: 'nothing' })]), ['sentence 1: edited is for a translation that is not Tatoeba\'s, and both are'], 'edited sans traduction changée, non');
+    const written = { src: 108, nl: 'Spreekt u goed Engels?', gap: 'Engels', en: 'Do you speak English well?', enSrc: null, fr: 'Parlez-vous bien anglais ?', frSrc: 308 };
+    same(why([written]), [], 'une traduction anglaise écrite pour le cours, la française de Tatoeba : passe');
+    same(why([as({ enSrc: null })]), ['sentence 1: enSrc is null, but Tatoeba links 202, 203 to 102: take one'], 'une traduction écrite alors que Tatoeba en lie une, non');
+    same(why([Object.assign({}, written, { frSrc: null })]), ['sentence 1: enSrc and frSrc are both null: a sentence keeps at least one translation Tatoeba links'], 'une phrase garde une traduction de Tatoeba au moins');
+    same(why([Object.assign({}, written, { edited: 'x' })]), ['sentence 1: edited is for a translation that is not Tatoeba\'s, and the linked one is'], 'edited, la seule traduction liée n\'est pas changée, non');
+    same(why([Object.assign({}, written, { fr: 'Vous parlez bien anglais ?', edited: 'a plain question' })]), [], 'edited, la traduction liée est changée : passe');
 
     same(why([as({ en: 'two\nlines' })]), ['sentence 1: nl, gap, en and fr are each a string on one line with no space at either end'], 'une traduction sur plusieurs lignes, non');
     same(why([as({ gap: '' })]), ['sentence 1: nl, gap, en and fr are each a string on one line with no space at either end'], 'un trou vide, non');
@@ -954,6 +970,8 @@ module.exports = {
       'deux sources différentes au même texte (casse et ponctuation près), non');
     same(K.readWhole({ sentences: [as({ edited: 'x' })] }), 'edited translation', 'la lecture entière : une traduction changée');
     same([K.readWhole({ sentences: [good] }), K.readWhole({ sentences: [] })], ['', ''], 'la lecture entière : rien à relire sans traduction changée');
+    same([K.readWhole({ sentences: [good, written] }), K.readWhole({ sentences: [as({ edited: 'x' }), written] })], ['written translation', 'written translation'],
+      'la lecture entière : une traduction écrite passe avant une traduction changée');
 
     /* Les règles d'une phrase, à l'unité du mot : ce que test/content.js tient, et le classement. */
     const rules = (d, id) => K.RULES(Object.assign({ en: 'English.', fr: 'Anglais.' }, d), 's', CE.byId(id || 'ikengij:w24'), CE, EX);
@@ -961,6 +979,9 @@ module.exports = {
     same(rules({ nl: 'Ik spreek Engels.', gap: 'Engels' }), ['s has 3 tiles: 4 to 8'], 'de 4 à 8 tuiles');
     ['engels', 'spreekt', 'goed Engels'].forEach(gap => same(rules({ nl: 'Ze spreekt goed Engels.', gap }),
       ['s: gap « ' + gap + ' » is not the word, one tile as nl writes it, that the cloze can hide'], 'le trou « ' + gap + ' », non'));
+    same(rules({ nl: 'Spreekt u ook Frans?', gap: 'u' }, 'ikengij:w2'), [], 'le trou du mot « u », une seule lettre');
+    same(rules({ nl: 'Dank u wel, tot ziens!', gap: 'u' }, 'overleven:w5'), [], 'le trou « u » dans « dank u wel »');
+    same(rules({ nl: 'Spreekt u goed Engels?', gap: 'u' }), ['s: gap « u » is not the word, one tile as nl writes it, that the cloze can hide'], 'mais pas une lettre qui n’est pas le mot');
     same(rules({ nl: 'Misschien spreekt ze Engels.', gap: 'Misschien' }, 'overleven:w9'), ['s borrows from a later unit: spreekt, engels'], 'rien d\'une unité ultérieure');
     same(rules({ nl: 'Ze leest vloeiend Engels.', gap: 'Engels' }), ['s uses forms the course never teaches: leest, vloeiend'], 'aucune forme que le cours n\'enseigne jamais');
     same(rules({ nl: 'Ze spreekt vloeiend Engels.', gap: 'Engels' }), ['s uses forms the course never teaches: vloeiend'], 'pas même une (#12, récit 39)');
@@ -970,6 +991,12 @@ module.exports = {
       'l\'orthographe, et une forme mal écrite que le cours n\'enseigne donc pas');
     same(rules({ nl: 'Ze spreekt goed Engels met {naam}.', gap: 'Engels' }), ['s names no one by default and holds no {…} token'], 'ni nom ni jeton');
     same(rules({ nl: 'Ze spreekt goed Engels.', gap: 'Engels', en: 'She speaks 2 languages.' }), ['s: en and fr do not hold the same digits'], 'les mêmes chiffres');
+    same(rules({ nl: 'Hoe lang is het weekend?', gap: 'weekend' }, 'weekend:w7'), ['s writes « hoe lang »: the course writes the duration « hoelang » (#128)'], 'hoe lang s\'écrit hoelang (#128)');
+    same(rules({ nl: 'De Engels is goed.', gap: 'Engels' }), ['s: « de engels » contradicts the article « het » of the word (test/dehet.js)'], 'l\'article du mot, pas un autre (test/dehet.js)');
+    same(K.RULES({ nl: 'De teams zijn hier.', gap: 'teams', en: 'The teams are here.', fr: 'Les équipes sont ici.' }, 's',
+      { id: 'bakker:w99', kind: 'word', nl: 'het team', art: 'het', fr: 'l’équipe', en: 'the team', unit: 'bakker' }, CE, EX),
+    ['s: « teams » would become Dutch of the course, and sheets[4].title writes it bare in French and in English (test/lang.js 6d.4)'], 'un mot que le français et l\'anglais écrivent nus ne devient pas néerlandais (test/lang.js 6d.4)');
+    same(rules({ nl: 'Spreekt u goed Engels?', gap: 'Engels', en: 'Do you speak English well? (formal)' }), ['s: en carries a register tag, which is for an item\'s meaning, not for a sentence (test/content.js)'], 'pas d\'étiquette de registre dans une phrase');
 
     /* Check sur le lot, comme un agent le lance. */
     const row = (id, more) => Object.assign({ id, stamp: input.find(r => r.id === id).stamp }, more);
@@ -997,6 +1024,7 @@ module.exports = {
     draft[0].sentences[0].gap = 'Misschien';
     /* Les trois valeurs de adapted : fr seul (102), en seul (104), les deux (101). */
     draft[0].sentences[0] = Object.assign({}, draft[0].sentences[0], { en: 'Maybe it is true.', edited: 'the learner hears the plain verb' });
+    draft[0].sentences[1] = { src: 107, nl: 'Misschien is het nu waar.', gap: 'Misschien', en: 'Maybe it\'s true now.', enSrc: 207, fr: 'C\'est peut-être vrai maintenant.', frSrc: null };
     draft[1].sentences[0] = Object.assign({}, good, { fr: 'Elle parle bien l\'anglais.', edited: 'the learner hears the article' });
     draft[1].sentences[1] = Object.assign({}, other, { en: 'Excuse me, do you speak English?', fr: 'Pardon, vous parlez anglais ?', edited: 'the learner hears a plain question' });
     put(BATCH, 'draft.json', draft);
@@ -1008,16 +1036,17 @@ module.exports = {
     const eol = /\r\n/.test(was) ? '\r\n' : '\n';
     const credits = was.split(/\r?\n/).filter(l => l[0] === '#').concat([K.CREDITS]).join(eol) + eol;
     fs.writeFileSync(CREDITS, credits + ['sorry\t900\tanna\t901\tbob\t902\tdora\t-', 'drie\t777\tanna\t778\tbob\t779\tdora\t-'].join(eol) + eol);
-    const MERGED = ['ok examples 3 taken, 0 dropped', 'ok sourced.js 2 set, 0 removed', 'ok tatoeba.tsv 4 rows'];
+    const MERGED = ['ok examples 3 taken, 0 dropped', 'ok sourced.js 2 set, 0 removed', 'ok tatoeba.tsv 5 rows'];
     same(runEx('merge.js', [EX, KD]), { code: 0, lines: MERGED }, 'Merge écrit les phrases prises, rien pour une ligne sans phrase, et récrit le crédit');
     const held = table.load(SOURCED).entries;
     same([held['het Engels'], held.misschien, held.sorry, 'drie' in held], [[
       { nl: 'Ze spreekt goed Engels.', fr: 'Elle parle bien l\'anglais.', en: 'She speaks English well.', gap: 'Engels', src: 102 },
       { nl: 'Sorry, spreekt u Engels?', fr: 'Pardon, vous parlez anglais ?', en: 'Excuse me, do you speak English?', gap: 'Engels', src: 101 }
-    ], [{ nl: 'Misschien is het waar.', fr: 'C\'est peut-être vrai.', en: 'Maybe it is true.', gap: 'Misschien', src: 104 }], sorry, false],
+    ], [{ nl: 'Misschien is het waar.', fr: 'C\'est peut-être vrai.', en: 'Maybe it is true.', gap: 'Misschien', src: 104 },
+      { nl: 'Misschien is het nu waar.', fr: 'C\'est peut-être vrai maintenant.', en: 'Maybe it\'s true now.', gap: 'Misschien', src: 107 }], sorry, false],
     'sourced.js : { nl, fr, en, gap, src } dans l\'ordre de la ligne, la phrase d\'avant gardée');
     same(text(CREDITS), credits + ['het Engels\t101\tanna\t201\tbob\t301\t-\ten fr', 'het Engels\t102\t-\t203\tcarl\t302\tdora\tfr',
-      'misschien\t104\tanna\t204\tbob\t304\tdora\ten', 'sorry\t900\tanna\t901\tbob\t902\tdora\t-'].join(eol) + eol,
+      'misschien\t104\tanna\t204\tbob\t304\tdora\ten', 'misschien\t107\tanna\t207\tbob\t-\t-\tfr', 'sorry\t900\tanna\t901\tbob\t902\tdora\t-'].join(eol) + eol,
     'le crédit : une ligne par phrase de Tatoeba que sourced.js tient, triée, l\'auteur absent écrit « - », adapted : fr, en ou en fr, selon la traduction changée');
     same(course(EX).byId('ikengij:w24').drills, held['het Engels'], 'le mot a ses phrases');
     const after = text(SOURCED);
@@ -1063,6 +1092,8 @@ module.exports = {
     same(gwhy({ nl: 'Ik heb dorst.', gap: 'dorst', en: 'I am thirsty.', fr: 'J’ai soif.' }), ['sentence has 3 tiles: 4 to 8'], 'les règles des phrases sourcées');
     same(gwhy({ nl: 'Ik heb dorst, gij ook?', gap: 'dorst', en: 'I am thirsty, are you?' }), ['sentence has the fields nl, gap, en, fr'], 'ses quatre champs');
     same(gwhy(Object.assign({}, gdraft[1].sentence, { fr: 'J’ai soif, et toi ? ' })), ['sentence: nl, gap, en and fr are each a string on one line with no space at either end'], 'chaque champ sans blanc autour');
+    same(gwhy(Object.assign({}, gdraft[1].sentence, { fr: "J'ai soif, et toi ?" })), ['sentence: fr writes the typographic apostrophe « ’ » and no straight quote'], 'l’apostrophe typographique en français');
+    same(gwhy({ nl: 'Ik heb dorst. Gij ook?', gap: 'dorst', en: 'I am thirsty. You too?', fr: 'J’ai soif. Et toi ?' }), ['sentence: nl is one sentence, not two'], 'une seule phrase');
     same(G.checkVerdict({ id: 'tijd:w3', verdict: 'keep', en: ' It is three o\'clock.', fr: 'Il est trois heures.' }),
       ['a verdict carries the reader\'s own en and fr of nl, each on one line with no space at either end'], 'la traduction du lecteur sans blanc autour');
     put(GB, 'draft.json', gdraft);
@@ -1076,8 +1107,8 @@ module.exports = {
     same(G.readWhole(gdraft[0]), 'generated sentence', 'le mainteneur lit chaque phrase écrite');
     same(runEx('merge.js', [EX, GD]), { code: 0, lines: ['ok examples-gen 2 taken, 0 dropped', 'ok sourced.js 2 set, 0 removed'] }, 'Merge écrit les phrases, sans crédit');
     same(table.load(SOURCED).entries.drie, [{ nl: 'Het is drie uur.', fr: 'Il est trois heures.', en: 'It is three o\'clock.', gap: 'drie', src: 'gen' }], 'src « gen »');
-    same(text(CREDITS).split(eol).length, credits.split(eol).length + 4, 'le crédit n\'a pas changé');
-    console.log('  examples       ' + cut.length + ' lots sur le cours mesuré ; Split, Check, ses règles, Merge et le crédit sur un extrait de 5 phrases ; examples-gen sur 2 mots nommés');
+    same(text(CREDITS).split(eol).length, credits.split(eol).length + 5, 'le crédit n\'a pas changé');
+    console.log('  examples       ' + cut.length + ' lots sur le cours mesuré ; Split, Check, ses règles, Merge et le crédit sur un extrait de 7 phrases, 2 à une seule traduction ; examples-gen sur 2 mots nommés');
   }
 
   /* ==================================================== le genre open */
@@ -2176,7 +2207,7 @@ module.exports = {
     /* La liste du contrôle du contenu. */
     const L = reading.list(TMP, WS);
     ok(L.ok, 'la liste se lit : ' + L.lines.filter(l => /^fail /.test(l)).join(' | '));
-    same(L.lines.slice(0, 3), ['# Reading list', '', 'Read for the content check, at HEAD: every row its kind marks to read whole (a new Flemish form, a generated sentence), every row the maintainer ruled, and a sample of the other taken rows, 1 in 10 and at least 10 per kind, the same on every run. Under each row, what each of its kind\'s tables holds for it.'],
+    same(L.lines.slice(0, 3), ['# Reading list', '', 'Read for the content check, at HEAD: every row its kind marks to read whole (a new Flemish form, a generated sentence, a written or edited translation), every row the maintainer ruled, and a sample of the other taken rows, 1 in 10 and at least 10 per kind, the same on every run. Under each row, what each of its kind\'s tables holds for it.'],
       'la liste dit ce qu\'elle tient');
     same(L.lines.filter(l => /^## /.test(l)), ['## essai', '## exemples', '## lecture', '## vide'], 'un titre par genre coupé, dans l\'ordre des noms');
     const ESSAI = [
