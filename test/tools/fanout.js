@@ -17,9 +17,10 @@ const { spawnSync } = require('child_process');
    spawnSync bloque la boucle d'événements, et aucun minuteur ne tire avant son retour (mesuré sous Node 24 : un
    setTimeout de 200 ms tire après un spawnSync de 1,5 s). Le fichier se relance donc lui-même en enfant, sous le délai
    de spawnSync, qui le tue de l'extérieur : passé le délai, une ligne nommée, sortie 1, et un contrôleur relance la
-   commande. Un passage entier prend 24 s sur ce poste (mesuré deux fois, 24,1 s et 24,0 s) ; la limite est 300 s, et
-   FANOUT_LIMIT=<secondes> la change, pour l'essayer. Un enfant tué laisse son dossier vlaams-fanout-* dans le dossier
-   temporaire, et le check.js qui le bloquait. */
+   commande. Un passage entier prend 42 s sur ce poste à la fin du plan 4c (mesuré deux fois au commit d5f716d, 42,6 s
+   et 42,1 s ; 24 s au premier commit du plan, 6fc9227, avant les blocs que ses tâches 2, 3, 4 et 8 y ont ajoutés) ;
+   la limite est 300 s, et FANOUT_LIMIT=<secondes> la change, pour l'essayer. Un enfant tué laisse son dossier
+   vlaams-fanout-* dans le dossier temporaire, et le check.js qui le bloquait. */
 const LIMIT = Number(process.env.FANOUT_LIMIT) || 300;
 if (!process.env.FANOUT_CHILD) {
   const child = spawnSync(process.execPath, [__filename].concat(process.argv.slice(2)),

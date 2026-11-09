@@ -217,7 +217,10 @@ dessous, pour que le gain soit verrouillé. Le premier a fait deux exceptions : 
 monté de 61 à 129 avec les unités 13–34, puis de 129 à 136 avec les règles de
 `grammar.a1c.js`, sans qu'aucune phrase change. Ces phrases employaient déjà des mots
 que le cours n'enseignait nulle part, un emprunt que rien ne comptait ; les unités,
-puis les règles, en les enseignant plus tard, l'ont révélé. Les leurres, les explications et les
+puis les règles, en les enseignant plus tard, l'ont révélé. Une troisième exception, temporaire, vient du
+plan 4c : les formes flamandes et les phrases des unités 13 à 34 y arrivent avant leurs leurres écrits et
+leurs notes, si bien que `DECOY_BUDGET` et `NOTE_BUDGET`, ci-dessous, sont montés de 0 ; le plan 4d écrit
+ces leurres et ces notes et les ramène à 0 avant la mise en ligne (#12). Les leurres, les explications et les
 guillemets n'en ont plus, à deux exceptions près : `content.js` exige que chaque élément de « Comment le
 dit-on ici ? » ait ses leurres et chaque élément son explication en français et
 en anglais (la note d'un mot ou d'une phrase, la règle d'un motif) — sauf, jusqu'au
