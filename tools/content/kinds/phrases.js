@@ -31,7 +31,7 @@ const { literal: lit } = require('../lib/table');
 const sequence = require('../../../test/lib/sequence');
 const spelling = require('../../../test/lib/spelling');
 const { tokens } = spelling;
-const { oneLine, sig } = require('../../../test/lib/text');
+const { oneLine, sig, hasU, uTag } = require('../../../test/lib/text');
 const { courseWords } = require('../../../test/lib/dutch');
 
 const MAX = 40, PER_BATCH = 6, PHRASES = 5;
@@ -43,12 +43,6 @@ const FILE = path.join('src', 'content', 'phrases.a1c.js');
 const IDS = path.join('test', 'data', 'ids.tsv');
 const CREDIT = path.join('docs', 'attribution', 'tatoeba-phrases.tsv');
 const CREDITS = 'unit	nld	nld_owner	eng	eng_owner	fra	fra_owner	adapted';
-
-/* Le u/uw glosé « you », comme test/content.js le tient : « (informal, Flemish u) » quand le français
-   tutoie, « (formal) » sinon. Les trois expressions sont celles de la suite. */
-const hasU = nl => /(^|[^a-zà-ÿ])uw?(?![a-zà-ÿ])/i.test(nl);
-const frTu = fr => /(^|[^a-zà-ÿ])((tu|te|toi|ton|ta|tes)(?![a-zà-ÿ])|t['’])/i.test(fr);
-const uTag = fr => (frTu(fr) ? '(informal, Flemish u)' : '(formal)');
 
 /* Le cours lu pour les lignes, une fois par chargement : l'ordre des unités, la première unité de chaque
    forme, l'orthographe, le néerlandais déjà pris (les éléments, leurs phrases d'exemple, les règles et

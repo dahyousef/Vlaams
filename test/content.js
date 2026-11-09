@@ -11,7 +11,7 @@ const spelling = require('./lib/spelling');
 const sequence = require('./lib/sequence');
 const { raw, owed, at, owedTables, has } = require('./lib/prose');
 const tree = require('./lib/tree');
-const { oneLine, sig } = require('./lib/text');
+const { oneLine, sig, hasU, uTag } = require('./lib/text');
 const ROOT = process.argv[2] || path.join(__dirname, '..');
 
 let fails = 0, checks = 0;
@@ -280,11 +280,16 @@ NL.state.open().then(() => {
   const plantedCredits = creditFaults([['x', '1', '-', '-', '-', '3', '-', '-'], ['x', '1', '-', '-', '-', '-', '-', 'en fr'], ['x', '1', '-', 'a', 'b', '3', '-', 'fr en']]);
   ok(plantedCredits.length === 4, 'les crédits plantés donnent ' + plantedCredits.length + ' faute(s), pas 4 : ' + plantedCredits.join(' ; '));
   ok(creditFaults(cells).length === 0, 'docs/attribution/tatoeba.tsv : ' + creditFaults(cells).join(' ; '));
-  const inFile = cells.map(c => c[0] + '\t' + c[1]);
-  credited.filter(p => inFile.indexOf(p) < 0).forEach(p => ok(false, 'la phrase Tatoeba ' + p.split('\t')[1] + ' de « ' + p.split('\t')[0] +
-    ' » n’est pas créditée dans docs/attribution/tatoeba.tsv : relancer Merge'));
-  inFile.filter(p => credited.indexOf(p) < 0).forEach(p => ok(false, 'docs/attribution/tatoeba.tsv crédite la phrase ' + p.split('\t')[1] + ' de « ' +
-    p.split('\t')[0] + ' », qui n’est pas dans src/content/sourced.js : relancer Merge'));
+  /* Les fautes des paires unité et numéro d'un fichier de crédits : une phrase du cours sans crédit, un crédit sans
+     phrase, un crédit en double. file dit le fichier de crédits, unitCol la première colonne, where le fichier
+     du cours où les phrases se trouvent. */
+  const pairFaults = (credited, inFile, file, unitCol, where) => credited.filter(p => inFile.indexOf(p) < 0)
+    .map(p => 'la phrase Tatoeba ' + p.split('\t')[1] + ' de ' + unitCol + ' « ' + p.split('\t')[0] + ' » n’est pas créditée dans ' + file + ' : relancer Merge')
+    .concat(...inFile.map((p, k) => (credited.indexOf(p) < 0 ? [file + ' crédite la phrase ' + p.split('\t')[1] + ' de ' + unitCol + ' « ' + p.split('\t')[0] + ' », qui n’est pas dans ' + where + ' : relancer Merge'] : [])
+      .concat(inFile.indexOf(p) < k ? [file + ' crédite deux fois la phrase ' + p.split('\t')[1] + ' de ' + unitCol + ' « ' + p.split('\t')[0] + ' »'] : [])));
+  const plantedPairs = pairFaults(['x\t1', 'x\t3'], ['x\t3', 'x\t2', 'x\t3'], 'f.tsv', 'l’unité', 'g.js');
+  ok(plantedPairs.length === 3, 'les crédits plantés donnent ' + plantedPairs.length + ' faute(s), pas 3 : ' + plantedPairs.join(' ; '));
+  pairFaults(credited, cells.map(c => c[0] + '\t' + c[1]), 'docs/attribution/tatoeba.tsv', 'du mot', 'src/content/sourced.js').forEach(m => ok(false, m));
   /* Une phrase sourcée n'emploie, hors des formes de son mot et de son trou, que ce que le cours
      a enseigné jusqu'à l'unité du mot (#12, récit 39) : pas une forme jamais enseignée, pas même
      fléchie d'un mot vu (test/lib/sequence.js dit pourquoi). Check le tient phrase par phrase ;
@@ -320,21 +325,12 @@ NL.state.open().then(() => {
   const pWrong = creditFaults(pCells);
   ok(pWrong.length === 0, 'docs/attribution/tatoeba-phrases.tsv : ' + pWrong.join(' ; '));
   const pCredited = [];
-  RAW.units.forEach(u => (u.phrases || []).forEach((p, i) => {
-    if (p.src === undefined) return;
+  RAW.units.filter(u => u.n >= 13 && u.n <= 34).forEach(u => (u.phrases || []).forEach((p, i) => {
     ok(Number.isInteger(p.src) && p.src > 0, u.id + ':p' + i + ' « ' + p.nl + ' » : src vaut le numéro d’une phrase de Tatoeba, pas ' + JSON.stringify(p.src));
     pCredited.push(u.id + '\t' + p.src);
   }));
   const pInFile = pCells.map(c => c[0] + '\t' + c[1]);
-  /* Les fautes des paires unité et numéro : une phrase du fichier sans crédit, un crédit sans phrase, un
-     crédit en double. Le cours n'a pas encore de phrase : le contrôle est d'abord essayé sur des paires plantées. */
-  const pairFaults = (credited, inFile) => credited.filter(p => inFile.indexOf(p) < 0)
-    .map(p => 'la phrase Tatoeba ' + p.split('\t')[1] + ' de l’unité « ' + p.split('\t')[0] + ' » n’est pas créditée dans docs/attribution/tatoeba-phrases.tsv : relancer Merge')
-    .concat(...inFile.map((p, k) => (credited.indexOf(p) < 0 ? ['docs/attribution/tatoeba-phrases.tsv crédite la phrase ' + p.split('\t')[1] + ' de l’unité « ' + p.split('\t')[0] + ' », qui n’est pas dans src/content/phrases.a1c.js : relancer Merge'] : [])
-      .concat(inFile.indexOf(p) < k ? ['docs/attribution/tatoeba-phrases.tsv crédite deux fois la phrase ' + p.split('\t')[1] + ' de l’unité « ' + p.split('\t')[0] + ' »'] : [])));
-  const plantedPairs = pairFaults(['x\t1', 'x\t3'], ['x\t3', 'x\t2', 'x\t3']);
-  ok(plantedPairs.length === 3, 'les crédits plantés donnent ' + plantedPairs.length + ' faute(s), pas 3 : ' + plantedPairs.join(' ; '));
-  pairFaults(pCredited, pInFile).forEach(m => ok(false, m));
+  pairFaults(pCredited, pInFile, 'docs/attribution/tatoeba-phrases.tsv', 'l’unité', 'src/content/phrases.a1c.js').forEach(m => ok(false, m));
   console.log('  phrases         ' + pCredited.length + ' phrase(s) de Tatoeba dans les unités, ' + pCells.length + ' créditée(s)');
 
   /* ========================================================== 4. alias */
@@ -475,9 +471,6 @@ NL.state.open().then(() => {
       p[0].id + ' « ' + p[0].nl + ' » et ' + p[1].id + ' « ' + p[1].nl + ' »');
   }));
   /* Le néerlandais u/uw glosé « you » : en Flandre, u est aussi le tutoiement, et c'est le français qui le dit. */
-  const hasU = nl => /(^|[^a-zà-ÿ])uw?(?![a-zà-ÿ])/i.test(nl);
-  const frTu = fr => /(^|[^a-zà-ÿ])((tu|te|toi|ton|ta|tes)(?![a-zà-ÿ])|t['’])/i.test(fr);
-  const uTag = fr => frTu(fr) ? '(informal, Flemish u)' : '(formal)';
   ok(uTag('C’était comment, ton week-end ?') === '(informal, Flemish u)', 'uTag : « ton » est un tutoiement');
   ok(uTag('Et vous ?') === '(formal)', 'uTag : « vous » est formel');
   ok(uTag('Je t’appelle demain.') === '(informal, Flemish u)', 'uTag : « t’ » est un tutoiement');

@@ -1,13 +1,16 @@
 /* Ce que le kit de contenu (tools/content/) et test/content.js lisent d'un texte, écrit une
    fois : une forme sur une ligne, ses chiffres et ses {jetons}, ses citations.
 
-     const { QUOTES, oneLine, sig, untoken, quotes, strayQuotes } = require('./lib/text');
+     const { QUOTES, oneLine, sig, untoken, quotes, strayQuotes, hasU, uTag } = require('./lib/text');
      QUOTES          les guillemets de chaque langue : fr « », en “ ”
      oneLine(s)      vrai pour une chaîne non vide, sans blanc autour, sans \r ni \n
      sig(s)          les chiffres et les {jetons} d'un texte, triés : deux textes qui disent la
                      même chose, en fr et en en, ont la même
      untoken(s)      le texte, chaque {jeton} remplacé par un blanc
      quotes(s, l)    les citations d'un texte de langue l : { quoted, outside, why }, voir plus bas
+     hasU(nl)        vrai si le néerlandais dit u ou uw (en Flandre, u est aussi le tutoiement)
+     uTag(fr)        l'étiquette que l'anglais « you » d'un tel texte porte : « (informal, Flemish u) » quand
+                     le français tutoie, « (formal) » sinon
      strayQuotes(s, l, banned)
                      la raison qu'un texte de langue l écrit les guillemets de l'autre langue,
                      ou l'un des signes de banned ; '' sinon. Elle ne nomme pas le texte : qui
@@ -51,4 +54,9 @@ function quotes(s, l) {
 const strayQuotes = (s, l, banned) => (QUOTES[l === 'fr' ? 'en' : 'fr'].concat(banned || []).some(m => s.indexOf(m) >= 0) ?
   'quotes with ' + QUOTES[l].join(' ') + ' only' : '');
 
-module.exports = { QUOTES, oneLine, sig, untoken, quotes, strayQuotes };
+/* Le u/uw glosé « you » : c'est le français qui dit si u tutoie. */
+const hasU = nl => /(^|[^a-zà-ÿ])uw?(?![a-zà-ÿ])/i.test(nl);
+const frTu = fr => /(^|[^a-zà-ÿ])((tu|te|toi|ton|ta|tes)(?![a-zà-ÿ])|t['’])/i.test(fr);
+const uTag = fr => (frTu(fr) ? '(informal, Flemish u)' : '(formal)');
+
+module.exports = { QUOTES, oneLine, sig, untoken, quotes, strayQuotes, hasU, uTag };

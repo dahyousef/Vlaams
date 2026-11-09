@@ -55,7 +55,10 @@ traduction anglaise et de sa traduction française, et la mention d'une
 traduction adaptée : `adapted` nomme sa langue (`en`, `fr` ou `en fr`), et une
 traduction écrite pour le cours, que Tatoeba n'a pas, s'y lit `-` dans ses deux colonnes. La fusion du genre `examples` (`tools/content/merge.js`)
 le réécrit en entier. Une phrase dont le `src` vaut `gen` est écrite pour le
-cours, et n'y figure pas. Les phrases des unités 13 à 34 (`src/content/phrases.a1c.js`, leur `src` un numéro) viennent de Tatoeba de même, et `docs/attribution/tatoeba-phrases.tsv`, que la fusion du genre `phrases` réécrit en entier, les crédite une à une, sous leur unité, dans les mêmes colonnes.
+cours, et n'y figure pas.
+Les phrases des unités 13 à 34 (`src/content/phrases.a1c.js`, leur `src` un numéro) viennent de
+Tatoeba de même, et `docs/attribution/tatoeba-phrases.tsv`, que la fusion du genre `phrases` réécrit
+en entier, les crédite une à une, sous leur unité, dans les mêmes colonnes.
 
 Les fichiers de Tatoeba, ceux du 7 novembre 2026, sont épinglés dans `tools/content/lib/cache.js` et
 restent dans `.cache/`, ignoré par git ; `tools/content/tatoeba.js` en tire les
