@@ -217,14 +217,10 @@ dessous, pour que le gain soit verrouillé. Le premier a fait deux exceptions : 
 monté de 61 à 129 avec les unités 13–34, puis de 129 à 136 avec les règles de
 `grammar.a1c.js`, sans qu'aucune phrase change. Ces phrases employaient déjà des mots
 que le cours n'enseignait nulle part, un emprunt que rien ne comptait ; les unités,
-puis les règles, en les enseignant plus tard, l'ont révélé. Une troisième exception, temporaire, vient du
-plan 4c : les phrases des unités 13 à 34 y arrivent avant leurs notes, si bien que `NOTE_BUDGET`, ci-dessous, est monté
-de 0 ; le plan 4d écrit ces notes et le ramène à 0 avant la mise en ligne (#12). Les leurres, les explications et les
-guillemets n'en ont plus, à une exception près : `content.js` exige que chaque élément de « Comment le
+puis les règles, en les enseignant plus tard, l'ont révélé. Les leurres, les explications et les
+guillemets n'en ont plus : `content.js` exige que chaque élément de « Comment le
 dit-on ici ? » ait ses leurres et chaque élément son explication en français et
-en anglais (la note d'un mot ou d'une phrase, la règle d'un motif) — sauf, jusqu'au
-plan 4d, les phrases des unités 13 à 34, que `NOTE_BUDGET` compte, épinglé dans
-les deux sens —, et
+en anglais (la note d'un mot ou d'une phrase, la règle d'un motif), et
 `lang.js` que la prose du cours ne mette entre guillemets que du néerlandais
 (une traduction va entre parenthèses).
 
@@ -313,5 +309,5 @@ test de placement, la dictée plus tôt, la série et le défi.
 
 ## Encore ouvert
 
-- Le contenu reste le plafond : 1158 éléments, tous de niveau A1 ; les unités 13 à 34 ont leurs mots, treize règles de grammaire (neuf unités), quatre conversations et leurs phrases prises dans Tatoeba (cinq par unité, Merge phrases du plan 4c), dont les explications attendent le plan 4d (`NOTE_BUDGET` dans `test/content.js`), et leurs formes flamandes (Merge flemish du plan 4c), avec leurs leurres écrits (Merge explanations-be du plan 4d).
+- Le contenu reste le plafond : 1158 éléments, tous de niveau A1 ; les unités 13 à 34 ont leurs mots, treize règles de grammaire (neuf unités), quatre conversations et leurs phrases prises dans Tatoeba (cinq par unité, Merge phrases du plan 4c), avec leurs explications (Merge explanations-be et Merge explanations du plan 4d), et leurs formes flamandes (Merge flemish du plan 4c), avec leurs leurres écrits (Merge explanations-be du plan 4d).
 - 17 mots sur 912 n'ont pas encore de phrase d'exemple (comptés après Merge examples-gen du plan 4c) : ceux dont Tatoeba avait des candidates mais que le rédacteur a passés faute d'une qui convienne, qui attendent (D14).

@@ -16,6 +16,7 @@ NL.content.byDutch['also'] = {
   'Ik heb pijn aan mijn rug.': ['Mijn rug doet pijn.', 'Ik heb pijn in mijn rug.'],
   'Ik heet {naam}.': ['Mijn naam is {naam}.'],
   'Ik werk vandaag van thuis.': ['Ik werk vandaag thuis.'],
+  'Nog een keer?': ['Nog eens?'],
   'Onze zoon is zes jaar.': ['Onze zoon is zes jaar oud.'],
   'Wij hebben twee kinderen.': ['We hebben twee kinderen.'],
   'dag': ['hallo', 'goeiedag'],
