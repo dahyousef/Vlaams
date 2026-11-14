@@ -16,8 +16,11 @@ const spelling = require('../../../test/lib/spelling');
 /* Le néerlandais d'un texte se lit mot à mot comme test/lang.js le lit (6d), jetons ôtés :
    tokenFreeWords(s), accents gardés. Ce n'est pas NL.util.words (fondé sur norm, qui ôte les
    accents) : celui-ci sert à compter les mots d'une réponse, celui-là à lire le néerlandais cité. */
-const { tokenFreeWords } = require('../../../test/lib/dutch');
+const { tokenFreeWords, courseWords } = require('../../../test/lib/dutch');
 const { oneLine, quotes, strayQuotes } = require('../../../test/lib/text');
+const { QUOTE_OK, SHARED_OK } = require('../../../test/lib/quoted');
+const { bareOf } = require('./examples');
+const fs = require('fs'), path = require('path');
 
 /* Les phrases, trois par unité, dont le cadre se généralise (« Mag ik… », « Hoeveel… »,
    « Ik moet naar… »). Une phrase à jeton ({naam}…) n'en est pas : une tâche est la même pour
@@ -34,10 +37,32 @@ const PHRASES = [
   'dedag:p1', 'dedag:p5', 'dedag:p8',
   'winkel:p0', 'winkel:p1', 'winkel:p5',
   'dokter:p2', 'dokter:p4', 'dokter:p5',
-  'weekend:p2', 'weekend:p4', 'weekend:p7'
+  'weekend:p2', 'weekend:p4', 'weekend:p7',
+  'vragen:p2', 'vragen:p3', 'vragen:p4',
+  'kunnen:p0', 'kunnen:p1', 'kunnen:p4',
+  'doen:p0', 'doen:p3', 'doen:p4',
+  'mensen:p0', 'mensen:p1', 'mensen:p2',
+  'hoeveel:p0', 'hoeveel:p3', 'hoeveel:p4',
+  'waar:p0', 'waar:p3', 'waar:p4',
+  'landen:p0', 'landen:p1', 'landen:p4',
+  'eten:p0', 'eten:p1', 'eten:p2',
+  'cafe:p1', 'cafe:p3', 'cafe:p4',
+  'kleren:p0', 'kleren:p1', 'kleren:p2',
+  'wonen:p0', 'wonen:p2', 'wonen:p3',
+  'kalender:p0', 'kalender:p1', 'kalender:p2',
+  'stad:p0', 'stad:p2', 'stad:p3',
+  'vrijetijd:p0', 'vrijetijd:p1', 'vrijetijd:p3',
+  'gevoel:p0', 'gevoel:p1', 'gevoel:p3',
+  'beschrijven:p0', 'beschrijven:p1', 'beschrijven:p4',
+  'school:p0', 'school:p1', 'school:p3',
+  'afspraak:p1', 'afspraak:p2', 'afspraak:p4',
+  'team:p0', 'team:p3', 'team:p4',
+  'reis:p1', 'reis:p3', 'reis:p4',
+  'natuur:p0', 'natuur:p1', 'natuur:p3',
+  'spoed:p2', 'spoed:p3', 'spoed:p4'
 ];
-/* Deux lots : les unités 1 à 6, puis 7 à 12 (index 0 à 5, puis 6 à 11). */
-const batchOf = ui => (ui < 6 ? 'units-1-6' : 'units-7-12');
+/* Six unités entières par lot, le dernier s'arrêtant à la dernière unité du cours (units-31-34). */
+const batchOf = (ui, n) => { const lo = 6 * Math.floor(ui / 6); return 'units-' + (lo + 1) + '-' + Math.min(lo + 6, n); };
 const KEYS = ['what', 'rx', 'any', 'min', 'miss'];
 const MIN = [3, 12];
 
@@ -46,18 +71,18 @@ const pair = v => !!v && typeof v === 'object' && !Array.isArray(v) && Object.ke
 
 /* Ce que Check lit du cours, une fois par cours : l'index de chaque unité, les mots enseignés
    jusqu'à chacune, la première unité de chaque forme (test/lib/sequence.js), l'orthographe
-   (test/lib/spelling.js), les noms par défaut, et le néerlandais de tout le cours. */
+   (test/lib/spelling.js), les noms par défaut, et le néerlandais de tout le cours (bareOf). */
 const memo = new WeakMap();
 function facts(C, repo) {
   if (memo.has(C)) return memo.get(C);
-  const units = C.RAW.units, taught = [], seen = new Set(), dutch = new Set();
+  const units = C.RAW.units, taught = [], seen = new Set();
   units.forEach(u => {
-    (u.words || []).concat(u.phrases || []).forEach(x => tokenFreeWords(x.nl).forEach(w => { seen.add(w); dutch.add(w); }));
+    (u.words || []).concat(u.phrases || []).forEach(x => tokenFreeWords(x.nl).forEach(w => seen.add(w)));
     taught.push([...seen].sort());
   });
   const D = C.NL.content.DEFAULTS;
   const f = {
-    index: new Map(units.map((u, ui) => [u.id, ui])), taught, dutch,
+    index: new Map(units.map((u, ui) => [u.id, ui])), taught, B: bareOf(C, repo),
     first: sequence.firstUnits(C.RAW), S: spelling.open(repo, C.NL),
     names: new Set([].concat(...Object.keys(D).map(k => tokenFreeWords(D[k]))))
   };
@@ -82,6 +107,7 @@ const label = (n, i) => 'need ' + (i + 1) + ' « ' + n.what.en + ' »';
    néerlandais du cours qu'ils écrivent tous deux hors citation se cite. « a » est l'avoir
    français et l'article anglais (lang.js l'excuse aussi). */
 function quoteRule(v, where, taught, dutch, names) {
+  /* dutch : Map mot → propriétaire ; '' pour le néerlandais du cours, l'id d'une autre ligne dont l'exemple le dira. */
   const q = { fr: quotes(v.fr, 'fr'), en: quotes(v.en, 'en') };
   const bad = ['fr', 'en'].map(l => {
     const stray = strayQuotes(v[l], l, ['"']);
@@ -96,9 +122,23 @@ function quoteRule(v, where, taught, dutch, names) {
   if (digits(v.fr) !== digits(v.en)) out.push(where + ': fr has the numbers [' + digits(v.fr) + '], en [' + digits(v.en) + ']');
   const bare = l => new Set(tokenFreeWords(q[l].outside));
   const enBare = bare('en');
-  [...bare('fr')].filter(w => enBare.has(w) && dutch.has(w) && !names.has(w) && w !== 'a').forEach(w =>
-    out.push(where + ': « ' + w + ' » is Dutch the course has, written bare in fr and in en: quote it, or reword'));
+  [...bare('fr')].filter(w => enBare.has(w) && dutch.has(w) && !names.has(w) && !SHARED_OK[w]).forEach(w =>
+    out.push(dutch.get(w) ? where + ': « ' + w + ' » is in the model of ' + dutch.get(w) + ', which Merge makes Dutch of the course: written bare in fr and in en, quote it, or reword'
+      : where + ': « ' + w + ' » is Dutch the course has, written bare in fr and in en: quote it, or reword'));
   return out;
+}
+
+/* Les exemples des autres lignes écrites du genre : le draft.json, puis le retry.json, de chaque dossier de
+   kindDir, la ligne elle-même exceptée ; un retry remplace le draft de la même ligne, comme Merge le prend. */
+function otherModels(kindDir, self) {
+  const models = new Map();
+  if (!kindDir) return models;
+  const read = f => { try { const v = JSON.parse(fs.readFileSync(f, 'utf8')); return Array.isArray(v) ? v : []; } catch (e) { return []; } };
+  let dirs = [];
+  try { dirs = fs.readdirSync(kindDir, { withFileTypes: true }).filter(e => e.isDirectory()); } catch (e) { return models; }
+  dirs.forEach(e => ['draft.json', 'retry.json'].forEach(n =>
+    read(path.join(kindDir, e.name, n)).forEach(r => { if (r && r.id && r.id !== self && typeof r.model === 'string') models.set(r.id, r.model); })));
+  return models;
 }
 
 /* Une ligne écrite : sa forme, puis l'exemple et les réponses manquées notés par le barème. */
@@ -157,8 +197,21 @@ function check(row, input, ctx) {
   if (strings.some(s => /[{}]/.test(s))) out.push('a task holds no { } token');
   strings.forEach(s => tokenFreeWords(s).filter(w => F.names.has(w)).forEach(w => out.push('« ' + w + ' » is a default name: a task holds no name of a learner, a town or a company')));
 
+  /* « hoe lang » : le cours écrit la durée « hoelang » (#128), et test/content.js refuse deux mots. */
+  const HOE = /\bhoe\s+lang\b/i;
+  const fields = [['ask', [row.ask.fr, row.ask.en]], ['model', [row.model]]].concat(row.need.map((n, i) =>
+    ['need ' + (i + 1), [n.what.fr, n.what.en, n.miss, n.rx || ''].concat(n.any || [])]));
+  fields.forEach(([at, ss]) => { if (HOE.test(ss.join(' '))) out.push(at + ' writes « hoe lang »: the course writes the duration « hoelang » (#128), and test/content.js refuses it'); });
+  /* Ce que le modèle ajoute au cours : Merge le rend néerlandais du cours, que test/lang.js lit en 6d. */
+  U.uniq(courseWords(row.model)).filter(w => !F.B.dutch.has(w)).forEach(w => {
+    if (QUOTE_OK[w]) out.push('the model: « ' + w + ' » would become Dutch of the course, and test/lang.js 6d.3 then refuses its QUOTE_OK exception (test/lib/quoted.js)');
+    else if (F.B.bare.has(w)) out.push('the model: « ' + w + ' » would become Dutch of the course, and ' + F.B.bare.get(w) + ' writes it bare in French and in English (test/lang.js 6d.4)');
+  });
+
   /* Les guillemets. */
-  const taught = new Set(F.taught[ui]), dutch = new Set([...F.dutch].concat(tokenFreeWords(row.model)));
+  const taught = new Set(F.taught[ui]), dutch = new Map([...F.B.dutch].map(w => [w, '']));
+  courseWords(row.model).forEach(w => dutch.set(w, ''));
+  otherModels(ctx.kindDir, row.id).forEach((m, id) => courseWords(m).forEach(w => { if (!dutch.has(w)) dutch.set(w, id); }));
   quoteRule(row.ask, 'ask', taught, dutch, F.names).forEach(r => out.push(r));
   row.need.forEach((n, i) => quoteRule(n.what, 'need ' + (i + 1) + ' what', taught, dutch, F.names).forEach(r => out.push(r)));
   return out;
@@ -196,22 +249,25 @@ function merge(row) {
   };
 }
 
-/* Split : les phrases de PHRASES, chacune dans le lot de son unité, dans l'ordre du cours. */
+/* Split : les phrases de PHRASES sans tâche, plus les ids nommés (ctx.ids), chacune dans le lot de six
+   unités entières de son unité, dans l'ordre du cours. Un jeton et un id perdu se refusent sur toutes les
+   phrases de PHRASES, tâche ou non : une phrase fondue dont le néerlandais change se voit encore. */
 function split(C, ctx) {
-  const F = facts(C, ctx.repo), batches = {};
-  C.sources.filter(s => PHRASES.indexOf(s.id) >= 0).forEach(s => {
-    if (/[{}]/.test(s.nl)) throw new Error(s.id + ' « ' + s.nl + ' » holds a token: a task is the same for every learner');
-    const ui = F.index.get(s.unit), b = batchOf(ui);
+  const F = facts(C, ctx.repo), batches = {}, named = new Set((ctx && ctx.ids) || []);
+  const mine = C.sources.filter(s => PHRASES.indexOf(s.id) >= 0);
+  mine.forEach(s => { if (/[{}]/.test(s.nl)) throw new Error(s.id + ' « ' + s.nl + ' » holds a token: a task is the same for every learner'); });
+  mine.filter(s => !s.open || named.has(s.id)).forEach(s => {
+    const ui = F.index.get(s.unit), b = batchOf(ui, C.RAW.units.length);
     (batches[b] = batches[b] || []).push({
       id: s.id, nl: s.nl, unit: s.unit,
       meaning: { fr: C.NL.gloss.of(s, 'fr'), en: C.NL.gloss.of(s, 'en') },
       vocab: F.taught[ui]
     });
   });
-  const found = [].concat(...Object.keys(batches).map(b => batches[b])).map(r => r.id);
+  const found = mine.map(s => s.id);
   const lost = PHRASES.filter(id => found.indexOf(id) < 0);
   if (lost.length) throw new Error(lost.join(', ') + ' is no phrase of the course');
-  return ['units-1-6', 'units-7-12'].map(b => ({ batch: b, rows: batches[b] || [] }));
+  return Object.keys(batches).map(b => ({ batch: b, rows: batches[b] }));
 }
 
 module.exports = {

@@ -1178,18 +1178,35 @@ module.exports = {
        outils se lancent donc depuis celui-ci. Les lignes écrites ici sont faites à la main. */
     const OP = path.join(TMP, 'open');
     copyKit(ROOT, OP);
-    beforeWords(OP);
     const runOp = (script, args) => runIn(OP, script, args);
-    const K = kit.loadKind(OP, 'open'), CO = course(OP), U = CO.NL.util;
+    /* Le cours est entier : les 66 phrases des unités 13 à 34 sont dans PHRASES. La copie reprend les 36
+       tâches des unités 1 à 12 seules : les nombres attendus ne bougent pas avec les lignes que Merge a
+       prises dans le vrai cours. */
+    const K = kit.loadKind(OP, 'open'), C0 = course(OP);
+    const drop = {};
+    K.PHRASES.slice(36).forEach(id => { drop[C0.byId(id).nl] = null; });
+    table.update(path.join(OP, 'src', 'content', 'open.phrases.js'), drop);
+    const CO = course(OP), U = CO.NL.util;
     const ctx = { repo: OP, course: () => CO };
     const KD = path.join(OP, 'drafts', 'open'), LOTS = ['units-1-6', 'units-7-12'];
+    /* Les lignes d'entrée d'un lot, ou aucune quand Split ne l'a pas écrit : un ÉCHEC, pas un plantage. */
+    const rowsOf = (dir, b) => { try { return JSON.parse(text(path.join(dir, b, 'input.json'))); } catch (e) { return []; } };
 
-    /* Split : 36 phrases, trois par unité, en deux lots de six unités. */
-    same(runOp('split.js', [OP, KD]), { code: 0, lines: ['units-1-6 18', 'units-7-12 18'] }, 'Split coupe les 36 phrases en deux lots de six unités');
+    /* Split tient les phrases sans tâche : les 66 des unités 13 à 34, six unités par lot. */
+    same(K.PHRASES.length, 102, 'PHRASES tient 102 phrases, trois par unité');
+    const HELD = path.join(OP, 'held', 'open');
+    same(runOp('split.js', [OP, HELD]), { code: 0, lines: ['units-13-18 18', 'units-19-24 18', 'units-25-30 18', 'units-31-34 12'] },
+      'Split ne coupe que les phrases sans tâche, en lots de six unités entières');
+    same([].concat(...['units-13-18', 'units-19-24', 'units-25-30', 'units-31-34'].map(b => rowsOf(HELD, b))).map(r => r.id),
+      K.PHRASES.slice(36), 'les 66, dans l\'ordre du cours');
+    same(runOp('split.js', [OP, path.join(OP, 'named', 'open'), 'bakker:p1', 'vragen:p2']), { code: 0, lines: ['units-1-6 1', 'units-13-18 1'] },
+      'une phrase nommée se coupe, qu\'elle ait sa tâche ou non');
+    /* Les 36 premières, nommées : deux lots de six unités. */
+    same(runOp('split.js', [OP, KD].concat(K.PHRASES.slice(0, 36))), { code: 0, lines: ['units-1-6 18', 'units-7-12 18'] }, 'Split coupe les 36 phrases nommées en deux lots de six unités');
     const inputs = LOTS.map(b => JSON.parse(text(path.join(KD, b, 'input.json'))));
     const all = [].concat(...inputs);
     const rowOf = id => all.find(r => r.id === id);
-    same(all.map(r => r.id), K.PHRASES, 'chaque phrase de PHRASES une fois, dans l\'ordre du cours');
+    same(all.map(r => r.id), K.PHRASES.slice(0, 36), 'chaque phrase nommée une fois, dans l\'ordre du cours');
     const units = CO.RAW.units.map(u => u.id);
     same(inputs.map((rows, i) => rows.every(r => (units.indexOf(r.unit) < 6) === (i === 0))), [true, true], 'les unités 1 à 6 dans le premier lot, 7 à 12 dans le second');
     const pain = CO.byId('bakker:p1');
@@ -1213,10 +1230,10 @@ module.exports = {
       ],
       model: 'Mag ik drie pistolets, alstublieft?'
     };
-    const why = (patch, id) => {
+    const why = (patch, id, c) => {
       const r = JSON.parse(JSON.stringify(BAKKER));
       if (patch) patch(r);
-      return K.check(r, rowOf(id || 'bakker:p1'), ctx);
+      return K.check(r, rowOf(id || 'bakker:p1'), c || ctx);
     };
     same(why(), [], 'la ligne de la boulangerie passe');
     const N1 = 'need 1 « starts with “mag ik” »', N2 = 'need 2 « says how many »', N3 = 'need 3 « at least 4 words »';
@@ -1252,14 +1269,40 @@ module.exports = {
         ['ask: « goesting » is quoted, and the course has not taught it by this unit: a quote holds taught Dutch, and a translation goes in parentheses'], 'une citation tient du néerlandais déjà enseigné'],
       [r => { r.ask.fr = 'Demande 2 ou 3 pistolets. Commence par « Mag ik ».'; r.ask.en = 'Ask for some. Start with “Mag ik”.'; }, ['ask: fr has the numbers [2 3], en []'], 'fr et en ont les mêmes nombres'],
       [r => { r.ask.fr = 'Commence par « Mag ik », et demande des pistolets.'; r.ask.en = 'Start with “Mag ik”, and ask for pistolets.'; },
-        ['ask: « pistolets » is Dutch the course has, written bare in fr and in en: quote it, or reword'], 'un mot du cours écrit des deux côtés se cite']
+        ['ask: « pistolets » is Dutch the course has, written bare in fr and in en: quote it, or reword'], 'un mot du cours écrit des deux côtés se cite'],
+      [r => { r.ask.fr = 'Commence par « Mag ik », et parle de tennis.'; r.ask.en = 'Start with “Mag ik”, and talk about tennis.'; },
+        ['ask: « tennis » is Dutch the course has, written bare in fr and in en: quote it, or reword'], 'le néerlandais du cours est tout le cours (dutchWords), pas ses seules unités'],
+      [r => { r.model = 'Mag ik 4 pistolets, alstublieft?'; r.need[1].any.push('4'); }, [], 'un chiffre n\'est pas du néerlandais : le 4 du min reste nu'],
+      [r => { r.need[1].any.push('hoe lang'); }, ['need 2 writes « hoe lang »: the course writes the duration « hoelang » (#128), and test/content.js refuses it'], '« hoe lang » en deux mots, nulle part dans la tâche'],
+      [r => { r.model = 'Mag ik twee pistolets met jam?'; }, ['the model: « jam » would become Dutch of the course, and test/lang.js 6d.3 then refuses its QUOTE_OK exception (test/lib/quoted.js)'], 'l\'exemple n\'ajoute au cours aucun mot de QUOTE_OK'],
+      [r => { r.model = 'Mag ik twee pistolets voor de club?'; }, ['the model: « club » would become Dutch of the course, and patterns[2].explain writes it bare in French and in English (test/lang.js 6d.4)'], 'ni un mot que le cours écrit nu en français et en anglais'],
+      [r => { r.ask.en += ' Say hoe lang.'; }, ['ask writes « hoe lang »: the course writes the duration « hoelang » (#128), and test/content.js refuses it'], '« hoe lang » dans ask'],
+      [r => { r.need[1].what.en = 'says hoe lang'; }, ['need 2 writes « hoe lang »: the course writes the duration « hoelang » (#128), and test/content.js refuses it'], '« hoe lang » dans le what d\'un besoin'],
+      [r => { r.need[1].miss = 'Mag ik hoe lang pistolets?'; }, ['need 2 writes « hoe lang »: the course writes the duration « hoelang » (#128), and test/content.js refuses it'], '« hoe lang » dans le miss d\'un besoin'],
+      [r => { r.need[0].rx += '|hoe lang'; }, ['need 1 writes « hoe lang »: the course writes the duration « hoelang » (#128), and test/content.js refuses it'], '« hoe lang » dans le rx d\'un besoin'],
+      [r => { r.ask.fr = 'Commence par « Mag ik », et parle de ticket.'; r.ask.en = 'Start with “Mag ik”, and talk about ticket.'; }, [], 'un mot de SHARED_OK reste nu, comme test/lang.js l\'excuse']
     ].forEach(([patch, want, m]) => same(why(patch), want, 'Check : ' + m));
+    /* Un mot de l'exemple d'une autre ligne : celle-ci le rend néerlandais du cours à Merge. */
+    const SIB = path.join(OP, 'sib', 'open');
+    fs.mkdirSync(path.join(SIB, 'lot'), { recursive: true });
+    put(path.join(SIB, 'lot'), 'draft.json', [{ id: 'bakker:p1', model: 'Ik speel golf.' }, { id: 'vrijetijd:p1', model: 'Ik kan golf spelen.' }]);
+    const GOLF = r => { r.ask.fr = 'Commence par « Mag ik », et parle de golf.'; r.ask.en = 'Start with “Mag ik”, and talk about golf.'; };
+    const GOLFLINE = 'ask: « golf » is in the model of vrijetijd:p1, which Merge makes Dutch of the course: written bare in fr and in en, quote it, or reword';
+    same([why(GOLF), why(GOLF, null, Object.assign({ kindDir: SIB }, ctx))], [[], [GOLFLINE]], 'Check : un mot de l\'exemple d\'une autre ligne se cite comme le néerlandais du cours');
+    const SIB2 = path.join(OP, 'sib2', 'open');
+    fs.mkdirSync(path.join(SIB2, 'lot'), { recursive: true });
+    put(path.join(SIB2, 'lot'), 'draft.json', [{ id: 'vrijetijd:p1', model: 'Ik kan golf spelen.' }]);
+    put(path.join(SIB2, 'lot'), 'retry.json', [{ id: 'vrijetijd:p1', model: 'Ik kan squash spelen.' }]);
+    const SQUASH = r => { r.ask.fr = 'Commence par « Mag ik », et parle de squash.'; r.ask.en = 'Start with “Mag ik”, and talk about squash.'; };
+    const RETRY = Object.assign({ kindDir: SIB2 }, ctx);
+    same([why(GOLF, null, RETRY), why(SQUASH, null, RETRY)], [[], [GOLFLINE.replace('golf', 'squash')]], 'Check : le retry remplace le draft, comme Merge le prend');
     /* Les règles que d'autres raisons recouvrent : la phrase est cherchée parmi les raisons. */
     const has = (patch, line, m) => ok(why(patch).indexOf(line) >= 0, 'Check : ' + m + ' : ' + JSON.stringify(why(patch)));
     const SAME = r => { r.need[1].what = JSON.parse(JSON.stringify(r.need[0].what)); };
     has(r => { r.model = 'Mag ik.'; }, 'the model has fewer than 3 words: the session judges no shorter answer', 'l\'exemple a au moins 3 mots');
     has(SAME, 'need 2: its fr what is another need\'s', 'deux besoins n\'ont pas le même what (fr)');
     has(SAME, 'need 2: its en what is another need\'s', 'deux besoins n\'ont pas le même what (en)');
+    has(r => { r.model = 'Mag ik hoe lang drie pistolets?'; }, 'model writes « hoe lang »: the course writes the duration « hoelang » (#128), and test/content.js refuses it', 'l\'exemple n\'écrit pas « hoe lang »');
     [
       [r => { r.ask = 'Mag ik'; }, 'ask is { "fr": …, "en": … }, each one line with no space at either end', 'ask est une paire'],
       [r => { r.model = ['Mag ik']; }, 'model is one line of Dutch with no space at either end', 'l\'exemple est une ligne'],
