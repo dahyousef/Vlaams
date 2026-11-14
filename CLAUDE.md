@@ -79,19 +79,21 @@ the maintainer answers, runs in sittings.
   exercise never moves the item's rung: a written one, later in the same session, decides.
   « Je ne peux pas parler » lives in the running session and is deliberately not a
   setting. Issue #12 says why, for all three.
-- Six tables under `src/content/` are written by a kind's Merge (`tools/content/merge.js`)
+- Seven tables under `src/content/` are written by a kind's Merge (`tools/content/merge.js`)
   from accepted rows: `be.js` (kind `flemish`, whose Merge also adds a line to
   `test/data/flemish.tsv` for each new form OpenTaal lacks), `sourced.js` (`examples`, which
-  also rewrites `docs/attribution/tatoeba.tsv`, and `examples-gen`), `open.phrases.js`
-  (`open`), `notes.js` and `also.js` (`explanations-be`, `explanations`), and `decoys.js`
-  (`explanations-be`). Each is keyed by an item's Dutch as its first listing writes it,
-  tokens unfilled. Change an entry through its kind's rows, not by hand: a hand edit leaves
-  no row behind it, and the next Merge of that item writes over it. The `words` kind's Merge
-  (`tools/content/kinds/words.js`) writes a seventh file whole, `src/content/lexicon.a1c.js`:
-  the units 13 to 34 and their words, from its `UNITS` and the accepted rows; and it appends
-  the new words' lines to `test/data/ids.tsv`. The same rule: a word changes through its rows, by Merging
-  its unit again from the workspace that drafted them, and never to another Dutch word. With that
-  workspace gone it has no path yet (`docs/agents/plan-runs/design-sitting.md`).
+  also rewrites `docs/attribution/tatoeba.tsv`, and `examples-gen`), `open.phrases.js` and
+  `open.js` (`open`), `notes.js` and `also.js` (`explanations-be`, `explanations`), and
+  `decoys.js` (`explanations-be`). Each is keyed by an item's Dutch as its first listing writes
+  it, tokens unfilled, except `open.js`: the tasks of the grammar rules, keyed by rule id
+  (`g-v2`), which the app reads as `NL.content.openTasks`. Change an entry through its kind's
+  rows, not by hand: a hand edit leaves no row behind it, and the next Merge of that item
+  writes over it. The `words` kind's Merge (`tools/content/kinds/words.js`) writes another
+  file whole, `src/content/lexicon.a1c.js`: the units 13 to 34 and their words, from its
+  `UNITS` and the accepted rows; and it appends the new words' lines to `test/data/ids.tsv`.
+  The same rule: a word changes through its rows, by Merging its unit again from the
+  workspace that drafted them, and never to another Dutch word. With that workspace gone it
+  has no path yet (`docs/agents/plan-runs/design-sitting.md`).
   The `grammar` kind's Merge (`tools/content/kinds/grammar.js`) also writes a file whole,
   `src/content/grammar.a1c.js`: the 13 rules that `grammar.js` lacks, from its `RULES` and the
   accepted rows; the page lists each on its unit at load. A rule changes through its row, and its id

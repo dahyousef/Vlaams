@@ -1,6 +1,10 @@
 /* Le genre open : une réponse libre par phrase choisie, trois par unité, écrite dans
    src/content/open.phrases.js sous le néerlandais de la phrase. La phrase est servie en
-   réponse libre à son échelon 6 (src/content/index.js, TABLES).
+   réponse libre à son échelon 6 (src/content/index.js, TABLES). Les 13 règles de grammar.a1c.js
+   (RULES) ont la leur, écrite dans src/content/open.js sous l'id de la règle, comme les neuf des
+   unités 1 à 12 : une ligne de règle porte son unité, son titre, sa règle, son exemple, son
+   explication, ses exercices et vocab, et Check refuse un modèle qui est l'exemple de la règle
+   ou l'un de ses exercices.
 
    Une ligne d'entrée porte la phrase (nl), son unité, son sens, et les mots que le cours a
    enseignés jusqu'à son unité comprise (vocab). Une ligne écrite porte ask, need et model, de
@@ -61,6 +65,20 @@ const PHRASES = [
   'natuur:p0', 'natuur:p1', 'natuur:p3',
   'spoed:p2', 'spoed:p3', 'spoed:p4'
 ];
+/* Les règles de grammar.a1c.js, dans l'ordre du cours : leur tâche s'écrit dans src/content/open.js, sous leur id. */
+const RULES = ['g-niet-geen', 'g-bijzin', 'g-vraag', 'g-twee-werkwoorden', 'g-perfect-zijn', 'g-was-had', 'g-deelwoord',
+  'g-hem-haar', 'g-er-is', 'g-meervoud', 'g-gebiedend', 'g-verkleinwoord', 'g-om-op-in'];
+/* La source d'une ligne : un élément du cours, ou une règle, dont nl est l'id et dont fr et en sont le titre. */
+function sourceOf(C, id) {
+  if (RULES.indexOf(id) < 0) return C.byId(id);
+  const p = (C.RAW.patterns || []).find(x => x.id === id);
+  if (!p) return undefined;
+  return {
+    id, nl: id, fr: p.title.fr, en: p.title.en, unit: p.unit, title: p.title, rule: p.rule,
+    example: { nl: p.nl, fr: p.fr, en: p.en }, explain: p.explain,
+    drills: p.drills.map(d => ({ nl: d.nl, fr: d.fr, en: d.en })), copies: []
+  };
+}
 /* Six unités entières par lot, le dernier s'arrêtant à la dernière unité du cours (units-31-34). */
 const batchOf = (ui, n) => { const lo = 6 * Math.floor(ui / 6); return 'units-' + (lo + 1) + '-' + Math.min(lo + 6, n); };
 const KEYS = ['what', 'rx', 'any', 'min', 'miss'];
@@ -175,7 +193,12 @@ function check(row, input, ctx) {
   /* Le barème, celui de la séance. */
   const task = taskOf(row), rubric = C.NL.ex.rubric;
   if (U.words(row.model).length < 3) out.push('the model has fewer than 3 words: the session judges no shorter answer');
-  if (U.norm(row.model) === U.norm(input.nl)) out.push('the model is the phrase itself: a task asks for an answer of the learner\'s own');
+  if (!input.drills && U.norm(row.model) === U.norm(input.nl)) out.push('the model is the phrase itself: a task asks for an answer of the learner\'s own');
+  if (input.drills) {
+    if (U.norm(row.model) === U.norm(input.example.nl)) out.push('the model is the rule\'s example: a task asks for an answer of the learner\'s own');
+    input.drills.filter(d => U.norm(row.model) === U.norm(d.nl)).forEach(d =>
+      out.push('the model is one of the rule\'s drills, « ' + d.nl + ' »: a task asks for an answer of the learner\'s own'));
+  }
   const byModel = rubric(task, row.model);
   task.need.forEach((n, i) => { if (byModel.indexOf(n.what) < 0) out.push('the model « ' + row.model + ' » does not meet ' + label(n, i)); });
   task.need.forEach((n, i) => {
@@ -185,9 +208,10 @@ function check(row, input, ctx) {
   });
 
   /* Le modèle se dit avec ce que le cours a déjà enseigné, et s'épelle. */
+  const thing = input.drills ? 'rule' : 'phrase';
   sequence.ahead(row.model, ui, F.first).forEach(w => {
     const later = C.RAW.units[F.first.get(w)];
-    out.push('the model uses « ' + w + ' », which unit ' + (F.first.get(w) + 1) + ' (' + later.id + ') teaches, after this phrase\'s unit ' + (ui + 1));
+    out.push('the model uses « ' + w + ' », which unit ' + (F.first.get(w) + 1) + ' (' + later.id + ') teaches, after this ' + thing + '\'s unit ' + (ui + 1));
   });
   spelling.tokens(row.model).filter(t => !F.S.known(t)).forEach(t => out.push('the model writes « ' + t + ' », which is not a known Dutch form'));
 
@@ -236,17 +260,16 @@ function checkVerdict(v, row, input, ctx) {
 }
 
 /* Ce que Merge écrit : la tâche, son rx en expression régulière. */
-function merge(row) {
-  return {
-    'open.phrases': {
-      ask: { fr: row.ask.fr, en: row.ask.en },
-      need: row.need.map(n => {
-        const how = n.rx !== undefined ? { rx: new RegExp(n.rx, 'i') } : n.any !== undefined ? { any: n.any.slice() } : { min: n.min };
-        return Object.assign({ what: { fr: n.what.fr, en: n.what.en } }, how, { miss: n.miss });
-      }),
-      model: row.model
-    }
+function merge(row, input) {
+  const task = {
+    ask: { fr: row.ask.fr, en: row.ask.en },
+    need: row.need.map(n => {
+      const how = n.rx !== undefined ? { rx: new RegExp(n.rx, 'i') } : n.any !== undefined ? { any: n.any.slice() } : { min: n.min };
+      return Object.assign({ what: { fr: n.what.fr, en: n.what.en } }, how, { miss: n.miss });
+    }),
+    model: row.model
   };
+  return RULES.indexOf(row.id) >= 0 ? { open: task } : { 'open.phrases': task };
 }
 
 /* Split : les phrases de PHRASES sans tâche, plus les ids nommés (ctx.ids), chacune dans le lot de six
@@ -267,14 +290,30 @@ function split(C, ctx) {
   const found = mine.map(s => s.id);
   const lost = PHRASES.filter(id => found.indexOf(id) < 0);
   if (lost.length) throw new Error(lost.join(', ') + ' is no phrase of the course');
-  return Object.keys(batches).map(b => ({ batch: b, rows: batches[b] }));
+  const have = C.NL.content.byDutch.open || {};
+  const owed = RULES.filter(id => !have[id] || named.has(id)), rules = [];
+  const missing = owed.filter(id => !sourceOf(C, id));
+  if (missing.length) throw new Error(missing.join(', ') + ' is no rule of the course');
+  owed.forEach(id => {
+    const s = sourceOf(C, id);
+    rules.push({
+      id, unit: s.unit, title: s.title, rule: s.rule, example: s.example, explain: s.explain, drills: s.drills,
+      vocab: F.taught[F.index.get(s.unit)]
+    });
+  });
+  const out = Object.keys(batches).map(b => ({ batch: b, rows: batches[b] }));
+  if (rules.length) out.push({ batch: 'rules', rows: rules });
+  return out;
 }
 
+/* Le relecteur lit entière la tâche d'une règle (en-têtes d'appel 3, 4 et 7 du kit). */
+const readWhole = (row, input) => (input && input.drills ? 'rule task' : '');
+
 module.exports = {
-  stamp: ['meaning'],
+  stamp: ['meaning', src => (src.drills ? { rule: src.rule, example: src.example, drills: src.drills.map(d => d.nl) } : null)],
   fields: ['ask', 'need', 'model'],
   verdictFields: ['right'],
-  tables: ['open.phrases'],
-  split, check, checkVerdict, merge,
-  PHRASES
+  tables: ['open.phrases', 'open'],
+  split, check, checkVerdict, merge, sourceOf, readWhole,
+  PHRASES, RULES
 };

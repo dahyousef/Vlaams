@@ -562,6 +562,11 @@ function langAttrCheck(B) {
   ok(found.has('en « hier » (en-GB)') && found.has('en « merci » (en-GB)'), '6 : « hier » et « merci » sans lang="nl-BE" dans la vue anglaise ne sont pas signalés');
   const frFound = Array.from(found.keys()).filter(k => /^fr « (hier|merci) »/.test(k));
   ok(frFound.length === 0, '6 : « hier » dans un passage français est du français, pas signalé : ' + frFound.join(', '));
+  /* La réponse que l'apprenant tape à une tâche ouverte est du néerlandais : sa zone de saisie le déclare.
+     Plantée : au verdict, la réponse tapée est une phrase du cours, comme l'exemple qu'answer.right() tape. */
+  const it = B.NL.content.allItems().find(x => x.open), E = B.NL.ex.get('open');
+  const typed = langAttrFind(B, (b, visit) => visit('plant open', E.view(E.build(it), { input: it.nl }, 'verdict')));
+  ok(typed.size === 0, '6 : néerlandais sans lang="nl" : ' + Array.from(typed.keys()).join(', ') + ' (vue sessie/6/open/verdict, plantée)');
 }
 
 /* 6e. Ce que le micro entend est du néerlandais : le texte provisoire pendant l'écoute, ce qu'il a

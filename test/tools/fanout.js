@@ -1181,11 +1181,13 @@ module.exports = {
     const runOp = (script, args) => runIn(OP, script, args);
     /* Le cours est entier : les 66 phrases des unités 13 à 34 sont dans PHRASES. La copie reprend les 36
        tâches des unités 1 à 12 seules : les nombres attendus ne bougent pas avec les lignes que Merge a
-       prises dans le vrai cours. */
+       prises dans le vrai cours. open.phrases.js ne garde que les tâches des 36 phrases des unités 1 à 12,
+       open.js que les neuf règles écrites à la main. */
     const K = kit.loadKind(OP, 'open'), C0 = course(OP);
-    const drop = {};
+    const drop = {}, dropR = {};
     K.PHRASES.slice(36).forEach(id => { drop[C0.byId(id).nl] = null; });
     table.update(path.join(OP, 'src', 'content', 'open.phrases.js'), drop);
+    if (K.RULES) { K.RULES.forEach(id => { dropR[id] = null; }); table.update(path.join(OP, 'src', 'content', 'open.js'), dropR); }
     const CO = course(OP), U = CO.NL.util;
     const ctx = { repo: OP, course: () => CO };
     const KD = path.join(OP, 'drafts', 'open'), LOTS = ['units-1-6', 'units-7-12'];
@@ -1195,12 +1197,38 @@ module.exports = {
     /* Split tient les phrases sans tâche : les 66 des unités 13 à 34, six unités par lot. */
     same(K.PHRASES.length, 102, 'PHRASES tient 102 phrases, trois par unité');
     const HELD = path.join(OP, 'held', 'open');
-    same(runOp('split.js', [OP, HELD]), { code: 0, lines: ['units-13-18 18', 'units-19-24 18', 'units-25-30 18', 'units-31-34 12'] },
-      'Split ne coupe que les phrases sans tâche, en lots de six unités entières');
+    same(runOp('split.js', [OP, HELD]), { code: 0, lines: ['units-13-18 18', 'units-19-24 18', 'units-25-30 18', 'units-31-34 12', 'rules 13'] },
+      'Split ne coupe que les phrases et les règles sans tâche : six unités entières par lot de phrases, puis les règles');
     same([].concat(...['units-13-18', 'units-19-24', 'units-25-30', 'units-31-34'].map(b => rowsOf(HELD, b))).map(r => r.id),
       K.PHRASES.slice(36), 'les 66, dans l\'ordre du cours');
     same(runOp('split.js', [OP, path.join(OP, 'named', 'open'), 'bakker:p1', 'vragen:p2']), { code: 0, lines: ['units-1-6 1', 'units-13-18 1'] },
       'une phrase nommée se coupe, qu\'elle ait sa tâche ou non');
+    const RULE_IDS = ['g-niet-geen', 'g-bijzin', 'g-vraag', 'g-twee-werkwoorden', 'g-perfect-zijn', 'g-was-had', 'g-deelwoord',
+      'g-hem-haar', 'g-er-is', 'g-meervoud', 'g-gebiedend', 'g-verkleinwoord', 'g-om-op-in'];
+    same(K.RULES, RULE_IDS, 'RULES tient les 13 règles, dans l\'ordre du cours');
+    const RL = rowsOf(HELD, 'rules');
+    same(RL.map(r => r.id), K.RULES, 'les 13 règles, dans l\'ordre du cours');
+    const erRow = RL.find(r => r.id === 'g-er-is') || { vocab: [] };
+    const erPat = CO.RAW.patterns.find(p => p.id === 'g-er-is');
+    same(Object.assign({}, erRow, { vocab: null }), {
+      id: 'g-er-is', stamp: kit.stamp(K, K.sourceOf(CO, 'g-er-is'), CO.NL), copies: [], unit: 'waar', title: erPat.title, rule: erPat.rule,
+      example: { nl: erPat.nl, fr: erPat.fr, en: erPat.en }, explain: erPat.explain,
+      drills: erPat.drills.map(d => ({ nl: d.nl, fr: d.fr, en: d.en })), vocab: null
+    }, 'une ligne de règle : sa règle, son exemple, ses cinq exercices, et vocab');
+    same(erRow.vocab, (rowsOf(HELD, 'units-13-18').find(r => r.id === 'waar:p0') || { vocab: null }).vocab, 'le vocab d\'une règle est celui de son unité');
+    const erSrc = K.sourceOf(CO, 'g-er-is');
+    ok(kit.stamp(K, Object.assign({}, erSrc, { drills: erSrc.drills.slice(1) }), CO.NL) !== erRow.stamp, 'l\'empreinte d\'une règle change avec un exercice de moins');
+    ok(kit.stamp(K, Object.assign({}, erSrc, { example: { nl: 'Er is een hond.', fr: erSrc.example.fr, en: erSrc.example.en } }), CO.NL) !== erRow.stamp, 'et avec un autre exemple');
+    const NR = path.join(OP, 'named-rule', 'open');
+    same(runOp('split.js', [OP, NR, 'g-er-is']), { code: 0, lines: ['rules 1'] }, 'une règle nommée se coupe');
+    same(runOp('split.js', [OP, path.join(OP, 'named-rule2', 'open'), 'g-v2']), { code: 1, lines: ['fail open g-v2: not a row the kind\'s split cuts'] }, 'une règle écrite à la main ne se coupe pas');
+    const OPENJS = path.join(OP, 'src', 'content', 'open.js'), NINE = table.load(OPENJS).entries, NINE_KEYS = Object.keys(NINE);
+    same(NINE_KEYS, ['g-bezit', 'g-dehet', 'g-gegij', 'g-getallen', 'g-halfuur', 'g-perfect-intro', 'g-present', 'g-scheidbaar', 'g-v2'], 'open.js tient les neuf tâches écrites à la main, triées');
+    const REAL = path.join(ROOT, 'src', 'content', 'open.js');
+    ok(table.serialize(table.load(REAL)) === text(REAL), 'le open.js du vrai cours se récrit à l\'identique');
+    ok(CO.NL.content.openTasks === CO.NL.content.byDutch.open, 'NL.content.openTasks est la table open');
+    const g2 = CO.NL.content.allItems().find(x => x.id === 'g-v2');
+    ok(g2.open === CO.NL.content.openTasks['g-v2'] && Object.prototype.toString.call(g2.open.need[0].rx) === '[object RegExp]', 'g-v2 porte sa tâche, son rx une expression régulière');
     /* Les 36 premières, nommées : deux lots de six unités. */
     same(runOp('split.js', [OP, KD].concat(K.PHRASES.slice(0, 36))), { code: 0, lines: ['units-1-6 18', 'units-7-12 18'] }, 'Split coupe les 36 phrases nommées en deux lots de six unités');
     const inputs = LOTS.map(b => JSON.parse(text(path.join(KD, b, 'input.json'))));
@@ -1320,6 +1348,28 @@ module.exports = {
     same(why(r => { r.model = 'Mag ik drie pistolets voor ons?'; }), ['the model uses « ons », which unit 6 (familie) teaches, after this phrase\'s unit 4'],
       'Check : « ons », le trou de g-bezit, est enseigné à familie, la première unité qui liste la règle (#99)');
 
+    /* Une tâche de règle : Check lit la règle (exemple, exercices), pas la phrase. */
+    const ER = {
+      id: 'g-er-is', stamp: erRow.stamp,
+      ask: { fr: 'Dis ce qu\'il y a dans ta rue. Commence par « Er is » ou « Er zijn ».', en: 'Say what your street has. Start with “Er is” or “Er zijn”.' },
+      need: [
+        { what: { fr: 'commence par « er is » ou « er zijn »', en: 'starts with “er is” or “er zijn”' }, rx: '^\\s*er\\s+(is|zijn)\\b', miss: 'In mijn straat is een bakker.' },
+        { what: { fr: 'au moins 5 mots', en: 'at least 5 words' }, min: 5, miss: 'Er is een bakker.' }
+      ],
+      model: 'Er is een bakker in mijn straat.'
+    };
+    const whyRule = patch => {
+      const r = JSON.parse(JSON.stringify(ER));
+      if (patch) patch(r);
+      return K.check(r, erRow, ctx);
+    };
+    same(whyRule(), [], 'la tâche de g-er-is passe');
+    same(whyRule(r => { r.model = erPat.nl; }), ['the model is the rule\'s example: a task asks for an answer of the learner\'s own'], 'l\'exemple de la tâche n\'est pas celui de la règle');
+    same(whyRule(r => { r.model = 'Er zijn geen mensen meer op kantoor.'; }), ['the model is one of the rule\'s drills, « Er zijn geen mensen meer op kantoor. »: a task asks for an answer of the learner\'s own'], 'ni un de ses exercices');
+    same(whyRule(r => { r.model = 'Er is een ambulance in mijn straat.'; }), ['the model uses « ambulance », which unit 34 (spoed) teaches, after this rule\'s unit 18'], 'l\'exemple de la règle n\'emploie rien que le cours enseigne plus tard');
+    same([K.readWhole(ER, erRow, K.sourceOf(CO, 'g-er-is')), K.readWhole(BAKKER, rowOf('bakker:p1'), pain)], ['rule task', ''], 'le relecteur lit entière la tâche d\'une règle, non celle d\'une phrase');
+    const RRIGHT = ['Er zijn twee winkels in mijn straat.', 'Er is een huis met een tuin in mijn straat.'];
+
     /* Le verdict : un keep porte deux bonnes réponses du relecteur, que la tâche accepte. */
     const RIGHT = ['Mag ik een koffiekoek en twee pistolets?', 'Mag ik vier pistolets hebben?'];
     const verdict = (v, right) => K.checkVerdict(Object.assign({ id: 'bakker:p1', verdict: v }, right ? { right } : {}), BAKKER, rowOf('bakker:p1'), ctx);
@@ -1373,7 +1423,7 @@ module.exports = {
 
     /* Merge écrit chaque tâche sous le néerlandais de sa phrase, son rx en expression régulière. */
     const OPEN = path.join(OP, 'src', 'content', 'open.phrases.js');
-    const MERGED = { code: 0, lines: ['ok open 36 taken, 0 dropped', 'ok open.phrases.js 36 set, 0 removed'] };
+    const MERGED = { code: 0, lines: ['ok open 36 taken, 0 dropped', 'ok open.phrases.js 36 set, 0 removed', 'ok open.js 0 set, 0 removed'] };
     same(runOp('merge.js', [OP, KD]), MERGED, 'Merge prend les 36 lignes');
     const written = text(OPEN);
     ok(written.indexOf('\'Mag ik twee pistolets?\': { ask: { fr: \'À la boulangerie, demande ce que tu veux, et combien. Commence par « Mag ik ».\', ' +
@@ -1389,7 +1439,20 @@ module.exports = {
     ok(Object.prototype.toString.call(item.open.need[0].rx) === '[object RegExp]', 'le rx de la phrase est une expression régulière une fois posé');
     same(CM.NL.ex.rubric(item.open, item.open.model).length, 3, 'la séance accepte l\'exemple');
     same(CM.NL.ex.rubric(item.open, RIGHT[1]).length, 3, 'et une bonne réponse du relecteur');
-    console.log('  genre open     36 phrases en 2 lots, ' + Object.keys(back).length + ' tâches écrites, rx en expression régulière');
+
+    /* La règle : sa tâche s'écrit dans open.js, sous l'id de la règle. */
+    const NRB = path.join(NR, 'rules');
+    put(NRB, 'draft.json', [ER]);
+    put(NRB, 'review.json', [{ id: 'g-er-is', verdict: 'keep', right: RRIGHT }]);
+    same(runOp('check.js', [NRB]), { code: 0, lines: ['ok input.json 1 rows', 'ok draft.json 1 rows', 'ok review.json 1 keep, 0 dispute'] }, 'la tâche d\'une règle passe Check');
+    same(runOp('merge.js', [OP, NR]), { code: 0, lines: ['ok open 1 taken, 0 dropped', 'ok open.phrases.js 0 set, 0 removed', 'ok open.js 1 set, 0 removed'] }, 'Merge écrit la tâche de la règle dans open.js');
+    const TEN = table.load(OPENJS).entries;
+    same([Object.keys(TEN), NINE_KEYS.map(k => table.literal(TEN[k]))], [NINE_KEYS.concat('g-er-is').sort(), NINE_KEYS.map(k => table.literal(NINE[k]))],
+      'open.js tient les neuf tâches, inchangées, et celle de g-er-is, triées');
+    const CR = course(OP), itemR = CR.NL.content.allItems().find(x => x.id === 'g-er-is');
+    ok(itemR.open === CR.NL.content.openTasks['g-er-is'] && Object.prototype.toString.call(itemR.open.need[0].rx) === '[object RegExp]', 'la tâche de la règle est sur son élément, son rx une expression régulière');
+    same([CR.NL.ex.rubric(itemR.open, itemR.open.model).length, CR.NL.ex.rubric(itemR.open, RRIGHT[0]).length], [2, 2], 'la séance accepte l\'exemple et une bonne réponse de la règle');
+    console.log('  genre open     36 phrases en 2 lots, ' + Object.keys(back).length + ' tâches écrites, rx en expression régulière ; ' + RL.length + ' règles, ' + (Object.keys(TEN).length - 9) + ' tâche écrite dans open.js');
   }
 
   /* ==================================================== les genres d'explications */
