@@ -1274,6 +1274,7 @@ module.exports = {
         ['ask: « tennis » is Dutch the course has, written bare in fr and in en: quote it, or reword'], 'le néerlandais du cours est tout le cours (dutchWords), pas ses seules unités'],
       [r => { r.model = 'Mag ik 4 pistolets, alstublieft?'; r.need[1].any.push('4'); }, [], 'un chiffre n\'est pas du néerlandais : le 4 du min reste nu'],
       [r => { r.need[1].any.push('hoe lang'); }, ['need 2 writes « hoe lang »: the course writes the duration « hoelang » (#128), and test/content.js refuses it'], '« hoe lang » en deux mots, nulle part dans la tâche'],
+      [r => { r.need[1].any.push('hoe', 'lang'); }, [], '« hoe » puis « lang », deux variantes d\'un any, ne font pas « hoe lang » : chaque chaîne se lit seule, comme test/content.js'],
       [r => { r.model = 'Mag ik twee pistolets met jam?'; }, ['the model: « jam » would become Dutch of the course, and test/lang.js 6d.3 then refuses its QUOTE_OK exception (test/lib/quoted.js)'], 'l\'exemple n\'ajoute au cours aucun mot de QUOTE_OK'],
       [r => { r.model = 'Mag ik twee pistolets voor de club?'; }, ['the model: « club » would become Dutch of the course, and patterns[2].explain writes it bare in French and in English (test/lang.js 6d.4)'], 'ni un mot que le cours écrit nu en français et en anglais'],
       [r => { r.ask.en += ' Say hoe lang.'; }, ['ask writes « hoe lang »: the course writes the duration « hoelang » (#128), and test/content.js refuses it'], '« hoe lang » dans ask'],

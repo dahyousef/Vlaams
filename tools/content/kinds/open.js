@@ -201,7 +201,7 @@ function check(row, input, ctx) {
   const HOE = /\bhoe\s+lang\b/i;
   const fields = [['ask', [row.ask.fr, row.ask.en]], ['model', [row.model]]].concat(row.need.map((n, i) =>
     ['need ' + (i + 1), [n.what.fr, n.what.en, n.miss, n.rx || ''].concat(n.any || [])]));
-  fields.forEach(([at, ss]) => { if (HOE.test(ss.join(' '))) out.push(at + ' writes « hoe lang »: the course writes the duration « hoelang » (#128), and test/content.js refuses it'); });
+  fields.forEach(([at, ss]) => { if (ss.some(s => HOE.test(s))) out.push(at + ' writes « hoe lang »: the course writes the duration « hoelang » (#128), and test/content.js refuses it'); });
   /* Ce que le modèle ajoute au cours : Merge le rend néerlandais du cours, que test/lang.js lit en 6d. */
   U.uniq(courseWords(row.model)).filter(w => !F.B.dutch.has(w)).forEach(w => {
     if (QUOTE_OK[w]) out.push('the model: « ' + w + ' » would become Dutch of the course, and test/lang.js 6d.3 then refuses its QUOTE_OK exception (test/lib/quoted.js)');
