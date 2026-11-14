@@ -43,8 +43,8 @@ line of `src/ex/index.js`.
   explanations, written wrong options, open tasks; then the release and the learner's check »).
 - The maintainer's decisions D9–D33, stated below.
 - `GLOSSARY.md`; ADR 0005 (amended); ADR 0006 (no task touches a reset, `base` or sync).
-- The tickets, sub-issues of #12: `{T-kit}` (task 1), `{T-be}` (tasks 2, 5, 6), `{T-notes}` (tasks 7, 8),
-  `{T-open}` (tasks 3, 4, 9, 10). Tasks 11, 12 and 13 carry #12 itself.
+- The tickets, sub-issues of #12: `#144` (task 1), `#145` (tasks 2, 5, 6), `#146` (tasks 7, 8),
+  `#147` (tasks 3, 4, 9, 10). Tasks 11, 12 and 13 carry #12 itself.
 
 ## The maintainer's decisions
 
@@ -194,8 +194,8 @@ whole (in the replay, the 13 rule tasks and one note) and 10 sampled in each kin
 - **Gate 13 is the maintainer's alone,** whoever rules the rest: opening a pull request into `main` waits for the
   maintainer's yes, and merging it is the maintainer's own act (CLAUDE.md, « Ask me first »). The run controller never
   answers it, and a « go on » given for the run is not that yes.
-- **Tickets.** Four sub-issues of #12, filed on the maintainer's word after the plan is approved: `{T-kit}`, `{T-be}`,
-  `{T-notes}`, `{T-open}`; the placeholders are replaced in the plan and the briefs at set-up.
+- **Tickets.** Four sub-issues of #12, filed on the maintainer's word on 14 November 2026: #144 (kit), #145
+  (explanations-be), #146 (notes), #147 (open tasks); #146 blocked by #145.
 - **External data.** Both explanations kinds' Split reads `.cache/kaikki/belgian.tsv` (`kaikki.belgian`, which throws
   when the file is missing). The set-up runs
   `node tools/content/fetch.js . kaikki --from <the main checkout's .superpowers/sdd/phase-4-design/kaikki-2026-11-01>`
@@ -283,16 +283,16 @@ Public repository:
 ## Run order
 
 ```
-1. The kit: the run's push allowed — mechanical — {T-kit} — waits none
-2. The explanations Splits: explanations-be held to the rows owed something; explanations packed — mechanical — {T-be} — waits none
-3. The open kind: 66 phrases of units 13–34 — mechanical — {T-open} — waits none
-4. The open kind: the 13 rules, and open.js a Merge-written table — mechanical — {T-open} — waits 3
-5. FAN explanations-be — fan-out — {T-be} — waits 2
-6. Merge explanations-be — mechanical — {T-be} — waits 5
-7. FAN explanations — fan-out — {T-notes} — waits 2
-8. Merge explanations — mechanical — {T-notes} — waits 7, 6
-9. FAN open — fan-out — {T-open} — waits 3, 4
-10. Merge open — mechanical — {T-open} — waits 9
+1. The kit: the run's push allowed — mechanical — #144 — waits none
+2. The explanations Splits: explanations-be held to the rows owed something; explanations packed — mechanical — #145 — waits none
+3. The open kind: 66 phrases of units 13–34 — mechanical — #147 — waits none
+4. The open kind: the 13 rules, and open.js a Merge-written table — mechanical — #147 — waits 3
+5. FAN explanations-be — fan-out — #145 — waits 2
+6. Merge explanations-be — mechanical — #145 — waits 5
+7. FAN explanations — fan-out — #146 — waits 2
+8. Merge explanations — mechanical — #146 — waits 7, 6
+9. FAN open — fan-out — #147 — waits 3, 4
+10. Merge open — mechanical — #147 — waits 9
 11. Docs: TESTING.md's two exceptions; a wording for #12 — mechanical — #12 — waits 6, 8, 10
 12. GATE: the learner pass in Edge, and the reading page — gate — #12 — waits 6, 8, 10, 11
 13. GATE: the release, phase-4 into main — gate — #12 — waits 12
@@ -401,7 +401,7 @@ Left out of this plan, for the maintainer:
 ### Task 1: The kit: the run's push allowed
 
 Class: mechanical
-Ticket: {T-kit}
+Ticket: #144
 Promises: none
 Why: In plan 4c the auto-mode classifier refused two task controllers' `git push origin HEAD:phase-4c`; auto mode
 drops the maintainer's broad shell allow rules, but narrow exact rules stay in effect, for subagents too
@@ -571,14 +571,14 @@ the run's worktree, with this command, through the PowerShell tool (never Bash: 
   `FAIL:` line.
 
 - [ ] **Step 6: Commit.** `git add docs/agents/plan-runs/run-controller.md docs/agents/plan-runs/task-controller.md test/hooks.js`,
-  then `git commit -m "docs(plan-runs): the run's push is allowed by an exact rule at launch, and claude comes from PATH ({T-kit})"`.
+  then `git commit -m "docs(plan-runs): the run's push is allowed by an exact rule at launch, and claude comes from PATH (#144)"`.
 
 Done when: `node test/hooks.js .` prints `ALL CHECKS PASSED`.
 
 ### Task 2: The explanations Splits: explanations-be held to the rows owed something; explanations packed
 
 Class: mechanical
-Ticket: {T-be}
+Ticket: #145
 Promises: none
 Why: `split('be')` cuts every Flemish item of the course, 122 rows, though only 34 owe anything: the 34 that
 « Comment le dit-on ici ? » asks with no decoys written (`test/content.js` « sans leurres », `DECOY_BUDGET` 34), the 30
@@ -746,7 +746,7 @@ same(rule('overleven:p0', { decoys: ['Ik werk bij {bedrijf}.', DECOYS['overleven
   prints `notes-1 37`, `notes-2 39`, `notes-3 4` (80 rows, 22 units, whole units each).
 
 - [ ] **Step 7: Commit.** `git add tools/content/lib/explain.js test/lib/text.js test/content.js test/tools/fanout.js`,
-  then `git commit -m "fix(content): explanations-be Split held to the rows owed something, explanations packed in whole-unit batches; Check refuses what the suite would of a decoy, an also or a note ({T-be})"`.
+  then `git commit -m "fix(content): explanations-be Split held to the rows owed something, explanations packed in whole-unit batches; Check refuses what the suite would of a decoy, an also or a note (#145)"`.
 
 Done when: Step 5's two runs print their lines, Step 6's Splits print theirs, and `git show --stat HEAD` names exactly
 those four files.
@@ -754,7 +754,7 @@ those four files.
 ### Task 3: The open kind: 66 phrases of units 13–34
 
 Class: mechanical
-Ticket: {T-open}
+Ticket: #147
 Promises: none
 Why: D33 gives units 13–34 three open tasks a unit, 66 phrases, and the `open` kind's `PHRASES` takes them after the
 first 36. Today's Split cuts every phrase of `PHRASES`, so FAN open would redraft the 36 tasks already merged
@@ -937,7 +937,7 @@ units-31-34 12
   vrijetijd gevoel beschrijven school afspraak | team reis natuur spoed: 66 rows.
 
 - [ ] **Step 5: Commit.** `git add tools/content/kinds/open.js test/tools/fanout.js`, message
-  `feat(content): the open kind takes D33's 66 phrases of units 13–34, its Split held to the phrases without a task, in batches of six whole units ({T-open})`,
+  `feat(content): the open kind takes D33's 66 phrases of units 13–34, its Split held to the phrases without a task, in batches of six whole units (#147)`,
   body « PHRASES takes D33's 66 phrases after the first 36. Split cuts only the phrases without a task, plus the ids
   named, in batches of six whole units. Check refuses what test/content.js and test/lang.js 6d would refuse after
   Merge. »
@@ -948,7 +948,7 @@ commit holds the two files only.
 ### Task 4: The open kind: the 13 rules, and open.js a Merge-written table
 
 Class: mechanical
-Ticket: {T-open}
+Ticket: #147
 Promises: none
 Why: The 13 rules of `grammar.a1c.js` have no open task; theirs join the phrases' in the kind `open` (the same
 Check, readers and Merge). `src/content/open.js` is written by hand, and the kit's tables are its only Merge path,
@@ -1172,7 +1172,7 @@ rules 13
 
 - [ ] **Step 7: Commit.** `git add tools/content/kinds/open.js src/content/open.js src/content/index.js src/ex/index.js
   index.html artifact.html test/tools/fanout.js test/lang.js CLAUDE.md`. Message: `feat(content): the open kind cuts
-  the 13 grammar rules, and src/content/open.js becomes its Merge-written table ({T-open})`. Body: « The kind cuts a
+  the 13 grammar rules, and src/content/open.js becomes its Merge-written table (#147)`. Body: « The kind cuts a
   rules batch after the phrase batches: the 13 grammar rules of units 13-34, read whole at review.
   src/content/open.js becomes the kind's table, keyed by rule id, its nine tasks unchanged; the app reads it as
   NL.content.openTasks through index.js. The answer box of an open task declares Dutch. »
@@ -1186,7 +1186,7 @@ Done when:
 ### Task 5: FAN explanations-be
 
 Class: fan-out
-Ticket: {T-be}
+Ticket: #145
 Kind: explanations-be
 Drafting after: 2
 Split: node tools/content/split.js . "<WS>/drafts/explanations-be"
@@ -1287,7 +1287,7 @@ Unsure rows first. Then, for every row:
 ### Task 6: Merge explanations-be
 
 Class: mechanical
-Ticket: {T-be}
+Ticket: #145
 Merges: explanations-be (task 5)
 Promises: none
 Why: task 5's rows give the 34 Flemish items of units 13–34 that « Comment le dit-on ici ? » asks their two written
@@ -1325,7 +1325,7 @@ Notes:
   against 80; measured `15941 contrôles, 2 ÉCHEC(S)`).
 - Commit message: `feat(content): Merge explanations-be: written decoys for the 34 Flemish items of « Comment le dit-on
   ici ? » that had none, and notes for the 30 Flemish phrases that had none; DECOY_BUDGET back to its strict 0,
-  NOTE_BUDGET pinned at 80 ({T-be})`, no trailer. The commit holds the three tables, both html and the two files.
+  NOTE_BUDGET pinned at 80 (#145)`, no trailer. The commit holds the three tables, both html and the two files.
 
 **The proof.** Fix copy `<SP2>\fixZ` (CRLF clone, base `8d12190`, task 4 at `04d7d4c`), commit `685d07b` « task 6
 (fixed) »; patch `%USERPROFILE%\Desktop\Projects\Vlaams\.superpowers\sdd\phase-4-design\plan-4d\parts\patches\task-6.fixed.patch`. Every line below is measured there in run order. Hand rows
@@ -1425,7 +1425,7 @@ task 4).
 ### Task 7: FAN explanations
 
 Class: fan-out
-Ticket: {T-notes}
+Ticket: #146
 Kind: explanations
 Drafting after: 2
 Split: node tools/content/split.js . "<WS>/drafts/explanations"
@@ -1549,7 +1549,7 @@ Unsure rows first. Then, for every row:
 ### Task 8: Merge explanations
 
 Class: mechanical
-Ticket: {T-notes}
+Ticket: #146
 Merges: explanations (task 7)
 Promises: none
 Why: task 7's rows give the 80 phrases of units 13–34 that are not Flemish items their note in French and in
@@ -1582,7 +1582,7 @@ Notes:
   own Merge (80 rows); the proof's 4 hand rows are not in it. With the patch and no merged rows, `node test/content.js
   .` fails (34 and 110 against 0; measured `15940 contrôles, 2 ÉCHEC(S)`).
 - Commit message: `feat(content): Merge explanations: notes for the 80 phrases of units 13–34 that had none;
-  NOTE_BUDGET back to its strict 0 ({T-notes})`, no trailer. The commit holds `notes.js`, `also.js` if Merge set
+  NOTE_BUDGET back to its strict 0 (#146)`, no trailer. The commit holds `notes.js`, `also.js` if Merge set
   one, both html and the two files.
 
 **The proof.** Fix copy `<SP2>\fixZ` (CRLF clone, base `8d12190`, task 6 at `685d07b`), commit `e944be6` « task 8
@@ -1717,7 +1717,7 @@ and `node test/typed.js .` exit 0 with no `FAIL`; `grep -c "NOTE_BUDGET\|DECOY_B
 ### Task 9: FAN open
 
 Class: fan-out
-Ticket: {T-open}
+Ticket: #147
 Kind: open
 Drafting after: 3, 4
 Split: node tools/content/split.js . "<WS>/drafts/open"
@@ -1841,7 +1841,7 @@ The 13 rule tasks are read whole (`readWhole` returns `'rule task'` for each); t
 ### Task 10: Merge open
 
 Class: mechanical
-Ticket: {T-open}
+Ticket: #147
 Merges: open (task 9)
 Promises: none
 Why: task 9's rows give the 66 phrases of units 13–34 that D33 picked their open task (« réponse libre », served at
@@ -1875,7 +1875,7 @@ Notes:
 - `task-10.fixed.patch` is the proof's commit: its two tables hold the 4 hand rows below, not the run's 79. In the run,
   the tables and the html come from task 9's rows; nothing else in the patch is needed.
 - Commit message: `feat(content): Merge open: an open task for the 66 phrases of units 13 to 34 that D33 picked, and
-  for the 13 grammar rules of those units, in open.phrases.js and open.js ({T-open})`, no trailer.
+  for the 13 grammar rules of those units, in open.phrases.js and open.js (#147)`, no trailer.
 
 **The proof.** Fix copy `<SP2>\fixZ` (CRLF clone, base `8d12190`; task 8 (fixed) at `e944be6`), commit `c950443`
 « task 10 (fixed) »; patch
