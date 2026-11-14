@@ -59,10 +59,10 @@ const EN_IN_FR = 'the and of is are to with for you it this that not was were ha
 const flemish = (src, NL) => typeof src.be === 'string' && NL.util.norm(src.be) !== NL.util.norm(src.nl);
 /* « Comment le dit-on ici ? » pose l'élément : un barreau de son genre l'offre, et l'élément s'y prête. */
 const vlaams = (src, NL) => NL.srs.RUNGS[src.kind].some(set => set.indexOf('vlaams') >= 0) && NL.srs.supports(src, 'vlaams');
-/* Une note lue dans les deux langues : ce que test/content.js compte (NOTE_BUDGET). */
+/* Une note lue dans les deux langues : ce que test/content.js exige de chaque élément (« explications », exigé : 0). */
 const noted = src => !!src.note && has(src.note.fr) && has(src.note.en);
 /* Ce que explanations-be doit à une source : ses leurres quand l'exercice la pose sans eux, sa note quand elle
-   ne se lit pas dans les deux langues. supports() seul, comme test/content.js compte DECOY_BUDGET. */
+   ne se lit pas dans les deux langues. supports() seul, comme test/content.js compte « sans leurres » (exigé : 0). */
 const owes = (src, NL) => (NL.srs.supports(src, 'vlaams') && !src.decoys) || !noted(src);
 /* La bonne réponse de « Comment le dit-on ici ? », telle que l'exercice la juge. */
 function right(src, NL) {
