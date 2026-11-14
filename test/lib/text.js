@@ -66,6 +66,6 @@ const uTag = fr => (frTu(fr) ? '(informal, Flemish u)' : '(formal)');
 const cited = s => Array.from(String(s).matchAll(/[«“]([^«»“”]*)[»”]/g), m => m[1]);
 const says = (q, w) => new RegExp('(^|[^a-zà-ÿ])' + w + '(?![a-zà-ÿ])', 'i').test(q);
 const citesKunde = s => cited(s).some(x => says(x, 'kunde'));
-const wrongKunde = s => { const q = cited(s); return q.some(x => says(x, 'kunde')) && q.some(hasU) && !q.some(x => says(x, 'kunt ge')); };
+const wrongKunde = s => { const q = cited(s); return citesKunde(s) && q.some(hasU) && !q.some(x => says(x, 'kunt ge')); };
 
 module.exports = { QUOTES, oneLine, sig, untoken, quotes, strayQuotes, hasU, uTag, citesKunde, wrongKunde };
