@@ -22,7 +22,6 @@ NL.content.byDutch['also'] = {
   'dank u wel': ['dank u', 'bedankt'],
   'de dokter': ['de huisdokter'],
   'de frigo': ['de koelkast'],
-  'de huisarts': ['de huisdokter'],
   'de lader': ['de oplader'],
   'de living': ['de woonkamer'],
   'de lucht': ['de hemel'],

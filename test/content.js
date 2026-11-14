@@ -143,23 +143,19 @@ NL.state.open().then(() => {
   console.log('  leurres         ' + decoyed.length + ' élément(s) avec leurs leurres, ' + wrongDecoys.length + ' faute(s)');
 
   /* Un élément de « Comment le dit-on ici ? » sans leurres écrits tire ses options au hasard, et la
-     bonne se devine. Chacun a les siens, que le genre explanations-be écrit dans src/content/decoys.js.
-     Les formes flamandes des unités 13 à 34 (Merge flemish du plan 4c) attendent les leurs du plan 4d :
-     DECOY_BUDGET les compte, épinglé dans les deux sens comme AHEAD_BUDGET, et le Merge explanations-be
-     du plan 4d, qui écrit leurs leurres, le ramène à 0 dans le même commit (D29). */
-  const DECOY_BUDGET = 34;
+     bonne se devine. Chacun a les siens, que le genre explanations-be écrit dans src/content/decoys.js. */
   const undecoyed = items.filter(x => NL.srs.supports(x, 'vlaams') && !x.decoys).map(x => x.id);
-  ok(undecoyed.length <= DECOY_BUDGET, undecoyed.length + ' élément(s) de « Comment le dit-on ici ? » sans leurres écrits, budget ' + DECOY_BUDGET + ' : ' + undecoyed.slice(0, 6).join(', '));
-  ok(undecoyed.length >= DECOY_BUDGET, 'seulement ' + undecoyed.length + ' élément(s) sans leurres écrits : baisser DECOY_BUDGET à ' + undecoyed.length + ' pour verrouiller le gain');
-  console.log('  sans leurres    ' + undecoyed.length + ' élément(s) de « Comment le dit-on ici ? » (budget ' + DECOY_BUDGET + ')');
+  ok(undecoyed.length === 0, undecoyed.length + ' élément(s) de « Comment le dit-on ici ? » sans leurres écrits : ' + undecoyed.slice(0, 6).join(', '));
+  console.log('  sans leurres    ' + undecoyed.length + ' élément(s) de « Comment le dit-on ici ? » (exigé : 0)');
 
   /* L'explication d'un élément (NL.ex.explanation : la note d'un mot ou d'une phrase, la règle d'un
      motif) se lit dans les deux langues d'affichage. Chacun a la sienne : les genres explanations-be
      et explanations écrivent celles des mots et des phrases dans src/content/notes.js. Les phrases prises
      dans Tatoeba pour les unités 13 à 34 (plan 4c, src/content/phrases.a1c.js) attendent la leur du plan 4d :
-     NOTE_BUDGET les compte, épinglé dans les deux sens comme AHEAD_BUDGET, et le Merge explanations du plan 4d,
-     qui écrit leurs notes, le ramène à 0 dans le même commit (D30). */
-  const NOTE_BUDGET = 110;
+     NOTE_BUDGET les compte, épinglé dans les deux sens comme AHEAD_BUDGET. Le Merge explanations-be du plan 4d
+     a écrit celles des phrases flamandes (110 → 80) ; le Merge explanations du plan 4d, qui écrit les autres,
+     le ramène à 0 dans le même commit (D30). */
+  const NOTE_BUDGET = 80;
   const bilingual = x => !!x && has(x.fr) && has(x.en);
   const unexplained = items.filter(x => !bilingual(NL.ex.explanation(x))).map(x => x.id);
   ok(unexplained.length <= NOTE_BUDGET, unexplained.length + ' élément(s) sans explication en français et en anglais, budget ' + NOTE_BUDGET + ' : ' + unexplained.slice(0, 6).join(', '));
