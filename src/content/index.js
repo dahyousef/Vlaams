@@ -3,6 +3,9 @@
    words and phrases are only ever appended, and `test/content.js` pins every id
    to its Dutch. */
 NL.content = NL.content || {};
+/* The tasks of the grammar rules are the open kind's table src/content/open.js, keyed by
+   rule id; the app reads them as NL.content.openTasks, the same object. */
+NL.content.openTasks = (NL.content.byDutch || {}).open || {};
 (function () {
   'use strict';
   let flat = null, index = null, RAW = null;

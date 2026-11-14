@@ -2,7 +2,8 @@
    branche sur SessionStart (compact|resume), et ce qu'il imprime entre dans le contexte de la session. Le crochet
    du transcript (startup|clear) imprime le chemin que Claude Code lui donne sur stdin. verifier.md remet les
    sorties du build avant de vérifier l'arbre et laisse son retour dans un fichier que son contrôleur lit. Le texte
-   du kit ne porte aucun caractère de contrôle, et sa commande de lancement nomme claude.exe en entier. Le kit dit
+   du kit ne porte aucun caractère de contrôle, et sa commande de lancement prend claude dans le PATH ; son
+   --settings arrive entier par PowerShell 5.1 et n'autorise que la commande Push de run.md. Le kit dit
    comment un agent en attend un autre, wait-suite.sh attend la fin de la suite, et fanout.js s'arrête à sa limite
    de temps. On lance les commandes telles que Claude Code les lance. */
 const path = require('path'), fs = require('fs'), os = require('os'), { spawnSync } = require('child_process');
@@ -52,13 +53,13 @@ ok(rc.includes("This session's transcript"), 'run-controller.md nomme la ligne d
 ok(!rc.includes('newest `.jsonl`'), 'run-controller.md ne devine plus le transcript par le .jsonl le plus récent');
 
 // Une commande du kit est copiée telle quelle. Un fichier écrit par une chaîne JS aux barres obliques inverses
-// non doublées change « \b » en caractère de contrôle et efface les autres : la commande ne trouve plus claude.exe.
+// non doublées change « \b » en caractère de contrôle et efface les autres : la commande copiée ne marche plus.
 const kit = path.join(ROOT, 'docs/agents/plan-runs');
 for (const f of fs.readdirSync(kit).filter(f => f.endsWith('.md'))) {
   ok(!/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(fs.readFileSync(path.join(kit, f), 'utf8')), f + ' ne contient aucun caractère de contrôle');
 }
-const launches = rc.split('$env:USERPROFILE').slice(1);
-ok(launches.length >= 2 && launches.every(s => s.startsWith('\\.local\\bin\\claude.exe')), 'run-controller.md nomme claude.exe par son chemin entier, au lancement et dans la fenêtre');
+// Le claude.exe de ~\.local\bin n'existe plus sur ce poste : claude vient de npm, par le PATH.
+ok(!rc.includes('.local\\bin') && /^ {4}claude --bg /m.test(rc) && rc.includes("'-Command', 'claude attach <id>'"), 'run-controller.md prend claude dans le PATH, au lancement et dans la fenêtre');
 
 // Les agents tournent en arrière-plan : « au premier plan » ne se suit pas, et « ne termine jamais ton tour » défend
 // ce qui les fait attendre. La règle qui a tenu en phase 4a se lit dans le kit, avec son script.
@@ -105,6 +106,54 @@ for (const f of ['task-controller.md', 'batch-controller.md', 'closing-review.md
 }
 ok(/Step 4 starts once all of them have returned/.test(oneLine('closing-review.md')), 'closing-review.md attend tous ses relecteurs');
 ok(/^\*\.sh text eol=lf$/m.test(fs.readFileSync(path.join(ROOT, '.gitattributes'), 'utf8')), '.gitattributes garde les scripts en LF');
+
+// La commande Push de run.md part sans le classifieur du mode auto, qui a refusé deux poussées en plan 4c : le
+// lancement d'une séance l'autorise, elle seule, dans --settings, que la session garde quand le superviseur la
+// redémarre. PowerShell 5.1 passe ce JSON au programme à sa façon : on refait son passage, calé sur des cas mesurés.
+function ps51Argv(args) {
+  // PowerShell 5.1 n'entoure un argument de guillemets que s'il y trouve un blanc après un nombre pair de « " »,
+  // échappés compris. Le programme relit la ligne selon les règles de Microsoft C : \" est littéral, " bascule.
+  const line = args.map(a => {
+    let n = 0;
+    for (const c of a) { if (c === '"') n++; else if (/\s/.test(c) && n % 2 === 0) return '"' + a + '"'; }
+    return a;
+  }).join(' ');
+  const out = [];
+  let cur = '', inArg = false, inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    if (line[i] === '\\') {
+      let k = 0;
+      while (line[i] === '\\') { k++; i++; }
+      if (line[i] === '"') { cur += '\\'.repeat(k >> 1); if (k % 2) cur += '"'; else inQ = !inQ; } else { cur += '\\'.repeat(k); i--; }
+      inArg = true;
+    } else if (line[i] === '"') { inQ = !inQ; inArg = true; }
+    else if (/\s/.test(line[i]) && !inQ) { if (inArg) out.push(cur); cur = ''; inArg = false; }
+    else { cur += line[i]; inArg = true; }
+  }
+  if (inArg) out.push(cur);
+  return out;
+}
+const passed = s => JSON.stringify(ps51Argv([s]));
+ok(ps51Argv([String.raw`{\"env\":{\"CLAUDE_CODE_AUTO_COMPACT_WINDOW\":\"200000\"},\"permissions\":{\"allow\":[\"Bash(git push origin HEAD:phase-test)\",\"PowerShell(git push origin HEAD:phase-test)\"]}}`]).length === 7, 'PowerShell 5.1 (mesuré) : un JSON échappé dont seules les chaînes ont des blancs arrive en sept morceaux');
+ok(passed('{"permissions":{"allow":["Bash(git push origin HEAD:phase-test)"]}}') === JSON.stringify(['{permissions:{allow:[Bash(git push origin HEAD:phase-test)]}}']), 'PowerShell 5.1 (mesuré) : des guillemets non échappés se perdent');
+ok(passed(String.raw`{\"env\": {\"CLAUDE_CODE_AUTO_COMPACT_WINDOW\":\"200000\"}, \"permissions\": {\"allow\":[\"Bash(git push origin HEAD:phase-test)\",\"PowerShell(git push origin HEAD:phase-test)\"]}}`) === JSON.stringify(['{"env": {"CLAUDE_CODE_AUTO_COMPACT_WINDOW":"200000"}, "permissions": {"allow":["Bash(git push origin HEAD:phase-test)","PowerShell(git push origin HEAD:phase-test)"]}}']), 'PowerShell 5.1 (mesuré) : un blanc après un nombre pair de guillemets fait passer le JSON entier');
+// claude est claude.ps1 de npm (mesuré) : PowerShell garde pour lui un « -- » nu passé à un script ; « '--' » passe.
+const psWords = s => (s.match(/'(?:[^']|'')*'|"[^"]*"|[^\s'"]+/g) || []).filter(w => w !== '--').map(w => w[0] === "'" ? w.slice(1, -1).replace(/''/g, "'") : w[0] === '"' ? w.slice(1, -1) : w);
+const viaShim = s => JSON.stringify(ps51Argv(psWords(s).slice(1)));
+ok(viaShim(String.raw`claude --model opus --settings '{\"env\": {}}' -- "-x prompt"`) === JSON.stringify(['--model', 'opus', '--settings', '{"env": {}}', '-x prompt']), 'PowerShell 5.1 (mesuré) : claude.ps1 ne passe pas un « -- » nu');
+ok(viaShim(String.raw`claude --model opus --settings '{\"env\": {}}' '--' "-x prompt"`) === JSON.stringify(['--model', 'opus', '--settings', '{"env": {}}', '--', '-x prompt']), 'PowerShell 5.1 (mesuré) : claude.ps1 passe « \'--\' »');
+const launchArgv = ps51Argv(psWords((rc.match(/^ {4}claude --bg .*$/m) || [''])[0]).slice(1));
+ok(launchArgv.length > 2 && launchArgv[launchArgv.length - 2] === '--' && launchArgv[launchArgv.length - 1] === '<prompt>', 'le lancement passe « -- » à claude.exe, juste avant la consigne');
+ok(/^ {4}claude --bg .* '--' '<prompt>'$/m.test(rc), 'la consigne du lancement est entre apostrophes : PowerShell ne touche ni à « $ » ni aux accents graves');
+const atSettings = launchArgv.indexOf('--settings');
+let launchSettings = null;
+try { launchSettings = JSON.parse(launchArgv[atSettings + 1]); } catch (e) { launchSettings = null; }
+ok(atSettings > 0 && launchArgv.lastIndexOf('--settings') === atSettings && launchSettings, 'le --settings du lancement arrive en un seul JSON, tel que PowerShell 5.1 le passe');
+ok(launchSettings && Object.keys(launchSettings).join() === 'env,permissions' && JSON.stringify(launchSettings.env) === '{"CLAUDE_CODE_AUTO_COMPACT_WINDOW":"200000"}', 'le --settings du lancement porte env et permissions, rien d\'autre');
+const runPush = (rc.match(/^\s*Push: (git push origin HEAD:<branch>)\s/m) || [])[1];
+ok(runPush && launchSettings && JSON.stringify(launchSettings.permissions) === JSON.stringify({ allow: ['Bash(' + runPush + ')', 'PowerShell(' + runPush + ')'] }), 'le lancement autorise la commande Push de run.md, elle seule, pour Bash et PowerShell');
+ok(!launchArgv.some(a => /^--(permission-mode|dangerously-skip-permissions|allow-dangerously-skip-permissions|allowedTools|allowed-tools|disallowedTools)$/.test(a)), 'le lancement ne change ni le mode ni d\'autres règles');
+ok(/run `run\.md`'s push command, from the worktree, alone and word for word: no `cd` before it, no pipe or redirection after it/.test(tc) && /If it is refused anyway, return `needs ruling` with the refusal line/.test(tc) && /so the classifier judges it; if it refuses, return `needs ruling` the\s+same way/.test(tc), 'task-controller.md lance la commande Push seule et telle quelle, et va en question si elle est refusée, en relecture de repli aussi');
 
 // wait-suite.sh : une suite finie après son lancement rend FINISHED ; le `exit=` de la suite d'avant ne compte pas.
 const waitSuite = path.join(kit, 'wait-suite.sh').replace(/\\/g, '/');

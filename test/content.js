@@ -11,7 +11,7 @@ const spelling = require('./lib/spelling');
 const sequence = require('./lib/sequence');
 const { raw, owed, at, owedTables, has } = require('./lib/prose');
 const tree = require('./lib/tree');
-const { oneLine, sig, hasU, uTag } = require('./lib/text');
+const { oneLine, sig, hasU, uTag, citesKunde, wrongKunde } = require('./lib/text');
 const ROOT = process.argv[2] || path.join(__dirname, '..');
 
 let fails = 0, checks = 0;
@@ -143,28 +143,18 @@ NL.state.open().then(() => {
   console.log('  leurres         ' + decoyed.length + ' élément(s) avec leurs leurres, ' + wrongDecoys.length + ' faute(s)');
 
   /* Un élément de « Comment le dit-on ici ? » sans leurres écrits tire ses options au hasard, et la
-     bonne se devine. Chacun a les siens, que le genre explanations-be écrit dans src/content/decoys.js.
-     Les formes flamandes des unités 13 à 34 (Merge flemish du plan 4c) attendent les leurs du plan 4d :
-     DECOY_BUDGET les compte, épinglé dans les deux sens comme AHEAD_BUDGET, et le Merge explanations-be
-     du plan 4d, qui écrit leurs leurres, le ramène à 0 dans le même commit (D29). */
-  const DECOY_BUDGET = 34;
+     bonne se devine. Chacun a les siens, que le genre explanations-be écrit dans src/content/decoys.js. */
   const undecoyed = items.filter(x => NL.srs.supports(x, 'vlaams') && !x.decoys).map(x => x.id);
-  ok(undecoyed.length <= DECOY_BUDGET, undecoyed.length + ' élément(s) de « Comment le dit-on ici ? » sans leurres écrits, budget ' + DECOY_BUDGET + ' : ' + undecoyed.slice(0, 6).join(', '));
-  ok(undecoyed.length >= DECOY_BUDGET, 'seulement ' + undecoyed.length + ' élément(s) sans leurres écrits : baisser DECOY_BUDGET à ' + undecoyed.length + ' pour verrouiller le gain');
-  console.log('  sans leurres    ' + undecoyed.length + ' élément(s) de « Comment le dit-on ici ? » (budget ' + DECOY_BUDGET + ')');
+  ok(undecoyed.length === 0, undecoyed.length + ' élément(s) de « Comment le dit-on ici ? » sans leurres écrits : ' + undecoyed.slice(0, 6).join(', '));
+  console.log('  sans leurres    ' + undecoyed.length + ' élément(s) de « Comment le dit-on ici ? » (exigé : 0)');
 
   /* L'explication d'un élément (NL.ex.explanation : la note d'un mot ou d'une phrase, la règle d'un
      motif) se lit dans les deux langues d'affichage. Chacun a la sienne : les genres explanations-be
-     et explanations écrivent celles des mots et des phrases dans src/content/notes.js. Les phrases prises
-     dans Tatoeba pour les unités 13 à 34 (plan 4c, src/content/phrases.a1c.js) attendent la leur du plan 4d :
-     NOTE_BUDGET les compte, épinglé dans les deux sens comme AHEAD_BUDGET, et le Merge explanations du plan 4d,
-     qui écrit leurs notes, le ramène à 0 dans le même commit (D30). */
-  const NOTE_BUDGET = 110;
+     et explanations écrivent celles des mots et des phrases dans src/content/notes.js. */
   const bilingual = x => !!x && has(x.fr) && has(x.en);
   const unexplained = items.filter(x => !bilingual(NL.ex.explanation(x))).map(x => x.id);
-  ok(unexplained.length <= NOTE_BUDGET, unexplained.length + ' élément(s) sans explication en français et en anglais, budget ' + NOTE_BUDGET + ' : ' + unexplained.slice(0, 6).join(', '));
-  ok(unexplained.length >= NOTE_BUDGET, 'seulement ' + unexplained.length + ' élément(s) sans explication : baisser NOTE_BUDGET à ' + unexplained.length + ' pour verrouiller le gain');
-  console.log('  explications    ' + unexplained.length + ' / ' + items.length + ' élément(s) sans explication dans les deux langues (budget ' + NOTE_BUDGET + ')');
+  ok(unexplained.length === 0, unexplained.length + ' élément(s) sans explication en français et en anglais : ' + unexplained.slice(0, 6).join(', '));
+  console.log('  explications    ' + unexplained.length + ' / ' + items.length + ' élément(s) sans explication dans les deux langues (exigé : 0)');
 
   /* Une réponse libre se note sur ce qu'elle contient, par le barème de la séance
      (NL.ex.rubric). L'exemple, montré après « Vérifier », coche chaque besoin. Et chaque
@@ -504,17 +494,14 @@ NL.state.open().then(() => {
   /* Une note qui cite « kunde » à côté d'un « u » (« kunt u ») cite aussi « kunt ge » : « kunde » est « kunt ge »
      contracté, et c'est le « ge » flamand qui vaut pour u comme pour je. « Kunde » qui remplacerait « kunt u » est
      l'erreur que #12 corrige (issuecomment-6338329078). */
-  { const cited = s => Array.from(String(s).matchAll(/[«“]([^«»“”]*)[»”]/g), m => m[1]);
-    const says = (q, w) => new RegExp('(^|[^a-zà-ÿ])' + w + '(?![a-zà-ÿ])', 'i').test(q);
-    const wrongKunde = s => { const q = cited(s); return q.some(x => says(x, 'kunde')) && q.some(hasU) && !q.some(x => says(x, 'kunt ge')); };
-    ok(wrongKunde('À l’oral, « kunde » remplace « kunt u ».') && wrongKunde('“Kunde” covers “kunt u”.') &&
+  { ok(wrongKunde('À l’oral, « kunde » remplace « kunt u ».') && wrongKunde('“Kunde” covers “kunt u”.') &&
       !wrongKunde('« Kunde » est « kunt ge » contracté, pas « kunt u ».') && !wrongKunde('« Kunde » se dit à l’oral.'),
       'kunde : la garde doit voir « kunde » cité avec « kunt u » sans « kunt ge », et cela seul');
     const notes = (NL.content.byDutch || {}).notes || {};
     let kunde = 0;
     Object.keys(notes).forEach(nl => ['fr', 'en'].forEach(l => {
       const s = (notes[nl] || {})[l];
-      if (typeof s !== 'string' || !cited(s).some(x => says(x, 'kunde'))) return;
+      if (typeof s !== 'string' || !citesKunde(s)) return;
       kunde++;
       ok(!wrongKunde(s), 'la note (' + l + ') de « ' + nl + ' » cite « kunde » et un « u » sans « kunt ge » : « kunde » est « kunt ge » contracté, pas « kunt u » : « ' + s + ' »');
     }));

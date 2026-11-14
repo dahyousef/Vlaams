@@ -217,15 +217,10 @@ dessous, pour que le gain soit verrouillé. Le premier a fait deux exceptions : 
 monté de 61 à 129 avec les unités 13–34, puis de 129 à 136 avec les règles de
 `grammar.a1c.js`, sans qu'aucune phrase change. Ces phrases employaient déjà des mots
 que le cours n'enseignait nulle part, un emprunt que rien ne comptait ; les unités,
-puis les règles, en les enseignant plus tard, l'ont révélé. Une troisième exception, temporaire, vient du
-plan 4c : les formes flamandes et les phrases des unités 13 à 34 y arrivent avant leurs leurres écrits et
-leurs notes, si bien que `DECOY_BUDGET` et `NOTE_BUDGET`, ci-dessous, sont montés de 0 ; le plan 4d écrit
-ces leurres et ces notes et les ramène à 0 avant la mise en ligne (#12). Les leurres, les explications et les
-guillemets n'en ont plus, à deux exceptions près : `content.js` exige que chaque élément de « Comment le
+puis les règles, en les enseignant plus tard, l'ont révélé. Les leurres, les explications et les
+guillemets n'en ont plus : `content.js` exige que chaque élément de « Comment le
 dit-on ici ? » ait ses leurres et chaque élément son explication en français et
-en anglais (la note d'un mot ou d'une phrase, la règle d'un motif) — sauf, jusqu'au
-plan 4d, les formes flamandes et les phrases des unités 13 à 34, que `DECOY_BUDGET`
-et `NOTE_BUDGET` comptent, épinglés dans les deux sens —, et
+en anglais (la note d'un mot ou d'une phrase, la règle d'un motif), et
 `lang.js` que la prose du cours ne mette entre guillemets que du néerlandais
 (une traduction va entre parenthèses).
 
@@ -280,8 +275,11 @@ Et ce qu'aucun d'eux ne voit : l'idiome, le registre, l'ordre des mots, si une
 phrase vaut la peine d'être apprise. Les six scénarios écrits à la main et les
 antisèches ne passent pas par le contrôle d'orthographe ; les quatre conversations du
 genre `scenarios` y passent, par son Check. Et aucun contrôle ne dit si la règle
-d'une fiche est vraie ni si une conversation sonne flamand : ce sont les 17 lignes
-du genre `grammar` et du genre `scenarios` que le mainteneur lit entières.
+d'une fiche est vraie, si une conversation sonne flamand, si la réponse libre d'une
+règle la fait employer, ni si une nouvelle forme « on dit aussi » se dit en Flandre :
+ce sont les 17 lignes du genre `grammar` et du genre `scenarios`, les 13 tâches de
+règle du genre `open` et chaque nouvelle forme « on dit aussi » que le mainteneur
+lit entières.
 
 ## Le passage complet du 30 septembre 2026
 
@@ -314,5 +312,5 @@ test de placement, la dictée plus tôt, la série et le défi.
 
 ## Encore ouvert
 
-- Le contenu reste le plafond : 1158 éléments, tous de niveau A1 ; les unités 13 à 34 ont leurs mots, treize règles de grammaire (neuf unités), quatre conversations et leurs phrases prises dans Tatoeba (cinq par unité, Merge phrases du plan 4c), dont les explications attendent le plan 4d (`NOTE_BUDGET` dans `test/content.js`), et leurs formes flamandes (Merge flemish du plan 4c), dont les leurres écrits attendent le plan 4d (`DECOY_BUDGET`).
+- Le contenu reste le plafond : 1158 éléments, tous de niveau A1 ; les unités 13 à 34 ont leurs mots, treize règles de grammaire (neuf unités), quatre conversations et leurs phrases prises dans Tatoeba (cinq par unité, Merge phrases du plan 4c), avec leurs explications (Merge explanations-be et Merge explanations du plan 4d), et leurs formes flamandes (Merge flemish du plan 4c), avec leurs leurres écrits (Merge explanations-be du plan 4d) ; trois de ces phrases par unité et chacune des treize règles ont leur réponse libre (Merge open du plan 4d).
 - 17 mots sur 912 n'ont pas encore de phrase d'exemple (comptés après Merge examples-gen du plan 4c) : ceux dont Tatoeba avait des candidates mais que le rédacteur a passés faute d'une qui convienne, qui attendent (D14).

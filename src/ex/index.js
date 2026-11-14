@@ -675,7 +675,7 @@ NL.ex = (function () {
     view(t, L, phase) {
       const met = phase === 'ask' ? null : rubric(t.task, L.input);
       return '<p class="sentence prompt"' + NL.gloss.langAttr(t.task.ask) + '>' + NL.gloss.quoted(t.task.ask) + '</p>' +
-        '<textarea class="textin open-box" rows="3" spellcheck="false" ' +
+        '<textarea class="textin open-box"' + NL.gloss.attr('nl') + ' rows="3" spellcheck="false" ' +
         'placeholder="' + esc(NL.t.openPlaceholder) + '"' + (phase === 'ask' ? '' : ' disabled') + '>' +
         esc(L.input) + '</textarea>' +
         '<div class="need-list">' + (t.task.need || []).map(n => {
