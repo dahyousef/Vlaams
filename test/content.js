@@ -11,7 +11,7 @@ const spelling = require('./lib/spelling');
 const sequence = require('./lib/sequence');
 const { raw, owed, at, owedTables, has } = require('./lib/prose');
 const tree = require('./lib/tree');
-const { oneLine, sig, hasU, uTag } = require('./lib/text');
+const { oneLine, sig, hasU, uTag, citesKunde, wrongKunde } = require('./lib/text');
 const ROOT = process.argv[2] || path.join(__dirname, '..');
 
 let fails = 0, checks = 0;
@@ -504,17 +504,14 @@ NL.state.open().then(() => {
   /* Une note qui cite « kunde » à côté d'un « u » (« kunt u ») cite aussi « kunt ge » : « kunde » est « kunt ge »
      contracté, et c'est le « ge » flamand qui vaut pour u comme pour je. « Kunde » qui remplacerait « kunt u » est
      l'erreur que #12 corrige (issuecomment-6338329078). */
-  { const cited = s => Array.from(String(s).matchAll(/[«“]([^«»“”]*)[»”]/g), m => m[1]);
-    const says = (q, w) => new RegExp('(^|[^a-zà-ÿ])' + w + '(?![a-zà-ÿ])', 'i').test(q);
-    const wrongKunde = s => { const q = cited(s); return q.some(x => says(x, 'kunde')) && q.some(hasU) && !q.some(x => says(x, 'kunt ge')); };
-    ok(wrongKunde('À l’oral, « kunde » remplace « kunt u ».') && wrongKunde('“Kunde” covers “kunt u”.') &&
+  { ok(wrongKunde('À l’oral, « kunde » remplace « kunt u ».') && wrongKunde('“Kunde” covers “kunt u”.') &&
       !wrongKunde('« Kunde » est « kunt ge » contracté, pas « kunt u ».') && !wrongKunde('« Kunde » se dit à l’oral.'),
       'kunde : la garde doit voir « kunde » cité avec « kunt u » sans « kunt ge », et cela seul');
     const notes = (NL.content.byDutch || {}).notes || {};
     let kunde = 0;
     Object.keys(notes).forEach(nl => ['fr', 'en'].forEach(l => {
       const s = (notes[nl] || {})[l];
-      if (typeof s !== 'string' || !cited(s).some(x => says(x, 'kunde'))) return;
+      if (typeof s !== 'string' || !citesKunde(s)) return;
       kunde++;
       ok(!wrongKunde(s), 'la note (' + l + ') de « ' + nl + ' » cite « kunde » et un « u » sans « kunt ge » : « kunde » est « kunt ge » contracté, pas « kunt u » : « ' + s + ' »');
     }));

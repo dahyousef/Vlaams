@@ -1368,11 +1368,16 @@ module.exports = {
     table.update(BE, fixed);
     /* Le genre explanations ne coupe que les sources sans note : dans la copie, chaque source en a une
        (une note d'essai pour celles que le vrai cours laisse sans, les mots neufs d'une fusion récente),
-       sauf « het gemeentehuis », dont la note est ôtée. */
+       sauf « het gemeentehuis » et « Ik ben Nederlands aan het leren. », dont la note est ôtée, et « de brievenbus »,
+       qui ne garde que sa note française ; jij perd ses leurres. */
     const notesFixed = {};
     C.sources.filter(s => !s.note).forEach(s => { notesFixed[s.nl] = { fr: 'Une note d’essai.', en: 'A trial note.' }; });
     notesFixed[HUIS] = null;
+    notesFixed[LEREN] = null;
+    notesFixed[C.byId('thuis:w11').nl] = { fr: 'Une note d’essai.' };
     table.update(path.join(EX, 'src', 'content', 'notes.js'), notesFixed);
+    const JIJ = C.byId('ikengij:w1').nl, decoysFixed = {}; decoysFixed[JIJ] = null;
+    table.update(path.join(EX, 'src', 'content', 'decoys.js'), decoysFixed);
     const EXTRACT = path.join(EX, '.cache', 'kaikki', 'belgian.tsv');
     fs.mkdirSync(path.dirname(EXTRACT), { recursive: true });
     fs.writeFileSync(EXTRACT, '# kaikki/nl.jsonl sha256 ' + cache.PINS['kaikki/nl.jsonl'].sha256 + '\ngemeentehuis\tnoun\tBelgium\t(essai)\n');
@@ -1391,20 +1396,19 @@ module.exports = {
     same([be.length + rest.length, be.every(s => s.be && NLE.util.norm(s.be) !== NLE.util.norm(s.nl))], [CE.sources.length, true],
       'chaque source est d\'un genre, et explanations-be a celles dont la forme flamande n\'est pas le néerlandais');
     const beSplit = runEx('split.js', [EX, BED]);
-    const perKind = k => beSplit.lines.filter(l => l.indexOf('be-' + k + 's') === 0);
-    const total = ls => ls.reduce((n, l) => n + Number(l.split(' ')[1]), 0);
-    ok(beSplit.code === 0 && beSplit.lines.every(l => /^be-(words|phrases)(-\d+)? \d+$/.test(l)) && perKind('word').length + perKind('phrase').length === beSplit.lines.length,
-      'Split de explanations-be coupe des lots be-words et be-phrases : ' + JSON.stringify(beSplit));
-    same([total(perKind('word')), total(perKind('phrase'))], [be.filter(s => s.kind === 'word').length, be.filter(s => s.kind === 'phrase').length],
-      'les mots et les phrases de explanations-be, chacun une fois');
-    /* Le genre explanations ne coupe que les sources sans note (une ici), et celles que Split nomme. */
+    const ids = (dir, b) => (fs.existsSync(path.join(dir, b, 'input.json')) ? JSON.parse(text(path.join(dir, b, 'input.json'))).map(r => r.id) : null);
+    same(beSplit, { code: 0, lines: ['be-words 1', 'be-phrases 1'] }, 'Split de explanations-be ne coupe que les sources qui doivent leurs leurres ou leur note');
+    same([ids(BED, 'be-words'), ids(BED, 'be-phrases')], [['ikengij:w1'], ['overleven:p0']], 'jij, ses leurres ; « Ik ben Nederlands aan het leren. », sa note');
+    const BEN = path.join(EX, 'nommes', 'explanations-be');
+    same(runEx('split.js', [EX, BEN, 'overleven:w0', 'overleven:w7', 'ikengij:w1', 'overleven:p0']), { code: 0, lines: ['be-words 3', 'be-phrases 1'] },
+      'nommée, une source de explanations-be qui ne doit rien est coupée aussi (#106)');
+    /* Le genre explanations ne coupe que les sources sans note dans les deux langues (deux ici), et celles que Split nomme. */
     const unnoted = rest.filter(s => !s.note);
     same(unnoted.map(s => s.id), ['thuis:w12'], 'une seule source de explanations est sans note');
-    const want = CE.RAW.units.map(u => [u.id, unnoted.filter(s => s.unit === u.id).length]).filter(x => x[1]).map(x => x.join(' '));
-    same(runEx('split.js', [EX, RD]), { code: 0, lines: want }, 'Split de explanations coupe un lot par unité, des seules sources sans note');
-    same(want, ['thuis 1'], 'un seul lot, d\'une ligne : les sources qui ont leur note ne sont pas recoupées');
+    same(runEx('split.js', [EX, RD]), { code: 0, lines: ['notes 2'] }, 'Split de explanations coupe des lots notes d\'unités entières, des seules sources sans note');
+    same(ids(RD, 'notes'), ['thuis:w11', 'thuis:w12'], 'une note dans une seule langue est due : Split la coupe aussi');
     const RD2 = path.join(EX, 'nommes', 'explanations');
-    same(runEx('split.js', [EX, RD2, 'overleven:w2', 'thuis:w12']), { code: 0, lines: ['overleven 1', 'thuis 1'] },
+    same(runEx('split.js', [EX, RD2, 'overleven:w2', 'thuis:w12']), { code: 0, lines: ['notes 2'] },
       'nommée, une source qui a sa note est coupée aussi (#106)');
     const rowIn = (dir, id) => {
       const b = text(path.join(dir, 'split.txt')).split('\n').filter(Boolean).map(l => l.split(' ')[0])
@@ -1465,17 +1469,30 @@ module.exports = {
     same(why('Ajoute hè à la fin.', 'Add hè at the end.'), ['« hè » is Dutch of the course, outside quotes in fr and in en: quote it, or say it another way'],
       'le néerlandais du cours se cite');
     same(why('Ajoute « hè » à la fin, comme hè.', 'Add “hè” at the end.'), [], 'un mot nu dans une seule langue passe : 6d.4 ne le voit pas');
+    const kunde = r => r.filter(x => /^note\.(fr|en) quotes « kunde »/.test(x));
+    same([kunde(why('À l’oral, « kunde » remplace « kunt u ».', 'Spoken, “kunde” replaces “kunt u”.')),
+      kunde(why('« Kunde » est « kunt ge » contracté, pas « kunt u ».', '“Kunde” is “kunt ge” run together, not “kunt u”.'))],
+    [['fr', 'en'].map(l => 'note.' + l + ' quotes « kunde » beside a « u » and not « kunt ge »: « kunde » is « kunt ge » run together, not « kunt u »'), []],
+    'une note qui cite « kunde » et « kunt u » cite aussi « kunt ge », comme test/content.js le veut');
+    /* La note : « hoe lang » (#128), l'apostrophe droite, un mot d'une lettre nu (6d.4, hors SHARED_OK). */
+    const hoe = r => r.filter(x => /hoe lang/.test(x)), HOE = ' writes « hoe lang »: the course writes the duration « hoelang » (#128)';
+    same(hoe(why('« Hoe laat » demande l’heure, « hoe lang » la durée.', '“Hoe laat” asks the time, “hoe lang” the duration.')),
+      ['note.fr' + HOE, 'note.en' + HOE], 'une note n\'écrit pas « hoe lang »');
+    same(why('Le « hè » final cherche l\'accord, comme « toch ».', GOOD[1]), ['note.fr writes a straight apostrophe « \' »: write « ’ », as notes.js does'],
+      'une note écrit l\'apostrophe typographique');
+    same(why('En Flandre, « ge » remplace u.', 'In Flanders, “ge” replaces u.').filter(x => /Dutch of the course/.test(x)),
+      ['« u » is Dutch of the course, outside quotes in fr and in en: quote it, or say it another way'], 'un mot d\'une lettre nu se cite aussi');
 
     /* Check : les « on dit aussi » de chaque ligne, et les leurres d'une ligne que « Comment le
        dit-on ici ? » pose. hallo tient déjà dag, qui n'est pas de son sens : une forme que la source
        tient déjà reste. ja a une forme flamande, mais la première est le néerlandais : l'exercice
        ne le pose pas. */
-    const HALLO_IN = rowIn(BED, 'overleven:w0'), JA_IN = rowIn(BED, 'overleven:w7');
+    const HALLO_IN = rowIn(BEN, 'overleven:w0'), JA_IN = rowIn(BEN, 'overleven:w7');
     same([HALLO_IN.vlaams, HALLO_IN.right, HALLO_IN.also, JA_IN.vlaams], [true, 'hey', ['dag'], false],
       'hallo a l\'exercice, sa réponse hey, et un « on dit aussi » ; ja n\'a pas l\'exercice');
     const rule = (id, extra) => {
       const r = id === 'thuis:w12';
-      return (r ? KR : KB).check(Object.assign(line(id, { fr: GOOD[0], en: GOOD[1] }), extra), rowIn(r ? RD : BED, id), r ? ctxR : ctxB);
+      return (r ? KR : KB).check(Object.assign(line(id, { fr: GOOD[0], en: GOOD[1] }), extra), rowIn(r ? RD : BEN, id), r ? ctxR : ctxB);
     };
     same(['overleven:w0', 'overleven:p0', 'overleven:w7', 'thuis:w12'].map(id => rule(id, {})), [[], [], [], []],
       'une ligne juste passe : sa note, ses « on dit aussi », et deux leurres quand l\'exercice la pose');
@@ -1526,6 +1543,23 @@ module.exports = {
     same([rule('ikengij:w1', { decoys: ['je', 'jou'] }), rule('ikengij:w1', { decoys: ['je', 'zqz'] })],
       [[], ['decoy « zqz » is further from the Dutch than the answer: 0.00, at least 0.33']],
       'une réponse de trois lettres a ses fautes : une forme courte du même pronom passe, un mot sans rapport non');
+    const HEET = NLE.content.fill(CE.byId('ikengij:p0').nl), six = r => r.filter(x => /test\/lang\.js 6d/.test(x));
+    same(rule('overleven:p0', { decoys: [HEET, DECOYS['overleven:p0'][1]] }).filter(x => /accepts/.test(x)),
+      ['decoy « ' + HEET + ' » is an answer the course accepts, for ikengij:p0'], 'un leurre n\'est pas la réponse d\'un élément aux jetons remplis');
+    same(rule('overleven:w0', { decoys: ['he\'y', 'hai'] }).filter(x => /apostrophe/.test(x)),
+      ['decoy « he\'y » writes the typographic apostrophe « ’ », as the answer does: « ’t », « da’s »'], 'un leurre écrit l\'apostrophe typographique');
+    same([six(rule('overleven:w0', { decoys: ['slank', 'hai'] })), six(rule('thuis:w12', { also: ['conversation'] }))], [
+      ['decoy « slank »: « slank » would become Dutch of the course, and test/lang.js 6d.3 then refuses its QUOTE_OK exception (test/lib/quoted.js)'],
+      ['also « conversation »: « conversation » would become Dutch of the course, and units[0].blurb writes it bare in French and in English (test/lang.js 6d.4)']
+    ], 'un leurre ou un « on dit aussi » ne fait pas du néerlandais du cours un mot que test/lang.js refuserait alors');
+    /* « hoe lang » ; un « on dit aussi » qui est le leurre d'un autre élément ; un leurre à jeton, lu rempli (g-present). */
+    const DUUR = 'Hoe lang ben ik aan het leren, hè.', HEI = NLE.content.byDutch.decoys[HALLO][0];
+    same([hoe(rule('overleven:p0', { decoys: [DUUR, DECOYS['overleven:p0'][1]] })), hoe(rule('overleven:p0', { also: [DUUR] }))],
+      [['decoy « ' + DUUR + ' »' + HOE], ['also « ' + DUUR + ' »' + HOE]], 'ni un leurre ni un « on dit aussi » n\'écrit « hoe lang »');
+    same(rule('overleven:w7', { also: [HEI] }).filter(x => /decoy of/.test(x)),
+      ['also « ' + HEI + ' » is a decoy of overleven:w0 in decoys.js: the suite refuses a decoy the course accepts'], 'un « on dit aussi » n\'est le leurre d\'aucun élément');
+    same(rule('overleven:p0', { decoys: ['Ik werk bij {bedrijf}.', DECOYS['overleven:p0'][1]] }).filter(x => /accepts/.test(x)),
+      ['decoy « Ik werk bij {bedrijf}. » is an answer the course accepts, for ikengij:p4, g-present'], 'un leurre écrit avec un jeton se lit rempli, comme la page le montre');
     const N = { fr: GOOD[0], en: GOOD[1] };
     same([KB.readWhole(line('overleven:w0', N), HALLO_IN), KB.readWhole(Object.assign(line('overleven:w0', N), { also: ['dag'] }), HALLO_IN),
       KB.readWhole(Object.assign(line('overleven:w0', N), { also: ['dag', 'hoi'] }), HALLO_IN)], ['', '', 'new also'],
@@ -1543,7 +1577,7 @@ module.exports = {
     Object.keys(table.load(BE).entries).forEach(k => { if (k !== LEREN && k !== HALLO) gone[k] = null; });
     table.update(BE, gone);
     const E2E = path.join(EX, 'bout-en-bout', 'explanations-be');
-    same(runEx('split.js', [EX, E2E]), { code: 0, lines: ['be-words 1', 'be-phrases 1'] }, 'Split de explanations-be ne coupe que les deux sources gardées');
+    same(runEx('split.js', [EX, E2E, 'overleven:w0', 'overleven:p0']), { code: 0, lines: ['be-words 1', 'be-phrases 1'] }, 'Split de explanations-be, nommées, coupe les deux sources gardées');
     const NOTE = { fr: 'Une note d’essai sur cette source.', en: 'A trial note on this source.' };
     const batches = ['be-words', 'be-phrases'];
     batches.forEach(b => {
@@ -1585,7 +1619,10 @@ module.exports = {
     const { dutchWords } = require(path.join(EX, 'test', 'lib', 'dutch'));
     CA.NL.content.byDutch.also[HALLO] = ['dag', 'hoezee'];
     same(['hai', 'helo', 'an', 'hoezee'].filter(w => !dutchWords(CA.NL).has(w)), [], 'les mots des leurres et des « on dit aussi » sont du néerlandais du cours');
-    console.log('  explanations   ' + beSplit.lines.length + ' + ' + want.length + ' lots, ' + be.length + ' + ' + rest.length + ' lignes ; la note et ses citations, les « on dit aussi », les leurres ; Merge');
+    const hallo = CE.byId('overleven:w0'), ja = CE.byId('overleven:w7');
+    same([X.owes(hallo, NLE), X.owes(Object.assign({}, hallo, { decoys: undefined }), NLE), X.owes(Object.assign({}, hallo, { note: { fr: hallo.note.fr } }), NLE), X.owes(Object.assign({}, ja, { decoys: undefined }), NLE)], [false, true, true, false],
+      'une source doit ses leurres quand l\'exercice la pose sans eux, et sa note quand elle ne se lit pas dans les deux langues');
+    console.log('  explanations   ' + beSplit.lines.length + ' + 1 lots, ' + (be.filter(s => X.owes(s, NLE)).length) + ' + ' + ids(RD, 'notes').length + ' lignes dues sur ' + be.length + ' + ' + rest.length + ' ; la note et ses citations, les « on dit aussi », les leurres ; Merge');
   }
 
   /* ==================================================== le genre words */

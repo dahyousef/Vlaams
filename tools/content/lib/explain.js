@@ -3,11 +3,16 @@
    (tools/content/kinds/) ne font que choisir leur part ; ce qu'ils ont en commun est ici.
 
      const X = require('../lib/explain');
-     X.kind('be')        le genre explanations-be : un lot be-words et un lot be-phrases, coupés par
-                         unités entières au-delà de MAX lignes
-     X.kind('rest')      le genre explanations : un lot par unité, dans l'ordre du cours, des seules
-                         sources sans note (les mots neufs), et de celles que Split nomme (ctx.ids)
+     X.kind('be')        le genre explanations-be : un lot be-words et un lot be-phrases (be-words-1,
+                         -2… au-delà de MAX lignes, par unités entières), des seules sources que X.owes
+                         dit dues, et de celles que Split nomme (ctx.ids)
+     X.kind('rest')      le genre explanations : le lot notes (notes-1, notes-2… au-delà de MAX lignes,
+                         par unités entières), des seules sources sans note dans les deux langues, et
+                         de celles que Split nomme
      X.flemish(src, NL)  vrai quand l'élément est du genre explanations-be
+     X.owes(src, NL)     vrai quand une source de explanations-be doit quelque chose : ses leurres, quand
+                         « Comment le dit-on ici ? » la pose sans eux, ou sa note, quand elle ne se lit pas
+                         dans les deux langues
      X.chunks(name, rows)  des lignes en lots de MAX au plus, sans couper une unité
 
    Une ligne d'entrée porte, en plus de ce que le kit écrit (stamp, copies) :
@@ -31,8 +36,11 @@
 const path = require('path');
 const kaikki = require('../kaikki');
 const spelling = require(path.join(__dirname, '..', '..', '..', 'test', 'lib', 'spelling'));
-const { dutchWords, words, tokenFreeWords } = require(path.join(__dirname, '..', '..', '..', 'test', 'lib', 'dutch'));
-const { oneLine, sig, quotes, strayQuotes } = require(path.join(__dirname, '..', '..', '..', 'test', 'lib', 'text'));
+const { dutchWords, words, tokenFreeWords, courseWords } = require(path.join(__dirname, '..', '..', '..', 'test', 'lib', 'dutch'));
+const { oneLine, sig, quotes, strayQuotes, wrongKunde } = require(path.join(__dirname, '..', '..', '..', 'test', 'lib', 'text'));
+const { has } = require(path.join(__dirname, '..', '..', '..', 'test', 'lib', 'prose'));
+const { QUOTE_OK, SHARED_OK } = require(path.join(__dirname, '..', '..', '..', 'test', 'lib', 'quoted'));
+const { bareOf } = require('../kinds/examples');
 
 /* Ce que l'empreinte couvre : ce que le rédacteur lit et ce que Merge écrit. Merge écrit la
    note, donc la relancer après un succès refuse comme périmée chaque ligne dont elle a changé
@@ -41,6 +49,8 @@ const STAMP = ['be', 'meaning', 'note', 'also'];
 const MAX = 40;
 const NOTE_MAX = 160;
 const LANGS = ['fr', 'en'];
+/* La durée s'écrit en un mot, « hoelang » (#128) : test/content.js refuse « hoe lang » dans le cours. */
+const HOE_LANG = /\bhoe\s+lang\b/i;
 /* Les mots-outils d'une langue qui n'ont rien à faire dans l'autre, hors des guillemets. « but »
    n'y est pas : « le but » est français. */
 const FR_IN_EN = 'le la les un une des du et est sont avec dans sur qui que pas ne il elle nous vous ce cette ces au aux mais ou où se sa ses leur très quand comme'.split(' ');
@@ -49,6 +59,11 @@ const EN_IN_FR = 'the and of is are to with for you it this that not was were ha
 const flemish = (src, NL) => typeof src.be === 'string' && NL.util.norm(src.be) !== NL.util.norm(src.nl);
 /* « Comment le dit-on ici ? » pose l'élément : un barreau de son genre l'offre, et l'élément s'y prête. */
 const vlaams = (src, NL) => NL.srs.RUNGS[src.kind].some(set => set.indexOf('vlaams') >= 0) && NL.srs.supports(src, 'vlaams');
+/* Une note lue dans les deux langues : ce que test/content.js compte (NOTE_BUDGET). */
+const noted = src => !!src.note && has(src.note.fr) && has(src.note.en);
+/* Ce que explanations-be doit à une source : ses leurres quand l'exercice la pose sans eux, sa note quand elle
+   ne se lit pas dans les deux langues. supports() seul, comme test/content.js compte DECOY_BUDGET. */
+const owes = (src, NL) => (NL.srs.supports(src, 'vlaams') && !src.decoys) || !noted(src);
 /* La bonne réponse de « Comment le dit-on ici ? », telle que l'exercice la juge. */
 function right(src, NL) {
   const ex = NL.ex.get('vlaams'), a = ex.answer(ex.build(src));
@@ -103,26 +118,31 @@ function split(part) {
   return (C, ctx) => {
     const belgian = kaikki.belgian(ctx.repo);
     const mine = C.sources.filter(s => flemish(s, C.NL) === (part === 'be'));
-    if (part === 'be') {
-      return ['word', 'phrase'].reduce((acc, k) =>
-        acc.concat(chunks('be-' + k + 's', mine.filter(s => s.kind === k).map(s => rowOf(s, C, belgian)))), []);
-    }
-    /* Les seules sources sans note : les mots que le genre words vient de fondre. Une source qui a
-       sa note ne se récrit qu'en la nommant (#106). */
+    /* Les seules sources dues, et celles que Split nomme (#106) : une source qui a sa note, et ses leurres
+       quand elle en a, ne se récrit qu'en la nommant. */
     const named = new Set(ctx.ids || []);
-    const cut = mine.filter(s => !s.note || named.has(s.id));
-    return C.RAW.units.map(u => ({ batch: u.id, rows: cut.filter(s => s.unit === u.id).map(s => rowOf(s, C, belgian)) }));
+    const rows = test => mine.filter(s => test(s) || named.has(s.id)).map(s => rowOf(s, C, belgian));
+    if (part === 'be') {
+      const cut = rows(s => owes(s, C.NL));
+      return ['word', 'phrase'].reduce((acc, k) => acc.concat(chunks('be-' + k + 's', cut.filter(r => r.kind === k))), []);
+    }
+    return chunks('notes', rows(s => !noted(s)));
   };
 }
 
-/* Le cours, son orthographe, son néerlandais, et les réponses qu'il accepte (une forme comme
-   NL.ex.accepted l'écrit, et les sources qui l'acceptent), lus une fois par lecture d'un lot. */
+/* Le cours, son orthographe, son néerlandais, les réponses qu'il accepte (une forme comme NL.ex.accepted l'écrit,
+   et les éléments que la page construit qui l'acceptent), le néerlandais que sa prose écrit nu (bare) et les leurres
+   écrits, lus une fois par lecture d'un lot. */
 const memo = new WeakMap();
 function tools(ctx) {
   if (!memo.has(ctx)) {
-    const C = ctx.course(), NL = C.NL, owners = new Map();
-    C.sources.forEach(s => NL.ex.accepted(s).forEach(f => owners.set(f, (owners.get(f) || []).concat(s.id))));
-    memo.set(ctx, { C, NL, S: spelling.open(ctx.repo, NL), dutch: dutchWords(NL), owners });
+    const C = ctx.course(), NL = C.NL, U = NL.util, owners = new Map(), decoyed = new Map();
+    const add = (map, k, id) => { const ids = map.get(k) || []; if (ids.indexOf(id) < 0) map.set(k, ids.concat(id)); };
+    C.sources.concat(NL.content.allItems()).forEach(s => NL.ex.accepted(s).forEach(f => add(owners, f, s.id)));
+    /* Les leurres écrits (comme test/content.js les lit), tels qu'ils s'écrivent et remplis, et de qui ils sont. */
+    C.sources.filter(s => Array.isArray(s.decoys)).forEach(s => s.decoys.forEach(d =>
+      [d, NL.content.fill(d)].forEach(x => [U.norm(x), U.norm(U.bare(x))].forEach(k => add(decoyed, k, s.id)))));
+    memo.set(ctx, { C, NL, S: spelling.open(ctx.repo, NL), dutch: dutchWords(NL), owners, bare: bareOf(C, ctx.repo), decoyed });
   }
   return memo.get(ctx);
 }
@@ -131,6 +151,18 @@ function tools(ctx) {
    quand le texte ne finit pas sur l'une d'elles. */
 const sentences = s => (s.match(/[.!?…]+(?=\s|$)/g) || []).length + (/[.!?…]$/.test(s.trim()) ? 0 : 1);
 const list = ws => ws.map(w => '« ' + w + ' »').join(', ');
+
+/* Ce qu'une forme que le cours enseignerait (un « on dit aussi », un leurre) lui ferait : « hoe lang », et chaque
+   mot qui deviendrait du néerlandais du cours alors que test/lang.js 6d.3 (QUOTE_OK) ou 6d.4 (nu dans les deux
+   langues) le refuserait. what : le début de chaque raison. */
+function newDutch(what, f, T) {
+  const out = HOE_LANG.test(f) ? [what + ' writes « hoe lang »: the course writes the duration « hoelang » (#128)'] : [];
+  T.NL.util.uniq(courseWords(f)).filter(w => !T.dutch.has(w)).forEach(w => {
+    if (QUOTE_OK[w]) out.push(what + ': « ' + w + ' » would become Dutch of the course, and test/lang.js 6d.3 then refuses its QUOTE_OK exception (test/lib/quoted.js)');
+    else if (T.bare.bare.has(w)) out.push(what + ': « ' + w + ' » would become Dutch of the course, and ' + T.bare.bare.get(w) + ' writes it bare in French and in English (test/lang.js 6d.4)');
+  });
+  return out;
+}
 
 /* Ce que la ligne rend citable, même hors des listes d'orthographe : son néerlandais, sa forme
    flamande, ses « on dit aussi », ceux qu'elle tient et ceux qu'elle écrit. */
@@ -163,6 +195,9 @@ function checkNote(row, input, ctx) {
     const foreign = l === 'en' ? FR_IN_EN : EN_IN_FR;
     const hit = U.uniq(words(q[l].outside).filter(w => foreign.indexOf(w) >= 0));
     if (hit.length) why.push('note.' + l + ' uses ' + (l === 'en' ? 'French' : 'English') + ' words outside quotes: ' + list(hit));
+    if (wrongKunde(s)) why.push('note.' + l + ' quotes « kunde » beside a « u » and not « kunt ge »: « kunde » is « kunt ge » run together, not « kunt u »');
+    if (HOE_LANG.test(s)) why.push('note.' + l + ' writes « hoe lang »: the course writes the duration « hoelang » (#128)');
+    if (/'/.test(s)) why.push('note.' + l + ' writes a straight apostrophe « \' »: write « ’ », as notes.js does');
   });
   if (sig(n.fr) !== sig(n.en)) why.push('note.fr and note.en hold different digits or {…} tokens');
   /* La suite lit les citations : il faut qu'elles se lisent, avec les guillemets de leur langue. */
@@ -179,7 +214,7 @@ function checkNote(row, input, ctx) {
     if (bad.length) why.push('« ' + seg + ' » is quoted, but ' + list(bad) + ' is not Dutch that OpenTaal, flemish.tsv or this row knows: quotes hold Dutch only, a translation goes in parentheses');
   });
   const names = new Set([].concat(...Object.keys(T.NL.content.DEFAULTS).map(k => words(T.NL.content.DEFAULTS[k]))));
-  const bareIn = l => new Set(tokenFreeWords(q[l].outside).filter(w => w.length > 1 && T.dutch.has(w) && !names.has(w)));
+  const bareIn = l => new Set(tokenFreeWords(q[l].outside).filter(w => T.dutch.has(w) && !names.has(w) && !SHARED_OK[w]));
   const enBare = bareIn('en'), both = Array.from(bareIn('fr')).filter(w => enBare.has(w));
   if (both.length) why.push(list(both) + ' is Dutch of the course, outside quotes in fr and in en: quote it, or say it another way');
   return why;
@@ -208,6 +243,9 @@ function checkAlso(row, input, ctx) {
     if (art && !/^(de|het) \S/i.test(f)) say('drops the article of « ' + input.nl + ' »');
     const bad = U.uniq(spelling.tokens(f).filter(t => !T.S.known(t)));
     if (bad.length) why.push('also « ' + f + ' »: ' + list(bad) + ' is not Dutch that OpenTaal or flemish.tsv knows: leave it out, and say why in unsure if it is Flemish');
+    newDutch('also « ' + f + ' »', f, T).forEach(r => why.push(r));
+    const dec = [].concat(...[f, T.NL.content.fill(f)].map(y => [U.norm(y), U.norm(U.bare(y))].map(x => (T.decoyed.get(x) || []).find(id => id !== input.id)))).find(Boolean);
+    if (dec) say('is a decoy of ' + dec + ' in decoys.js: the suite refuses a decoy the course accepts');
     if (near.has(k)) return;
     const other = T.C.sources.find(s => s.id !== input.id && key(s.nl) === k);
     if (other) say('is the Dutch of ' + other.id + ', which is not of the same sense: an answer to one is not right for the other');
@@ -238,10 +276,12 @@ function checkDecoys(row, input, ctx) {
   const cents = v => Math.round(v * 100), longest = Math.max(U.norm(input.right).length, U.norm(input.nl).length);
   const least = cents(U.ratio(input.right, input.nl) - Math.max(0.15, 1 / longest)), why = [];
   d.forEach(x => {
-    const keys = U.uniq([U.norm(x), U.norm(U.bare(x))]), say = s => why.push('decoy « ' + x + ' » ' + s);
+    const keys = U.uniq([].concat(...[x, NL.content.fill(x)].map(y => [U.norm(y), U.norm(U.bare(y))]))), say = s => why.push('decoy « ' + x + ' » ' + s);
     const who = U.uniq((keys.some(k => mine.indexOf(k) >= 0) ? [input.id] : [])
       .concat(...keys.map(k => (T.owners.get(k) || []).filter(id => id !== input.id))));
     if (who.length) say('is an answer the course accepts, for ' + who.join(', '));
+    newDutch('decoy « ' + x + ' »', x, T).forEach(r => why.push(r));
+    if (/'/.test(x)) say('writes the typographic apostrophe « ’ », as the answer does: « ’t », « da’s »');
     if (end(x) !== end(input.right)) say('ends with ' + shown(end(x)) + ', and the answer with ' + shown(end(input.right)));
     const len = Array.from(x).length;
     if (len < lo || len > hi) say('is ' + len + (len === 1 ? ' character: ' : ' characters: ') + lo + ' to ' + hi + ', the length of the answer « ' + input.right + ' » give or take 40% or two letters, whichever is more');
@@ -268,4 +308,4 @@ function kind(part) {
   };
 }
 
-module.exports = { kind, flemish, chunks };
+module.exports = { kind, flemish, chunks, owes };
