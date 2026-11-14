@@ -128,10 +128,15 @@ each verifier, and start no second suite beside a running one.
    - if it began at step 5, the re-reviewer, with the fix diff (written as in step 4 to
      `<WS>/reviews/task-<N>-fix<k>.diff`, from the commit before fix round k) and the previous report, and the
      report path `<WS>/reports/task-<N>-rereview-<k>.md`.
-7. Unless this is a fallback sitting or `run.md` says `Push: none`: run `run.md`'s push command (in a fallback
-   review, with the reviewed commit in place of `HEAD`). If the ticket is not `none`, write a comment file and
-   run `gh issue comment <n> --body-file "<file>"`: the commit, the verifier line, the review verdict. In a
-   fallback sitting: no push; your state is `fallback`.
+7. Unless this is a fallback sitting or `run.md` says `Push: none`: run `run.md`'s push command, from the worktree,
+   alone and word for word: no `cd` before it, no pipe or redirection after it. The sitting's launch allows that
+   exact command, so no classifier judges it (`run-controller.md`, « Launching a sitting »); in plan 4c the
+   classifier refused two pushes written another way. If it is refused anyway, return `needs ruling` with the
+   refusal line; never push another way. In a fallback review, push the reviewed commit in place of `HEAD`: no
+   rule allows that command in advance, so the classifier judges it; if it refuses, return `needs ruling` the
+   same way. If the ticket is not `none`, write a comment file and run `gh issue comment <n> --body-file
+   "<file>"`: the commit, the verifier line, the review verdict. In a fallback sitting: no push; your state is
+   `fallback`.
 8. Append your entry to the log of `<WS>/progress.md`, in the form `ledger-template.md` gives. Its Open line
    carries each title of your brief's `Promises:` line, as `ticket: <title>`: the closing review files them.
    Do not edit the Status table. This step runs before every return, `needs ruling`, `needs design` and
