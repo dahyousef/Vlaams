@@ -275,8 +275,11 @@ Et ce qu'aucun d'eux ne voit : l'idiome, le registre, l'ordre des mots, si une
 phrase vaut la peine d'être apprise. Les six scénarios écrits à la main et les
 antisèches ne passent pas par le contrôle d'orthographe ; les quatre conversations du
 genre `scenarios` y passent, par son Check. Et aucun contrôle ne dit si la règle
-d'une fiche est vraie ni si une conversation sonne flamand : ce sont les 17 lignes
-du genre `grammar` et du genre `scenarios` que le mainteneur lit entières.
+d'une fiche est vraie, si une conversation sonne flamand, si la réponse libre d'une
+règle la fait employer, ni si une nouvelle forme « on dit aussi » se dit en Flandre :
+ce sont les 17 lignes du genre `grammar` et du genre `scenarios`, les 13 tâches de
+règle du genre `open` et chaque nouvelle forme « on dit aussi » que le mainteneur
+lit entières.
 
 ## Le passage complet du 30 septembre 2026
 
@@ -309,5 +312,5 @@ test de placement, la dictée plus tôt, la série et le défi.
 
 ## Encore ouvert
 
-- Le contenu reste le plafond : 1158 éléments, tous de niveau A1 ; les unités 13 à 34 ont leurs mots, treize règles de grammaire (neuf unités), quatre conversations et leurs phrases prises dans Tatoeba (cinq par unité, Merge phrases du plan 4c), avec leurs explications (Merge explanations-be et Merge explanations du plan 4d), et leurs formes flamandes (Merge flemish du plan 4c), avec leurs leurres écrits (Merge explanations-be du plan 4d).
+- Le contenu reste le plafond : 1158 éléments, tous de niveau A1 ; les unités 13 à 34 ont leurs mots, treize règles de grammaire (neuf unités), quatre conversations et leurs phrases prises dans Tatoeba (cinq par unité, Merge phrases du plan 4c), avec leurs explications (Merge explanations-be et Merge explanations du plan 4d), et leurs formes flamandes (Merge flemish du plan 4c), avec leurs leurres écrits (Merge explanations-be du plan 4d) ; trois de ces phrases par unité et chacune des treize règles ont leur réponse libre (Merge open du plan 4d).
 - 17 mots sur 912 n'ont pas encore de phrase d'exemple (comptés après Merge examples-gen du plan 4c) : ceux dont Tatoeba avait des candidates mais que le rédacteur a passés faute d'une qui convienne, qui attendent (D14).
