@@ -143,7 +143,7 @@ const viaShim = s => JSON.stringify(ps51Argv(psWords(s).slice(1)));
 ok(viaShim(String.raw`claude --model opus --settings '{\"env\": {}}' -- "-x prompt"`) === JSON.stringify(['--model', 'opus', '--settings', '{"env": {}}', '-x prompt']), 'PowerShell 5.1 (mesuré) : claude.ps1 ne passe pas un « -- » nu');
 ok(viaShim(String.raw`claude --model opus --settings '{\"env\": {}}' '--' "-x prompt"`) === JSON.stringify(['--model', 'opus', '--settings', '{"env": {}}', '--', '-x prompt']), 'PowerShell 5.1 (mesuré) : claude.ps1 passe « \'--\' »');
 const launchArgv = ps51Argv(psWords((rc.match(/^ {4}claude --bg .*$/m) || [''])[0]).slice(1));
-ok(launchArgv.length > 2 && launchArgv[launchArgv.length - 2] === '--' && launchArgv[launchArgv.length - 1] === '<prompt>', 'le lancement passe « -- » à claude.exe, juste avant la consigne');
+ok(launchArgv.length > 2 && launchArgv[launchArgv.length - 2] === '--' && launchArgv[launchArgv.length - 1] === '<prompt>', 'le lancement passe « -- » à claude, juste avant la consigne');
 ok(/^ {4}claude --bg .* '--' '<prompt>'$/m.test(rc), 'la consigne du lancement est entre apostrophes : PowerShell ne touche ni à « $ » ni aux accents graves');
 const atSettings = launchArgv.indexOf('--settings');
 let launchSettings = null;

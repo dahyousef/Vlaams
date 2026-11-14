@@ -1494,8 +1494,8 @@ module.exports = {
     fs.writeFileSync(EXTRACT, '# kaikki/nl.jsonl sha256 ' + cache.PINS['kaikki/nl.jsonl'].sha256 + '\ngemeentehuis\tnoun\tBelgium\t(essai)\n');
     const CE = course(EX), NLE = CE.NL;
 
-    /* Les lots : les mots, puis les phrases, de explanations-be, par unités entières ; un lot par
-       unité pour explanations. */
+    /* Les lots, par unités entières de 40 lignes au plus (une unité plus longue fait un lot à elle
+       seule) : les mots, puis les phrases, de explanations-be, et les notes de explanations. */
     const mk = (u, n) => Array.from({ length: n }, (x, i) => ({ id: u + i, unit: u }));
     const sizes = r => r.map(b => b.batch + ' ' + b.rows.length);
     same([sizes(X.chunks('be-words', mk('a', 30).concat(mk('b', 15)))), sizes(X.chunks('be-words', mk('a', 20).concat(mk('b', 20), mk('c', 5)))),

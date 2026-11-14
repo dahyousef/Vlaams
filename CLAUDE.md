@@ -88,7 +88,9 @@ the maintainer answers, runs in sittings.
   it, tokens unfilled, except `open.js`: the tasks of the grammar rules, keyed by rule id
   (`g-v2`), which the app reads as `NL.content.openTasks`. Change an entry through its kind's
   rows, not by hand: a hand edit leaves no row behind it, and the next Merge of that item
-  writes over it. The `words` kind's Merge (`tools/content/kinds/words.js`) writes another
+  writes over it. The nine tasks of units 1 to 12 in `open.js` have no rows and no path to
+  change yet: the `open` kind's Split refuses them, even named (`test/tools/fanout.js`).
+  The `words` kind's Merge (`tools/content/kinds/words.js`) writes another
   file whole, `src/content/lexicon.a1c.js`: the units 13 to 34 and their words, from its
   `UNITS` and the accepted rows; and it appends the new words' lines to `test/data/ids.tsv`.
   The same rule: a word changes through its rows, by Merging its unit again from the
