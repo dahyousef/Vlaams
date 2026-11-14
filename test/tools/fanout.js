@@ -1187,7 +1187,8 @@ module.exports = {
     const drop = {}, dropR = {};
     K.PHRASES.slice(36).forEach(id => { drop[C0.byId(id).nl] = null; });
     table.update(path.join(OP, 'src', 'content', 'open.phrases.js'), drop);
-    if (K.RULES) { K.RULES.forEach(id => { dropR[id] = null; }); table.update(path.join(OP, 'src', 'content', 'open.js'), dropR); }
+    K.RULES.forEach(id => { dropR[id] = null; });
+    table.update(path.join(OP, 'src', 'content', 'open.js'), dropR);
     const CO = course(OP), U = CO.NL.util;
     const ctx = { repo: OP, course: () => CO };
     const KD = path.join(OP, 'drafts', 'open'), LOTS = ['units-1-6', 'units-7-12'];
@@ -1390,6 +1391,9 @@ module.exports = {
       /^bakker:p1 « Mag ik \{naam\}\? » holds a token: a task is the same for every learner$/, 'Split refuse une phrase à jeton');
     throws(() => K.split(withSources(a => a.filter(x => x.id !== 'bakker:p1')), ctx),
       /^bakker:p1 is no phrase of the course$/, 'Split refuse un id qui n\'est plus une phrase');
+    const sansRegle = Object.assign({}, CO, { RAW: Object.assign({}, CO.RAW, { patterns: CO.RAW.patterns.filter(p => p.id !== 'g-er-is') }) });
+    throws(() => K.split(sansRegle, Object.assign({}, ctx, { ids: ['g-er-is'] })),
+      /^g-er-is is no rule of the course$/, 'Split refuse une règle dont le cours n\'a plus le motif');
 
     /* Par les outils : une ligne fautive, puis deux lots écrits et relus, puis Merge. Chaque
        ligne faite à la main dit « ja » puis la phrase ; la boulangerie est la vraie. */
