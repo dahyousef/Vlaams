@@ -29,6 +29,8 @@ Where they differ from a command in your brief, these notes win.
 - After changing anything under `src/`, run `sh build.sh`.
 - Run the test file your brief names (`node test/<name>.js .`) as often as you need. Do not run the whole
   suite (`sh test/run-all.sh`): a verifier runs it after your commit.
+- `DÉLAI DÉPASSÉ` printed by `node test/tools/fanout.js .` is its time limit (300 s), not your change: run it once
+  more. A second one on the same tree is your change: stop with `BLOCKED` and the line.
 - Where a step says "Run … Expected …", run it and compare. For a step that says to watch a test fail, really
   run it and see it fail before you make the change; that output goes in your report.
 

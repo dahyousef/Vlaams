@@ -55,7 +55,7 @@ const SKIP = '[data-reset-yes], [data-import], [data-quit-yes]';
     if (ov.sw > 391 || ov.wide.length) problems.push(c.name + ': wider than 390 px (' + ov.sw + ') ' + JSON.stringify(ov.wide));
     const n = await p.evaluate(([q, s]) => Array.from((document.querySelector('.sheet') || document).querySelectorAll(q)).filter(e => !e.matches(s) && e.getClientRects().length).length, [CAND, SKIP]);
     counts[c.name] = n;
-    for (let i = 0; i < Math.min(n, 120); i++) {
+    for (let i = 0; i < n; i++) {
       await reset(c);
       const info = await p.evaluate(([q, s, i]) => {
         const e = Array.from((document.querySelector('.sheet') || document).querySelectorAll(q)).filter(e => !e.matches(s) && e.getClientRects().length)[i];

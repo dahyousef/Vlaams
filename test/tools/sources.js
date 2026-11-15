@@ -33,6 +33,7 @@ const pinsOf = files => Object.fromEntries(Object.keys(files).map(k =>
 const pinOf = s => pinsOf({ 'kaikki/nl.jsonl': s });
 const DUMP = path.join(TMP, '.cache', 'kaikki', 'nl.jsonl');
 const EXTRACT = path.join(TMP, '.cache', 'kaikki', 'belgian.tsv');
+const SENSES = path.join(TMP, '.cache', 'kaikki', 'senses.tsv');
 /* Un outil, lancé comme un agent le lance : ses lignes et son code de sortie. */
 const run = (script, args) => {
   const r = spawnSync(process.execPath, [path.join(ROOT, 'tools', 'content', script)].concat(args), { encoding: 'utf8' });
@@ -43,22 +44,24 @@ async function main() {
   console.log('SOURCES EXTERNES');
 
   /* ==================================================== 1. kaikki : les sens belges */
+  /* Le genre d'un nom se lit dans head_templates (fiets f, kot n, stoel m, tab f,n), sinon dans les
+     tags d'un sens (goesting feminine) ; leeg n'a pas de sens, stoel en a un sans glose. */
   const entries = [
-    { word: 'goesting', pos: 'noun', senses: [{ tags: ['Belgium'], glosses: ['desire, appetite'] }, { glosses: ['taste'] }] },
-    { word: 'fiets', pos: 'noun', senses: [{ glosses: ['bicycle'] }] },
+    { word: 'goesting', pos: 'noun', senses: [{ tags: ['Belgium'], glosses: ['desire, appetite'] }, { tags: ['feminine'], glosses: ['taste'] }] },
+    { word: 'fiets', pos: 'noun', head_templates: [{ args: { '1': 'f', '2': '-en' } }], senses: [{ glosses: ['bicycle'] }] },
     { word: 'amai', pos: 'intj', senses: [{ tags: ['Belgium', 'colloquial'], glosses: ['wow'] }, { tags: ['Flanders'], glosses: ['oh dear'] }] },
-    { word: 'kot', pos: 'noun', senses: [{ raw_tags: ['in Belgium'], glosses: ['student room'] }] },
-    { word: 'schoon', pos: 'adj', senses: [{ tags: ['Brabant'], raw_tags: ['Brabant'], glosses: ['beautiful'] }] },
+    { word: 'kot', pos: 'noun', head_templates: [{ args: { '1': 'n' } }], senses: [{ raw_tags: ['in Belgium'], glosses: ['student room'] }] },
+    { word: 'schoon', pos: 'adj', head_templates: [{ args: { '1': 'schoner' } }], senses: [{ tags: ['Brabant'], raw_tags: ['Brabant'], glosses: ['beautiful'] }] },
     { word: 'gij', pos: 'pron', senses: [{ tags: ['Flemish', 'dialectal'], glosses: ['you'] }] },
-    { word: 'tab', pos: 'noun', senses: [{ tags: ['Belgium'], glosses: ['a\tb\nc'] }, { tags: ['Belgium'], glosses: ['a\tb\nc'] }] },
+    { word: 'tab', pos: 'noun', head_templates: [{ args: { '1': 'f,n' } }], senses: [{ tags: ['Belgium'], glosses: ['a\tb\nc'] }, { tags: ['Belgium'], glosses: ['a\tb\nc | d'] }] },
     { word: 'leeg', pos: 'adj' },
-    { word: 'stoel', pos: 'noun', senses: [{ tags: ['Belgium'] }] }
+    { word: 'stoel', pos: 'noun', head_templates: [{ args: { '1': 'm' } }], senses: [{ tags: ['Belgium'] }] }
   ];
   const dump = entries.map(e => JSON.stringify(e)).join('\n') + '\n\n';
   fs.mkdirSync(path.dirname(DUMP), { recursive: true });
   fs.writeFileSync(DUMP, dump);
   const pins = pinOf(dump);
-  same(await kaikki.extract(TMP, { pins }), { senses: 7, lemmas: 6 }, 'extract compte les sens marqués, une fois chacun, et leurs lemmes');
+  same(await kaikki.extract(TMP, { pins }), { senses: 8, lemmas: 6, entries: 9 }, 'extract compte les sens marqués, une fois chacun, leurs lemmes, et les entrées');
   same(fs.readFileSync(EXTRACT, 'utf8'), [
     '# kaikki/nl.jsonl sha256 ' + sha(dump),
     'amai\tintj\tBelgium\twow',
@@ -67,9 +70,28 @@ async function main() {
     'goesting\tnoun\tBelgium\tdesire, appetite',
     'kot\tnoun\tin Belgium\tstudent room',
     'stoel\tnoun\tBelgium\t',
-    'tab\tnoun\tBelgium\ta b c'
+    'tab\tnoun\tBelgium\ta b c',
+    'tab\tnoun\tBelgium\ta b c | d'
   ].join('\n') + '\n', 'l\'extrait : son épingle, puis un sens par ligne, trié, sans tabulation ni saut de ligne dans une case');
-  ok(!fs.existsSync(EXTRACT + '.part'), 'aucun fichier partiel ne reste');
+  same(fs.readFileSync(SENSES, 'utf8'), [
+    '# kaikki/nl.jsonl sha256 ' + sha(dump),
+    'amai\tintj\t\twow | oh dear',
+    'fiets\tnoun\tde\tbicycle',
+    'gij\tpron\t\tyou',
+    'goesting\tnoun\tde\tdesire, appetite | taste',
+    'kot\tnoun\thet\tstudent room',
+    'leeg\tadj\t\t',
+    'schoon\tadj\t\tbeautiful',
+    'stoel\tnoun\tde\t',
+    'tab\tnoun\tboth\ta b c | a b c / d'
+  ].join('\n') + '\n', 'l\'extrait des sens : son épingle, puis une entrée par ligne, triée : le lemme, sa nature, son genre, la première glose de chaque sens');
+  ok(!fs.existsSync(EXTRACT + '.part') && !fs.existsSync(SENSES + '.part'), 'aucun fichier partiel ne reste');
+  const S = kaikki.senses(TMP, { pins });
+  same([S.size, S.get('tab'), S.get('leeg'), S.get('goesting')[0].gender, S.has('fiets')],
+    [9, [{ pos: 'noun', gender: 'both', glosses: ['a b c', 'a b c / d'] }], [{ pos: 'adj', gender: '', glosses: [] }], 'de', true],
+    'senses rend chaque entrée, marquée ou non : sa nature, son genre, ses gloses');
+  same(kaikki.report({ senses: 8, lemmas: 6, entries: 9 }), ['ok .cache/kaikki/belgian.tsv 8 senses, 6 lemmas', 'ok .cache/kaikki/senses.tsv 9 entries'],
+    'kaikki.js dit les deux extraits qu\'il écrit');
   const B = kaikki.belgian(TMP, { pins });
   same(B.get('amai'), [{ pos: 'intj', labels: ['Belgium'], gloss: 'wow' }, { pos: 'intj', labels: ['Flanders'], gloss: 'oh dear' }],
     'belgian rend les sens d\'un lemme, dans l\'ordre de l\'extrait');
@@ -79,21 +101,27 @@ async function main() {
   await rejects(() => kaikki.belgian(TMP, { pins: pinOf(dump + ' ') }),
     /^\.cache\/kaikki\/belgian\.tsv comes from another pin of kaikki\/nl\.jsonl: run node tools\/content\/kaikki\.js \.$/,
     'un extrait d\'une autre épingle est refusé');
+  await rejects(() => kaikki.senses(TMP, { pins: pinOf(dump + ' ') }),
+    /^\.cache\/kaikki\/senses\.tsv comes from another pin of kaikki\/nl\.jsonl: run node tools\/content\/kaikki\.js \.$/,
+    'un extrait des sens d\'une autre épingle est refusé');
 
   const bad = dump.replace('\n', '\n{"word": \n');
   fs.writeFileSync(DUMP, bad);
-  const before = fs.readFileSync(EXTRACT, 'utf8');
+  const before = fs.readFileSync(EXTRACT, 'utf8'), sensesBefore = fs.readFileSync(SENSES, 'utf8');
   await rejects(() => kaikki.extract(TMP, { pins: pinOf(bad) }), /^kaikki\/nl\.jsonl:2: not JSON$/, 'une ligne qui n\'est pas du JSON est refusée, avec son numéro');
-  same(fs.readFileSync(EXTRACT, 'utf8'), before, 'un extract refusé n\'écrit rien');
+  same([fs.readFileSync(EXTRACT, 'utf8'), fs.readFileSync(SENSES, 'utf8')], [before, sensesBefore], 'un extract refusé n\'écrit rien');
   await rejects(() => kaikki.extract(TMP, { pins }),
     /^\.cache\/kaikki\/nl\.jsonl is missing: run node tools\/content\/fetch\.js \. kaikki\/nl\.jsonl$/, 'un fichier qui n\'a pas la taille de son épingle n\'est pas lu');
   fs.unlinkSync(EXTRACT);
+  fs.unlinkSync(SENSES);
   await rejects(() => kaikki.belgian(TMP, { pins }), /^\.cache\/kaikki\/belgian\.tsv is missing: run node tools\/content\/kaikki\.js \.$/,
     'sans extrait, belgian dit la commande à lancer');
+  await rejects(() => kaikki.senses(TMP, { pins }), /^\.cache\/kaikki\/senses\.tsv is missing: run node tools\/content\/kaikki\.js \.$/,
+    'sans extrait des sens, senses dit la commande à lancer');
   same(run('kaikki.js', [EMPTY]), { code: 1, lines: ['fail .cache/kaikki/nl.jsonl is missing: run node tools/content/fetch.js . kaikki/nl.jsonl'] },
     'kaikki.js sans le fichier épinglé dit la commande à lancer');
   same(run('kaikki.js', []), { code: 1, lines: ['usage: node tools/content/kaikki.js <repo>'] }, 'kaikki.js sans dépôt dit son usage');
-  console.log('  kaikki         7 sens belges sur 9 entrées, Brabant écarté, extrait daté par son épingle');
+  console.log('  kaikki         8 sens belges sur 9 entrées, Brabant écarté, et les 9 entrées avec leur genre ; deux extraits datés par leur épingle');
 
   /* ============================================ 2. tatoeba : les phrases d'un mot */
   /* [id, texte, auteur, traductions anglaises, traductions françaises]. Une traduction null est
@@ -129,8 +157,8 @@ async function main() {
   });
   const tPins = pinsOf(files);
   const OUT = path.join(TMP, '.cache', 'tatoeba', 'extract.tsv');
-  same(await tatoeba.extract(TMP, { pins: tPins }), { nld: 22, eng: 23, fra: 22 },
-    'extract garde les phrases traduites en anglais et en français, et leurs traductions');
+  same(await tatoeba.extract(TMP, { pins: tPins }), { nld: 24, eng: 25, fra: 22 },
+    'extract garde les phrases traduites en anglais ou en français, et leurs traductions');
   const lines = fs.readFileSync(OUT, 'utf8').split('\n');
   same(lines[0], '# ' + tatoeba.KEYS.map(k => k + ' ' + tPins[k].sha256).join(' '), 'l\'en-tête nomme les épingles lues');
   same(lines.filter(l => /^nld\t(10|12|18)\t/.test(l)), [
@@ -138,14 +166,16 @@ async function main() {
     'nld\t12\tbob\t0\tDe bakkers zijn er nog niet.\t121,122\t126',
     'nld\t18\t\t0\tWaar is de bakker nu?\t181\t186'
   ], 'une phrase : son auteur (vide pour \\N), langue maternelle ou non, ses traductions');
-  same(lines.filter(l => /^(nld\t(15|23)|eng\t231)\t/.test(l)), [], 'sans traduction française, ou avec un lien vers une phrase effacée, une phrase n\'est pas gardée');
+  same(lines.filter(l => /^(nld\t(15|23)|eng\t231|fra\t236)\t/.test(l)),
+    ['nld\t15\tann\t1\tDe bakker is er.\t151\t', 'nld\t23\tann\t1\tDe bakker is weg.\t231\t', 'eng\t231\tcy\tThe baker is gone.'],
+    'une phrase à une seule traduction est gardée, l\'autre colonne vide ; le lien vers une phrase effacée tombe');
   same(lines.filter(l => /^eng\t12[12]\t/.test(l)), ['eng\t121\tcy\tThe bakers are not there yet.', 'eng\t122\tcy\tThe bakers haven\'t come yet.'],
     'une traduction : son id, son auteur, son texte');
   ok(!fs.existsSync(OUT + '.part'), 'aucun fichier partiel ne reste');
 
   const T = tatoeba.load(TMP, { pins: tPins });
-  same([T.nld.size, T.nld.get(12).eng, T.fra.get(126).text, T.nld.get(10).native, T.nld.get(18).owner],
-    [22, [121, 122], 'Les boulangers ne sont pas encore là.', true, ''], 'load rend les phrases de l\'extrait, par id');
+  same([T.nld.size, T.nld.get(12).eng, T.fra.get(126).text, T.nld.get(10).native, T.nld.get(18).owner, T.nld.get(15).fra],
+    [24, [121, 122], 'Les boulangers ne sont pas encore là.', true, '', []], 'load rend les phrases de l\'extrait, par id');
   const NL = browser.open({ root: ROOT, seed: browser.SEED, skip: [browser.APP] }).NL;
   ok(spelling.named('Dag {naam}.', NL) && !spelling.named('De bakker is er.', NL), 'named écarte une phrase qui garde un jeton {naam}, et garde celle qui n’en a pas');
   /* Gent est vu à la première unité, comme le cours écrit la commune par défaut : seul named l'écarte. */
@@ -168,11 +198,11 @@ async function main() {
     id: 10, nl: 'De bakker is heel oud.', owner: 'ann', en: [{ id: 101, text: 'The baker is very old.', owner: 'cy' }],
     fr: [{ id: 106, text: 'Le boulanger est très vieux.', owner: 'cy' }], tiles: 5
   }, 'une candidate : son id, son texte, son auteur, ses traductions et leurs auteurs, ses tuiles');
-  same(ids('de bakker', 'de', 'the baker'), [10, 18, 12, 22, 11],
-    'le classement : sans je ni jij, d\'un auteur de langue maternelle, moins de tuiles ; ni plus de 8 tuiles, ni la trein d\'une unité ultérieure, ni Gent');
+  same(ids('de bakker', 'de', 'the baker'), [10, 18, 12, 22, 11, 15],
+    'le classement : les deux traductions d\'abord, sans je ni jij, d\'un auteur de langue maternelle, moins de tuiles ; ni plus de 8 tuiles, ni la trein d\'une unité ultérieure, ni Gent');
   same([17, 19].filter(id => ids('de bakker', 'de', 'the baker').indexOf(id) >= 0), [],
     'aucune forme que le cours n\'a pas enseignée, pas même une : ni vriendelijk, ni oude, fléchi d\'un mot vu (#12, récit 39)');
-  same(tatoeba.rank(T, word('de bakker', 'de', 'the baker'), Object.assign({ known: t => t !== 'oud' }, seq)).map(c => c.id), [18, 12, 22, 11],
+  same(tatoeba.rank(T, word('de bakker', 'de', 'the baker'), Object.assign({ known: t => t !== 'oud' }, seq)).map(c => c.id), [18, 12, 22, 11, 15],
     'avec seq.known, une phrase dont une forme ne s\'écrit pas ainsi n\'est pas candidate');
   same(ids('het brood', 'het', 'the bread'), [101, 102, 103, 104, 105, 106, 107, 108], 'huit candidates au plus, par id à rang égal');
   same(ids('tot straks', null, 'see you later'), [21], 'un mot de plusieurs formes s\'y lit à la suite');
@@ -185,7 +215,9 @@ async function main() {
   same(run('tatoeba.js', [EMPTY]), { code: 1, lines: ['fail .cache/tatoeba/nld_sentences_detailed.tsv is missing: run node tools/content/fetch.js . tatoeba/nld_sentences_detailed.tsv'] },
     'tatoeba.js sans les fichiers épinglés dit la commande à lancer');
   same(run('tatoeba.js', []), { code: 1, lines: ['usage: node tools/content/tatoeba.js <repo>'] }, 'tatoeba.js sans dépôt dit son usage');
-  console.log('  tatoeba        22 phrases sur 24 gardées, auteurs et langue maternelle lus, classement sur 4 mots');
+  same(tatoeba.rank(T, word('de bakker', 'de', 'the baker'), seq)[5], { id: 15, nl: 'De bakker is er.', owner: 'ann', en: [{ id: 151, text: 'The baker is here.', owner: 'cy' }], fr: [], tiles: 4 },
+    'une phrase à une seule traduction : fr vide, classée après celles qui ont les deux, bien que native');
+  console.log('  tatoeba        24 phrases sur 24 gardées, 2 à une seule traduction, auteurs et langue maternelle lus, classement sur 4 mots');
 
   console.log('\n' + checks + ' contrôles, ' + (fails === 0 ? 'SOURCES CONFORMES' : fails + ' ÉCHEC(S)'));
 }

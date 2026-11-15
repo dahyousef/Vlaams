@@ -43,7 +43,12 @@ task controllers' notices.
      back as a new task with its own Status row.
    - `failed`: stop the run and tell the maintainer, with the report paths from the return.
 
-The dispatch prompt:
+   A controller that handed back while its agent still ran has not failed, whatever state it wrote: its return's
+   `UNFINISHED:` line says so. Send the same controller on with `SendMessage`, with the agent's line once it has
+   come.
+
+The dispatch prompt. Here and in every other prompt of this kit, write `<WS>` out as the absolute path `run.md`
+gives:
 
     You are the task controller for task <N> of the plan run in <worktree>. Read
     docs/agents/plan-runs/task-controller.md and follow it. Run file: <WS>/run.md.
@@ -73,20 +78,37 @@ The dispatch prompt:
 ## Launching a sitting
 
 A sitting, a design sitting and a `sitting`-class task are each launched as a Remote Control session, from
-the run's worktree, with this command (PowerShell):
+the run's worktree, with this command, through the PowerShell tool (never Bash: there the `\"` stay and
+`--settings` is not JSON):
 
-    & "$env:USERPROFILE\.local\bin\claude.exe" --bg --remote-control "<name>" -n "<name>" --model opus --settings '{\"env\":{\"CLAUDE_CODE_AUTO_COMPACT_WINDOW\":\"200000\"}}' -- "<prompt>"
+    claude --bg --remote-control "<name>" -n "<name>" --model opus --settings '{\"env\": {\"CLAUDE_CODE_AUTO_COMPACT_WINDOW\":\"200000\"}, \"permissions\": {\"allow\":[\"Bash(git push origin HEAD:<branch>)\",\"PowerShell(git push origin HEAD:<branch>)\"]}}' '--' '<prompt>'
 
+- `claude` is the one npm installs, in `%APPDATA%\npm`. Windows PowerShell 5.1 runs it as `claude.ps1`, which
+  hands its arguments to `claude.exe` unchanged, except a bare `--`: PowerShell keeps that one for itself. The
+  quoted `'--'` reaches `claude.exe`.
 - `<name>` takes the form `Vlaams phase <n> — <what it is> <k>`.
 - `<prompt>` is the start prompt (below), a design sitting's prompt, or « Read `<WS>/briefs/task-<N>.md` and
   follow it. Run file: `<WS>/run.md`. ».
+  It is single-quoted: in double quotes PowerShell expands `$` and reads a backtick as an escape (the start
+  prompt's `` `fallback` `` arrives as a form feed and `allback`). A `'` inside it is written `''`, and a `"`
+  is written `\"` (PowerShell 5.1 drops a bare one and splits the argument at the next blank).
+- `<branch>` is `run.md`'s `Branch:`. The two rules let this session and every agent it dispatches run
+  `run.md`'s `Push:` command without the auto-mode classifier, which refused two task controllers' pushes in
+  plan 4c. A rule without `*` matches that one command: a push to another branch or remote, or with `--force`,
+  still goes to the classifier, and the git guard hook still blocks force pushes and `main`. A sitting with no
+  `run.md` yet leaves `<branch>` as written, and the rules match nothing.
+- The rules sit in `--settings` because a background session keeps that flag when the supervisor restarts it;
+  the documentation does not list `--allowedTools` among the flags it keeps.
 - The quotes inside `--settings` are escaped because Windows PowerShell 5.1 drops unescaped ones from an
   argument it passes to a program: `'{"env":…}'` arrives as `{env:{CLAUDE_CODE_AUTO_COMPACT_WINDOW:200000}}`,
-  which is not JSON.
+  which is not JSON. The space after `\"env\":` matters too: PowerShell 5.1 counts escaped quotes as quotes, and
+  wraps the argument in quotes only if a space follows an even number of them. Without that space, the program
+  receives the JSON cut into seven pieces at the spaces inside the rules. `test/hooks.js` passes this line
+  through PowerShell 5.1's rules and parses what arrives.
 - The launch prints `backgrounded · <id> · <name>`. Right after it, open a window attached to the new session,
   so the maintainer can follow it on the desktop:
 
-      Start-Process powershell.exe -ArgumentList '-NoExit', '-Command', '& "$env:USERPROFILE\.local\bin\claude.exe" attach <id>'
+      Start-Process powershell.exe -ArgumentList '-NoExit', '-Command', 'claude attach <id>'
 
 « The command » means both: the launch, then its window.
 
@@ -150,8 +172,8 @@ Once per plan, in the run's worktree, create `<WS>` = `.superpowers/sdd/<plan na
 The first sitting is launched with the command, from the run's worktree, by whichever Claude session the
 maintainer is talking to. The maintainer never starts a sitting by hand, and never pastes a prompt.
 
-After a cut-off, wait six minutes first: closing a session's window does not stop a suite its verifier started,
-and `sh test/run-all.sh` runs on for up to six minutes, rewriting `<WS>/tmp/suite.txt` and the build outputs.
+After a cut-off, wait thirty-five minutes first: closing a session's window does not stop a suite its verifier started,
+and `sh test/run-all.sh` runs on for more than half an hour on a busy machine, rewriting `<WS>/tmp/suite.txt` and the build outputs.
 Then that session launches the next sitting with the command. The start prompt is:
 
     Run the plan in <WS>/run.md. Read docs/agents/plan-runs/run-controller.md, then the Status table of

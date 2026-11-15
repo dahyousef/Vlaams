@@ -25,13 +25,16 @@ const KIT_FIELDS = ['id', 'stamp', 'unsure'];
 const VERDICT = /^(keep|dispute: .*\S.*|for maintainer: .*\S.*)$/;
 
 /* Le module d'un genre, vérifié : ce qu'il doit déclarer et ce qu'il peut déclarer sont
-   ci-dessous. Le genre essai de test/tools/fanout.js en est un exemple. */
+   ci-dessous. Le genre essai de test/tools/fanout.js en est un exemple. Un genre peut déclarer
+   sourceOf(C, id), la source d'une de ses lignes : par défaut C.byId(id), un élément du cours ;
+   le genre words donne une unité à venir, dont nl est l'id. Split, Merge et l'outil de lecture
+   lisent la source par lui, et stamp() lit src.nl comme toujours. */
 function loadKind(repo, name) {
   const file = path.join(path.resolve(repo), 'tools', 'content', 'kinds', name + '.js');
   if (!fs.existsSync(file)) throw new Error('no kind module tools/content/kinds/' + name + '.js');
-  const kind = Object.assign({ optional: [], verdictFields: [], forMaintainer: () => '', checkVerdict: () => [], readWhole: () => '' }, require(file));
+  const kind = Object.assign({ optional: [], verdictFields: [], forMaintainer: () => '', checkVerdict: () => [], readWhole: () => '', sourceOf: (C, id) => C.byId(id) }, require(file));
   const arrays = ['stamp', 'fields', 'optional', 'verdictFields', 'tables'];
-  const fns = ['split', 'check', 'merge', 'forMaintainer', 'checkVerdict', 'readWhole'];
+  const fns = ['split', 'check', 'merge', 'forMaintainer', 'checkVerdict', 'readWhole', 'sourceOf'];
   arrays.forEach(k => { if (!Array.isArray(kind[k])) throw new Error('kind ' + name + ': ' + k + ' is not an array'); });
   fns.forEach(k => { if (typeof kind[k] !== 'function') throw new Error('kind ' + name + ': ' + k + ' is not a function'); });
   if (kind.write !== undefined && typeof kind.write !== 'function') throw new Error('kind ' + name + ': write is not a function');
@@ -82,7 +85,8 @@ function readSplitTxt(kindDir) {
    récrit (alreadySplit). Un lot vide n'est pas écrit, et split.txt, écrit en dernier, ne
    liste que les lots écrits. Des ids nommés ne gardent que leurs lignes, dans le lot où le
    genre les met : c'est ainsi que quelques lignes déjà fusionnées se récrivent. Un id que le
-   genre ne coupe pas est refusé. */
+   genre ne coupe pas est refusé. Le split du genre reçoit les ids nommés dans ctx.ids (null
+   sans ids) : un genre qui ne coupe que ses lignes neuves coupe aussi celles qu'on lui nomme. */
 function split(repo, kindDir, ids) {
   const name = path.basename(kindDir), list = path.join(kindDir, 'split.txt');
   const keep = ids && ids.length ? new Set(ids) : null;
@@ -91,7 +95,7 @@ function split(repo, kindDir, ids) {
   try { kind = loadKind(repo, name); } catch (e) { return { ok: false, lines: ['fail ' + name + ' -: ' + e.message] }; }
   const C = course(repo);
   let batches;
-  try { batches = kind.split(C, { repo: path.resolve(repo), kind, kindDir, course: () => C }); } catch (e) { return { ok: false, lines: ['fail ' + name + ' -: the kind\'s split threw: ' + e.message] }; }
+  try { batches = kind.split(C, { repo: path.resolve(repo), kind, kindDir, course: () => C, ids: keep ? ids.slice() : null }); } catch (e) { return { ok: false, lines: ['fail ' + name + ' -: the kind\'s split threw: ' + e.message] }; }
   const lines = [], seen = new Map(), names = new Set();
   if (!Array.isArray(batches) || batches.some(b => !b || typeof b.batch !== 'string' || !Array.isArray(b.rows) || b.rows.some(r => !r || typeof r.id !== 'string'))) {
     return { ok: false, lines: ['fail ' + name + ' -: the kind\'s split returns a list of { batch, rows }, each row an object with its id'] };
@@ -100,7 +104,7 @@ function split(repo, kindDir, ids) {
     if (!/^[a-z0-9][a-z0-9-]*$/.test(b.batch) || names.has(b.batch)) lines.push('fail ' + name + ' -: batch name « ' + b.batch + ' » is not a fresh name in lowercase letters, digits and dashes');
     names.add(b.batch);
     b.rows.forEach(r => {
-      const src = C.byId(r.id);
+      const src = kind.sourceOf(C, r.id);
       if (!src) lines.push('fail ' + name + ' ' + r.id + ': not an item (a copy, a pattern or an unknown id)');
       else if (seen.has(r.id)) lines.push('fail ' + name + ' ' + r.id + ': in batch ' + seen.get(r.id) + ' and in batch ' + b.batch);
       if ('stamp' in r || 'copies' in r) lines.push('fail ' + name + ' ' + r.id + ': stamp and copies are the kit\'s to write');
@@ -111,9 +115,9 @@ function split(repo, kindDir, ids) {
   if (failed(lines)) return { ok: false, lines };
   batches.map(b => keep ? { batch: b.batch, rows: b.rows.filter(r => keep.has(r.id)) } : b).filter(b => b.rows.length).forEach(b => {
     const rows = b.rows.map(r => {
-      const src = C.byId(r.id), rest = Object.assign({}, r);
+      const src = kind.sourceOf(C, r.id), rest = Object.assign({}, r);
       delete rest.id;
-      return Object.assign({ id: r.id, stamp: stamp(kind, src, C.NL), copies: src.copies.slice() }, rest);
+      return Object.assign({ id: r.id, stamp: stamp(kind, src, C.NL), copies: (src.copies || []).slice() }, rest);
     });
     fs.mkdirSync(path.join(kindDir, b.batch), { recursive: true });
     writeJson(path.join(kindDir, b.batch, 'input.json'), rows);
@@ -145,10 +149,25 @@ function alreadySplit(kindDir, keep) {
     (unnamed.length ? '; in its batches but not named: ' + unnamed.join(' ') : '')] };
 }
 
+/* Le texte d'un fichier du lot, ou une ligne `fail`. Il se décode strictement : lu en 'utf8', un octet invalide
+   devient U+FFFD, que JSON.parse prend pour du texte. `ignoreBOM` garde la marque d'ordre, pour la nommer ici : un
+   décodeur ordinaire l'enlèverait en silence, et disputes.md ne passe pas par JSON.parse, qui la refuse. Un U+FFFD
+   déjà là, tel quel ou en échappement, est un caractère perdu par une conversion, jamais un texte du cours. */
+function readText(dir, file, out) {
+  let bytes, text;
+  try { bytes = fs.readFileSync(path.join(dir, file)); } catch (e) { out.push('fail ' + file + ' -: cannot be read (' + e.code + ')'); return null; }
+  try { text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes); } catch (e) { out.push('fail ' + file + ' -: not UTF-8'); return null; }
+  if (text.charCodeAt(0) === 0xFEFF) { out.push('fail ' + file + ' -: starts with a byte-order mark'); return null; }
+  if (/\uFFFD|\\ufffd/i.test(text)) { out.push('fail ' + file + ' -: holds U+FFFD, a character lost in a conversion'); return null; }
+  return text;
+}
+
 /* Un fichier JSON du lot : un tableau, ou une ligne `fail`. */
 function readArray(dir, file, out) {
+  const text = readText(dir, file, out);
+  if (text === null) return null;
   let v;
-  try { v = JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8')); } catch (e) { out.push('fail ' + file + ' -: not JSON (' + e.message.split('\n')[0] + ')'); return null; }
+  try { v = JSON.parse(text); } catch (e) { out.push('fail ' + file + ' -: not JSON (' + e.message.split('\n')[0] + ')'); return null; }
   if (!Array.isArray(v)) { out.push('fail ' + file + ' -: not a JSON array'); return null; }
   if (v.some(x => !x || typeof x !== 'object' || Array.isArray(x) || typeof x.id !== 'string')) { out.push('fail ' + file + ' -: an entry is not an object with an id'); return null; }
   return v;
@@ -275,7 +294,9 @@ function readBatch(repo, batchDir) {
   const disputed = ids(id => /^dispute: /.test(verdictOf('review.json', id)));
   step('disputes.md', disputed.length ? ['review.json', 'retry-review.json'] : ['review.json'], out => {
     const want = ids(id => /^for maintainer: /.test(verdictOf('review.json', id)) || /^(dispute|for maintainer): /.test(verdictOf('retry-review.json', id)));
-    const secs = sections(fs.readFileSync(path.join(batchDir, 'disputes.md'), 'utf8')), seen = new Set();
+    const text = readText(batchDir, 'disputes.md', out);
+    if (text === null) return null;
+    const secs = sections(text), seen = new Set();
     secs.forEach(s => {
       if (seen.has(s.id)) out.push('fail disputes.md ' + s.id + ': two sections');
       seen.add(s.id);
@@ -333,7 +354,8 @@ function settle(id, got) {
   if (review && review.verdict === 'keep') return { row: draft, from: 'draft' };
   if (second && second.verdict === 'keep') return { row: retry, from: 'retry' };
   if (ruling && ruling.ruling === 'keep') return retry ? { row: retry, from: 'retry' } : { row: draft, from: 'draft' };
-  if (ruling && ruling.ruling === 'drop') return { drop: true };
+  /* Écartée, une ligne n'est pas prise ; l'outil de lecture montre encore ce qu'elle écrivait (dropped). */
+  if (ruling && ruling.ruling === 'drop') return { drop: true, dropped: retry || draft };
   if (ruling && ruling.ruling === 'change') {
     if (!ruling.confirmed) return { why: 'change not confirmed' };
     const change = find('change.json', id);
@@ -381,7 +403,7 @@ function merge(repo, kindDir) {
   const ctx = { repo: path.resolve(repo), kind, kindDir, course: () => C };
   rows.forEach(r => {
     if (r.why) { lines.push('fail ' + name + ' ' + r.input.id + ': unsettled, ' + r.why); return; }
-    const src = C.byId(r.input.id);
+    const src = kind.sourceOf(C, r.input.id);
     if (!src) { lines.push('fail ' + name + ' ' + r.input.id + ': no longer an item'); return; }
     const now = stamp(kind, src, C.NL);
     if (now !== r.input.stamp) lines.push('fail ' + name + ' ' + r.input.id + ': stale, stamped ' + r.input.stamp + ' at Split, the source now stamps ' + now);

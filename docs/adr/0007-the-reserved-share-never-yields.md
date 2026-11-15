@@ -20,3 +20,14 @@ has to follow it.
 
 Making the share yield is the obvious repair for a growing backlog, and it restores the fault
 this project was rebuilt to fix.
+
+## Amended 2 November 2026
+
+The budget follows the backlog, the second of the two options above. A session has 30 places,
+and one more for reviews for every 40 items due, up to 41. The reserved share is computed on
+the 30, so it stays at nine new items: it doesn't yield to the backlog and doesn't grow with it.
+
+Over 200 days at one session a day, 22 fixed places let the backlog reach 857 on a course of
+1,035 items, and 993 on one of 1,192. The session that follows the backlog holds it around 650
+and just under 800, under three quarters of the course. These peaks move by a few dozen
+whenever the content changes.

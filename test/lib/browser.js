@@ -27,6 +27,7 @@
      B.tap(d)        un clic sur un élément dont le dataset est d, tel que le shell le reçoit
      B.fields        la valeur de chaque champ qu'un écran lit (B.fields['add-nl'] = '…') — si `byId` vaut 'stub'
      B.events        les gestes faits sur ces champs, dans l'ordre (« select <id> ») — si `byId` vaut 'stub'
+     B.scrolls       le journal des défilements : « window <y> », et « .unit-card.now <block> » pour l'unité en cours
      B.clock         l'horloge : now(), set(ms), advance(ms) — si `now` est donné
      B.spoken        ce que la synthèse vocale a prononcé — si `voices` est donné
      B.tick()        la fin du tour : les minuteurs mis de côté partent — si `timers` vaut 'held'
@@ -144,6 +145,7 @@ function open(opts) {
   const idb = opts.idb ? (opts.idb === true ? {} : opts.idb) : null;
   const listeners = {};
   const spoken = [];
+  const scrolls = [];
   const listen = (t, f) => { (listeners[t] = listeners[t] || []).push(f); };
 
   function mkEl(tag) {
@@ -239,12 +241,15 @@ function open(opts) {
       readyState: 'complete', visibilityState: 'visible',
       documentElement: { attrs: {}, setAttribute(k, v) { this.attrs[k] = v; }, removeAttribute(k) { delete this.attrs[k]; } },
       getElementById: id => (id === 'app' ? app : opts.byId === 'stub' ? Object.assign(mkEl('input'), { value: fields[id] || '', select() { events.push('select ' + id); } }) : null),
-      querySelector: () => null, querySelectorAll: () => [],
+      querySelector: sel => (sel === '.unit-card.now' && /class="unit-card[^"]* now"/.test(html)
+        ? { scrollIntoView(o) { scrolls.push(sel + ' ' + o.block); } } : null),
+      querySelectorAll: () => [],
       addEventListener: listen,
       activeElement: { tagName: 'BODY' }, createElement: mkEl, body: { appendChild() {} },
       execCommand: () => true
     },
-    addEventListener: listen, removeEventListener() {}
+    addEventListener: listen, removeEventListener() {},
+    scrollTo: (x, y) => { scrolls.push('window ' + y); }
   };
   if (opts.ua) ctx.navigator.userAgent = opts.ua;
 
@@ -329,7 +334,7 @@ function open(opts) {
     (listeners.click || []).forEach(f => f({ target }));
   };
 
-  return { ctx, NL: ctx.NL, app, store, idb, listeners, spoken, clock, mkEl, tap, tick, waiting, fields, events, random: M.random };
+  return { ctx, NL: ctx.NL, app, store, idb, listeners, spoken, scrolls, clock, mkEl, tap, tick, waiting, fields, events, random: M.random };
 }
 
 module.exports = { open, rng, sources, UA, SEED, APP };

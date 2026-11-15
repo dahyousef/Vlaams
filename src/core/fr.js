@@ -42,7 +42,7 @@ NL.tables.fr = {
 
   /* --- parcours --- */
   pathEyebrow: 'Parcours',
-  pathTitle: 'Le niveau A1, en douze unités',
+  pathTitle: n => 'Le niveau A1, en ' + n + ' unités',
   pathBody: 'Les unités alimentent le planificateur en nouvelles matières. Tu ne dois pas finir une unité pour ouvrir la suivante : elle s’ouvre d’elle-même quand l’essentiel de la précédente a été vu.',
   courseCounts: (met, produce, total) => met + ' rencontrés sur ' + total + ', dont ' + produce + ' que tu sais produire.',
   unitCounts: (met, produce, total) => met + ' rencontrés sur ' + total + ' · ' + produce + ' que tu sais produire',
@@ -185,6 +185,7 @@ NL.tables.fr = {
   wordsAdd: 'Ajouter un mot à moi',
   wordsNothing: 'Rien encore. Fais une session et ça apparaît ici.',
   wordsNoResult: 'Rien trouvé.',
+  wordsMore: n => '… et ' + n + ' de plus : précise ta recherche.',
   wordsMineNone: 'Aucun mot à toi pour l’instant. Ajoute-en un avec le bouton ci-dessus.',
   wordsSearch: 'Rechercher…',
   wordsAll: 'tous', wordsWeak: 'fragiles', wordsStrong: 'produits', wordsMine: 'à moi',

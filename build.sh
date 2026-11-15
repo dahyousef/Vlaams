@@ -25,8 +25,11 @@ src/core/audio.js
 src/core/sync.js
 src/content/lexicon.a1.js
 src/content/lexicon.a1b.js
+src/content/lexicon.a1c.js
+src/content/phrases.a1c.js
 src/content/be.js
 src/content/grammar.js
+src/content/grammar.a1c.js
 src/content/sourced.js
 src/content/examples.js
 src/content/also.js
@@ -36,6 +39,7 @@ src/content/open.js
 src/content/open.phrases.js
 src/content/reference.js
 src/content/scenarios.js
+src/content/scenarios.a1c.js
 src/content/index.js
 src/core/lang.js
 src/ex/index.js

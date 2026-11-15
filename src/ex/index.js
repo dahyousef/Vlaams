@@ -88,7 +88,7 @@ NL.ex = (function () {
      éléments qui n'ont rien dans cette langue. */
   function others(item, n, field) {
     const lang = NL.gloss.langOf(item);
-    const label = x => field === 'gloss' ? NL.gloss.bare(x, lang) : U.bare(x.nl);
+    const label = x => field === 'gloss' ? NL.gloss.option(x, lang) : U.bare(x.nl);
     const cls = NL.gloss.wordClass(item, lang);
     const target = label(item), tn = U.norm(target), len = target.length;
 
@@ -107,7 +107,8 @@ NL.ex = (function () {
        synonyme, ni une réponse que l'un des deux accepte : « dag » face à
        « bonjour » ne doit pas offrir « hallo » comme faux. */
     const mine = accepted(item);
-    pool = pool.filter(x => U.norm(label(x)) !== tn && !NL.gloss.sameMeaning(x, item) && !accepts(mine, x) && !accepts(accepted(x), item));
+    pool = pool.filter(x => U.norm(label(x)) !== tn && !NL.gloss.sameMeaning(x, item) && !accepts(mine, x) && !accepts(accepted(x), item)
+      && !(field === 'gloss' && NL.gloss.sameOption(x, item, lang)));
 
     const score = x => {
       const s = label(x);
@@ -124,8 +125,16 @@ NL.ex = (function () {
     /* On garde le peloton de tête puis on tire dedans : proche sans être
        toujours le même trio pour un mot donné. */
     const ranked = U.shuffle(pool).sort((a, b) => score(b) - score(a));
-    const short = ranked.slice(0, Math.max(n, Math.min(ranked.length, n * 3)));
-    return U.uniq(U.sample(short, n).map(label)).slice(0, n);
+    const labels = U.uniq(ranked.map(label));
+    const head = labels.slice(0, Math.max(n, Math.min(labels.length, n * 3)));
+    if (field !== 'gloss') return U.sample(head, n);
+    /* Deux leurres qui disent la même chose s'écartent sans connaître le mot : « quand / alors » à côté
+       de « si / quand / comme ». On tire en sautant ce qu'un leurre déjà tiré dit, le reste du classement
+       servant de réserve, et une carte qui n'a rien d'autre garde ses quatre options. */
+    const order = U.shuffle(head).concat(labels.slice(head.length));
+    const drawn = [];
+    order.forEach(l => { if (drawn.length < n && !drawn.some(d => NL.gloss.shareSense(d, l))) drawn.push(l); });
+    return drawn.concat(order.filter(l => drawn.indexOf(l) < 0).slice(0, n - drawn.length));
   }
   function bankFor(sentence, item, extra) {
     const right = U.tiles(sentence);
@@ -182,7 +191,7 @@ NL.ex = (function () {
     asks: 'nl', answers: 'gloss',
     given: chosenLabel,
     build(item) {
-      const opts = U.shuffle([{ label: NL.gloss.bare(item), ok: true }].concat(
+      const opts = U.shuffle([{ label: NL.gloss.option(item), ok: true }].concat(
         others(item, 3, 'gloss').map(l => ({ label: l, ok: false }))));
       return { type: 'recall', item, opts };
     },
@@ -256,6 +265,10 @@ NL.ex = (function () {
       const forced = d.gap ||
         (item.kind === 'word' && U.tiles(U.bare(item.nl)).length === 1 ? U.bare(item.nl) : null);
       const gap = gapWord(d.nl, forced);
+      /* Un trou qui tient une majuscule la donne à ses leurres : sinon la seule option qui en
+         porte une est la réponse, sans lire la phrase. */
+      const likeGap = w => gap[0] === gap[0].toLowerCase() ? w :
+        w.slice(0, 2).toLowerCase() === 'ij' ? 'IJ' + w.slice(2) : w[0].toUpperCase() + w.slice(1);
       /* Les leurres du texte à trous sortaient des mots de l'unité, articles et
          pronoms compris : « Het » face à « gemeentehuis » ne trompe personne et
          se raye sans lire la phrase. On ne garde que des mots pleins, et de
@@ -266,7 +279,8 @@ NL.ex = (function () {
         'wel', 'uw', 'mijn', 'er', 'u', 'al'];
       const pool = U.uniq(NL.content.itemsOf(item.unit)
         .flatMap(x => U.tiles(x.nl || '').concat((x.drills || []).flatMap(d => U.tiles(d.nl))))
-        .filter(w => w.length > 2 && U.norm(w) !== U.norm(gap) && FILLERS.indexOf(U.norm(w)) < 0));
+        .filter(w => w.length > 2 && U.norm(w) !== U.norm(gap) && FILLERS.indexOf(U.norm(w)) < 0)
+        .map(likeGap));
       const near = pool.slice().sort((a, b) =>
         Math.abs(a.length - gap.length) - Math.abs(b.length - gap.length));
       const opts = U.shuffle([{ label: gap, ok: true }].concat(
@@ -661,7 +675,7 @@ NL.ex = (function () {
     view(t, L, phase) {
       const met = phase === 'ask' ? null : rubric(t.task, L.input);
       return '<p class="sentence prompt"' + NL.gloss.langAttr(t.task.ask) + '>' + NL.gloss.quoted(t.task.ask) + '</p>' +
-        '<textarea class="textin open-box" rows="3" spellcheck="false" ' +
+        '<textarea class="textin open-box"' + NL.gloss.attr('nl') + ' rows="3" spellcheck="false" ' +
         'placeholder="' + esc(NL.t.openPlaceholder) + '"' + (phase === 'ask' ? '' : ' disabled') + '>' +
         esc(L.input) + '</textarea>' +
         '<div class="need-list">' + (t.task.need || []).map(n => {

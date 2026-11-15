@@ -231,6 +231,39 @@ NL.speech = (function () {
   }
 
   /* ---------------- scoring ---------------- */
+  /* A voice has no spaces, hyphens or apostrophes: the recogniser writes « hoe lang »
+     or « hoelang » as it pleases. What it heard is respaced as the target writes it,
+     and only when the letters match exactly: heard words that are one target word, or
+     one heard word that is target words in a row. A heard word the target already
+     holds stays as it is: « werk en » is not « werken » when the target has all three. */
+  const letters = list => list.join('').replace(/['-]/g, '');
+  function respaced(heard, target) {
+    const S = words(heard), T = words(target), out = [];
+    const known = w => T.indexOf(w) >= 0;
+    function asOne(i) {
+      for (let n = S.length - i; n > 1; n--) {
+        const run = S.slice(i, i + n), t = T.find(w => letters([w]) === letters(run));
+        if (t && !run.every(known)) return { t, n };
+      }
+      return null;
+    }
+    function asMany(w) {
+      if (known(w)) return [w];
+      for (let j = 0; j < T.length; j++) {
+        for (let m = 1; j + m <= T.length; m++) {
+          if (letters(T.slice(j, j + m)) === letters([w])) return T.slice(j, j + m);
+        }
+      }
+      return [w];
+    }
+    for (let i = 0; i < S.length; i++) {
+      const one = asOne(i);
+      if (one) { out.push(one.t); i += one.n - 1; }
+      else out.push(...asMany(S[i]));
+    }
+    return out.join(' ');
+  }
+
   /* Scores the best of the alternatives the recogniser offered, so a single
      misheard word does not sink an otherwise correct sentence. */
   function score(heardList, target) {
@@ -238,9 +271,10 @@ NL.speech = (function () {
     if (!cands.length) return { pct: 0, parts: diffWords('', target), heard: '', pass: false };
     let best = null;
     cands.forEach(h => {
-      const parts = diffWords(h, target);
+      const said = respaced(h, target);
+      const parts = diffWords(said, target);
       const hit = parts.filter(p => p.ok).length;
-      const extra = Math.max(0, words(h).length - words(target).length);
+      const extra = Math.max(0, words(said).length - words(target).length);
       const pct = Math.round(Math.max(0, hit / Math.max(1, parts.length) - extra * 0.06) * 100);
       if (!best || pct > best.pct) best = { pct, parts, heard: h };
     });

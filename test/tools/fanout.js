@@ -12,6 +12,22 @@
    règles sont les bonnes. Chaque genre a ses contrôles, dans sa propre suite. */
 const fs = require('fs'), path = require('path'), os = require('os'), http = require('http'), crypto = require('crypto');
 const { spawnSync } = require('child_process');
+/* La limite de temps. En plan 4b, un passage est resté plus de dix minutes dans le lot words, dans un check.js que
+   spawnSync attendait ; relancé, il a passé en 34 s, et la cause reste inconnue. Un minuteur ne couperait rien :
+   spawnSync bloque la boucle d'événements, et aucun minuteur ne tire avant son retour (mesuré sous Node 24 : un
+   setTimeout de 200 ms tire après un spawnSync de 1,5 s). Le fichier se relance donc lui-même en enfant, sous le délai
+   de spawnSync, qui le tue de l'extérieur : passé le délai, une ligne nommée, sortie 1, et un contrôleur relance la
+   commande. Un passage entier prend 42 s sur ce poste à la fin du plan 4c (mesuré deux fois au commit d5f716d, 42,6 s
+   et 42,1 s ; 24 s au premier commit du plan, 6fc9227, avant les blocs que ses tâches 2, 3, 4 et 8 y ont ajoutés) ;
+   la limite est 300 s, et FANOUT_LIMIT=<secondes> la change, pour l'essayer. Un enfant tué laisse son dossier
+   vlaams-fanout-* dans le dossier temporaire, et le check.js qui le bloquait. */
+const LIMIT = Number(process.env.FANOUT_LIMIT) || 300;
+if (!process.env.FANOUT_CHILD) {
+  const child = spawnSync(process.execPath, [__filename].concat(process.argv.slice(2)),
+    { stdio: 'inherit', timeout: LIMIT * 1000, env: Object.assign({}, process.env, { FANOUT_CHILD: '1' }) });
+  if (child.error && child.error.code === 'ETIMEDOUT') console.log('DÉLAI DÉPASSÉ : test/tools/fanout.js n\'a pas fini en ' + LIMIT + ' s ; à relancer');
+  process.exit(child.status === null ? 1 : child.status);
+}
 const ROOT = path.resolve(process.argv[2] || path.join(__dirname, '..', '..'));
 const LIB = path.join(ROOT, 'tools', 'content', 'lib');
 const kit = require(path.join(LIB, 'kit'));
@@ -37,11 +53,45 @@ fs.mkdirSync(KINDS, { recursive: true });
 const kindFile = (name, text) => fs.writeFileSync(path.join(KINDS, name + '.js'), text);
 const text = f => fs.readFileSync(f, 'utf8');
 const put = (dir, file, v) => fs.writeFileSync(path.join(dir, file), typeof v === 'string' ? v : JSON.stringify(v, null, 2) + '\n');
-/* Un outil du kit, lancé comme un agent le lance : ses lignes et son code de sortie. */
-const run = (script, args) => {
-  const r = spawnSync(process.execPath, [path.join(TMP, 'tools', 'content', script)].concat(args), { encoding: 'utf8' });
+/* Les pièces d'une copie du dépôt où les outils du kit se lancent, et l'outil lancé comme un agent le lance. */
+const KIT = ['build.sh', 'src', 'test/lib', 'test/data', 'tools'];
+const copyKit = (from, dest, pieces) => { (pieces || KIT).forEach(p => fs.cpSync(path.join(from, p), path.join(dest, p), { recursive: true })); return dest; };
+const runIn = (dir, script, args) => {
+  const r = spawnSync(process.execPath, [path.join(dir, 'tools', 'content', script)].concat(args), { encoding: 'utf8' });
   return { code: r.status, lines: (r.stdout || '').split(/\r?\n/).filter(Boolean) };
 };
+/* Et grammar.a1c.js vidé par l'écrivain du genre grammar : ses règles veulent des unités du lexique, que le lexique vidé n'a plus. */
+const beforeGrammar = dir => fs.writeFileSync(path.join(dir, 'src', 'content', 'grammar.a1c.js'),
+  require(path.join(dir, 'tools', 'content', 'kinds', 'grammar')).patterns([]).map(l => l + '\n').join(''));
+/* Et phrases.a1c.js vidé par l'écrivain du genre phrases : ses phrases veulent leurs unités, de même ; les
+   lignes <unité>:p<n> de ces unités ôtées de ids.tsv ; et son crédit (docs/attribution/tatoeba-phrases.tsv,
+   quand la copie l'a) remis à ses lignes « # » et ses colonnes, comme Merge le récrit pour un fichier sans
+   phrase. Chaque fichier garde ses fins de ligne : les nombres attendus ne bougent pas avec le cours. */
+const beforePhrases = dir => {
+  const K = require(path.join(dir, 'tools', 'content', 'kinds', 'phrases'));
+  const own = new Set(require(path.join(dir, 'tools', 'content', 'kinds', 'words')).UNITS.map(u => u.id));
+  fs.writeFileSync(path.join(dir, 'src', 'content', 'phrases.a1c.js'), K.file([]).map(l => l + '\n').join(''));
+  const rewrite = (f, keep, tail) => {
+    if (!fs.existsSync(f)) return;
+    const was = text(f), eol = /\r\n/.test(was) ? '\r\n' : '\n';
+    fs.writeFileSync(f, was.split(/\r?\n/).filter(keep).concat(tail).join(eol) + eol);
+  };
+  rewrite(path.join(dir, 'test', 'data', 'ids.tsv'), l => !!l && !(/^[^:\t]+:p\d+\t/.test(l) && own.has(l.split(':')[0])), []);
+  rewrite(path.join(dir, 'docs', 'attribution', 'tatoeba-phrases.tsv'), l => l[0] === '#', [K.CREDITS]);
+};
+/* Le cours d'une copie de fixture tel qu'il était avant la tranche des unités 13 à 34 : le lexique vidé par
+   l'écrivain du genre words sans ligne, et les lignes de ces unités ôtées de ids.tsv. Le kit se teste sur
+   ses propres exemples, pas sur le cours que la fusion change ; les nombres attendus ne bougent pas avec lui. */
+const beforeWords = dir => {
+  beforeGrammar(dir);
+  beforePhrases(dir);
+  const K = require(path.join(dir, 'tools', 'content', 'kinds', 'words'));
+  const own = new Set(K.UNITS.map(u => u.id)), ids = path.join(dir, 'test', 'data', 'ids.tsv');
+  fs.writeFileSync(path.join(dir, 'src', 'content', 'lexicon.a1c.js'), K.lexicon([]).map(l => l + '\n').join(''));
+  fs.writeFileSync(ids, text(ids).split(/\r?\n/).filter(l => l && !own.has(l.split(':')[0])).map(l => l + '\n').join(''));
+};
+/* Un outil du kit, lancé comme un agent le lance : ses lignes et son code de sortie. */
+const run = (script, args) => runIn(TMP, script, args);
 
 /* Le genre d'essai : « mot » est le néerlandais de la source en capitales, « raison » est
    facultative, et une ligne dont la raison est « maître » va au mainteneur. Un verdict
@@ -242,6 +292,23 @@ async function main() {
     '« unsure » tient sur une ligne comme tout texte du kit : ni \\r, ni blanc autour');
   put(EEN, 'draft.json', '[{');
   ok(/^fail draft\.json -: not JSON \(/.test(only(EEN, 'draft.json')[0]), 'un fichier qui n\'est pas du JSON est nommé');
+  /* Un fichier enregistré en Windows-1252 : lu en utf8, son « é » devient U+FFFD, le JSON reste valide, et la
+     Merge l'écrirait dans le cours. Une marque d'ordre en tête reste refusée, comme avant. */
+  fs.writeFileSync(path.join(EEN, 'draft.json'), Buffer.from('[{"id":"overleven:w1","mot":"café"}]', 'latin1'));
+  same(only(EEN, 'draft.json'), ['fail draft.json -: not UTF-8'], 'un fichier qui n\'est pas en UTF-8 est nommé');
+  put(EEN, 'draft.json', '\uFEFF[]');
+  same(only(EEN, 'draft.json'), ['fail draft.json -: starts with a byte-order mark'], 'une marque d\'ordre en tête est nommée');
+  /* U+FFFD, écrit tel quel ou en échappement : un caractère déjà perdu par une conversion, que la Merge écrirait aussi. */
+  const PERDU = ['fail draft.json -: holds U+FFFD, a character lost in a conversion'];
+  put(EEN, 'draft.json', '[{"id":"overleven:w1","mot":"caf\uFFFD"}]');
+  same(only(EEN, 'draft.json'), PERDU, 'U+FFFD tel quel est nommé');
+  put(EEN, 'draft.json', '[{"id":"overleven:w1","mot":"caf\\ufffd"}]');
+  same(only(EEN, 'draft.json'), PERDU, 'U+FFFD en échappement est nommé');
+  /* Un fichier qu'on ne peut pas lire n'est pas un fichier mal encodé. */
+  fs.rmSync(path.join(EEN, 'draft.json'));
+  fs.mkdirSync(path.join(EEN, 'draft.json'));
+  same(only(EEN, 'draft.json'), ['fail draft.json -: cannot be read (EISDIR)'], 'un fichier illisible n\'est pas dit mal encodé');
+  fs.rmdirSync(path.join(EEN, 'draft.json'));
   put(EEN, 'draft.json', {});
   same(only(EEN, 'draft.json'), ['fail draft.json -: not a JSON array'], 'un fichier est un tableau');
   put(EEN, 'draft.json', draftEen);
@@ -285,6 +352,11 @@ async function main() {
     'fail disputes.md bakker:w22: no « Row: » line',
     'fail disputes.md overleven:w1: a section for a row that is not for the maintainer'
   ], 'une section a ses lignes, et seules les lignes pour le mainteneur ont une section');
+  fs.writeFileSync(path.join(EEN, 'disputes.md'), Buffer.from(DISPUTES, 'latin1'));
+  same(only(EEN, 'disputes.md'), ['fail disputes.md -: not UTF-8'], 'disputes.md se décode comme les autres fichiers du lot');
+  /* Une marque d'ordre cacherait son premier « ## » : la section passerait pour absente. */
+  fs.writeFileSync(path.join(EEN, 'disputes.md'), Buffer.concat([Buffer.from([0xEF, 0xBB, 0xBF]), Buffer.from(DISPUTES)]));
+  same(only(EEN, 'disputes.md'), ['fail disputes.md -: starts with a byte-order mark'], 'disputes.md nomme sa marque d\'ordre');
   put(EEN, 'disputes.md', DISPUTES);
 
   const change = { id: 'bakker:w22', ruling: 'change', words: 'keep it, and say why', confirmed: true, date: '2026-10-22' };
@@ -364,7 +436,7 @@ async function main() {
   same(kit.settle('x', Object.assign({ 'retry-review.json': v('dispute: b'), 'rulings.json': ruled('keep', true) }, disputed)), { row: R, from: 'retry' },
     'keep du mainteneur : la reprise, s\'il y en a une');
   same(kit.settle('x', Object.assign({ 'rulings.json': ruled('keep', true) }, sent)), { row: D, from: 'draft' }, 'keep du mainteneur : sinon le brouillon');
-  same(kit.settle('x', Object.assign({ 'rulings.json': ruled('drop', true) }, sent)), { drop: true }, 'drop : rien');
+  same(kit.settle('x', Object.assign({ 'rulings.json': ruled('drop', true) }, sent)), { drop: true, dropped: D }, 'drop : rien à prendre, et la ligne reste à lire');
   same(kit.settle('x', Object.assign({ 'rulings.json': ruled('change', true), 'change.json': [K] }, sent)), { row: K, from: 'change' }, 'change confirmé : la ligne de change.json');
   same(kit.settle('x', Object.assign({ 'rulings.json': ruled('change', false), 'change.json': [K] }, sent)), { why: 'change not confirmed' }, 'un changement non confirmé n\'est pas pris');
   same(kit.settle('x', Object.assign({ 'rulings.json': ruled('change', true) }, sent)), { why: 'change.json has no row' }, 'un changement sans ligne n\'est pas pris');
@@ -484,6 +556,9 @@ async function main() {
   });
   same(cache.select(['kaikki', 'x'], cache.PINS), { keys: ['kaikki/nl.jsonl'], unknown: ['x'] }, 'un nom est une clé ou son préfixe');
   same(cache.select(['tatoeba'], cache.PINS).keys.length, 6, 'tatoeba désigne ses six fichiers');
+  same(require(path.join(ROOT, 'tools', 'content', 'tatoeba')).KEYS.map(k => cache.PINS[k].date + ' ' + cache.PINS[k].bytes),
+    ['2026-11-07 19573559', '2026-11-07 198969137', '2026-11-07 76213829', '2026-11-07 2746200', '2026-11-07 992641', '2026-11-07 2435399'],
+    'tatoeba : les six fichiers du 7 novembre 2026, par leur date et leur taille');
 
   const sha = s => crypto.createHash('sha256').update(s).digest('hex');
   const PIN = (url, body, more) => Object.assign({ url, date: '2026-10-22', bytes: Buffer.byteLength(body), sha256: sha(body) }, more);
@@ -546,6 +621,58 @@ async function main() {
   ok(text(path.join(ROOT, '.gitignore')).split(/\r?\n/).indexOf('.cache/') >= 0, '.gitignore n\'ignore pas .cache/ : les données téléchargées entreraient dans le dépôt');
   console.log('  cache          dossier, serveur local, redirection, bzip2, tar');
 
+  /* ==================================================== une source hors du cours, et les ids nommés */
+  {
+    /* Un genre peut donner lui-même la source de ses lignes (sourceOf) : ici une table, sans copies ;
+       le genre words donne une unité à venir. Le kit lit la source par lui, et le split du genre
+       reçoit les ids nommés (ctx.ids), ou null. */
+    kindFile('unite', `/* Le genre d'essai de test/tools/fanout.js dont la source n'est pas un élément du cours. */
+const UNITS = { x: { nl: 'x', fr: 'l’unité x', en: 'unit x', n: 1 } };
+module.exports = {
+  stamp: [s => s.n],
+  fields: ['mot'],
+  tables: [],
+  sourceOf: (C, id) => UNITS[id.split(':')[0]],
+  split: (C, ctx) => [{ batch: 'x', rows: ['x:s00', 'x:s01'].map(id => ({ id, asked: ctx.ids })) }],
+  check: row => (row.mot === 'ok' || row.mot === 'doute' ? [] : ['mot is not ok']),
+  forMaintainer: row => (row.mot === 'doute' ? 'à voir' : ''),
+  merge: () => ({}),
+  write: taken => ['ok unite.txt ' + taken.map(x => x.id).join(' ')]
+};
+`);
+    const UX = path.join(TMP, 'drafts', 'unite'), XB = path.join(UX, 'x');
+    same(run('split.js', [TMP, UX]), { code: 0, lines: ['x 2'] }, 'Split coupe les lignes d\'une source hors du cours');
+    const xin = f => (fs.existsSync(f) ? JSON.parse(text(f)) : null);
+    const xrows = xin(path.join(XB, 'input.json')) || [];
+    same(xrows, [{ id: 'x:s00', stamp: kit.stamp(kit.loadKind(TMP, 'unite'), { nl: 'x', n: 1 }, C.NL), copies: [], asked: null }, { id: 'x:s01', stamp: (xrows[0] || {}).stamp, copies: [], asked: null }],
+      'une ligne d\'entrée : l\'empreinte de la source que le genre donne, aucune copie, et le split a reçu ids null');
+    const UN = path.join(TMP, 'nommes', 'unite');
+    same([run('split.js', [TMP, UN, 'x:s01']), (xin(path.join(UN, 'x', 'input.json')) || []).map(r => [r.id, r.asked])],
+      [{ code: 0, lines: ['x 1'] }, [['x:s01', ['x:s01']]]], 'le split d\'un genre reçoit les ids nommés');
+    fs.mkdirSync(XB, { recursive: true });
+    put(XB, 'draft.json', xrows.map(r => ({ id: r.id, stamp: r.stamp, mot: 'ok' })));
+    put(XB, 'review.json', xrows.map(r => ({ id: r.id, verdict: 'keep' })));
+    same(run('check.js', [XB]), { code: 0, lines: ['ok input.json 2 rows', 'ok draft.json 2 rows', 'ok review.json 2 keep, 0 dispute'] }, 'Check lit un lot dont la source est hors du cours');
+    same(run('merge.js', [TMP, UX]), { code: 0, lines: ['ok unite 2 taken, 0 dropped', 'ok unite.txt x:s00 x:s01'] }, 'Merge lit la source par le genre et, sans table, n\'écrit que ce que write écrit');
+    const readingU = require(path.join(LIB, 'reading'));
+    same(readingU.every(TMP, TMP, 'unite').lines.slice(0, 7), ['# unite: every row', '', '2 rows: 2 taken, 0 dropped.', '', '- `x` (x:s00) — l’unité x · unit x', '  - kept by the first reader', '  - row: {"mot":"ok"}'],
+      'l\'outil de lecture lit la source par le genre, et sous une ligne d\'un genre sans table, ce qu\'elle écrit');
+    /* Une ligne écartée par le mainteneur montre aussi ce qu'elle écrivait. */
+    const UDW = path.join(TMP, 'ecartee'), UD = path.join(UDW, 'drafts', 'unite'), UDX = path.join(UD, 'x');
+    run('split.js', [TMP, UD, 'x:s01']);
+    fs.mkdirSync(UDX, { recursive: true });
+    const udRows = xin(path.join(UDX, 'input.json')) || [];
+    put(UDX, 'draft.json', udRows.map(r => ({ id: r.id, stamp: r.stamp, mot: 'doute' })));
+    put(UDX, 'review.json', udRows.map(r => ({ id: r.id, verdict: 'for maintainer: à voir' })));
+    put(UDX, 'disputes.md', '## x:s01\nSource: x\nRow: doute\nFirst reader: for maintainer: à voir\n');
+    put(UDX, 'rulings.json', [{ id: 'x:s01', ruling: 'drop', words: 'pas celui-là', confirmed: true, date: '2026-10-22' }]);
+    same(readingU.every(TMP, UDW, 'unite').lines.slice(2), ['1 rows: 0 taken, 1 dropped.', '', '- `x` (x:s01) — l’unité x · unit x', '  - ruled drop on 2026-10-22: pas celui-là', '  - row: {"mot":"doute"}'],
+      'une ligne écartée d\'un genre sans table montre ce qu\'elle écrivait');
+    /* course() donne les unités du cours. */
+    same(C.units && C.units.map(u => u.id).join(' '), C.RAW.units.map(u => u.id).join(' '), 'C.units : les unités du cours dans l\'ordre');
+    console.log('  source du genre sourceOf, ctx.ids : Split, Check, Merge, lecture');
+  }
+
   /* ==================================================== le genre flemish */
   {
     /* tools/content/kinds/flemish.js dans un dépôt à lui, sous la copie : test/data en plus
@@ -555,11 +682,9 @@ async function main() {
        se lancent donc depuis celui-ci. */
     const spelling = require('../lib/spelling');
     const FR = path.join(TMP, 'flamand');
-    ['build.sh', 'src', 'test/lib', 'test/data', 'tools'].forEach(p => fs.cpSync(path.join(ROOT, p), path.join(FR, p), { recursive: true }));
-    const runFr = (script, args) => {
-      const r = spawnSync(process.execPath, [path.join(FR, 'tools', 'content', script)].concat(args), { encoding: 'utf8' });
-      return { code: r.status, lines: (r.stdout || '').split(/\r?\n/).filter(Boolean) };
-    };
+    copyKit(ROOT, FR);
+    beforeWords(FR);
+    const runFr = (script, args) => runIn(FR, script, args);
     const PICK = {
       'overleven:p3': { be: 'Sorry, ik heb da nie verstaan.', evidence: 'rule:da+nie' },
       'dokter:p6': { be: 'Hebde een voorschrift nodig?', evidence: 'rule:kunde' },
@@ -623,12 +748,16 @@ async function main() {
       same([...verbs].filter(f => !SP.forms.has(f)), [], 'la règle ' + r.name + ' ne donne au verbe que des formes qu\'OpenTaal tient');
     });
 
-    /* Split : un lot par unité, ses mots et ses phrases sans forme flamande. */
+    /* Split, sans id nommé : rien des unités 1 à 12, lues en phase 3 (une réponse null n'est pas stockée), même quand
+       le cours n'a qu'elles. Nommées (ctx.ids), leurs lignes se coupent, be ou non, en un lot d'unités entières. */
+    same(runFr('split.js', [FR, path.join(FR, 'vide', 'flemish')]), { code: 0, lines: [] }, 'sans id nommé, Split ne recoupe rien des unités 1 à 12');
+    const IDS = ['overleven:w0', 'overleven:w2', 'overleven:w12', 'overleven:p3', 'overleven:p9', 'ikengij:p4', 'onderweg:w0', 'werkbasis:p7', 'dokter:w2', 'dokter:p6', 'weekend:p1'];
     const KD = path.join(FR, 'drafts', 'flemish');
-    const want = CF.RAW.units.map(u => [u.id, CF.sources.filter(s => s.unit === u.id && !s.be).length]).filter(x => x[1]).map(x => x.join(' '));
-    same(runFr('split.js', [FR, KD]), { code: 0, lines: want }, 'Split coupe un lot par unité, des mots et des phrases que be.js ne tient pas');
-    const rowOf = id => JSON.parse(text(path.join(KD, CF.byId(id).unit, 'input.json'))).find(r => r.id === id);
-    ok(!rowOf('overleven:w0'), 'un mot que be.js tient n\'est pas recoupé');
+    same(runFr('split.js', [FR, KD].concat(IDS)), { code: 0, lines: ['overleven-weekend 11'] },
+      'nommées, des lignes des unités 1 à 12 se coupent, en un lot nommé de sa première et de sa dernière unité');
+    const B1 = path.join(KD, 'overleven-weekend');
+    const rowOf = id => JSON.parse(text(path.join(B1, 'input.json'))).find(r => r.id === id);
+    same((rowOf('overleven:w0') || {}).nl, 'hallo', 'nommé, un mot que be.js tient se recoupe');
     const sorry = CF.byId('overleven:p3');
     same(rowOf('overleven:p3'), {
       id: 'overleven:p3', stamp: kit.stamp(kit.loadKind(FR, 'flemish'), sorry, CF.NL), copies: [],
@@ -636,6 +765,31 @@ async function main() {
       rules: { 'rule:da': 'Sorry, ik heb da niet verstaan.', 'rule:nie': 'Sorry, ik heb dat nie verstaan.', 'rule:da+nie': 'Sorry, ik heb da nie verstaan.' }
     }, 'une ligne d\'entrée : le néerlandais, son genre, son unité, son sens, ses frères de sens et ce que les règles en font');
     same(rowOf('overleven:w2').siblings.map(s => s.nl), ['de dag'], 'les frères de sens d\'une source sont dans sa ligne');
+
+    /* Split sur le cours entier, be.js vidé des formes des 22 unités de UNITS (words.js). Les nombres suivent le cours
+       (les phrases du plan 4c s'y ajoutent) : rien n'est épinglé. */
+    const FS = path.join(TMP, 'flamand-split');
+    copyKit(ROOT, FS, ['build.sh', 'src', 'test/lib', 'tools']);
+    const OWN = new Set(require(path.join(ROOT, 'tools', 'content', 'kinds', 'words')).UNITS.map(u => u.id));
+    const clear = {};
+    C.sources.filter(s => OWN.has(s.unit)).forEach(s => { clear[s.nl] = null; });
+    table.update(path.join(FS, 'src', 'content', 'be.js'), clear);
+    const KS = path.join(FS, 'drafts', 'flemish'), cutS = runIn(FS, 'split.js', [FS, KS]);
+    const lots = cutS.lines.map(l => ({ batch: l.split(' ')[0], rows: JSON.parse(text(path.join(KS, l.split(' ')[0], 'input.json'))) }));
+    const unitsOf = b => [...new Set(b.rows.map(r => r.unit))], sizes = lots.map(b => b.rows.length);
+    same([cutS.code, [].concat(...lots.map(b => b.rows.map(r => r.id)))], [0, C.sources.filter(s => OWN.has(s.unit)).map(s => s.id)],
+      'Split coupe exactement les mots et les phrases sans forme des 22 unités de UNITS, dans l\'ordre du cours, et rien des unités 1 à 12');
+    same(lots.map(b => b.batch), lots.map(b => { const u = unitsOf(b); return u[0] + (u.length > 1 ? '-' + u[u.length - 1] : ''); }),
+      'un lot porte le nom de sa première unité, et de sa dernière quand il en a plusieurs');
+    ok(lots.every((b, k) => k === 0 || unitsOf(lots[k - 1]).indexOf(unitsOf(b)[0]) < 0), 'un lot tient des unités entières');
+    ok(sizes.every(n => n <= 80), '80 lignes au plus par lot : ' + JSON.stringify(sizes));
+    ok(lots.every((b, k) => k === 0 || sizes[k - 1] + b.rows.filter(r => r.unit === unitsOf(b)[0]).length > 80),
+      'les lots sont serrés : un lot et la première unité du suivant font plus de 80 lignes : ' + JSON.stringify(sizes));
+    ok(lots.length > 1 && lots.length < OWN.size, lots.length + ' lots pour ' + OWN.size + ' unités : des unités entières se groupent');
+    /* Une unité de plus de 80 lignes fait un lot à elle seule. */
+    const grp = (unit, n) => ({ unit, rows: Array.from({ length: n }, (x, k) => ({ id: unit + ':w' + k, unit })) });
+    same(K.pack([grp('a', 40), grp('b', 40), grp('c', 1), grp('d', 90), grp('e', 3)], 80).map(b => b.batch + ' ' + b.rows.length),
+      ['a-b 80', 'c 1', 'd 90', 'e 3'], 'pack : des unités entières jusqu\'à 80 lignes, et une unité plus grande seule dans son lot');
 
     /* Check : les raisons du genre, une par une. */
     const ctx = { repo: FR, course: () => CF };
@@ -672,6 +826,20 @@ async function main() {
       'rule:t gives « ’t Regent weer. », not be',
       '« allez » is not a form OpenTaal knows, and rule:t does not account for it: correct it, or cite evidence none'
     ], 'chaque raison est dite');
+    /* Ce que test/content.js (« leurres ») refuserait à Merge : un leurre écrit d'un autre élément, article ou non. */
+    same([why('overleven:p9', 'Da duurt een half uren.', 'none'), why('dokter:w2', 'vélo, het hoofd', 'none')],
+      [['« Da duurt een half uren. » is a written wrong option of « Dat duurt een half uur. » (src/content/decoys.js): the course would then accept it'],
+        ['« de vélo » is a written wrong option of « de fiets » (src/content/decoys.js): the course would then accept it']],
+      'une forme de be qui est un leurre d\'un autre élément est refusée, article ou non');
+    /* Ce qu'aucun contrôle de la suite ne voit : un mot dont seul l'article change, l'apostrophe droite, none pour la
+       forme qu'une règle donne. */
+    same([why('dokter:w2', 'de hoofd', 'none'), why('dokter:w2', 'een hoofd, het hoofd', 'none')],
+      [['be is the Dutch itself: with nothing Flemish to teach, be is null'], ['a word\'s first form is the Flemish one, and here it is the Dutch itself']],
+      'un mot dont seul l\'article change n\'a rien de flamand à apprendre, comme srs.supports le juge');
+    same(why('weekend:p1', 'Allez, \'t regent weer.', 'none'), ['be writes the typographic apostrophe « ’ », as rules does: « ’t », « da’s »'],
+      'be écrit l\'apostrophe typographique');
+    same(why('overleven:p3', PICK['overleven:p3'].be, 'none'), ['rule:da+nie gives be: cite rule:da+nie, not none'],
+      'une forme qu\'une règle donne se cite par sa règle, pas par none');
     fs.renameSync(EXTRACT, EXTRACT + '.old');
     same(why('onderweg:w0', PICK['onderweg:w0'].be, 'wiktionary:velo', { repo: FR, course: () => CF }), ['.cache/kaikki/belgian.tsv is missing: run node tools/content/kaikki.js .'],
       'sans extrait, une preuve du Wiktionnaire dit la commande qui manque');
@@ -690,24 +858,23 @@ async function main() {
       put(dir, 'draft.json', inp.map(r => Object.assign({ id: r.id, stamp: r.stamp }, PICK[r.id] || { be: null, evidence: null })));
       put(dir, 'review.json', inp.map(r => ({ id: r.id, verdict: PICK[r.id] && PICK[r.id].evidence === 'none' ? 'for maintainer: evidence none' : 'keep' })));
     });
-    const WEEKEND = path.join(KD, 'weekend'), DOKTER = path.join(KD, 'dokter');
-    const review = text(path.join(WEEKEND, 'review.json'));
-    put(WEEKEND, 'review.json', review.replace('"for maintainer: evidence none"', '"keep"'));
-    same(runFr('check.js', [WEEKEND]).lines.filter(l => /^fail /.test(l)),
-      ['fail review.json weekend:p1: the format sends this row to the maintainer (evidence none): its verdict is « for maintainer: <reason> »'],
-      'une ligne sans preuve va au mainteneur, quoi qu\'en dise la relecture');
-    put(WEEKEND, 'review.json', review);
-    put(WEEKEND, 'disputes.md', '## weekend:p1\nSource: Het regent weer.\nRow: Allez, ’t regent weer. (none)\nFirst reader: for maintainer: evidence none\nYour ruling:\n');
-    put(WEEKEND, 'rulings.json', [{ id: 'weekend:p1', ruling: 'keep', words: null, confirmed: true, date: '2026-10-22' }]);
-    same(runFr('check.js', [WEEKEND]).code, 0, 'le lot, avec la décision du mainteneur, passe');
-    const draft = text(path.join(DOKTER, 'draft.json'));
-    put(DOKTER, 'draft.json', draft.replace('"rule:kunde"', '"rule:ge"'));
-    same(runFr('check.js', [DOKTER]).lines.filter(l => /^fail /.test(l)), [
+    const draft = text(path.join(B1, 'draft.json'));
+    put(B1, 'draft.json', draft.replace('"rule:kunde"', '"rule:ge"'));
+    same(runFr('check.js', [B1]).lines.filter(l => /^fail /.test(l)), [
       'fail draft.json dokter:p6: rule:ge gives « Hebt ge een voorschrift nodig? », not be',
       'fail draft.json dokter:p6: « hebde » is not a form OpenTaal knows, and rule:ge does not account for it: correct it, or cite evidence none',
       'fail review.json -: draft.json missing or failing'
     ], 'check.js dit les raisons du genre, et ne lit pas la suite');
-    put(DOKTER, 'draft.json', draft);
+    put(B1, 'draft.json', draft);
+    const review = text(path.join(B1, 'review.json'));
+    put(B1, 'review.json', review.replace('"for maintainer: evidence none"', '"keep"'));
+    same(runFr('check.js', [B1]).lines.filter(l => /^fail /.test(l)),
+      ['fail review.json weekend:p1: the format sends this row to the maintainer (evidence none): its verdict is « for maintainer: <reason> »'],
+      'une ligne sans preuve va au mainteneur, quoi qu\'en dise la relecture');
+    put(B1, 'review.json', review);
+    put(B1, 'disputes.md', '## weekend:p1\nSource: Het regent weer.\nRow: Allez, ’t regent weer. (none)\nFirst reader: for maintainer: evidence none\nYour ruling:\n');
+    put(B1, 'rulings.json', [{ id: 'weekend:p1', ruling: 'keep', words: null, confirmed: true, date: '2026-10-22' }]);
+    same(runFr('check.js', [B1]).code, 0, 'le lot, avec la décision du mainteneur, passe');
 
     const n0 = Object.keys(table.load(BE).entries).length, tsv0 = text(TSV);
     const MERGED_FR = ['ok flemish ' + rows + ' taken, 0 dropped', 'ok be.js 4 set, 0 removed', 'ok flemish.tsv 2 added: allez, hebde'];
@@ -728,7 +895,7 @@ async function main() {
       [1, ['overleven:p3', 'onderweg:w0', 'dokter:p6', 'weekend:p1'].map(id => 'fail flemish ' + id + ': stale')],
       'le tampon couvre be : relancée après un succès, Merge refuse comme périmée chaque ligne dont elle a écrit la forme');
     ok(text(BE) === beAfter && text(TSV) === tsvAfter, 'refusée, Merge n\'écrit rien');
-    console.log('  flemish        ' + batches.length + ' lots, ' + rows + ' lignes ; six règles ; Check, Merge et flemish.tsv');
+    console.log('  flemish        ' + lots.length + ' lots sur les 22 unités (' + sizes.reduce((n, k) => n + k, 0) + ' lignes), ' + rows + ' lignes nommées ; six règles ; Check, Merge et flemish.tsv');
   }
 
   /* ==================================================== le genre examples */
@@ -739,11 +906,9 @@ async function main() {
        Tatoeba fait ici, de cinq phrases, sous les vraies épingles. check.js lit le dépôt qui le
        contient : les outils se lancent donc depuis celui-ci. */
     const EX = path.join(TMP, 'exemples');
-    ['build.sh', 'src', 'test/lib', 'test/data', 'tools', 'docs/attribution'].forEach(p => fs.cpSync(path.join(ROOT, p), path.join(EX, p), { recursive: true }));
-    const runEx = (script, args) => {
-      const r = spawnSync(process.execPath, [path.join(EX, 'tools', 'content', script)].concat(args), { encoding: 'utf8' });
-      return { code: r.status, lines: (r.stdout || '').split(/\r?\n/).filter(Boolean) };
-    };
+    copyKit(ROOT, EX, KIT.concat('docs/attribution'));
+    beforeWords(EX);
+    const runEx = (script, args) => runIn(EX, script, args);
     const SOURCED = path.join(EX, 'src', 'content', 'sourced.js');
     const emptied = {};
     Object.keys(table.load(SOURCED).entries).forEach(nl => { emptied[nl] = null; });
@@ -757,15 +922,19 @@ async function main() {
       'nld\t104\tanna\t1\tMisschien is het waar.\t204\t304',
       'nld\t105\tbob\t0\tHet is drie uur.\t205\t305',
       'nld\t106\t\t0\tze spreekt goed engels\t202\t302',
+      'nld\t107\tanna\t1\tMisschien is het nu waar.\t207\t',
+      'nld\t108\tanna\t1\tSpreekt u goed Engels?\t\t308',
       'eng\t201\tbob\tSorry, do you speak English?',
       'eng\t202\tbob\tShe speaks good English.',
       'eng\t203\tcarl\tShe speaks English well.',
       'eng\t204\tbob\tMaybe it\'s true.',
       'eng\t205\tcarl\tIt\'s three o\'clock.',
+      'eng\t207\tbob\tMaybe it\'s true now.',
       'fra\t301\t\tPardon, parlez-vous anglais ?',
       'fra\t302\tdora\tElle parle bien anglais.',
       'fra\t304\tdora\tC\'est peut-être vrai.',
-      'fra\t305\tdora\tIl est trois heures.'].join('\n') + '\n');
+      'fra\t305\tdora\tIl est trois heures.',
+      'fra\t308\tdora\tParlez-vous bien anglais ?'].join('\n') + '\n');
     const K = require(path.join(EX, 'tools', 'content', 'kinds', 'examples'));
     const kind = kit.loadKind(EX, 'examples');
     const CE = course(EX);
@@ -794,7 +963,10 @@ async function main() {
     same(Object.keys(engels), ['id', 'stamp', 'copies', 'nl', 'unit', 'art', 'meaning', 'candidates'], 'une ligne d\'entrée');
     same([engels.nl, engels.unit, engels.art, engels.meaning, input[0].art], ['het Engels', 'ikengij', 'het', { fr: 'l’anglais', en: 'English' }, null],
       'le néerlandais, l\'unité, l\'article (null sans article) et le sens');
-    same(engels.candidates.map(c => c.id), [101, 102, 106], 'l\'auteur de langue maternelle d\'abord');
+    same(engels.candidates.map(c => c.id), [101, 102, 106, 108], 'les deux traductions d\'abord, puis l\'auteur de langue maternelle ; 108, sans traduction anglaise, en dernier');
+    same(engels.candidates[3], { id: 108, nl: 'Spreekt u goed Engels?', owner: 'anna', en: [], fr: [{ id: 308, text: 'Parlez-vous bien anglais ?', owner: 'dora' }], tiles: 4 },
+      'une candidate sans traduction anglaise : en vide');
+    same(input[0].candidates.map(c => c.id), [104, 107], 'misschien : 107, sans traduction française, est candidate après 104');
     same(engels.candidates[1], { id: 102, nl: 'Ze spreekt goed Engels.', owner: '',
       en: [{ id: 202, text: 'She speaks good English.', owner: 'bob' }, { id: 203, text: 'She speaks English well.', owner: 'carl' }],
       fr: [{ id: 302, text: 'Elle parle bien anglais.', owner: 'dora' }], tiles: 4 },
@@ -834,6 +1006,12 @@ async function main() {
       'une traduction changée sans raison, non');
     same(why([as({ en: 'She speaks English very well.', edited: 'the learner hears the adverb' })]), [], 'une traduction changée, et sa raison');
     same(why([as({ edited: 'nothing' })]), ['sentence 1: edited is for a translation that is not Tatoeba\'s, and both are'], 'edited sans traduction changée, non');
+    const written = { src: 108, nl: 'Spreekt u goed Engels?', gap: 'Engels', en: 'Do you speak English well?', enSrc: null, fr: 'Parlez-vous bien anglais ?', frSrc: 308 };
+    same(why([written]), [], 'une traduction anglaise écrite pour le cours, la française de Tatoeba : passe');
+    same(why([as({ enSrc: null })]), ['sentence 1: enSrc is null, but Tatoeba links 202, 203 to 102: take one'], 'une traduction écrite alors que Tatoeba en lie une, non');
+    same(why([Object.assign({}, written, { frSrc: null })]), ['sentence 1: enSrc and frSrc are both null: a sentence keeps at least one translation Tatoeba links'], 'une phrase garde une traduction de Tatoeba au moins');
+    same(why([Object.assign({}, written, { edited: 'x' })]), ['sentence 1: edited is for a translation that is not Tatoeba\'s, and the linked one is'], 'edited, la seule traduction liée n\'est pas changée, non');
+    same(why([Object.assign({}, written, { fr: 'Vous parlez bien anglais ?', edited: 'a plain question' })]), [], 'edited, la traduction liée est changée : passe');
 
     same(why([as({ en: 'two\nlines' })]), ['sentence 1: nl, gap, en and fr are each a string on one line with no space at either end'], 'une traduction sur plusieurs lignes, non');
     same(why([as({ gap: '' })]), ['sentence 1: nl, gap, en and fr are each a string on one line with no space at either end'], 'un trou vide, non');
@@ -852,6 +1030,8 @@ async function main() {
       'deux sources différentes au même texte (casse et ponctuation près), non');
     same(K.readWhole({ sentences: [as({ edited: 'x' })] }), 'edited translation', 'la lecture entière : une traduction changée');
     same([K.readWhole({ sentences: [good] }), K.readWhole({ sentences: [] })], ['', ''], 'la lecture entière : rien à relire sans traduction changée');
+    same([K.readWhole({ sentences: [good, written] }), K.readWhole({ sentences: [as({ edited: 'x' }), written] })], ['written translation', 'written translation'],
+      'la lecture entière : une traduction écrite passe avant une traduction changée');
 
     /* Les règles d'une phrase, à l'unité du mot : ce que test/content.js tient, et le classement. */
     const rules = (d, id) => K.RULES(Object.assign({ en: 'English.', fr: 'Anglais.' }, d), 's', CE.byId(id || 'ikengij:w24'), CE, EX);
@@ -859,6 +1039,9 @@ async function main() {
     same(rules({ nl: 'Ik spreek Engels.', gap: 'Engels' }), ['s has 3 tiles: 4 to 8'], 'de 4 à 8 tuiles');
     ['engels', 'spreekt', 'goed Engels'].forEach(gap => same(rules({ nl: 'Ze spreekt goed Engels.', gap }),
       ['s: gap « ' + gap + ' » is not the word, one tile as nl writes it, that the cloze can hide'], 'le trou « ' + gap + ' », non'));
+    same(rules({ nl: 'Spreekt u ook Frans?', gap: 'u' }, 'ikengij:w2'), [], 'le trou du mot « u », une seule lettre');
+    same(rules({ nl: 'Dank u wel, tot ziens!', gap: 'u' }, 'overleven:w5'), [], 'le trou « u » dans « dank u wel »');
+    same(rules({ nl: 'Spreekt u goed Engels?', gap: 'u' }), ['s: gap « u » is not the word, one tile as nl writes it, that the cloze can hide'], 'mais pas une lettre qui n’est pas le mot');
     same(rules({ nl: 'Misschien spreekt ze Engels.', gap: 'Misschien' }, 'overleven:w9'), ['s borrows from a later unit: spreekt, engels'], 'rien d\'une unité ultérieure');
     same(rules({ nl: 'Ze leest vloeiend Engels.', gap: 'Engels' }), ['s uses forms the course never teaches: leest, vloeiend'], 'aucune forme que le cours n\'enseigne jamais');
     same(rules({ nl: 'Ze spreekt vloeiend Engels.', gap: 'Engels' }), ['s uses forms the course never teaches: vloeiend'], 'pas même une (#12, récit 39)');
@@ -868,6 +1051,12 @@ async function main() {
       'l\'orthographe, et une forme mal écrite que le cours n\'enseigne donc pas');
     same(rules({ nl: 'Ze spreekt goed Engels met {naam}.', gap: 'Engels' }), ['s names no one by default and holds no {…} token'], 'ni nom ni jeton');
     same(rules({ nl: 'Ze spreekt goed Engels.', gap: 'Engels', en: 'She speaks 2 languages.' }), ['s: en and fr do not hold the same digits'], 'les mêmes chiffres');
+    same(rules({ nl: 'Hoe lang is het weekend?', gap: 'weekend' }, 'weekend:w7'), ['s writes « hoe lang »: the course writes the duration « hoelang » (#128)'], 'hoe lang s\'écrit hoelang (#128)');
+    same(rules({ nl: 'De Engels is goed.', gap: 'Engels' }), ['s: « de engels » contradicts the article « het » of the word (test/dehet.js)'], 'l\'article du mot, pas un autre (test/dehet.js)');
+    same(K.RULES({ nl: 'De teams zijn hier.', gap: 'teams', en: 'The teams are here.', fr: 'Les équipes sont ici.' }, 's',
+      { id: 'bakker:w99', kind: 'word', nl: 'het team', art: 'het', fr: 'l’équipe', en: 'the team', unit: 'bakker' }, CE, EX),
+    ['s: « teams » would become Dutch of the course, and sheets[4].title writes it bare in French and in English (test/lang.js 6d.4)'], 'un mot que le français et l\'anglais écrivent nus ne devient pas néerlandais (test/lang.js 6d.4)');
+    same(rules({ nl: 'Spreekt u goed Engels?', gap: 'Engels', en: 'Do you speak English well? (formal)' }), ['s: en carries a register tag, which is for an item\'s meaning, not for a sentence (test/content.js)'], 'pas d\'étiquette de registre dans une phrase');
 
     /* Check sur le lot, comme un agent le lance. */
     const row = (id, more) => Object.assign({ id, stamp: input.find(r => r.id === id).stamp }, more);
@@ -895,6 +1084,7 @@ async function main() {
     draft[0].sentences[0].gap = 'Misschien';
     /* Les trois valeurs de adapted : fr seul (102), en seul (104), les deux (101). */
     draft[0].sentences[0] = Object.assign({}, draft[0].sentences[0], { en: 'Maybe it is true.', edited: 'the learner hears the plain verb' });
+    draft[0].sentences[1] = { src: 107, nl: 'Misschien is het nu waar.', gap: 'Misschien', en: 'Maybe it\'s true now.', enSrc: 207, fr: 'C\'est peut-être vrai maintenant.', frSrc: null };
     draft[1].sentences[0] = Object.assign({}, good, { fr: 'Elle parle bien l\'anglais.', edited: 'the learner hears the article' });
     draft[1].sentences[1] = Object.assign({}, other, { en: 'Excuse me, do you speak English?', fr: 'Pardon, vous parlez anglais ?', edited: 'the learner hears a plain question' });
     put(BATCH, 'draft.json', draft);
@@ -906,16 +1096,17 @@ async function main() {
     const eol = /\r\n/.test(was) ? '\r\n' : '\n';
     const credits = was.split(/\r?\n/).filter(l => l[0] === '#').concat([K.CREDITS]).join(eol) + eol;
     fs.writeFileSync(CREDITS, credits + ['sorry\t900\tanna\t901\tbob\t902\tdora\t-', 'drie\t777\tanna\t778\tbob\t779\tdora\t-'].join(eol) + eol);
-    const MERGED = ['ok examples 3 taken, 0 dropped', 'ok sourced.js 2 set, 0 removed', 'ok tatoeba.tsv 4 rows'];
+    const MERGED = ['ok examples 3 taken, 0 dropped', 'ok sourced.js 2 set, 0 removed', 'ok tatoeba.tsv 5 rows'];
     same(runEx('merge.js', [EX, KD]), { code: 0, lines: MERGED }, 'Merge écrit les phrases prises, rien pour une ligne sans phrase, et récrit le crédit');
     const held = table.load(SOURCED).entries;
     same([held['het Engels'], held.misschien, held.sorry, 'drie' in held], [[
       { nl: 'Ze spreekt goed Engels.', fr: 'Elle parle bien l\'anglais.', en: 'She speaks English well.', gap: 'Engels', src: 102 },
       { nl: 'Sorry, spreekt u Engels?', fr: 'Pardon, vous parlez anglais ?', en: 'Excuse me, do you speak English?', gap: 'Engels', src: 101 }
-    ], [{ nl: 'Misschien is het waar.', fr: 'C\'est peut-être vrai.', en: 'Maybe it is true.', gap: 'Misschien', src: 104 }], sorry, false],
+    ], [{ nl: 'Misschien is het waar.', fr: 'C\'est peut-être vrai.', en: 'Maybe it is true.', gap: 'Misschien', src: 104 },
+      { nl: 'Misschien is het nu waar.', fr: 'C\'est peut-être vrai maintenant.', en: 'Maybe it\'s true now.', gap: 'Misschien', src: 107 }], sorry, false],
     'sourced.js : { nl, fr, en, gap, src } dans l\'ordre de la ligne, la phrase d\'avant gardée');
     same(text(CREDITS), credits + ['het Engels\t101\tanna\t201\tbob\t301\t-\ten fr', 'het Engels\t102\t-\t203\tcarl\t302\tdora\tfr',
-      'misschien\t104\tanna\t204\tbob\t304\tdora\ten', 'sorry\t900\tanna\t901\tbob\t902\tdora\t-'].join(eol) + eol,
+      'misschien\t104\tanna\t204\tbob\t304\tdora\ten', 'misschien\t107\tanna\t207\tbob\t-\t-\tfr', 'sorry\t900\tanna\t901\tbob\t902\tdora\t-'].join(eol) + eol,
     'le crédit : une ligne par phrase de Tatoeba que sourced.js tient, triée, l\'auteur absent écrit « - », adapted : fr, en ou en fr, selon la traduction changée');
     same(course(EX).byId('ikengij:w24').drills, held['het Engels'], 'le mot a ses phrases');
     const after = text(SOURCED);
@@ -961,6 +1152,8 @@ async function main() {
     same(gwhy({ nl: 'Ik heb dorst.', gap: 'dorst', en: 'I am thirsty.', fr: 'J’ai soif.' }), ['sentence has 3 tiles: 4 to 8'], 'les règles des phrases sourcées');
     same(gwhy({ nl: 'Ik heb dorst, gij ook?', gap: 'dorst', en: 'I am thirsty, are you?' }), ['sentence has the fields nl, gap, en, fr'], 'ses quatre champs');
     same(gwhy(Object.assign({}, gdraft[1].sentence, { fr: 'J’ai soif, et toi ? ' })), ['sentence: nl, gap, en and fr are each a string on one line with no space at either end'], 'chaque champ sans blanc autour');
+    same(gwhy(Object.assign({}, gdraft[1].sentence, { fr: "J'ai soif, et toi ?" })), ['sentence: fr writes the typographic apostrophe « ’ » and no straight quote'], 'l’apostrophe typographique en français');
+    same(gwhy({ nl: 'Ik heb dorst. Gij ook?', gap: 'dorst', en: 'I am thirsty. You too?', fr: 'J’ai soif. Et toi ?' }), ['sentence: nl is one sentence, not two'], 'une seule phrase');
     same(G.checkVerdict({ id: 'tijd:w3', verdict: 'keep', en: ' It is three o\'clock.', fr: 'Il est trois heures.' }),
       ['a verdict carries the reader\'s own en and fr of nl, each on one line with no space at either end'], 'la traduction du lecteur sans blanc autour');
     put(GB, 'draft.json', gdraft);
@@ -974,8 +1167,8 @@ async function main() {
     same(G.readWhole(gdraft[0]), 'generated sentence', 'le mainteneur lit chaque phrase écrite');
     same(runEx('merge.js', [EX, GD]), { code: 0, lines: ['ok examples-gen 2 taken, 0 dropped', 'ok sourced.js 2 set, 0 removed'] }, 'Merge écrit les phrases, sans crédit');
     same(table.load(SOURCED).entries.drie, [{ nl: 'Het is drie uur.', fr: 'Il est trois heures.', en: 'It is three o\'clock.', gap: 'drie', src: 'gen' }], 'src « gen »');
-    same(text(CREDITS).split(eol).length, credits.split(eol).length + 4, 'le crédit n\'a pas changé');
-    console.log('  examples       ' + cut.length + ' lots sur le cours mesuré ; Split, Check, ses règles, Merge et le crédit sur un extrait de 5 phrases ; examples-gen sur 2 mots nommés');
+    same(text(CREDITS).split(eol).length, credits.split(eol).length + 5, 'le crédit n\'a pas changé');
+    console.log('  examples       ' + cut.length + ' lots sur le cours mesuré ; Split, Check, ses règles, Merge et le crédit sur un extrait de 7 phrases, 2 à une seule traduction ; examples-gen sur 2 mots nommés');
   }
 
   /* ==================================================== le genre open */
@@ -984,21 +1177,65 @@ async function main() {
        épelle l'exemple par test/lib/spelling.js) : check.js lit le dépôt qui le contient, les
        outils se lancent donc depuis celui-ci. Les lignes écrites ici sont faites à la main. */
     const OP = path.join(TMP, 'open');
-    ['build.sh', 'src', 'test/lib', 'test/data', 'tools'].forEach(p => fs.cpSync(path.join(ROOT, p), path.join(OP, p), { recursive: true }));
-    const runOp = (script, args) => {
-      const r = spawnSync(process.execPath, [path.join(OP, 'tools', 'content', script)].concat(args), { encoding: 'utf8' });
-      return { code: r.status, lines: (r.stdout || '').split(/\r?\n/).filter(Boolean) };
-    };
-    const K = kit.loadKind(OP, 'open'), CO = course(OP), U = CO.NL.util;
+    copyKit(ROOT, OP);
+    const runOp = (script, args) => runIn(OP, script, args);
+    /* Le cours est entier : les 66 phrases des unités 13 à 34 sont dans PHRASES. La copie reprend les 36
+       tâches des unités 1 à 12 seules : les nombres attendus ne bougent pas avec les lignes que Merge a
+       prises dans le vrai cours. open.phrases.js ne garde que les tâches des 36 phrases des unités 1 à 12,
+       open.js que les neuf règles écrites à la main. */
+    const K = kit.loadKind(OP, 'open'), C0 = course(OP);
+    const drop = {}, dropR = {};
+    K.PHRASES.slice(36).forEach(id => { drop[C0.byId(id).nl] = null; });
+    table.update(path.join(OP, 'src', 'content', 'open.phrases.js'), drop);
+    K.RULES.forEach(id => { dropR[id] = null; });
+    table.update(path.join(OP, 'src', 'content', 'open.js'), dropR);
+    const CO = course(OP), U = CO.NL.util;
     const ctx = { repo: OP, course: () => CO };
     const KD = path.join(OP, 'drafts', 'open'), LOTS = ['units-1-6', 'units-7-12'];
+    /* Les lignes d'entrée d'un lot, ou aucune quand Split ne l'a pas écrit : un ÉCHEC, pas un plantage. */
+    const rowsOf = (dir, b) => { try { return JSON.parse(text(path.join(dir, b, 'input.json'))); } catch (e) { return []; } };
 
-    /* Split : 36 phrases, trois par unité, en deux lots de six unités. */
-    same(runOp('split.js', [OP, KD]), { code: 0, lines: ['units-1-6 18', 'units-7-12 18'] }, 'Split coupe les 36 phrases en deux lots de six unités');
+    /* Split tient les phrases sans tâche : les 66 des unités 13 à 34, six unités par lot. */
+    same(K.PHRASES.length, 102, 'PHRASES tient 102 phrases, trois par unité');
+    const HELD = path.join(OP, 'held', 'open');
+    same(runOp('split.js', [OP, HELD]), { code: 0, lines: ['units-13-18 18', 'units-19-24 18', 'units-25-30 18', 'units-31-34 12', 'rules 13'] },
+      'Split ne coupe que les phrases et les règles sans tâche : six unités entières par lot de phrases, puis les règles');
+    same([].concat(...['units-13-18', 'units-19-24', 'units-25-30', 'units-31-34'].map(b => rowsOf(HELD, b))).map(r => r.id),
+      K.PHRASES.slice(36), 'les 66, dans l\'ordre du cours');
+    same(runOp('split.js', [OP, path.join(OP, 'named', 'open'), 'bakker:p1', 'vragen:p2']), { code: 0, lines: ['units-1-6 1', 'units-13-18 1'] },
+      'une phrase nommée se coupe, qu\'elle ait sa tâche ou non');
+    const RULE_IDS = ['g-niet-geen', 'g-bijzin', 'g-vraag', 'g-twee-werkwoorden', 'g-perfect-zijn', 'g-was-had', 'g-deelwoord',
+      'g-hem-haar', 'g-er-is', 'g-meervoud', 'g-gebiedend', 'g-verkleinwoord', 'g-om-op-in'];
+    same(K.RULES, RULE_IDS, 'RULES tient les 13 règles, dans l\'ordre du cours');
+    const RL = rowsOf(HELD, 'rules');
+    same(RL.map(r => r.id), K.RULES, 'les 13 règles, dans l\'ordre du cours');
+    const erRow = RL.find(r => r.id === 'g-er-is') || { vocab: [] };
+    const erPat = CO.RAW.patterns.find(p => p.id === 'g-er-is');
+    same(Object.assign({}, erRow, { vocab: null }), {
+      id: 'g-er-is', stamp: kit.stamp(K, K.sourceOf(CO, 'g-er-is'), CO.NL), copies: [], unit: 'waar', title: erPat.title, rule: erPat.rule,
+      example: { nl: erPat.nl, fr: erPat.fr, en: erPat.en }, explain: erPat.explain,
+      drills: erPat.drills.map(d => ({ nl: d.nl, fr: d.fr, en: d.en })), vocab: null
+    }, 'une ligne de règle : sa règle, son exemple, ses cinq exercices, et vocab');
+    same(erRow.vocab, (rowsOf(HELD, 'units-13-18').find(r => r.id === 'waar:p0') || { vocab: null }).vocab, 'le vocab d\'une règle est celui de son unité');
+    const erSrc = K.sourceOf(CO, 'g-er-is');
+    ok(kit.stamp(K, Object.assign({}, erSrc, { drills: erSrc.drills.slice(1) }), CO.NL) !== erRow.stamp, 'l\'empreinte d\'une règle change avec un exercice de moins');
+    ok(kit.stamp(K, Object.assign({}, erSrc, { example: { nl: 'Er is een hond.', fr: erSrc.example.fr, en: erSrc.example.en } }), CO.NL) !== erRow.stamp, 'et avec un autre exemple');
+    const NR = path.join(OP, 'named-rule', 'open');
+    same(runOp('split.js', [OP, NR, 'g-er-is']), { code: 0, lines: ['rules 1'] }, 'une règle nommée se coupe');
+    same(runOp('split.js', [OP, path.join(OP, 'named-rule2', 'open'), 'g-v2']), { code: 1, lines: ['fail open g-v2: not a row the kind\'s split cuts'] }, 'une règle écrite à la main ne se coupe pas');
+    const OPENJS = path.join(OP, 'src', 'content', 'open.js'), NINE = table.load(OPENJS).entries, NINE_KEYS = Object.keys(NINE);
+    same(NINE_KEYS, ['g-bezit', 'g-dehet', 'g-gegij', 'g-getallen', 'g-halfuur', 'g-perfect-intro', 'g-present', 'g-scheidbaar', 'g-v2'], 'open.js tient les neuf tâches écrites à la main, triées');
+    const REAL = path.join(ROOT, 'src', 'content', 'open.js');
+    ok(table.serialize(table.load(REAL)) === text(REAL), 'le open.js du vrai cours se récrit à l\'identique');
+    ok(CO.NL.content.openTasks === CO.NL.content.byDutch.open, 'NL.content.openTasks est la table open');
+    const g2 = CO.NL.content.allItems().find(x => x.id === 'g-v2');
+    ok(g2.open === CO.NL.content.openTasks['g-v2'] && Object.prototype.toString.call(g2.open.need[0].rx) === '[object RegExp]', 'g-v2 porte sa tâche, son rx une expression régulière');
+    /* Les 36 premières, nommées : deux lots de six unités. */
+    same(runOp('split.js', [OP, KD].concat(K.PHRASES.slice(0, 36))), { code: 0, lines: ['units-1-6 18', 'units-7-12 18'] }, 'Split coupe les 36 phrases nommées en deux lots de six unités');
     const inputs = LOTS.map(b => JSON.parse(text(path.join(KD, b, 'input.json'))));
     const all = [].concat(...inputs);
     const rowOf = id => all.find(r => r.id === id);
-    same(all.map(r => r.id), K.PHRASES, 'chaque phrase de PHRASES une fois, dans l\'ordre du cours');
+    same(all.map(r => r.id), K.PHRASES.slice(0, 36), 'chaque phrase nommée une fois, dans l\'ordre du cours');
     const units = CO.RAW.units.map(u => u.id);
     same(inputs.map((rows, i) => rows.every(r => (units.indexOf(r.unit) < 6) === (i === 0))), [true, true], 'les unités 1 à 6 dans le premier lot, 7 à 12 dans le second');
     const pain = CO.byId('bakker:p1');
@@ -1022,10 +1259,10 @@ async function main() {
       ],
       model: 'Mag ik drie pistolets, alstublieft?'
     };
-    const why = (patch, id) => {
+    const why = (patch, id, c) => {
       const r = JSON.parse(JSON.stringify(BAKKER));
       if (patch) patch(r);
-      return K.check(r, rowOf(id || 'bakker:p1'), ctx);
+      return K.check(r, rowOf(id || 'bakker:p1'), c || ctx);
     };
     same(why(), [], 'la ligne de la boulangerie passe');
     const N1 = 'need 1 « starts with “mag ik” »', N2 = 'need 2 « says how many »', N3 = 'need 3 « at least 4 words »';
@@ -1061,14 +1298,41 @@ async function main() {
         ['ask: « goesting » is quoted, and the course has not taught it by this unit: a quote holds taught Dutch, and a translation goes in parentheses'], 'une citation tient du néerlandais déjà enseigné'],
       [r => { r.ask.fr = 'Demande 2 ou 3 pistolets. Commence par « Mag ik ».'; r.ask.en = 'Ask for some. Start with “Mag ik”.'; }, ['ask: fr has the numbers [2 3], en []'], 'fr et en ont les mêmes nombres'],
       [r => { r.ask.fr = 'Commence par « Mag ik », et demande des pistolets.'; r.ask.en = 'Start with “Mag ik”, and ask for pistolets.'; },
-        ['ask: « pistolets » is Dutch the course has, written bare in fr and in en: quote it, or reword'], 'un mot du cours écrit des deux côtés se cite']
+        ['ask: « pistolets » is Dutch the course has, written bare in fr and in en: quote it, or reword'], 'un mot du cours écrit des deux côtés se cite'],
+      [r => { r.ask.fr = 'Commence par « Mag ik », et parle de tennis.'; r.ask.en = 'Start with “Mag ik”, and talk about tennis.'; },
+        ['ask: « tennis » is Dutch the course has, written bare in fr and in en: quote it, or reword'], 'le néerlandais du cours est tout le cours (dutchWords), pas ses seules unités'],
+      [r => { r.model = 'Mag ik 4 pistolets, alstublieft?'; r.need[1].any.push('4'); }, [], 'un chiffre n\'est pas du néerlandais : le 4 du min reste nu'],
+      [r => { r.need[1].any.push('hoe lang'); }, ['need 2 writes « hoe lang »: the course writes the duration « hoelang » (#128), and test/content.js refuses it'], '« hoe lang » en deux mots, nulle part dans la tâche'],
+      [r => { r.need[1].any.push('hoe', 'lang'); }, [], '« hoe » puis « lang », deux variantes d\'un any, ne font pas « hoe lang » : chaque chaîne se lit seule, comme test/content.js'],
+      [r => { r.model = 'Mag ik twee pistolets met jam?'; }, ['the model: « jam » would become Dutch of the course, and test/lang.js 6d.3 then refuses its QUOTE_OK exception (test/lib/quoted.js)'], 'l\'exemple n\'ajoute au cours aucun mot de QUOTE_OK'],
+      [r => { r.model = 'Mag ik twee pistolets voor de club?'; }, ['the model: « club » would become Dutch of the course, and patterns[2].explain writes it bare in French and in English (test/lang.js 6d.4)'], 'ni un mot que le cours écrit nu en français et en anglais'],
+      [r => { r.ask.en += ' Say hoe lang.'; }, ['ask writes « hoe lang »: the course writes the duration « hoelang » (#128), and test/content.js refuses it'], '« hoe lang » dans ask'],
+      [r => { r.need[1].what.en = 'says hoe lang'; }, ['need 2 writes « hoe lang »: the course writes the duration « hoelang » (#128), and test/content.js refuses it'], '« hoe lang » dans le what d\'un besoin'],
+      [r => { r.need[1].miss = 'Mag ik hoe lang pistolets?'; }, ['need 2 writes « hoe lang »: the course writes the duration « hoelang » (#128), and test/content.js refuses it'], '« hoe lang » dans le miss d\'un besoin'],
+      [r => { r.need[0].rx += '|hoe lang'; }, ['need 1 writes « hoe lang »: the course writes the duration « hoelang » (#128), and test/content.js refuses it'], '« hoe lang » dans le rx d\'un besoin'],
+      [r => { r.ask.fr = 'Commence par « Mag ik », et parle de ticket.'; r.ask.en = 'Start with “Mag ik”, and talk about ticket.'; }, [], 'un mot de SHARED_OK reste nu, comme test/lang.js l\'excuse']
     ].forEach(([patch, want, m]) => same(why(patch), want, 'Check : ' + m));
+    /* Un mot de l'exemple d'une autre ligne : celle-ci le rend néerlandais du cours à Merge. */
+    const SIB = path.join(OP, 'sib', 'open');
+    fs.mkdirSync(path.join(SIB, 'lot'), { recursive: true });
+    put(path.join(SIB, 'lot'), 'draft.json', [{ id: 'bakker:p1', model: 'Ik speel golf.' }, { id: 'vrijetijd:p1', model: 'Ik kan golf spelen.' }]);
+    const GOLF = r => { r.ask.fr = 'Commence par « Mag ik », et parle de golf.'; r.ask.en = 'Start with “Mag ik”, and talk about golf.'; };
+    const GOLFLINE = 'ask: « golf » is in the model of vrijetijd:p1, which Merge makes Dutch of the course: written bare in fr and in en, quote it, or reword';
+    same([why(GOLF), why(GOLF, null, Object.assign({ kindDir: SIB }, ctx))], [[], [GOLFLINE]], 'Check : un mot de l\'exemple d\'une autre ligne se cite comme le néerlandais du cours');
+    const SIB2 = path.join(OP, 'sib2', 'open');
+    fs.mkdirSync(path.join(SIB2, 'lot'), { recursive: true });
+    put(path.join(SIB2, 'lot'), 'draft.json', [{ id: 'vrijetijd:p1', model: 'Ik kan golf spelen.' }]);
+    put(path.join(SIB2, 'lot'), 'retry.json', [{ id: 'vrijetijd:p1', model: 'Ik kan squash spelen.' }]);
+    const SQUASH = r => { r.ask.fr = 'Commence par « Mag ik », et parle de squash.'; r.ask.en = 'Start with “Mag ik”, and talk about squash.'; };
+    const RETRY = Object.assign({ kindDir: SIB2 }, ctx);
+    same([why(GOLF, null, RETRY), why(SQUASH, null, RETRY)], [[], [GOLFLINE.replace('golf', 'squash')]], 'Check : le retry remplace le draft, comme Merge le prend');
     /* Les règles que d'autres raisons recouvrent : la phrase est cherchée parmi les raisons. */
     const has = (patch, line, m) => ok(why(patch).indexOf(line) >= 0, 'Check : ' + m + ' : ' + JSON.stringify(why(patch)));
     const SAME = r => { r.need[1].what = JSON.parse(JSON.stringify(r.need[0].what)); };
     has(r => { r.model = 'Mag ik.'; }, 'the model has fewer than 3 words: the session judges no shorter answer', 'l\'exemple a au moins 3 mots');
     has(SAME, 'need 2: its fr what is another need\'s', 'deux besoins n\'ont pas le même what (fr)');
     has(SAME, 'need 2: its en what is another need\'s', 'deux besoins n\'ont pas le même what (en)');
+    has(r => { r.model = 'Mag ik hoe lang drie pistolets?'; }, 'model writes « hoe lang »: the course writes the duration « hoelang » (#128), and test/content.js refuses it', 'l\'exemple n\'écrit pas « hoe lang »');
     [
       [r => { r.ask = 'Mag ik'; }, 'ask is { "fr": …, "en": … }, each one line with no space at either end', 'ask est une paire'],
       [r => { r.model = ['Mag ik']; }, 'model is one line of Dutch with no space at either end', 'l\'exemple est une ligne'],
@@ -1084,6 +1348,28 @@ async function main() {
       'the model uses « pistolets », which unit 4 (bakker) teaches, after this phrase\'s unit 1'], 'Check : l\'unité est celle de la ligne d\'entrée');
     same(why(r => { r.model = 'Mag ik drie pistolets voor ons?'; }), ['the model uses « ons », which unit 6 (familie) teaches, after this phrase\'s unit 4'],
       'Check : « ons », le trou de g-bezit, est enseigné à familie, la première unité qui liste la règle (#99)');
+
+    /* Une tâche de règle : Check lit la règle (exemple, exercices), pas la phrase. */
+    const ER = {
+      id: 'g-er-is', stamp: erRow.stamp,
+      ask: { fr: 'Dis ce qu\'il y a dans ta rue. Commence par « Er is » ou « Er zijn ».', en: 'Say what your street has. Start with “Er is” or “Er zijn”.' },
+      need: [
+        { what: { fr: 'commence par « er is » ou « er zijn »', en: 'starts with “er is” or “er zijn”' }, rx: '^\\s*er\\s+(is|zijn)\\b', miss: 'In mijn straat is een bakker.' },
+        { what: { fr: 'au moins 5 mots', en: 'at least 5 words' }, min: 5, miss: 'Er is een bakker.' }
+      ],
+      model: 'Er is een bakker in mijn straat.'
+    };
+    const whyRule = patch => {
+      const r = JSON.parse(JSON.stringify(ER));
+      if (patch) patch(r);
+      return K.check(r, erRow, ctx);
+    };
+    same(whyRule(), [], 'la tâche de g-er-is passe');
+    same(whyRule(r => { r.model = erPat.nl; }), ['the model is the rule\'s example: a task asks for an answer of the learner\'s own'], 'l\'exemple de la tâche n\'est pas celui de la règle');
+    same(whyRule(r => { r.model = 'Er zijn geen mensen meer op kantoor.'; }), ['the model is one of the rule\'s drills, « Er zijn geen mensen meer op kantoor. »: a task asks for an answer of the learner\'s own'], 'ni un de ses exercices');
+    same(whyRule(r => { r.model = 'Er is een ambulance in mijn straat.'; }), ['the model uses « ambulance », which unit 34 (spoed) teaches, after this rule\'s unit 18'], 'l\'exemple de la règle n\'emploie rien que le cours enseigne plus tard');
+    same([K.readWhole(ER, erRow, K.sourceOf(CO, 'g-er-is')), K.readWhole(BAKKER, rowOf('bakker:p1'), pain)], ['rule task', ''], 'le relecteur lit entière la tâche d\'une règle, non celle d\'une phrase');
+    const RRIGHT = ['Er zijn twee winkels in mijn straat.', 'Er is een huis met een tuin in mijn straat.'];
 
     /* Le verdict : un keep porte deux bonnes réponses du relecteur, que la tâche accepte. */
     const RIGHT = ['Mag ik een koffiekoek en twee pistolets?', 'Mag ik vier pistolets hebben?'];
@@ -1105,6 +1391,9 @@ async function main() {
       /^bakker:p1 « Mag ik \{naam\}\? » holds a token: a task is the same for every learner$/, 'Split refuse une phrase à jeton');
     throws(() => K.split(withSources(a => a.filter(x => x.id !== 'bakker:p1')), ctx),
       /^bakker:p1 is no phrase of the course$/, 'Split refuse un id qui n\'est plus une phrase');
+    const sansRegle = Object.assign({}, CO, { RAW: Object.assign({}, CO.RAW, { patterns: CO.RAW.patterns.filter(p => p.id !== 'g-er-is') }) });
+    throws(() => K.split(sansRegle, Object.assign({}, ctx, { ids: ['g-er-is'] })),
+      /^g-er-is is no rule of the course$/, 'Split refuse une règle dont le cours n\'a plus le motif');
 
     /* Par les outils : une ligne fautive, puis deux lots écrits et relus, puis Merge. Chaque
        ligne faite à la main dit « ja » puis la phrase ; la boulangerie est la vraie. */
@@ -1138,7 +1427,7 @@ async function main() {
 
     /* Merge écrit chaque tâche sous le néerlandais de sa phrase, son rx en expression régulière. */
     const OPEN = path.join(OP, 'src', 'content', 'open.phrases.js');
-    const MERGED = { code: 0, lines: ['ok open 36 taken, 0 dropped', 'ok open.phrases.js 36 set, 0 removed'] };
+    const MERGED = { code: 0, lines: ['ok open 36 taken, 0 dropped', 'ok open.phrases.js 36 set, 0 removed', 'ok open.js 0 set, 0 removed'] };
     same(runOp('merge.js', [OP, KD]), MERGED, 'Merge prend les 36 lignes');
     const written = text(OPEN);
     ok(written.indexOf('\'Mag ik twee pistolets?\': { ask: { fr: \'À la boulangerie, demande ce que tu veux, et combien. Commence par « Mag ik ».\', ' +
@@ -1154,7 +1443,20 @@ async function main() {
     ok(Object.prototype.toString.call(item.open.need[0].rx) === '[object RegExp]', 'le rx de la phrase est une expression régulière une fois posé');
     same(CM.NL.ex.rubric(item.open, item.open.model).length, 3, 'la séance accepte l\'exemple');
     same(CM.NL.ex.rubric(item.open, RIGHT[1]).length, 3, 'et une bonne réponse du relecteur');
-    console.log('  genre open     36 phrases en 2 lots, ' + Object.keys(back).length + ' tâches écrites, rx en expression régulière');
+
+    /* La règle : sa tâche s'écrit dans open.js, sous l'id de la règle. */
+    const NRB = path.join(NR, 'rules');
+    put(NRB, 'draft.json', [ER]);
+    put(NRB, 'review.json', [{ id: 'g-er-is', verdict: 'keep', right: RRIGHT }]);
+    same(runOp('check.js', [NRB]), { code: 0, lines: ['ok input.json 1 rows', 'ok draft.json 1 rows', 'ok review.json 1 keep, 0 dispute'] }, 'la tâche d\'une règle passe Check');
+    same(runOp('merge.js', [OP, NR]), { code: 0, lines: ['ok open 1 taken, 0 dropped', 'ok open.phrases.js 0 set, 0 removed', 'ok open.js 1 set, 0 removed'] }, 'Merge écrit la tâche de la règle dans open.js');
+    const TEN = table.load(OPENJS).entries;
+    same([Object.keys(TEN), NINE_KEYS.map(k => table.literal(TEN[k]))], [NINE_KEYS.concat('g-er-is').sort(), NINE_KEYS.map(k => table.literal(NINE[k]))],
+      'open.js tient les neuf tâches, inchangées, et celle de g-er-is, triées');
+    const CR = course(OP), itemR = CR.NL.content.allItems().find(x => x.id === 'g-er-is');
+    ok(itemR.open === CR.NL.content.openTasks['g-er-is'] && Object.prototype.toString.call(itemR.open.need[0].rx) === '[object RegExp]', 'la tâche de la règle est sur son élément, son rx une expression régulière');
+    same([CR.NL.ex.rubric(itemR.open, itemR.open.model).length, CR.NL.ex.rubric(itemR.open, RRIGHT[0]).length], [2, 2], 'la séance accepte l\'exemple et une bonne réponse de la règle');
+    console.log('  genre open     36 phrases en 2 lots, ' + Object.keys(back).length + ' tâches écrites, rx en expression régulière ; ' + RL.length + ' règles, ' + (Object.keys(TEN).length - 9) + ' tâche écrite dans open.js');
   }
 
   /* ==================================================== les genres d'explications */
@@ -1165,25 +1467,35 @@ async function main() {
        Nederlands aan het leren. » et hallo gardent leur forme flamande, et « het gemeentehuis »
        n'en a pas. */
     const EX = path.join(TMP, 'explications');
-    ['build.sh', 'src', 'test/lib', 'test/data', 'tools'].forEach(p => fs.cpSync(path.join(ROOT, p), path.join(EX, p), { recursive: true }));
+    copyKit(ROOT, EX);
+    beforeWords(EX);
     const X = require(path.join(EX, 'tools', 'content', 'lib', 'explain'));
-    const runEx = (script, args) => {
-      const r = spawnSync(process.execPath, [path.join(EX, 'tools', 'content', script)].concat(args), { encoding: 'utf8' });
-      return { code: r.status, lines: (r.stdout || '').split(/\r?\n/).filter(Boolean) };
-    };
+    const runEx = (script, args) => runIn(EX, script, args);
     const LEREN = C.byId('overleven:p0').nl, HALLO = C.byId('overleven:w0').nl, HUIS = C.byId('thuis:w12').nl;
     const BE = path.join(EX, 'src', 'content', 'be.js'), fixed = {};
     fixed[LEREN] = 'Ik ben Nederlands aan het leren, hè.';
     fixed[HALLO] = 'hey, salut';
     fixed[HUIS] = null;
     table.update(BE, fixed);
+    /* Le genre explanations ne coupe que les sources sans note : dans la copie, chaque source en a une
+       (une note d'essai pour celles que le vrai cours laisse sans, les mots neufs d'une fusion récente),
+       sauf « het gemeentehuis » et « Ik ben Nederlands aan het leren. », dont la note est ôtée, et « de brievenbus »,
+       qui ne garde que sa note française ; jij perd ses leurres. */
+    const notesFixed = {};
+    C.sources.filter(s => !s.note).forEach(s => { notesFixed[s.nl] = { fr: 'Une note d’essai.', en: 'A trial note.' }; });
+    notesFixed[HUIS] = null;
+    notesFixed[LEREN] = null;
+    notesFixed[C.byId('thuis:w11').nl] = { fr: 'Une note d’essai.' };
+    table.update(path.join(EX, 'src', 'content', 'notes.js'), notesFixed);
+    const JIJ = C.byId('ikengij:w1').nl, decoysFixed = {}; decoysFixed[JIJ] = null;
+    table.update(path.join(EX, 'src', 'content', 'decoys.js'), decoysFixed);
     const EXTRACT = path.join(EX, '.cache', 'kaikki', 'belgian.tsv');
     fs.mkdirSync(path.dirname(EXTRACT), { recursive: true });
     fs.writeFileSync(EXTRACT, '# kaikki/nl.jsonl sha256 ' + cache.PINS['kaikki/nl.jsonl'].sha256 + '\ngemeentehuis\tnoun\tBelgium\t(essai)\n');
     const CE = course(EX), NLE = CE.NL;
 
-    /* Les lots : les mots, puis les phrases, de explanations-be, par unités entières ; un lot par
-       unité pour explanations. */
+    /* Les lots, par unités entières de 40 lignes au plus (une unité plus longue fait un lot à elle
+       seule) : les mots, puis les phrases, de explanations-be, et les notes de explanations. */
     const mk = (u, n) => Array.from({ length: n }, (x, i) => ({ id: u + i, unit: u }));
     const sizes = r => r.map(b => b.batch + ' ' + b.rows.length);
     same([sizes(X.chunks('be-words', mk('a', 30).concat(mk('b', 15)))), sizes(X.chunks('be-words', mk('a', 20).concat(mk('b', 20), mk('c', 5)))),
@@ -1195,14 +1507,20 @@ async function main() {
     same([be.length + rest.length, be.every(s => s.be && NLE.util.norm(s.be) !== NLE.util.norm(s.nl))], [CE.sources.length, true],
       'chaque source est d\'un genre, et explanations-be a celles dont la forme flamande n\'est pas le néerlandais');
     const beSplit = runEx('split.js', [EX, BED]);
-    const perKind = k => beSplit.lines.filter(l => l.indexOf('be-' + k + 's') === 0);
-    const total = ls => ls.reduce((n, l) => n + Number(l.split(' ')[1]), 0);
-    ok(beSplit.code === 0 && beSplit.lines.every(l => /^be-(words|phrases)(-\d+)? \d+$/.test(l)) && perKind('word').length + perKind('phrase').length === beSplit.lines.length,
-      'Split de explanations-be coupe des lots be-words et be-phrases : ' + JSON.stringify(beSplit));
-    same([total(perKind('word')), total(perKind('phrase'))], [be.filter(s => s.kind === 'word').length, be.filter(s => s.kind === 'phrase').length],
-      'les mots et les phrases de explanations-be, chacun une fois');
-    const want = CE.RAW.units.map(u => [u.id, rest.filter(s => s.unit === u.id).length]).filter(x => x[1]).map(x => x.join(' '));
-    same(runEx('split.js', [EX, RD]), { code: 0, lines: want }, 'Split de explanations coupe un lot par unité');
+    const ids = (dir, b) => (fs.existsSync(path.join(dir, b, 'input.json')) ? JSON.parse(text(path.join(dir, b, 'input.json'))).map(r => r.id) : null);
+    same(beSplit, { code: 0, lines: ['be-words 1', 'be-phrases 1'] }, 'Split de explanations-be ne coupe que les sources qui doivent leurs leurres ou leur note');
+    same([ids(BED, 'be-words'), ids(BED, 'be-phrases')], [['ikengij:w1'], ['overleven:p0']], 'jij, ses leurres ; « Ik ben Nederlands aan het leren. », sa note');
+    const BEN = path.join(EX, 'nommes', 'explanations-be');
+    same(runEx('split.js', [EX, BEN, 'overleven:w0', 'overleven:w7', 'ikengij:w1', 'overleven:p0']), { code: 0, lines: ['be-words 3', 'be-phrases 1'] },
+      'nommée, une source de explanations-be qui ne doit rien est coupée aussi (#106)');
+    /* Le genre explanations ne coupe que les sources sans note dans les deux langues (deux ici), et celles que Split nomme. */
+    const unnoted = rest.filter(s => !s.note);
+    same(unnoted.map(s => s.id), ['thuis:w12'], 'une seule source de explanations est sans note');
+    same(runEx('split.js', [EX, RD]), { code: 0, lines: ['notes 2'] }, 'Split de explanations coupe des lots notes d\'unités entières, des seules sources sans note');
+    same(ids(RD, 'notes'), ['thuis:w11', 'thuis:w12'], 'une note dans une seule langue est due : Split la coupe aussi');
+    const RD2 = path.join(EX, 'nommes', 'explanations');
+    same(runEx('split.js', [EX, RD2, 'overleven:w2', 'thuis:w12']), { code: 0, lines: ['notes 2'] },
+      'nommée, une source qui a sa note est coupée aussi (#106)');
     const rowIn = (dir, id) => {
       const b = text(path.join(dir, 'split.txt')).split('\n').filter(Boolean).map(l => l.split(' ')[0])
         .find(x => JSON.parse(text(path.join(dir, x, 'input.json'))).some(r => r.id === id));
@@ -1219,7 +1537,7 @@ async function main() {
       nl: HUIS, kind: 'word', unit: 'thuis', be: null, meaning: NLE.gloss.meaning(huis),
       note: huis.note || null, also: [], siblings: [], vlaams: false, right: null, labelled: ['noun (Belgium): (essai)']
     }, 'une ligne de explanations : sans forme flamande ni exercice, et les sens belges que l\'extrait donne au mot');
-    same(rowIn(RD, 'overleven:w2').siblings.map(s => s.nl), ['de dag'], 'les frères de sens d\'une source sont dans sa ligne');
+    same(rowIn(RD2, 'overleven:w2').siblings.map(s => s.nl), ['de dag'], 'les frères de sens d\'une source sont dans sa ligne');
 
     /* Check : la note, ses langues et ses citations. */
     const KB = require(path.join(EX, 'tools', 'content', 'kinds', 'explanations-be'));
@@ -1262,17 +1580,30 @@ async function main() {
     same(why('Ajoute hè à la fin.', 'Add hè at the end.'), ['« hè » is Dutch of the course, outside quotes in fr and in en: quote it, or say it another way'],
       'le néerlandais du cours se cite');
     same(why('Ajoute « hè » à la fin, comme hè.', 'Add “hè” at the end.'), [], 'un mot nu dans une seule langue passe : 6d.4 ne le voit pas');
+    const kunde = r => r.filter(x => /^note\.(fr|en) quotes « kunde »/.test(x));
+    same([kunde(why('À l’oral, « kunde » remplace « kunt u ».', 'Spoken, “kunde” replaces “kunt u”.')),
+      kunde(why('« Kunde » est « kunt ge » contracté, pas « kunt u ».', '“Kunde” is “kunt ge” run together, not “kunt u”.'))],
+    [['fr', 'en'].map(l => 'note.' + l + ' quotes « kunde » beside a « u » and not « kunt ge »: « kunde » is « kunt ge » run together, not « kunt u »'), []],
+    'une note qui cite « kunde » et « kunt u » cite aussi « kunt ge », comme test/content.js le veut');
+    /* La note : « hoe lang » (#128), l'apostrophe droite, un mot d'une lettre nu (6d.4, hors SHARED_OK). */
+    const hoe = r => r.filter(x => /hoe lang/.test(x)), HOE = ' writes « hoe lang »: the course writes the duration « hoelang » (#128)';
+    same(hoe(why('« Hoe laat » demande l’heure, « hoe lang » la durée.', '“Hoe laat” asks the time, “hoe lang” the duration.')),
+      ['note.fr' + HOE, 'note.en' + HOE], 'une note n\'écrit pas « hoe lang »');
+    same(why('Le « hè » final cherche l\'accord, comme « toch ».', GOOD[1]), ['note.fr writes a straight apostrophe « \' »: write « ’ », as notes.js does'],
+      'une note écrit l\'apostrophe typographique');
+    same(why('En Flandre, « ge » remplace u.', 'In Flanders, “ge” replaces u.').filter(x => /Dutch of the course/.test(x)),
+      ['« u » is Dutch of the course, outside quotes in fr and in en: quote it, or say it another way'], 'un mot d\'une lettre nu se cite aussi');
 
     /* Check : les « on dit aussi » de chaque ligne, et les leurres d'une ligne que « Comment le
        dit-on ici ? » pose. hallo tient déjà dag, qui n'est pas de son sens : une forme que la source
        tient déjà reste. ja a une forme flamande, mais la première est le néerlandais : l'exercice
        ne le pose pas. */
-    const HALLO_IN = rowIn(BED, 'overleven:w0'), JA_IN = rowIn(BED, 'overleven:w7');
+    const HALLO_IN = rowIn(BEN, 'overleven:w0'), JA_IN = rowIn(BEN, 'overleven:w7');
     same([HALLO_IN.vlaams, HALLO_IN.right, HALLO_IN.also, JA_IN.vlaams], [true, 'hey', ['dag'], false],
       'hallo a l\'exercice, sa réponse hey, et un « on dit aussi » ; ja n\'a pas l\'exercice');
     const rule = (id, extra) => {
       const r = id === 'thuis:w12';
-      return (r ? KR : KB).check(Object.assign(line(id, { fr: GOOD[0], en: GOOD[1] }), extra), rowIn(r ? RD : BED, id), r ? ctxR : ctxB);
+      return (r ? KR : KB).check(Object.assign(line(id, { fr: GOOD[0], en: GOOD[1] }), extra), rowIn(r ? RD : BEN, id), r ? ctxR : ctxB);
     };
     same(['overleven:w0', 'overleven:p0', 'overleven:w7', 'thuis:w12'].map(id => rule(id, {})), [[], [], [], []],
       'une ligne juste passe : sa note, ses « on dit aussi », et deux leurres quand l\'exercice la pose');
@@ -1320,9 +1651,26 @@ async function main() {
       'decoy « Ik leer het, hè. » is 16 characters: 22 to 50, the length of the answer « Ik ben Nederlands aan het leren, hè. » give or take 40% or two letters, whichever is more',
       'decoy « Ik leer het, hè. » is further from the Dutch than the answer: 0.35, at least 0.76'
     ]], 'un leurre a la longueur de la réponse, à 40 % ou à deux lettres près');
-    same([rule('ikengij:w1', { decoys: ['je', 'jou'] }), rule('ikengij:w1', { decoys: ['je', 'kat'] })],
-      [[], ['decoy « kat » is further from the Dutch than the answer: 0.00, at least 0.33']],
+    same([rule('ikengij:w1', { decoys: ['je', 'jou'] }), rule('ikengij:w1', { decoys: ['je', 'zqz'] })],
+      [[], ['decoy « zqz » is further from the Dutch than the answer: 0.00, at least 0.33']],
       'une réponse de trois lettres a ses fautes : une forme courte du même pronom passe, un mot sans rapport non');
+    const HEET = NLE.content.fill(CE.byId('ikengij:p0').nl), six = r => r.filter(x => /test\/lang\.js 6d/.test(x));
+    same(rule('overleven:p0', { decoys: [HEET, DECOYS['overleven:p0'][1]] }).filter(x => /accepts/.test(x)),
+      ['decoy « ' + HEET + ' » is an answer the course accepts, for ikengij:p0'], 'un leurre n\'est pas la réponse d\'un élément aux jetons remplis');
+    same(rule('overleven:w0', { decoys: ['he\'y', 'hai'] }).filter(x => /apostrophe/.test(x)),
+      ['decoy « he\'y » writes the typographic apostrophe « ’ », as the answer does: « ’t », « da’s »'], 'un leurre écrit l\'apostrophe typographique');
+    same([six(rule('overleven:w0', { decoys: ['slank', 'hai'] })), six(rule('thuis:w12', { also: ['conversation'] }))], [
+      ['decoy « slank »: « slank » would become Dutch of the course, and test/lang.js 6d.3 then refuses its QUOTE_OK exception (test/lib/quoted.js)'],
+      ['also « conversation »: « conversation » would become Dutch of the course, and units[0].blurb writes it bare in French and in English (test/lang.js 6d.4)']
+    ], 'un leurre ou un « on dit aussi » ne fait pas du néerlandais du cours un mot que test/lang.js refuserait alors');
+    /* « hoe lang » ; un « on dit aussi » qui est le leurre d'un autre élément ; un leurre à jeton, lu rempli (g-present). */
+    const DUUR = 'Hoe lang ben ik aan het leren, hè.', HEI = NLE.content.byDutch.decoys[HALLO][0];
+    same([hoe(rule('overleven:p0', { decoys: [DUUR, DECOYS['overleven:p0'][1]] })), hoe(rule('overleven:p0', { also: [DUUR] }))],
+      [['decoy « ' + DUUR + ' »' + HOE], ['also « ' + DUUR + ' »' + HOE]], 'ni un leurre ni un « on dit aussi » n\'écrit « hoe lang »');
+    same(rule('overleven:w7', { also: [HEI] }).filter(x => /decoy of/.test(x)),
+      ['also « ' + HEI + ' » is a decoy of overleven:w0 in decoys.js: the suite refuses a decoy the course accepts'], 'un « on dit aussi » n\'est le leurre d\'aucun élément');
+    same(rule('overleven:p0', { decoys: ['Ik werk bij {bedrijf}.', DECOYS['overleven:p0'][1]] }).filter(x => /accepts/.test(x)),
+      ['decoy « Ik werk bij {bedrijf}. » is an answer the course accepts, for ikengij:p4, g-present'], 'un leurre écrit avec un jeton se lit rempli, comme la page le montre');
     const N = { fr: GOOD[0], en: GOOD[1] };
     same([KB.readWhole(line('overleven:w0', N), HALLO_IN), KB.readWhole(Object.assign(line('overleven:w0', N), { also: ['dag'] }), HALLO_IN),
       KB.readWhole(Object.assign(line('overleven:w0', N), { also: ['dag', 'hoi'] }), HALLO_IN)], ['', '', 'new also'],
@@ -1340,7 +1688,7 @@ async function main() {
     Object.keys(table.load(BE).entries).forEach(k => { if (k !== LEREN && k !== HALLO) gone[k] = null; });
     table.update(BE, gone);
     const E2E = path.join(EX, 'bout-en-bout', 'explanations-be');
-    same(runEx('split.js', [EX, E2E]), { code: 0, lines: ['be-words 1', 'be-phrases 1'] }, 'Split de explanations-be ne coupe que les deux sources gardées');
+    same(runEx('split.js', [EX, E2E, 'overleven:w0', 'overleven:p0']), { code: 0, lines: ['be-words 1', 'be-phrases 1'] }, 'Split de explanations-be, nommées, coupe les deux sources gardées');
     const NOTE = { fr: 'Une note d’essai sur cette source.', en: 'A trial note on this source.' };
     const batches = ['be-words', 'be-phrases'];
     batches.forEach(b => {
@@ -1382,7 +1730,756 @@ async function main() {
     const { dutchWords } = require(path.join(EX, 'test', 'lib', 'dutch'));
     CA.NL.content.byDutch.also[HALLO] = ['dag', 'hoezee'];
     same(['hai', 'helo', 'an', 'hoezee'].filter(w => !dutchWords(CA.NL).has(w)), [], 'les mots des leurres et des « on dit aussi » sont du néerlandais du cours');
-    console.log('  explanations   ' + beSplit.lines.length + ' + ' + want.length + ' lots, ' + be.length + ' + ' + rest.length + ' lignes ; la note et ses citations, les « on dit aussi », les leurres ; Merge');
+    const hallo = CE.byId('overleven:w0'), ja = CE.byId('overleven:w7');
+    same([X.owes(hallo, NLE), X.owes(Object.assign({}, hallo, { decoys: undefined }), NLE), X.owes(Object.assign({}, hallo, { note: { fr: hallo.note.fr } }), NLE), X.owes(Object.assign({}, ja, { decoys: undefined }), NLE)], [false, true, true, false],
+      'une source doit ses leurres quand l\'exercice la pose sans eux, et sa note quand elle ne se lit pas dans les deux langues');
+    console.log('  explanations   ' + beSplit.lines.length + ' + 1 lots, ' + (be.filter(s => X.owes(s, NLE)).length) + ' + ' + ids(RD, 'notes').length + ' lignes dues sur ' + be.length + ' + ' + rest.length + ' ; la note et ses citations, les « on dit aussi », les leurres ; Merge');
+  }
+
+  /* ==================================================== le genre words */
+  {
+    /* tools/content/kinds/words.js dans un dépôt à lui sous la copie, avec test/data (l'orthographe et
+       de / het) et un extrait des sens du Wiktionnaire fait ici, de quelques lignes, sous la vraie
+       épingle. Sa source est une unité à venir : le cours de la copie n'en a aucune, et Split coupe
+       les 22. check.js lit le dépôt qui le contient : les outils se lancent depuis celui-ci. */
+    const { oneLine } = require('../lib/text');
+    /* Chaque lexique est chargé par la page (SRC de build.sh) et par test/smoke.js, qui a sa propre liste : un
+       lexique oublié de l'une d'elles reste vert tant qu'il est vide. */
+    const lexica = [...new Set(fs.readdirSync(path.join(ROOT, 'src', 'content')).filter(f => /^lexicon\..*\.js$/.test(f)).concat('lexicon.a1c.js'))];
+    same(lexica.filter(f => text(path.join(ROOT, 'test', 'smoke.js')).indexOf('\'src/content/' + f + '\'') < 0), [], 'la liste de test/smoke.js nomme chaque lexique de src/content');
+    same(lexica.filter(f => text(path.join(ROOT, 'build.sh')).split(/\r?\n/).indexOf('src/content/' + f) < 0), [], 'le SRC de build.sh nomme chaque lexique de src/content');
+    const WD = path.join(TMP, 'mots');
+    copyKit(ROOT, WD);
+    beforeWords(WD);
+    const runWd = (script, args) => runIn(WD, script, args);
+    const SENSES = path.join(WD, '.cache', 'kaikki', 'senses.tsv');
+    fs.mkdirSync(path.dirname(SENSES), { recursive: true });
+    fs.writeFileSync(SENSES, '# kaikki/nl.jsonl sha256 ' + cache.PINS['kaikki/nl.jsonl'].sha256 + '\n' + [
+      'België\tname\thet\tBelgium', 'douche\tnoun\tde\tshower', 'januari\tnoun\t\tJanuary', 'kunnen\tverb\t\tto be able', 'stoel\tnoun\tde\tchair',
+      'tafel\tnoun\tde\ttable', 'toch\tadv\t\tstill | anyway', 'waarom\tadv\t\twhy', 'wie\tpron\t\twho'
+    ].join('\n') + '\n');
+    const K = require(path.join(WD, 'tools', 'content', 'kinds', 'words'));
+    const LEX = path.join(WD, 'src', 'content', 'lexicon.a1c.js'), IDS = path.join(WD, 'test', 'data', 'ids.tsv');
+    const CW = course(WD), NLW = CW.NL;
+
+    /* L'en-tête de chaque fichier que Merge écrit entier : celui du dépôt est celui que le genre écrirait. Merge
+       récrit le fichier depuis HEADER, sans lire l'ancien : un en-tête changé d'un seul côté serait écrasé, ou
+       écraserait l'autre, à la prochaine fusion, et aucune autre vérification ne le voit. */
+    const headOf = lines => lines.slice(0, lines.indexOf('') >= 0 ? lines.indexOf('') : lines.length - 1).join('\n') + '\n';
+    [['lexicon.a1c.js', K.lexicon([])], ['grammar.a1c.js', require(path.join(WD, 'tools', 'content', 'kinds', 'grammar')).patterns([])],
+      ['scenarios.a1c.js', require(path.join(WD, 'tools', 'content', 'kinds', 'scenarios')).scenarios([])],
+      ['phrases.a1c.js', require(path.join(WD, 'tools', 'content', 'kinds', 'phrases')).file([])]].forEach(([file, empty]) => {
+      const real = text(path.join(ROOT, 'src', 'content', file)).replace(/\r\n/g, '\n');
+      ok(real.startsWith(headOf(empty)), 'l\'en-tête de src/content/' + file + ' est celui que son genre écrit (HEADER)');
+    });
+
+    /* Les 22 unités : leurs ids, leurs numéros, leurs cibles, chacune ses deux noms et ses deux présentations. */
+    same([K.UNITS.length, K.UNITS.map(u => u.n).join(' '), K.UNITS.reduce((s, u) => s + u.target, 0), new Set(K.UNITS.map(u => u.id)).size],
+      [22, Array.from({ length: 22 }, (x, k) => 13 + k).join(' '), 605, 22], '22 unités, numérotées de 13 à 34, 605 slots, chacune son id');
+    ok(K.UNITS.every(u => ['fr', 'en'].every(l => oneLine(u.name[l]) && oneLine(u.blurb[l])) && oneLine(u.nlName) && u.icon && ['beide', 'leven', 'werk'].indexOf(u.track) >= 0 &&
+      u.samples.length <= u.target && !CW.units.some(x => x.id === u.id)), 'chaque unité a ses noms, ses présentations, son icône, sa voie, au plus autant de témoins que de slots, et n\'est pas encore dans le cours');
+    same(K.sourceOf(CW, 'wonen:s03'), Object.assign({}, K.UNITS[10], { nl: 'wonen', fr: 'Aménager la maison', en: 'Furnishing the house' }), 'la source d\'un slot est son unité, dont nl est l\'id, fr et en ses noms');
+    ok(K.sourceOf(CW, 'zzz:s00') === undefined, 'un slot d\'une unité inconnue n\'a pas de source');
+
+    /* Split : un lot par unité, autant de lignes que de slots ; une ligne porte son slot et son témoin. */
+    const KW = path.join(WD, 'drafts', 'words');
+    same(runWd('split.js', [WD, KW]), { code: 0, lines: K.UNITS.map(u => u.id + ' ' + u.target) }, 'Split coupe un lot par unité, une ligne par slot');
+    const rowW = (dir, id) => JSON.parse(text(path.join(dir, id.split(':')[0], 'input.json'))).find(r => r.id === id);
+    same(rowW(KW, 'wonen:s00'), { id: 'wonen:s00', stamp: kit.stamp(K, K.sourceOf(CW, 'wonen:s00'), NLW), copies: [], unit: 'wonen', n: 23, nlName: 'Het huis inrichten',
+      name: { fr: 'Aménager la maison', en: 'Furnishing the house' }, target: 30, slot: 0, sample: 'de tafel' }, 'une ligne d\'entrée : son slot, son unité et le mot du mainteneur');
+    same([rowW(KW, 'wonen:s29').sample, rowW(KW, 'wonen:s29').slot, rowW(KW, 'vragen:s09').sample], [null, 29, 'nu'], 'un slot sans témoin en a null');
+
+    /* Check : chaque règle, sur une ligne juste et une ligne fausse. */
+    const ctxW = { repo: WD, course: () => CW };
+    const TAFEL = { nl: 'de tafel', fr: 'la table', en: 'table', art: 'de', pos: 'noun', evidence: 'wiktionary:tafel' };
+    const WIE = { nl: 'wie', fr: 'qui', en: 'who', art: null, pos: 'pron', evidence: 'wiktionary:wie' };
+    const at = (id, row) => K.check(Object.assign({ id }, row), rowW(KW, id), ctxW);
+    const wrong = (id, base, more) => at(id, Object.assign({}, base, more));
+    same([at('wonen:s00', TAFEL), at('vragen:s00', WIE), at('wonen:s10', { nl: 'de douche', fr: 'la douche', en: 'shower', art: 'de', pos: 'noun', evidence: 'course' }),
+      at('kalender:s00', { nl: 'januari', fr: 'janvier', en: 'January', art: null, pos: 'name', evidence: 'wiktionary:januari' })],
+    [[], [], [], []], 'une ligne juste passe : un nom avec son article, un pronom, une preuve course, un nom sans article (name)');
+    same(K.forMaintainer({ evidence: 'course' }) + '|' + K.forMaintainer(TAFEL), 'evidence course|', 'une preuve course va au mainteneur');
+    same([wrong('wonen:s00', TAFEL, { nl: ' de tafel' }), wrong('wonen:s00', TAFEL, { fr: '' }), wrong('wonen:s00', TAFEL, { art: 'een' }), wrong('wonen:s00', TAFEL, { pos: 'nom' }),
+      wrong('wonen:s00', TAFEL, { evidence: 'wiktionary' })], [
+      ['nl is a text on one line with no space at either end'], ['fr is a text on one line with no space at either end'], ['art is de, het or null'],
+      ['pos is one of noun, name, verb, adj, adv, pron, prep, conj, num, other'], ['evidence is wiktionary:<lemma> or course']
+    ], 'la forme des six champs');
+    same(wrong('wonen:s00', TAFEL, { nl: 'de taffel' }), ['« taffel » is not Dutch that OpenTaal or flemish.tsv knows: pick another word, or say in unsure why the course needs this one',
+      '« taffel » is not in test/data/dehet.tsv, so test/dehet.js would refuse it after Merge: pick another word, or say in unsure why the course needs this one',
+      'this slot writes the sample « de tafel », not « de taffel »', 'nl does not use the lemma « tafel »'], 'l\'orthographe, de / het, le témoin du slot, et le lemme que nl emploie');
+    same([wrong('wonen:s00', TAFEL, { art: null }), wrong('wonen:s00', TAFEL, { nl: 'tafel' }), wrong('wonen:s00', TAFEL, { nl: 'het tafel', art: 'het' }),
+      wrong('wonen:s10', { nl: 'de zqzq', fr: 'le zq', en: 'zq', art: 'de', pos: 'noun', evidence: 'course' }, {}).slice(1)], [
+      ['a noun carries its article: art is de or het'], ['nl starts with its article « de »'], ['« het tafel »: test/data/dehet.tsv says « de »'],
+      ['« zqzq » is not in test/data/dehet.tsv, so test/dehet.js would refuse it after Merge: pick another word, or say in unsure why the course needs this one']
+    ], 'un nom porte son article, celui de dehet.tsv, et un nom que la table ignore est refusé');
+    same([wrong('vragen:s00', WIE, { art: 'de' }), wrong('vragen:s00', WIE, { nl: 'de wie' })],
+      [['art is null for a word that is not a noun'], ['a word that is not a noun carries no article: nl is « wie »']],
+      'un mot qui n\'est pas un nom n\'a pas d\'article');
+    const DAG = CW.byId('overleven:w2');
+    same(wrong('vragen:s10', WIE, { nl: DAG.nl, fr: DAG.fr, en: DAG.en, pos: 'other', evidence: 'course' }),
+      ['« ' + DAG.nl + ' » is already an item of the course, overleven:w2 « ' + DAG.nl + ' »: a new word never repeats an existing item\'s Dutch'], 'un mot que le cours a déjà est refusé');
+    same([wrong('wonen:s00', TAFEL, { evidence: 'wiktionary:tafels' }), wrong('wonen:s00', TAFEL, { evidence: 'wiktionary:toch' }), wrong('vragen:s00', WIE, { pos: 'adv' })], [
+      ['« tafels » is not an entry of the pinned Wiktionary extract (.cache/kaikki/senses.tsv): cite the lemma as the extract spells it, or evidence course'],
+      ['« toch » is « adv » in the extract, not noun', 'nl does not use the lemma « toch »'], ['« wie » is « pron » in the extract, not adv']
+    ], 'la preuve : un lemme de l\'extrait, de la même nature, que nl emploie');
+    same([wrong('kunnen:s00', { nl: 'kunnen', fr: 'pouvoir', en: 'can', art: null, pos: 'verb', evidence: 'wiktionary:kunnen' }, {}),
+      wrong('wonen:s00', TAFEL, { en: 'the table' }), wrong('wonen:s00', TAFEL, { fr: '2 tables' }), wrong('vragen:s10', WIE, { nl: 'hoezo', fr: 'bonjour', en: 'hi', evidence: 'course' })], [
+      ['a verb\'s en starts with « to »'], ['a noun\'s en takes no article'], ['fr and en hold different digits or {…} tokens'],
+      ['en shares a sense with overleven:w2 « dag » (hi / bye), which shares no French sense and no Dutch: give one of them another English, or the French they share']
+    ], 'les gardes de test/content.js sur l\'anglais : « to », pas d\'article, mêmes chiffres, pas de sens anglais partagé sans le français');
+    same([wrong('wonen:s00', TAFEL, { fr: 'l\'table' }), wrong('wonen:s00', TAFEL, { fr: 'la "table"' }), wrong('wonen:s00', TAFEL, { nl: 'de tafel"' }).filter(w => /^nl writes/.test(w)),
+      at('wonen:s10', { nl: 'de douche', fr: 'l’eau de la douche', en: 'shower', art: 'de', pos: 'noun', evidence: 'course' })], [
+      ['fr writes the typographic apostrophe « ’ » and no straight quote'], ['fr writes the typographic apostrophe « ’ » and no straight quote'],
+      ['nl writes the typographic apostrophe « ’ » and no straight quote'], []
+    ], 'le français et le néerlandais écrivent l\'apostrophe typographique, et aucun guillemet droit');
+    fs.renameSync(SENSES, SENSES + '.old');
+    same(K.check(Object.assign({ id: 'wonen:s00' }, TAFEL), rowW(KW, 'wonen:s00'), { repo: WD, course: () => CW }), ['.cache/kaikki/senses.tsv is missing: run node tools/content/kaikki.js .'],
+      'sans extrait, Check dit la commande à lancer');
+    fs.renameSync(SENSES + '.old', SENSES);
+
+    /* De bout en bout : quatre slots de deux unités, nommés à Split, rédigés et relus, check.js,
+       Merge (refusée tant que deux slots écrivent le même mot), le lexique et ids.tsv récrits, Merge
+       relancée à l'identique, et un second Split qui ne coupe plus ces unités. */
+    const E2WS = path.join(WD, 'bout-en-bout'), E2W = path.join(E2WS, 'drafts', 'words');
+    same(runWd('split.js', [WD, E2W, 'vragen:s00', 'vragen:s10', 'wonen:s00', 'wonen:s10']), { code: 0, lines: ['vragen 2', 'wonen 2'] }, 'Split nommé coupe quatre slots');
+    const ROWS = {
+      'vragen:s00': WIE,
+      'vragen:s10': { nl: 'toch', fr: 'quand même', en: 'anyway', art: null, pos: 'adv', evidence: 'wiktionary:toch' },
+      'wonen:s00': TAFEL,
+      'wonen:s10': { nl: 'toch', fr: 'pourtant', en: 'still', art: null, pos: 'adv', evidence: 'wiktionary:toch' }
+    };
+    ['vragen', 'wonen'].forEach(b => {
+      const dir = path.join(E2W, b), inp = JSON.parse(text(path.join(dir, 'input.json')));
+      put(dir, 'draft.json', inp.map(r => Object.assign({ id: r.id, stamp: r.stamp }, ROWS[r.id])));
+      put(dir, 'review.json', inp.map(r => ({ id: r.id, verdict: 'keep' })));
+      same(runWd('check.js', [dir]).code, 0, 'le lot ' + b + ', rédigé et relu, passe');
+    });
+    const lexBefore = text(LEX), idsBefore = text(IDS);
+    same(runWd('merge.js', [WD, E2W]), { code: 1, lines: ['fail words -: wonen:s10 and vragen:s10 both write « toch »: one word, one slot'] }, 'Merge refuse deux slots qui écrivent le même mot');
+    same([text(LEX), text(IDS)], [lexBefore, idsBefore], 'refusée, Merge n\'écrit rien');
+    const slotOf = (id, nl, unit) => ({ id, row: { nl }, input: { unit } });
+    throws(() => K.write([slotOf('vragen:s10', 'toch', 'vragen'), slotOf('vragen:s11', 'de douche', 'vragen'), slotOf('wonen:s10', 'toch', 'wonen'), slotOf('wonen:s11', 'de douche', 'wonen')], ctxW),
+      /^wonen:s10 and vragen:s10 both write « toch »; wonen:s11 and vragen:s11 both write « de douche »: one word, one slot$/, 'Merge nomme chaque mot écrit deux fois, d\'un coup');
+    const WONEN = path.join(E2W, 'wonen');
+    put(WONEN, 'draft.json', JSON.parse(text(path.join(WONEN, 'draft.json'))).map(r => (r.id === 'wonen:s10' ? Object.assign(r, { nl: 'de douche', fr: 'la douche', en: 'shower', art: 'de', pos: 'noun', evidence: 'wiktionary:douche' }) : r)));
+    same(runWd('merge.js', [WD, E2W]), { code: 0, lines: ['ok words 4 taken, 0 dropped', 'ok lexicon.a1c.js 4 words in 2 units', 'ok ids.tsv 4 added'] },
+      'Merge écrit le lexique et ids.tsv, et le dit');
+    const lexAfter = text(LEX), idsAfter = text(IDS);
+    ok(lexAfter.indexOf('W(\'de tafel\', { fr: \'la table\', en: \'table\' }, \'de\')') > 0 && lexAfter.indexOf('W(\'wie\', { fr: \'qui\', en: \'who\' })') > 0 &&
+      lexAfter.indexOf('id: \'vragen\', n: 13,') < lexAfter.indexOf('id: \'wonen\', n: 23,'), 'le lexique écrit chaque mot comme lexicon.a1b.js, les unités dans l\'ordre');
+    same(text(IDS).slice(idsBefore.length).split(/\r?\n/).filter(Boolean), ['vragen:w0\twie', 'vragen:w1\ttoch', 'wonen:w0\tde tafel', 'wonen:w1\tde douche'],
+      'ids.tsv gagne une ligne par mot, numérotés sans trou dans l\'ordre des slots');
+    const CM = course(WD);
+    const unitM = id => CM.units.find(u => u.id === id);
+    same([CM.units.length, unitM('wonen').words.map(w => w.nl), unitM('vragen').n, unitM('wonen').phrases, unitM('wonen').grammar],
+      [14, ['de tafel', 'de douche'], 13, [], []], 'le cours relu a ses deux unités nouvelles, leurs mots, sans phrase ni grammaire');
+    same(runWd('merge.js', [WD, E2W]), { code: 0, lines: ['ok words 4 taken, 0 dropped', 'ok lexicon.a1c.js 4 words in 2 units', 'ok ids.tsv 0 added'] },
+      'relancée, Merge récrit le même lexique et n\'ajoute rien à ids.tsv');
+    same([text(LEX), text(IDS)], [lexAfter, idsAfter], 'le lexique et ids.tsv sont les mêmes octet pour octet');
+    /* Un mot déjà fondu n'est pas « le cours » : la relance ne compare l'anglais d'une ligne qu'au cours hors UNITS.
+       « de tafel » écrit ici « who », que « wie » (vragen) a déjà fondu, sans français ni néerlandais en commun :
+       Check ne l'a pas vu au premier Merge, la relance ne le refuse pas non plus. */
+    const WONEN0 = path.join(E2W, 'wonen'), draft0 = text(path.join(WONEN0, 'draft.json'));
+    put(WONEN0, 'draft.json', JSON.parse(draft0).map(r => (r.id === 'wonen:s00' ? Object.assign(r, { en: 'who' }) : r)));
+    same(runWd('merge.js', [WD, E2W]), { code: 0, lines: ['ok words 4 taken, 0 dropped', 'ok lexicon.a1c.js 4 words in 2 units', 'ok ids.tsv 0 added'] },
+      'relancée, Merge ne prend pas ses propres mots fondus pour le cours dans la garde de l’anglais');
+    put(WONEN0, 'draft.json', draft0);
+    fs.writeFileSync(LEX, lexAfter);
+    /* Un autre mot sous un id déjà épinglé : refusé avant toute écriture. */
+    const wonenDraft = text(path.join(WONEN, 'draft.json'));
+    put(WONEN, 'draft.json', JSON.parse(wonenDraft).map(r => (r.id === 'wonen:s10' ? Object.assign(r, { nl: 'de stoel', fr: 'la chaise', en: 'chair', evidence: 'wiktionary:stoel' }) : r)));
+    same(runWd('merge.js', [WD, E2W]), { code: 1, lines: ['fail words -: test/data/ids.tsv pins wonen:w1 to « de douche », and Merge writes « de stoel » there'] }, 'Merge refuse un autre mot sous un id épinglé');
+    same([text(LEX), text(IDS)], [lexAfter, idsAfter], 'refusée pour un id épinglé, Merge n\'a rien écrit');
+    put(WONEN, 'draft.json', wonenDraft);
+    /* Ce que Merge refuse encore avant d'écrire : un mot que le cours a pris depuis Split, et une unité du
+       lexique que plus aucune ligne prise n'écrit (il est récrit entier). */
+    throws(() => K.write([slotOf('vragen:s00', DAG.nl, 'vragen')], ctxW), /^vragen:s00 « dag » is already an item of the course, overleven:w2: the course moved since Split$/,
+      'Merge refuse une ligne qui redit un élément du cours');
+    throws(() => K.write([slotOf('vragen:s00', 'wie', 'vragen')], { repo: WD, course: () => CM }), /^lexicon\.a1c\.js holds the unit wonen, and no taken row writes it: Merge rewrites the file whole$/,
+      'Merge refuse de récrire un lexique dont une unité n\'a plus de ligne prise');
+    /* Les fins de ligne du lexique et d'ids.tsv sont gardées, et une dernière ligne sans fin de ligne n'en colle pas deux. */
+    const lf = s => s.replace(/\r\n/g, '\n'), crlf = s => lf(s).replace(/\n/g, '\r\n');
+    fs.writeFileSync(LEX, crlf(lexAfter));
+    fs.writeFileSync(IDS, crlf(lf(idsAfter).split('\n').filter(Boolean).slice(0, -1).join('\n')));
+    same(runWd('merge.js', [WD, E2W]), { code: 0, lines: ['ok words 4 taken, 0 dropped', 'ok lexicon.a1c.js 4 words in 2 units', 'ok ids.tsv 1 added'] }, 'Merge relancée complète ids.tsv sans fin de ligne');
+    same([text(LEX), text(IDS)], [crlf(lexAfter), crlf(idsAfter)], 'le lexique et ids.tsv gardent leurs fins de ligne \r\n, sans mélange');
+    fs.writeFileSync(LEX, lexAfter);
+    fs.writeFileSync(IDS, idsAfter);
+    /* Ce que le mainteneur lit d'un slot : son unité, et le mot écrit (task 3 : un genre sans table). */
+    const readingW = require(path.join(WD, 'tools', 'content', 'lib', 'reading'));
+    same(readingW.every(WD, E2WS, 'words').lines.slice(2, 7), ['4 rows: 4 taken, 0 dropped.', '', '- `vragen` (vragen:s00) — Questions et petits mots · Questions and small words', '  - kept by the first reader',
+      '  - row: {"nl":"wie","fr":"qui","en":"who","art":null,"pos":"pron","evidence":"wiktionary:wie"}'], 'l\'outil de lecture montre le mot d\'un slot, et son unité');
+    same(readingW.list(WD, E2WS).lines.filter(l => /^ {2}- row: /.test(l)).length, 4, 'la liste du contrôle du contenu aussi');
+    same(runWd('split.js', [WD, path.join(WD, 'apres', 'words')]), { code: 0, lines: K.UNITS.filter(u => u.id !== 'vragen' && u.id !== 'wonen').map(u => u.id + ' ' + u.target) },
+      'un second Split ne coupe plus les unités fondues');
+    console.log('  words          ' + K.UNITS.length + ' unités, ' + K.UNITS.reduce((s, u) => s + u.target, 0) + ' slots ; chaque règle, Merge de bout en bout, relancée, second Split');
+  }
+
+  /* ==================================================== le genre grammar */
+  {
+    /* tools/content/kinds/grammar.js dans un dépôt à lui sous la copie, avec test/data (l'orthographe) : le
+       cours y est celui d'avant la fusion, grammar.a1c.js vidé par l'écrivain du genre. Sa source est une
+       règle de RULES, nommée par son id ; Split coupe les 13 en 9 lots, un par unité. */
+    const GR = path.join(TMP, 'regles');
+    copyKit(ROOT, GR);
+    beforeGrammar(GR);
+    const runGr = (script, args) => runIn(GR, script, args);
+    const copyGr = name => copyKit(GR, path.join(TMP, name));
+    const K = require(path.join(GR, 'tools', 'content', 'kinds', 'grammar'));
+    const CG = course(GR), ctxG = { repo: GR, course: () => CG };
+
+    /* Le câblage : la page charge grammar.a1c.js après lexicon.a1c.js (dont les unités gardent grammar: [])
+       et grammar.js, avant index.js ; test/smoke.js a sa propre liste. Un fichier absent de l'une d'elles
+       ne charge rien, et rien ne le dit. */
+    const src = text(path.join(ROOT, 'build.sh')).split(/\r?\n/).map(l => l.trim()), pos = f => src.indexOf('src/content/' + f);
+    ok(pos('lexicon.a1c.js') >= 0 && pos('grammar.js') >= 0 && pos('grammar.a1c.js') > pos('lexicon.a1c.js') && pos('grammar.a1c.js') > pos('grammar.js') && pos('grammar.a1c.js') < pos('index.js'),
+      'le SRC de build.sh charge grammar.a1c.js après lexicon.a1c.js et grammar.js, avant index.js');
+    const smk = text(path.join(ROOT, 'test', 'smoke.js')), sp = f => smk.indexOf('\'src/content/' + f + '\'');
+    ok(sp('lexicon.a1c.js') >= 0 && sp('grammar.js') >= 0 && sp('grammar.a1c.js') > sp('lexicon.a1c.js') && sp('grammar.a1c.js') > sp('grammar.js') && sp('grammar.a1c.js') < sp('index.js'),
+      'la liste de test/smoke.js nomme grammar.a1c.js au même endroit');
+
+    /* Les 13 règles : leurs ids, leurs unités, leurs numéros, et une instruction en anglais chacune. */
+    same(K.RULES.map(r => r.id + '@' + r.unit), ['g-niet-geen@vragen', 'g-bijzin@vragen', 'g-vraag@vragen', 'g-twee-werkwoorden@kunnen', 'g-perfect-zijn@doen', 'g-was-had@doen',
+      'g-deelwoord@doen', 'g-hem-haar@mensen', 'g-er-is@waar', 'g-meervoud@eten', 'g-gebiedend@cafe', 'g-verkleinwoord@wonen', 'g-om-op-in@kalender'], 'les 13 règles, leurs ids et leurs unités');
+    ok(K.RULES.every(r => CG.units.find(u => u.id === r.unit).n === r.n && require('../lib/text').oneLine(r.teach) && r.teach.length > 100), 'chaque règle a le numéro de son unité et une instruction sur une ligne');
+    same(K.TILES, { min: 3, max: 8 }, 'une phrase de gap compte de 3 à 8 tuiles (la plus longue de grammar.js en a 8)');
+    same(K.readWhole(), 'course-written', 'toutes les lignes vont sur la liste du mainteneur');
+    same([CG.RAW.patterns.length, CG.units.filter(u => u.n >= 13).every(u => (u.grammar || []).length === 0)], [9, true], 'le fichier vide ne change rien au cours : 9 règles, aucune unité 13 à 34 n\'en liste');
+
+    /* Split : un lot par unité de RULES, une ligne par règle. */
+    const DG = path.join(GR, 'drafts', 'grammar');
+    same(runGr('split.js', [GR, DG]), { code: 0, lines: ['vragen 3', 'kunnen 1', 'doen 3', 'mensen 1', 'waar 1', 'eten 1', 'cafe 1', 'wonen 1', 'kalender 1'] }, 'Split coupe 9 lots et 13 lignes');
+    const inputOf = (dir, id) => JSON.parse(text(path.join(dir, 'drafts', 'grammar', K.RULES.find(r => r.id === id).unit, 'input.json'))).find(r => r.id === id);
+    const IN = inputOf(GR, 'g-niet-geen');
+    same([IN.unit, IN.n, IN.name.en, IN.teach === K.RULES[0].teach, IN.words.length > 0], ['vragen', 13, 'Questions and small words', true, true], 'une ligne porte sa règle, son unité et les mots de l\'unité');
+
+    /* Check : une ligne juste passe ; chaque règle refuse ce qu'elle doit. */
+    const D = (nl, fr, en, gap) => ({ nl, fr, en, gap });
+    const GOOD = {
+      id: 'g-niet-geen',
+      title: { fr: '<span class="nl">niet</span> ou <span class="nl">geen</span>', en: '<span class="nl">niet</span> or <span class="nl">geen</span>' },
+      rule: { fr: '« geen » devant un nom sans article, « niet » ailleurs.', en: '“geen” before a noun with no article, “niet” elsewhere.' },
+      nl: 'Ik heb geen tijd.', fr: 'Je n’ai pas de temps.', en: 'I have no time.',
+      explain: {
+        fr: 'Pour nier un nom sans article, on met <i class="nl">geen</i> devant : <span class="ex">Ik heb geen tijd</span>. Pour tout le reste, on met <i class="nl">niet</i> : <span class="ex">Ik werk niet</span>.',
+        en: 'To negate a noun with no article, put <i class="nl">geen</i> in front: <span class="ex">Ik heb geen tijd</span>. For everything else, use <i class="nl">niet</i>: <span class="ex">Ik werk niet</span>.'
+      },
+      drills: [D('Ik heb geen tijd.', 'Je n’ai pas de temps.', 'I have no time.', 'geen'), D('Ik werk niet vandaag.', 'Je ne travaille pas aujourd’hui.', 'I am not working today.', 'niet'),
+        D('Geen probleem voor mij.', 'Pas de problème pour moi.', 'No problem for me.', 'Geen'), D('Hij is niet thuis.', 'Il n’est pas à la maison.', 'He is not at home.', 'niet'),
+        D('Wij hebben geen auto.', 'Nous n’avons pas de voiture.', 'We have no car.', 'geen')]
+    };
+    const chk = more => K.check(Object.assign({}, GOOD, more), IN, ctxG);
+    const drillsWith = (k, d) => GOOD.drills.map((x, i) => i === k ? Object.assign({}, x, d) : x);
+    same(chk({}), [], 'une ligne juste passe');
+    /* Un trou en tête de phrase passe (le 3e exercice de GOOD) ; un trou écrit deux fois est refusé, avec l'exercice. */
+    same(chk({ drills: drillsWith(2, { gap: 'Geen' }) }), [], 'un trou en tête de phrase est accepté');
+    same(chk({ drills: drillsWith(0, { nl: 'Ik heb geen tijd en geen geld.', fr: 'Je n’ai pas de temps ni d’argent.', en: 'I have no time and no money.' }) }),
+      ['drill 1 « Ik heb geen tijd en geen geld. »: gap « geen » occurs 2 times in the drill: the cloze hides the first, and the learner cannot tell which'], 'un trou écrit deux fois est refusé, en nommant l\'exercice');
+    same(chk({ drills: drillsWith(0, { gap: 'heb geen' }) }), ['drill 1 « Ik heb geen tijd. »: gap « heb geen » is not one tile: the cloze hides one word'], 'un trou de deux tuiles est refusé');
+    same(chk({ drills: drillsWith(0, { nl: 'Geen tijd.', fr: 'Pas de temps.', en: 'No time.', gap: 'Geen' }) }),
+      ['drill 1 « Geen tijd. » has 2 tiles: 3 to 8 (the longest the course has is 8)'], 'une phrase de deux tuiles est refusée');
+    same(chk({ drills: drillsWith(0, { nl: 'Ik heb vandaag echt geen tijd voor jou nu.', fr: 'Je n’ai vraiment pas de temps pour toi maintenant.', en: 'I really have no time for you today now.' }) }), [
+      'drill 1 « Ik heb vandaag echt geen tijd voor jou nu. » has 9 tiles: 3 to 8 (the longest the course has is 8)',
+      'drill 1 « Ik heb vandaag echt geen tijd voor jou nu. » borrows from a later unit: echt',
+      'drill 1 « Ik heb vandaag echt geen tijd voor jou nu. » uses forms the course never teaches: jou'], 'neuf tuiles, un mot d\'une unité à venir, une forme que le cours n\'enseigne jamais');
+    same(chk({ drills: drillsWith(1, GOOD.drills[0]) }), ['drill 2 « Ik heb geen tijd. » repeats drill 1'], 'deux exercices identiques sont refusés');
+    same(chk({ drills: GOOD.drills.slice(0, 4) }), ['drills is a list of 5 sentences, not 4'], 'cinq exercices exactement');
+    same(chk({ drills: drillsWith(1, { nl: 'Ik werk niet vandaagx.' }) }), [
+      'drill 2: « vandaagx » is not Dutch that OpenTaal or flemish.tsv knows: pick another word',
+      'drill 2 « Ik werk niet vandaagx. » uses forms the course never teaches: vandaagx'], 'une forme que l\'orthographe ne connaît pas est refusée');
+    same(chk({ nl: 'Ik heb "geen" tijd.' }), ['nl: nl writes the typographic apostrophe « ’ » and no straight quote'], 'aucun guillemet droit');
+    same(chk({ fr: 'Je n’ai pas de {temps}.' }), ['nl: fr and en hold different digits or {…} tokens', 'nl: nl and fr hold different {…} tokens', 'nl: {temps} is not a token of the course ({naam}, {stad}, {bedrijf})'], 'un jeton {…} hors du cours est refusé');
+    same(chk({ explain: { fr: 'Pour nier un nom.', en: 'To negate a noun.' } }), ['explain.fr shows no Dutch: an example goes in <span class="ex"> or <i class="nl">', 'explain.en shows no Dutch: an example goes in <span class="ex"> or <i class="nl">'],
+      'une explication montre du néerlandais balisé');
+    /* Un mot néerlandais qui est aussi un mot du français (« en ») n'est pas du néerlandais laissé nu : seul un mot du
+       cours que le français et l'anglais écrivent tous deux l'est. */
+    same(chk({ explain: { fr: GOOD.explain.fr + ' Rien ne se passe en double.', en: GOOD.explain.en }, drills: drillsWith(1, { nl: 'Ik werk en jij werkt.', fr: 'Je travaille et tu travailles.', en: 'I work and you work.', gap: 'werkt' }) }), [], 'un mot néerlandais qui est aussi français passe dans la prose');
+    /* Ce que test/lang.js 6d refuserait à Merge (test/lib/quoted.js) : une traduction citée, un mot du cours nu des deux côtés. */
+    same(chk({ rule: { fr: '« voilà » devant un nom sans article.', en: '“here you are” before a noun.' } }), [
+      'rule.fr quotes « voilà », which is not Dutch of the course: a translation goes in parentheses, with no quotes',
+      'rule.en quotes « here you are », which is not Dutch of the course: a translation goes in parentheses, with no quotes'], 'une citation qui n\'est pas du néerlandais du cours est refusée dans rule');
+    same(chk({ explain: { fr: GOOD.explain.fr + ' Cela veut dire « pas de ».', en: GOOD.explain.en + ' It means “no”.' } }), [
+      'explain.fr quotes « pas de », which is not Dutch of the course: a translation goes in parentheses, with no quotes',
+      'explain.en quotes « no », which is not Dutch of the course: a translation goes in parentheses, with no quotes'], 'une citation qui n\'est pas du néerlandais du cours est refusée dans explain');
+    same(chk({ explain: { fr: GOOD.explain.fr + ' Le mot tijd est courant.', en: GOOD.explain.en + ' The word tijd is common.' } }),
+      ['explain: « tijd » is Dutch of the course, written bare in fr and in en: put it in <i class="nl"> or <span class="ex">'], 'un mot du cours écrit nu des deux côtés est refusé dans explain');
+    same(chk({ rule: { fr: 'Werk devant un nom.', en: 'Werk before a noun.' } }),
+      ['rule: « werk » is Dutch of the course, written bare in fr and in en: quote it « … »'], 'un mot du cours écrit nu des deux côtés est refusé dans rule');
+    same(chk({ rule: { fr: '« geen » devant un nom sans article.', en: '“geen” before a noun.' } }), [], 'un mot du cours cité passe dans rule');
+    same(chk({ rule: { fr: '« geen devant un nom.', en: '“geen” before a noun.' } }), ['rule.fr has a quote mark with no partner, or an empty quote'], 'un guillemet sans son pendant est refusé');
+    /* Un nombre n'est pas un mot du cours (courseWords, test/lib/dutch.js) : il s'écrit le même en néerlandais, en français
+       et en anglais, et les deux sens d'un texte portent les mêmes chiffres. dutchWords ne le range pas, et une explication
+       qui écrit nu, des deux côtés, le chiffre d'une phrase de sa ligne passe, comme test/lang.js 6d.4 la lit. */
+    const { dutchWords } = require(path.join(GR, 'test', 'lib', 'dutch'));
+    same(Array.from(dutchWords({ content: { DEFAULTS: { naam: 'Jan' }, units: [{ id: 'g-v2', nl: 'Kerstmis is op 25 december.' }] }, t: { nav: [] } })).sort(),
+      ['december', 'g', 'is', 'jan', 'kerstmis', 'op', 'v2'], 'dutchWords ne range pas un nombre (25) ; un mot qui porte un chiffre (v2) reste');
+    const KIDS = D('Wij hebben 2 kinderen en geen auto.', 'Nous avons 2 enfants et pas de voiture.', 'We have 2 children and no car.', 'geen');
+    same(chk({ drills: drillsWith(4, KIDS), explain: { fr: GOOD.explain.fr + ' Un chiffre ne change rien : <span class="ex">Wij hebben 2 kinderen en geen auto</span> (2 enfants, pas de voiture).',
+      en: GOOD.explain.en + ' A figure changes nothing: <span class="ex">Wij hebben 2 kinderen en geen auto</span> (2 children, no car).' } }), [], 'le chiffre d\'un exercice, écrit nu en français et en anglais, passe dans explain');
+    /* Le texte de l'apprenant ({naam}, {stad}, {bedrijf}) n'entre pas dans un champ que la feuille montre en HTML, title et
+       explain : il y serait lu comme du balisage (test/lang.js 6d.7). Les phrases, que la feuille échappe, gardent leurs jetons. */
+    const MINE = (f, l) => f + '.' + l + ': {stad} is the learner\'s text, and ' + f + ' is shown as HTML: write no token there';
+    same([chk({ explain: { fr: GOOD.explain.fr.replace('Ik werk niet<', 'Ik werk niet in {stad}<'), en: GOOD.explain.en.replace('Ik werk niet<', 'Ik werk niet in {stad}<') } }),
+      chk({ title: { fr: GOOD.title.fr + ' à {stad}', en: GOOD.title.en + ' in {stad}' } })],
+      [[MINE('explain', 'fr'), MINE('explain', 'en')], [MINE('title', 'fr'), MINE('title', 'en')]], 'un {jeton} dans explain ou title est refusé : la feuille les montre en HTML');
+    /* L'exemple de la règle suit l'ordre du cours, comme un exercice. */
+    same(chk({ nl: 'Ik zie jou.', fr: 'Je te vois.', en: 'I see you.' }), ['nl « Ik zie jou. » uses forms the course never teaches: zie, jou'], 'l\'exemple d\'une forme que le cours n\'enseigne pas est refusé');
+    same(chk({ nl: 'Ik heb vandaag echt geen tijd voor jou nu.', fr: 'Je n’ai vraiment pas de temps pour toi maintenant.', en: 'I really have no time for you today now.' }), [
+      'nl « Ik heb vandaag echt geen tijd voor jou nu. » borrows from a later unit: echt',
+      'nl « Ik heb vandaag echt geen tijd voor jou nu. » uses forms the course never teaches: jou'], 'l\'exemple d\'une unité à venir est refusé');
+    /* Une phrase qu'une autre règle écrit déjà : un lot frère (retry.json au lieu de draft.json), un pattern du cours. */
+    const XB = path.join(TMP, 'regles-lots', 'grammar');
+    const asRule = (id, more) => Object.assign({}, GOOD, { id }, more);
+    ['vragen', 'kunnen'].forEach(b => fs.mkdirSync(path.join(XB, b), { recursive: true }));
+    put(path.join(XB, 'vragen'), 'draft.json', [asRule('g-bijzin', {})]);
+    put(path.join(XB, 'kunnen'), 'draft.json', [asRule('g-twee-werkwoorden', {})]);
+    const ctxX = { repo: GR, course: () => CG, kindDir: XB, batchDir: path.join(XB, 'vragen') };
+    const clash = (id, row) => K.check(Object.assign({}, GOOD, { id }, row || {}), inputOf(GR, id), ctxX).filter(w => /is also written by/.test(w));
+    same(clash('g-vraag'), [
+      'nl « Ik heb geen tijd. » is also written by g-bijzin', 'drill 1 « Ik heb geen tijd. » is also written by g-bijzin', 'drill 2 « Ik werk niet vandaag. » is also written by g-bijzin',
+      'drill 3 « Geen probleem voor mij. » is also written by g-bijzin', 'drill 4 « Hij is niet thuis. » is also written by g-bijzin', 'drill 5 « Wij hebben geen auto. » is also written by g-bijzin'],
+      'une phrase qu\'une règle plus haut dans RULES écrit déjà, dans le lot ou dans un autre, est refusée, avec la règle');
+    same(clash('g-niet-geen'), [], 'la règle la plus haute n\'est refusée par aucune règle plus bas');
+    put(path.join(XB, 'vragen'), 'retry.json', [asRule('g-bijzin', { nl: 'Ik werk niet.', fr: 'Je ne travaille pas.', en: 'I do not work.', drills: GOOD.drills.map((d, i) => i === 4 ? d : Object.assign({}, d, { nl: 'Zij werkt ' + ['hier', 'niet', 'veel', 'thuis'][i] + '.' })) })]);
+    same(clash('g-vraag'), ['drill 5 « Wij hebben geen auto. » is also written by g-bijzin'], 'retry.json remplace la ligne du même id : seules les phrases de la reprise sont lues');
+    const handP = CG.RAW.patterns[0], hd = handP.drills[0];
+    same(chk({ drills: drillsWith(0, { nl: hd.nl, fr: hd.fr, en: hd.en, gap: hd.gap }) }).filter(w => /is also written by/.test(w)),
+      ['drill 1 « ' + hd.nl + ' » is also written by ' + handP.id], 'une phrase d\'exercice d\'un pattern du cours est refusée, avec le pattern');
+    same(chk({ rule: { fr: 'x'.repeat(71), en: 'ok' } }), ['rule.fr is 71 signs, 70 at most: the sheet shows it on one line'], 'la règle tient sur une ligne');
+
+    /* Une unité que le cours n'a pas, un id que le cours a déjà. Chaque cas est une copie dont on change le genre ou le cours. */
+    const rewrite = (dir, file, from, to) => {
+      const f = path.join(dir, file), t = text(f);
+      ok(t.indexOf(from) >= 0, 'le texte à changer est dans ' + file + ' : ' + from);
+      fs.writeFileSync(f, t.replace(from, to));
+    };
+    const KIND = path.join('tools', 'content', 'kinds', 'grammar.js');
+    const U1 = copyGr('regles-unite');
+    rewrite(U1, KIND, "id: 'g-niet-geen', unit: 'vragen'", "id: 'g-niet-geen', unit: 'zzz'");
+    same(runIn(U1, 'split.js', [U1, path.join(U1, 'drafts', 'grammar')]),
+      { code: 1, lines: ['fail grammar -: the kind\'s split threw: rule g-niet-geen is listed on the unit « zzz », which is not a unit of the course'] }, 'Split refuse une unité que le cours n\'a pas, en la nommant');
+    const H1 = copyGr('regles-main');
+    rewrite(H1, path.join('src', 'content', 'grammar.js'), "id: 'g-v2', unit: 'overleven'", "id: 'g-niet-geen', unit: 'overleven'");
+    same(runIn(H1, 'split.js', [H1, path.join(H1, 'drafts', 'grammar')]),
+      { code: 1, lines: ['fail grammar -: the kind\'s split threw: rule g-niet-geen is already the id of a pattern of src/content/grammar.js: an id is fixed once shipped'] }, 'Split refuse un id que grammar.js a déjà');
+    const I1 = copyGr('regles-item');
+    rewrite(I1, KIND, "id: 'g-niet-geen', unit: 'vragen'", "id: 'overleven:w1', unit: 'vragen'");
+    const itemLine = runIn(I1, 'split.js', [I1, path.join(I1, 'drafts', 'grammar')]);
+    same([itemLine.code, itemLine.lines.length, /^fail grammar -: the kind's split threw: rule overleven:w1 is already the id of the item overleven:w1 « .+ » of the course$/.test(itemLine.lines[0] || '')], [1, 1, true], 'Split refuse un id d\'élément du cours, en nommant les deux');
+
+    /* Côté Merge : write refuse la même unité inconnue et le même numéro faux, et deux règles qui écrivent une phrase
+       (Check ne voit que les lots déjà écrits). Ces gardes n'ont pas de « vieux code » : le genre n'existait pas. */
+    const takeOf = id => ({ id, row: GOOD });
+    const r0 = K.RULES[0];
+    try {
+      r0.unit = 'zzz';
+      throws(() => K.write([takeOf('g-niet-geen')], ctxG), /rule g-niet-geen is listed on the unit « zzz », which is not a unit of the course/, 'Merge refuse une unité que le cours n\'a pas, en la nommant');
+      r0.unit = 'vragen'; r0.n = 99;
+      throws(() => K.write([takeOf('g-niet-geen')], ctxG), /rule g-niet-geen is listed on the unit « vragen » as n 99, and the course numbers it 13/, 'Merge refuse un numéro d\'unité faux');
+    } finally { r0.unit = 'vragen'; r0.n = 13; }
+    throws(() => K.write([takeOf('g-niet-geen'), takeOf('g-bijzin')], ctxG), /g-bijzin and g-niet-geen both write « Ik heb geen tijd\. ».*: one sentence, one rule/, 'Merge refuse deux règles qui écrivent la même phrase');
+
+    /* La boucle de chargement : la règle dans une unité absente lève une erreur qui nomme la règle et l'unité, et
+       test/smoke.js échoue sur elle ; avec l'unité, la règle est rangée dans la liste de son unité. */
+    const withRule = unit => K.patterns([{ rule: { id: 'g-niet-geen', unit }, row: GOOD, level: 'A1' }]).map(l => l + '\n').join('');
+    const load = (code, units) => {
+      const NLs = { content: { units, patterns: [] }, gloss: { pair: g => ({ fr: g.fr, en: g.en }) } };
+      new Function('NL', code)(NLs);
+      return NLs.content;
+    };
+    throws(() => load(withRule('zzz'), [{ id: 'vragen' }]), /g-niet-geen.*zzz/, 'le chargement lève une erreur qui nomme la règle et l\'unité');
+    const loaded = load(withRule('vragen'), [{ id: 'vragen', grammar: [] }]);
+    same([loaded.patterns.length, loaded.patterns[0].id, loaded.units[0].grammar, loaded.patterns[0].drills.length], [1, 'g-niet-geen', ['g-niet-geen'], 5], 'avec son unité, la règle est ajoutée aux patterns et rangée dans la liste de l\'unité');
+    const S1 = copyGr('regles-smoke');
+    fs.mkdirSync(path.join(S1, 'test'), { recursive: true });
+    fs.copyFileSync(path.join(ROOT, 'test', 'smoke.js'), path.join(S1, 'test', 'smoke.js'));
+    fs.writeFileSync(path.join(S1, 'src', 'content', 'grammar.a1c.js'), withRule('zzz'));
+    const sm = spawnSync(process.execPath, [path.join(S1, 'test', 'smoke.js'), S1], { encoding: 'utf8' });
+    ok(sm.status !== 0 && /g-niet-geen/.test((sm.stdout || '') + (sm.stderr || '')), 'test/smoke.js échoue quand une règle de grammar.a1c.js veut une unité absente, et nomme la règle');
+
+    /* De bout en bout, une règle : rédigée et relue, check.js, Merge, le fichier récrit et chargé, Merge relancée, un second Split. */
+    const E2E = path.join(GR, 'bout-en-bout', 'grammar');
+    same(runGr('split.js', [GR, E2E, 'g-niet-geen']), { code: 0, lines: ['vragen 1'] }, 'Split nommé coupe une règle');
+    const dir = path.join(E2E, 'vragen'), inp = JSON.parse(text(path.join(dir, 'input.json')));
+    put(dir, 'draft.json', inp.map(r => Object.assign({}, GOOD, { id: r.id, stamp: r.stamp })));
+    put(dir, 'review.json', inp.map(r => ({ id: r.id, verdict: 'keep' })));
+    same(runGr('check.js', [dir]).code, 0, 'le lot vragen, rédigé et relu, passe check.js');
+    const GFILE = path.join(GR, 'src', 'content', 'grammar.a1c.js'), empty = text(GFILE);
+    same(runGr('merge.js', [GR, E2E]), { code: 0, lines: ['ok grammar 1 taken, 0 dropped', 'ok grammar.a1c.js 1 rules in 1 units'] }, 'Merge écrit la règle');
+    const merged = text(GFILE);
+    ok(merged !== empty && merged.indexOf('id: \'g-niet-geen\', unit: \'vragen\', level: \'A1\'') > 0 && merged.indexOf('[\'g-niet-geen\', \'vragen\']') > 0, 'grammar.a1c.js tient la règle et la liste de son unité');
+    const CM = course(GR);
+    same([CM.RAW.patterns.length, CM.units.find(u => u.id === 'vragen').grammar, CM.RAW.patterns[9].drills.map(d => d.gap)], [10, ['g-niet-geen'], ['geen', 'niet', 'Geen', 'niet', 'geen']], 'la page chargée a la règle, rangée dans son unité, ses cinq trous');
+    same(runGr('merge.js', [GR, E2E]), { code: 0, lines: ['ok grammar 1 taken, 0 dropped', 'ok grammar.a1c.js 1 rules in 1 units'] }, 'Merge relancée écrit la même chose');
+    ok(text(GFILE) === merged, 'Merge relancée laisse le fichier à l\'identique');
+    same(runGr('split.js', [GR, path.join(GR, 'apres', 'grammar')]), { code: 0, lines: ['vragen 2', 'kunnen 1', 'doen 3', 'mensen 1', 'waar 1', 'eten 1', 'cafe 1', 'wonen 1', 'kalender 1'] }, 'un second Split ne coupe plus la règle fondue');
+    fs.writeFileSync(GFILE, empty);
+    console.log('  grammar        ' + K.RULES.length + ' règles, ' + new Set(K.RULES.map(r => r.unit)).size + ' unités ; chaque garde, la boucle de chargement, Merge de bout en bout, relancée, second Split');
+  }
+
+  /* ==================================================== le genre phrases */
+  {
+    /* tools/content/kinds/phrases.js dans un dépôt à lui sous la copie, avec test/data (l'orthographe) et
+       docs/attribution (le crédit) : le cours y est celui du dépôt, ses 22 unités sans phrase (phrases.a1c.js
+       remis vide, quoi que la fusion y ait écrit), et un extrait de Tatoeba fait ici, de douze phrases autour
+       des mots de vragen, sous les vraies épingles. Sa source est une unité : Split coupe 22 lignes en 4 lots. */
+    const PH = path.join(TMP, 'frasen');
+    copyKit(ROOT, PH, KIT.concat('docs/attribution'));
+    beforePhrases(PH);
+    const runPh = (script, args) => runIn(PH, script, args);
+    const K = require(path.join(PH, 'tools', 'content', 'kinds', 'phrases'));
+    const CP = course(PH), ctxP = { repo: PH, course: () => CP };
+    const PFILE = path.join(PH, 'src', 'content', 'phrases.a1c.js'), PIDS = path.join(PH, 'test', 'data', 'ids.tsv');
+    const PCREDITS = path.join(PH, 'docs', 'attribution', 'tatoeba-phrases.tsv');
+
+    /* Le câblage : la page charge phrases.a1c.js juste après lexicon.a1c.js (dont les unités gardent phrases: []),
+       avant index.js ; test/smoke.js a sa propre liste. Un fichier absent de l'une d'elles ne charge rien. */
+    const srcP = text(path.join(ROOT, 'build.sh')).split(/\r?\n/).map(l => l.trim());
+    same(srcP.indexOf('src/content/phrases.a1c.js') - srcP.indexOf('src/content/lexicon.a1c.js'), 1, 'le SRC de build.sh charge phrases.a1c.js juste après lexicon.a1c.js');
+    same(/'src\/content\/lexicon\.a1c\.js',\s*'src\/content\/phrases\.a1c\.js'/.test(text(path.join(ROOT, 'test', 'smoke.js'))), true, 'la liste de test/smoke.js nomme phrases.a1c.js juste après lexicon.a1c.js');
+    same([K.PHRASES, K.TILES, K.MAX, K.PER_BATCH], [5, { min: 3, max: 8 }, 40, 6], 'cinq phrases par unité, de 3 à 8 tuiles, 40 candidates au plus, 6 unités par lot');
+    same(K.CREDITS, 'unit\tnld\tnld_owner\teng\teng_owner\tfra\tfra_owner\tadapted', 'le crédit a les huit colonnes de tatoeba.tsv, unit pour word');
+    same(text(PCREDITS).split(/\r?\n/).filter(l => l && l[0] !== '#'), [K.CREDITS], 'docs/attribution/tatoeba-phrases.tsv : ses commentaires et son en-tête, aucune ligne avant la première fusion');
+    same(CP.units.filter(u => u.n >= 13).every(u => (u.phrases || []).length === 0), true, 'le fichier vide ne change rien au cours : aucune unité 13 à 34 n\'a de phrase');
+
+    /* L'extrait : douze phrases ; 504 redit 501 sans casse ni ponctuation et partage ses traductions ; 505 n'a que
+       l'anglais, 511 que le français (D17). */
+    const tatoebaP = require(path.join(PH, 'tools', 'content', 'tatoeba'));
+    const PEXTRACT = path.join(PH, '.cache', 'tatoeba', 'extract.tsv');
+    fs.mkdirSync(path.dirname(PEXTRACT), { recursive: true });
+    fs.writeFileSync(PEXTRACT, ['# ' + tatoebaP.KEYS.map(k => k + ' ' + cache.PINS[k].sha256).join(' '),
+      'nld\t501\tanna\t1\tWie is dat?\t601\t701',
+      'nld\t502\t\t0\tWie is dat nu?\t602\t702',
+      'nld\t503\tanna\t1\tWaarom nu?\t603\t703',
+      'nld\t504\tcarl\t0\twie is dat\t601\t701',
+      'nld\t505\tanna\t1\tWanneer is dat?\t605\t',
+      'nld\t506\tanna\t1\tWie heeft de muziek?\t606\t706',
+      'nld\t507\tanna\t1\tHoe gaat het met de familie?\t607\t707',
+      'nld\t508\tanna\t1\tWie ben je?\t608\t708',
+      'nld\t509\tanna\t1\tHoe lang is dat?\t609\t709',
+      'nld\t510\tanna\t1\tWat wilt u?\t610\t710',
+      'nld\t511\tanna\t1\tHoe is het nu?\t\t711',
+      'nld\t512\tbob\t0\tDat is waar.\t612\t712',
+      'eng\t601\tbob\tWho is that?', 'eng\t602\tbob\tWho is that now?', 'eng\t603\tbob\tWhy now?', 'eng\t605\tbob\tWhen is that?',
+      'eng\t606\tbob\tWho has the music?', 'eng\t607\tbob\tHow is the family?', 'eng\t608\tbob\tWho are you?', 'eng\t609\tbob\tHow long is that?',
+      'eng\t610\tbob\tWhat do you want?', 'eng\t612\tbob\tThat is true.',
+      'fra\t701\tdora\tQui est-ce ?', 'fra\t702\tdora\tQui est-ce maintenant ?', 'fra\t703\tdora\tPourquoi maintenant ?', 'fra\t706\tdora\tQui a la musique ?',
+      'fra\t707\tdora\tComment va la famille ?', 'fra\t708\tdora\tQui es-tu ?', 'fra\t709\tdora\tC\'est long comment ?', 'fra\t710\tdora\tQue voulez-vous ?',
+      'fra\t711\tdora\tComment ça va maintenant ?', 'fra\t712\t\tC’est vrai.'].join('\n') + '\n');
+
+    /* Split : une ligne par unité, 4 lots de 6 unités au plus ; la ligne de vragen, ses candidates classées. */
+    const DP = path.join(PH, 'drafts', 'phrases');
+    same(runPh('split.js', [PH, DP]), { code: 0, lines: ['vragen-waar 6', 'landen-kalender 6', 'stad-afspraak 6', 'team-spoed 4'] }, 'Split coupe les 22 unités en 4 lots d\'unités entières');
+    const pin = JSON.parse(text(path.join(DP, 'vragen-waar', 'input.json')));
+    same(pin.map(r => r.id), ['vragen', 'kunnen', 'doen', 'mensen', 'hoeveel', 'waar'], 'une ligne par unité, l\'id de l\'unité');
+    const VR = pin[0];
+    same([Object.keys(VR), VR.unit, VR.n, VR.name.en, VR.words.length, VR.words[0], VR.stamp === kit.stamp(kit.loadKind(PH, 'phrases'), K.sourceOf(CP, 'vragen'), CP.NL)],
+      [['id', 'stamp', 'copies', 'unit', 'n', 'name', 'words', 'candidates'], 'vragen', 13, 'Questions and small words', 30, 'wie', true], 'une ligne d\'entrée : l\'unité, son numéro, son nom, ses mots, l\'empreinte de la source');
+    same(VR.candidates.map(c => c.id), [502, 501, 504, 512, 510, 508, 505, 511],
+      'les candidates : les deux traductions d\'abord, puis l\'anglais seul (505) et le français seul (511) ; dans chaque classe, le plus de mots de l\'unité (502 en écrit trois), puis sans je (510 avant 508), de langue maternelle (501 avant 504), moins de tuiles, l\'id');
+    same(VR.candidates[0], { id: 502, nl: 'Wie is dat nu?', owner: '', en: [{ id: 602, text: 'Who is that now?', owner: 'bob' }], fr: [{ id: 702, text: 'Qui est-ce maintenant ?', owner: 'dora' }], tiles: 4, words: ['wie', 'nu', 'dat'] },
+      'une candidate : ses traductions et leurs auteurs, ses tuiles, les mots de l\'unité qu\'elle écrit, dans l\'ordre de l\'unité');
+    same(VR.candidates[6], { id: 505, nl: 'Wanneer is dat?', owner: 'anna', en: [{ id: 605, text: 'When is that?', owner: 'bob' }], fr: [], tiles: 3, words: ['wanneer', 'dat'] }, 'une candidate à une seule traduction : l\'autre liste vide');
+    same(pin.slice(1).map(r => r.candidates.length), [1, 0, 0, 0, 0], 'kunnen a une candidate (510 écrit « wilt », une forme de willen, et rien que vragen n\'ait enseigné) ; les quatre autres unités du lot, aucune');
+
+    /* Les règles d'une phrase, à l'unité de vragen : ce que la suite tiendrait à Merge, et que Split a écarté. */
+    const uiV = CP.units.findIndex(u => u.id === 'vragen');
+    const rulesP = nl => K.rules(nl, uiV, K.tools(ctxP), 's');
+    same(rulesP('Wie is dat?'), [], 'une phrase qui suit les règles');
+    same(rulesP('Waarom nu?'), ['s has 2 tiles: 3 to 8'], 'de 3 à 8 tuiles : moins, et test/content.js compte un échelon sans exercice');
+    same(rulesP('Wie heeft de muziek?'), ['s borrows from a later unit: muziek (vrijetijd)'], 'rien d\'une unité ultérieure, et l\'unité qui l\'enseigne est nommée');
+    same(rulesP('Wie is dat ginder?'), ['s uses forms no unit up to « vragen » teaches: ginder'], 'rien que le cours n\'ait enseigné jusqu\'à l\'unité : la règle stricte, les mots-outils exceptés');
+    same(rulesP('Wie is dat ginderr?'), ['s uses forms no unit up to « vragen » teaches: ginderr', 's: « ginderr » not a form OpenTaal or flemish.tsv knows'], 'l\'orthographe (test/content.js 1)');
+    same(rulesP('Wie is Tom?'), ['s uses forms no unit up to « vragen » teaches: tom', 's names no one by default and holds no {…} token'], 'ni nom par défaut ni jeton');
+    same(rulesP('Hoe lang is dat?'), ['s writes « hoe lang »: the course writes the duration « hoelang » (#128)'], 'hoelang, en un mot (test/content.js)');
+    same(rulesP('Hoe gaat het met de familie?'), ['s « Hoe gaat het met de familie? » is already the Dutch of familie:p3'], 'pas le néerlandais d\'un élément (course() le refuserait)');
+    same(rulesP('Dat is niet waar.'), ['s « Dat is niet waar. » is already an example sentence of overleven:w12'], 'pas une phrase d\'exemple d\'un mot');
+    same(rulesP('Wat is de date?'), ['s uses forms no unit up to « vragen » teaches: date', 's: « date » would become Dutch of the course, and units[23].blurb writes it bare in French and in English (test/lang.js 6d.4)'],
+      'une forme nouvelle qu\'une prose écrit déjà nue dans les deux langues (test/lang.js 6d.4)');
+
+    /* Check, raison par raison, sur la ligne de vragen. */
+    const cand = id => VR.candidates.find(c => c.id === id);
+    const take = (id, more) => Object.assign({ src: id, nl: cand(id).nl, en: cand(id).en.length ? cand(id).en[0].text : '', enSrc: cand(id).en.length ? cand(id).en[0].id : null,
+      fr: cand(id).fr.length ? cand(id).fr[0].text : '', frSrc: cand(id).fr.length ? cand(id).fr[0].id : null }, more);
+    const GOODP = [take(502), take(501), take(512), take(505, { fr: 'Quand est-ce ?' }), take(510, { en: 'What do you want? (formal)' })];
+    const whyP = (phrases, more) => K.check(Object.assign({ id: 'vragen', stamp: VR.stamp, phrases }, more), VR, ctxP);
+    const withP = (k, d) => GOODP.map((x, i) => (i === k ? Object.assign({}, x, d) : x));
+    const ROW = { edited: 'the learner reads the register of u' };
+    same(whyP(GOODP, ROW), [], 'cinq phrases prises telles que Tatoeba les écrit, un français écrit (D17), un anglais changé et sa raison : la ligne passe');
+    same(whyP(GOODP.slice(0, 4), ROW), ['phrases is a list of 5 phrases, not 4'], 'cinq phrases exactement');
+    same(whyP(GOODP, { edited: ' x' }), ['edited is a reason on one line with no space at either end',
+      'phrase 5: en « What do you want? (formal) » is not Tatoeba\'s 610, « What do you want? »: take it as written, or say why in edited, on one line with no space at either end'], 'edited sans blanc autour : la raison ne compte pas');
+    same(whyP(withP(0, { gap: 'nu' }), ROW), ['phrase 1 has the fields src, nl, en, enSrc, fr, frSrc, not src, nl, en, enSrc, fr, frSrc, gap'], 'les champs d\'une phrase');
+    same(whyP(withP(0, { en: 'two\nlines' }), ROW), ['phrase 1: nl, en and fr are each a string on one line with no space at either end'], 'une traduction sur plusieurs lignes, non');
+    same(whyP(withP(0, { src: 503, nl: 'Waarom nu?' }), ROW), ['phrase 1: src 503 is not one of the row\'s candidates'], 'une phrase de l\'extrait qui n\'est pas une candidate, non');
+    same(whyP(withP(0, { nl: 'Wie is dat nu ?' }), ROW), ['phrase 1: nl is not Tatoeba\'s sentence 502, « Wie is dat nu? »: a phrase is taken as Tatoeba writes it'], 'la phrase telle que Tatoeba l\'écrit');
+    same(whyP(withP(0, { enSrc: null }), ROW), ['phrase 1: enSrc is null, but Tatoeba links 602 to 502: take one'], 'null quand Tatoeba lie une traduction, non');
+    same(whyP(withP(3, { enSrc: null }), ROW), ['phrase 4: enSrc and frSrc are both null: a phrase keeps at least one translation Tatoeba links'], 'les deux null, non');
+    same(whyP(withP(0, { frSrc: 701 }), ROW), ['phrase 1: frSrc 701 is not a translation Tatoeba links to 502'], 'une traduction que Tatoeba ne lie pas à la phrase');
+    same(whyP(GOODP), ['phrase 5: en « What do you want? (formal) » is not Tatoeba\'s 610, « What do you want? »: take it as written, or say why in edited, on one line with no space at either end'],
+      'une traduction changée sans raison, non');
+    same(whyP(withP(4, take(510)), ROW), ['phrase 5: nl says « u » and en « you »: en carries « (formal) » (« (informal, Flemish u) » when fr says tu, « (formal) » otherwise), as test/content.js asks',
+      'edited is for a translation that is not Tatoeba\'s, and every linked one is taken as written'], 'un u glosé you sans son étiquette, non ; edited sans traduction changée, non');
+    same(whyP(withP(2, take(504)), ROW), ['phrase 3 « wie is dat » repeats phrase 2'], 'deux fois la même phrase, à la casse et à la ponctuation près, non');
+    same(whyP(withP(3, { en: 'When is that at 3?' }), ROW), ['phrase 4: en and fr do not hold the same digits'], 'les mêmes chiffres en fr et en en (test/content.js 6)');
+    same(whyP(withP(3, { fr: 'C\'est quand ?' }), ROW), ['phrase 4: a written fr takes the apostrophe « ’ », not « \' »'], 'un côté écrit pour le cours prend l\'apostrophe « ’ », comme le cours');
+    same(whyP(withP(3, { fr: 'Quand vient Tom ?' }), ROW), ['phrase 4: en and fr name no one by default and hold no {…} token'], 'ni nom par défaut ni jeton dans les sens');
+    same(whyP(withP(2, take(511, { en: 'How is the family?' })), ROW), ['phrase 3: en « How is the family? » shares a sense with familie:p3 « Hoe gaat het met de familie? » (How is the family?), which shares no French sense and no Dutch: give one of them another English, or the French they share'],
+      'un anglais qu\'un élément dit déjà sans sens français commun, non (bySense, test/content.js)');
+    same(whyP(withP(2, take(511, { en: 'Who is that now?' })), ROW), ['phrase 3: en « Who is that now? » shares a sense with vragen:p0 « Wie is dat nu? » (Who is that now?), which shares no French sense and no Dutch: give one of them another English, or the French they share'],
+      'le même anglais pour deux phrases de la ligne, non');
+    /* Un passage de Check (un ctx par lot, kit.js) tient les lignes déjà vues : une autre ligne qui dit le même anglais
+       sans sens français commun est refusée ; la même ligne relue (retry, change) remplace la précédente. */
+    const ctxR = { repo: PH, course: () => CP }, KUN = Object.assign({}, VR, { id: 'kunnen', unit: 'kunnen' });
+    const passP = (id, input, phrases) => K.check(Object.assign({ id, stamp: input.stamp, phrases }, ROW), input, ctxR);
+    same([passP('vragen', VR, GOODP), passP('vragen', VR, GOODP), passP('kunnen', KUN, withP(2, take(508, { en: 'That is true.' })))],
+      [[], [], ['phrase 3: en « That is true. » shares a sense with vragen:p2 « Dat is waar. » (That is true.), which shares no French sense and no Dutch: give one of them another English, or the French they share']],
+      'le même anglais dans deux lignes du lot sans sens français commun, non ; la même ligne relue ne se heurte pas à elle-même');
+    same([K.readWhole({ phrases: GOODP, edited: 'x' }), K.readWhole({ phrases: [take(502)], edited: 'x' }), K.readWhole({ phrases: [take(502)] })], ['written translation', 'edited translation', ''],
+      'la lecture entière : une traduction écrite pour le cours avant une changée (D15, D17), rien sinon');
+
+    /* Le fichier : l'unité absente lève une erreur qui la nomme ; présente, ses phrases y sont rangées, avec src. */
+    const withUnit = unit => K.file([{ unit, phrases: GOODP }]).map(l => l + '\n').join('');
+    const loadP = (code, units) => { const NLs = { content: { units }, gloss: { pair: g => ({ fr: g.fr, en: g.en }) } }; new Function('NL', code)(NLs); return NLs.content; };
+    throws(() => loadP(withUnit('zzz'), [{ id: 'vragen', phrases: [] }]), /phrases\.a1c\.js : les phrases de l’unité « zzz »/, 'le chargement lève une erreur qui nomme l\'unité');
+    same(loadP(withUnit('vragen'), [{ id: 'vragen', phrases: [] }]).units[0].phrases.map(p => [p.kind, p.nl, p.fr, p.en, p.src]).slice(0, 2),
+      [['phrase', 'Wie is dat nu?', 'Qui est-ce maintenant ?', 'Who is that now?', 502], ['phrase', 'Wie is dat?', 'Qui est-ce ?', 'Who is that?', 501]], 'avec son unité, chaque phrase est rangée dans sa liste, avec son numéro');
+
+    /* Merge refuse deux lignes qui écrivent la même phrase, et un id qu'ids.tsv épingle à une autre phrase. */
+    const takeOf = (id, phrases) => ({ id, row: { phrases }, input: VR });
+    throws(() => K.write([takeOf('vragen', GOODP), takeOf('kunnen', GOODP)], ctxP), /^kunnen and vragen both write « Wie is dat nu\? »; .*« Wat wilt u\? »: one phrase, one unit$/, 'Merge refuse deux unités qui écrivent la même phrase, en les nommant toutes');
+    throws(() => K.write([takeOf('vragen', GOODP), takeOf('kunnen', [take(508, { en: 'That is true.' })])], ctxP),
+      /^vragen:p2 « Dat is waar\. » and kunnen:p0 « Wie ben je\? » share the English sense « That is true\. » with no French sense in common: give one of them another English$/,
+      'Merge refuse deux unités dont les phrases disent le même anglais sans sens français commun');
+    const I2 = copyKit(PH, path.join(TMP, 'frasen-ids'), KIT.concat('docs/attribution'));
+    fs.appendFileSync(path.join(I2, 'test', 'data', 'ids.tsv'), 'vragen:p1\tWie is daar?\n');
+    throws(() => K.write([takeOf('vragen', GOODP)], { repo: I2, course: () => course(I2) }), /test\/data\/ids\.tsv pins vragen:p1 to « Wie is daar\? », and Merge writes « Wie is dat\? » there/, 'Merge refuse un id qu\'ids.tsv épingle à une autre phrase');
+
+    /* De bout en bout : Split nommé, le lot rédigé et relu, check.js, Merge, les trois fichiers écrits et le cours
+       rechargé, Merge relancée à l'identique, un second Split. */
+    const E2P = path.join(PH, 'bout-en-bout', 'phrases');
+    same(runPh('split.js', [PH, E2P, 'vragen']), { code: 0, lines: ['vragen-waar 1'] }, 'Split nommé coupe une unité');
+    const dirP = path.join(E2P, 'vragen-waar'), inpP = JSON.parse(text(path.join(dirP, 'input.json')));
+    put(dirP, 'draft.json', [Object.assign({ id: 'vragen', stamp: inpP[0].stamp, phrases: GOODP }, ROW)]);
+    put(dirP, 'review.json', [{ id: 'vragen', verdict: 'keep' }]);
+    same(runPh('check.js', [dirP]), { code: 0, lines: ['ok input.json 1 rows', 'ok draft.json 1 rows', 'ok review.json 1 keep, 0 dispute'] }, 'le lot, rédigé et relu, passe check.js');
+    const emptyP = text(PFILE), idsBefore = text(PIDS), creditsBefore = text(PCREDITS);
+    const MERGED_P = ['ok phrases 1 taken, 0 dropped', 'ok phrases.a1c.js 5 phrases in 1 units', 'ok ids.tsv 5 added', 'ok tatoeba-phrases.tsv 5 rows'];
+    same(runPh('merge.js', [PH, E2P]), { code: 0, lines: MERGED_P }, 'Merge écrit le fichier, ids.tsv et le crédit');
+    const mergedP = text(PFILE);
+    ok(mergedP !== emptyP && mergedP.indexOf('  U(\'vragen\', [') > 0 && mergedP.indexOf('P(\'Wanneer is dat?\', { fr: \'Quand est-ce ?\', en: \'When is that?\' }, 505)') > 0, 'phrases.a1c.js tient l\'unité et ses phrases, avec leur numéro');
+    const CMP = course(PH), vr = CMP.units.find(u => u.id === 'vragen');
+    same([vr.phrases.length, vr.phrases.map(p => p.nl), CMP.byId('vragen:p0').nl, CMP.byId('vragen:p4').en], [5, GOODP.map(d => d.nl), 'Wie is dat nu?', 'What do you want? (formal)'], 'la page chargée a les cinq phrases de vragen, à leurs ids');
+    const ieolP = /\r\n/.test(idsBefore) ? '\r\n' : '\n';
+    same(text(PIDS), idsBefore + GOODP.map((d, i) => 'vragen:p' + i + '\t' + d.nl + ieolP).join(''), 'ids.tsv : une ligne par phrase, vragen:p0 à p4, aux fins de ligne du fichier');
+    const peol = /\r\n/.test(creditsBefore) ? '\r\n' : '\n';
+    same(text(PCREDITS), creditsBefore + ['vragen\t502\t-\t602\tbob\t702\tdora\t-', 'vragen\t501\tanna\t601\tbob\t701\tdora\t-', 'vragen\t512\tbob\t612\tbob\t712\t-\t-',
+      'vragen\t505\tanna\t605\tbob\t-\t-\tfr', 'vragen\t510\tanna\t610\tbob\t710\tdora\ten'].join(peol) + peol,
+    'le crédit : une ligne par phrase, dans l\'ordre du fichier, l\'auteur absent écrit « - », une traduction écrite pour le cours « - » dans ses deux colonnes et sa langue dans adapted, une changée sa langue (D17)');
+    same(runPh('merge.js', [PH, E2P]), { code: 0, lines: ['ok phrases 1 taken, 0 dropped', 'ok phrases.a1c.js 5 phrases in 1 units', 'ok ids.tsv 0 added', 'ok tatoeba-phrases.tsv 5 rows'] }, 'Merge relancée écrit la même chose, et n\'ajoute rien à ids.tsv');
+    ok(text(PFILE) === mergedP, 'Merge relancée laisse le fichier à l\'identique');
+    same(runPh('split.js', [PH, path.join(PH, 'apres', 'phrases')]), { code: 0, lines: ['kunnen-landen 6', 'eten-stad 6', 'vrijetijd-team 6', 'reis-spoed 3'] }, 'un second Split ne coupe plus l\'unité fondue');
+    console.log('  phrases        22 unités, 4 lots ; les règles d\'une candidate, chaque garde de Check, le chargement, Merge de bout en bout, relancée, second Split');
+  }
+
+  /* ==================================================== le genre scenarios */
+  {
+    /* tools/content/kinds/scenarios.js dans une copie à lui sous la copie, avec test/data (l'orthographe).
+       Sa source est une conversation à venir : le cours de la copie n'en a aucune des quatre. Le fichier
+       src/content/scenarios.a1c.js de la copie est remis vide : le cours de la fixture reste celui des six
+       conversations écrites à la main, quoi que la fusion du dépôt y ait écrit. */
+    const { oneLine } = require('../lib/text');
+    /* Le fichier est chargé par la page (SRC de build.sh) et par test/smoke.js, qui a sa propre liste, juste après
+       scenarios.js : oublié de l'une d'elles, il reste vert tant qu'il est vide. */
+    same(/'src\/content\/scenarios\.js',\s*'src\/content\/scenarios\.a1c\.js',\s*'src\/content\/index\.js'/.test(text(path.join(ROOT, 'test', 'smoke.js'))), true,
+      'la liste de test/smoke.js nomme scenarios.a1c.js entre scenarios.js et index.js');
+    const srcLines = text(path.join(ROOT, 'build.sh')).split(/\r?\n/);
+    same(srcLines.indexOf('src/content/scenarios.a1c.js') - srcLines.indexOf('src/content/scenarios.js'), 1, 'le SRC de build.sh nomme scenarios.a1c.js juste après scenarios.js');
+    const SD = path.join(TMP, 'conversations');
+    copyKit(ROOT, SD);
+    const runSd = (script, args) => runIn(SD, script, args);
+    const KS = require(path.join(SD, 'tools', 'content', 'kinds', 'scenarios')), KWS = require(path.join(SD, 'tools', 'content', 'kinds', 'words'));
+    const A1C = path.join(SD, 'src', 'content', 'scenarios.a1c.js'), emptyFile = KS.scenarios([]).map(l => l + '\n').join('');
+    fs.writeFileSync(A1C, emptyFile);
+    const CS = course(SD), NLS = CS.NL;
+
+    /* Les 4 conversations : leurs ids (rangés dans scenariosDone), leur unité, leur voie (s-afspraak sous leven, D21). */
+    same(KS.CONVERSATIONS.map(c => [c.id, c.unit, c.n, c.track].join(' ')), ['s-cafe cafe 21 leven', 's-afspraak afspraak 30 leven', 's-school school 29 leven', 's-gemeente stad 25 leven'],
+      'quatre conversations, leurs ids, leurs unités et leur voie');
+    ok(KS.CONVERSATIONS.every(c => oneLine(c.place) && c.situation.length > 200 && oneLine(c.situation) && KWS.UNITS.some(u => u.id === c.unit && u.n === c.n)),
+      'chaque conversation a son lieu, une situation, et une unité de UNITS avec son numéro');
+    same(CS.RAW.scenarios.map(s => s.id), ['s-bakker', 's-buur', 's-trein', 's-standup', 's-koffie', 's-status'], 'le fichier vide ne pousse rien : le cours de la copie a ses six conversations');
+    same(KS.sourceOf(CS, 's-school'), { id: 's-school', nl: 's-school', fr: KS.CONVERSATIONS[2].place, en: KS.CONVERSATIONS[2].place, unit: 'school', n: 29, track: 'leven', setting: KS.CONVERSATIONS[2].place, situation: KS.CONVERSATIONS[2].situation },
+      'la source d\'une ligne est sa conversation, dont nl est l\'id');
+    ok(KS.sourceOf(CS, 's-bakker') === undefined, 'une conversation écrite à la main n\'a pas de source');
+
+    /* Split : un lot par conversation, une ligne par lot. */
+    const KSD = path.join(SD, 'drafts', 'scenarios');
+    same(runSd('split.js', [SD, KSD]), { code: 0, lines: ['s-cafe 1', 's-afspraak 1', 's-school 1', 's-gemeente 1'] }, 'Split coupe un lot par conversation, une ligne par lot');
+    const rowS = (dir, id) => JSON.parse(text(path.join(dir, id, 'input.json'))).find(r => r.id === id);
+    same(rowS(KSD, 's-afspraak'), { id: 's-afspraak', stamp: kit.stamp(KS, KS.sourceOf(CS, 's-afspraak'), NLS), copies: [], unit: 'afspraak', n: 30, track: 'leven', setting: KS.CONVERSATIONS[1].place, situation: KS.CONVERSATIONS[1].situation },
+      'une ligne d\'entrée : son unité, sa voie, son lieu et sa situation');
+
+    /* Check : une ligne juste, puis chaque règle. */
+    const ctxS = { repo: SD, course: () => CS };
+    const p = (fr, en) => ({ fr, en });
+    const CAFE = {
+      icon: '\u{1F37A}', title: p('Sur la terrasse', 'On the terrace'), place: p('{stad}, terrasse, samedi après-midi', '{stad}, terrace, Saturday afternoon'),
+      blurb: p('Commander et payer, du début à la fin. Six échanges.', 'Ordering and paying, start to finish. Six exchanges.'),
+      steps: [
+        { them: { nl: 'Goeiemiddag! Wat mag het zijn?', fr: 'Bonjour ! Qu’est-ce que ce sera ?', en: 'Good afternoon! What will it be?', be: 'Goeiemiddag! Wat mag het zijn?' } },
+        { you: { ask: p('Commande un café et demande ce qu’on conseille à manger.', 'Order a coffee and ask what they recommend to eat.'), choices: [
+          { nl: 'Een koffie alstublieft. Wat raadt u aan om te eten?', fr: 'Un café s’il vous plaît. Que me conseillez-vous à manger ?', en: 'A coffee, please. What do you recommend to eat?',
+            reply: { nl: 'De dagschotel is lekker vandaag.', fr: 'Le plat du jour est bon aujourd’hui.', en: 'The dish of the day is good today.', be: 'De dagschotel is lekker vandaag.' }, note: null },
+          { nl: 'Een koffie alstublieft. Is er iets vegetarisch?', fr: 'Un café s’il vous plaît. Y a-t-il quelque chose de végétarien ?', en: 'A coffee, please. Is there anything vegetarian?', reply: null,
+            note: p('« Alstublieft » ouvre toute commande.', '“Alstublieft” opens any order.') }
+        ], hint: p('Un seul mot de politesse suffit : « alstublieft ».', 'One polite word is enough: “alstublieft”.') } },
+        { them: { nl: 'Komt in orde. Wilt u nog iets anders?', fr: 'C’est noté. Vous voulez autre chose ?', en: 'Coming up. Would you like anything else?', be: 'Komt in orde. Wilt ge nog iets anders?' } },
+        { you: { ask: p('Dis que ça suffit.', 'Say that is all.'), choices: [
+          { nl: 'Nee, dat is alles, dank u wel.', fr: 'Non, c’est tout, merci beaucoup.', en: 'No, that is all, thank you.', reply: null, note: null },
+          { nl: 'Ja, ook een glas water alstublieft.', fr: 'Oui, et aussi un verre d’eau s’il vous plaît.', en: 'Yes, and a glass of water as well, please.', reply: null, note: null }
+        ], hint: null } },
+        { them: { nl: 'Zo, alstublieft. Zegt het maar als u wilt betalen.', fr: 'Voilà. Dites-le quand vous voulez payer.', en: 'There you are. Just say when you want to pay.', be: 'Zo, alstublieft. Zegt het maar als ge wilt betalen.' } },
+        { you: { ask: p('Demande l’addition.', 'Ask for the bill.'), choices: [
+          { nl: 'De rekening alstublieft. Kan ik met bancontact betalen?', fr: 'L’addition s’il vous plaît. Je peux payer par Bancontact ?', en: 'The bill, please. Can I pay by Bancontact?', reply: null, note: null },
+          { nl: 'De rekening alstublieft. Ik betaal contant.', fr: 'L’addition s’il vous plaît. Je paie en liquide.', en: 'The bill, please. I will pay cash.', reply: null, note: null }
+        ], hint: null } }
+      ],
+      outro: p('Tu as commandé et payé. Sur une terrasse, la politesse tient en un mot.', 'You ordered and paid. On a terrace, politeness fits in one word.')
+    };
+    const clone = o => JSON.parse(JSON.stringify(o));
+    const atS = (row, id) => KS.check(Object.assign({ id: id || 's-cafe' }, row), rowS(KSD, id || 's-cafe'), ctxS);
+    const wrongS = f => { const r = clone(CAFE); f(r); return atS(r); };
+    same(atS(CAFE), [], 'une conversation juste passe');
+    same(KS.forMaintainer(CAFE) + '|' + KS.readWhole(CAFE), '|course-written', 'aucune ligne ne va au mainteneur par une règle, et chacune est lue entière');
+    same([wrongS(r => { r.icon = 'cafe'; }), wrongS(r => { r.icon = '\u{1F37A}\u{1F37A}\u{1F37A}'; })],
+      [['icon: is one or two non-ASCII characters, a pictogram'], ['icon: is one or two non-ASCII characters, a pictogram']], 'l\'icône : un ou deux caractères hors ASCII');
+    same([wrongS(r => { r.title.en = ' On the terrace'; }), wrongS(r => { r.blurb = { fr: 'Six échanges.' }; }), wrongS(r => { r.outro.en = 'You ordered and paid in 1 go.'; })],
+      [['title.en: is a text on one line with no space at either end'], ['blurb: is { fr, en } and nothing else'], ['outro: fr and en hold different digits or {…} tokens']],
+      'un sens manque ou est mal écrit, dans une langue ou l\'autre, et mêmes chiffres des deux côtés');
+    same([wrongS(r => { r.steps.pop(); r.steps.pop(); }), wrongS(r => { r.steps.splice(1, 0, clone(r.steps[0])); }), wrongS(r => { r.steps.shift(); })],
+      [['steps: holds 3 to 4 steps of yours (you), like the six conversations of the course: 2 here'],
+        ['steps[1]: two steps of theirs in a row: the learner answers in between'], ['steps[0]: the first step is theirs (them): the other speaks first']],
+      'les bornes des six : étapes de l\'autre, étapes à toi, la première est à l\'autre, jamais deux à la suite');
+    const two = wrongS(r => { r.steps.splice(2); });
+    ok(!two.some(m => /more than 2 steps/.test(m)) && two.some(m => /steps of theirs \(them\)/.test(m)) && two.some(m => /steps of yours \(you\)/.test(m)),
+      'une conversation de deux étapes est refusée par les bornes des six, sans ligne qui dise la règle comme une faute : ' + JSON.stringify(two));
+    same([wrongS(r => { delete r.steps[0].them.be; }), wrongS(r => { r.steps[0].them.be = ''; }), wrongS(r => { r.steps[0].them.en = ''; })],
+      [['steps[0].them: is { nl, fr, en, be } and nothing else'], ['steps[0].them.be: is a text on one line with no space at either end'], ['steps[0].them.en: is a text on one line with no space at either end']],
+      'une réplique de l\'autre porte son be et ses deux sens');
+    same([wrongS(r => { r.steps[1].you.choices.pop(); }), wrongS(r => { r.steps[1].you.choices.push(clone(r.steps[1].you.choices[0]), clone(r.steps[1].you.choices[0])); r.steps[1].you.choices[2].nl = 'Een thee alstublieft.'; r.steps[1].you.choices[3].nl = 'Een bier alstublieft.'; }),
+      wrongS(r => { r.steps[1].you.choices[1].nl = r.steps[1].you.choices[0].nl; }), wrongS(r => { delete r.steps[1].you.choices[0].reply; }), wrongS(r => { r.steps[1].you.choices[0].reply.be = ''; }),
+      wrongS(r => { r.steps[1].you.hint = { fr: 'Un mot.' }; })],
+      [['steps[1].you.choices: holds 2 or 3 choices, like the six conversations of the course'], ['steps[1].you.choices: holds 2 or 3 choices, like the six conversations of the course'],
+        ['steps[1].you.choices[1]: says what another choice of the step says'], ['steps[1].you.choices[0]: is { nl, fr, en, reply, note } and nothing else: reply and note are null when absent'],
+        ['steps[1].you.choices[0].reply.be: is a text on one line with no space at either end'], ['steps[1].you.hint: is { fr, en } and nothing else']],
+      'un choix : deux ou trois par étape, des néerlandais distincts, reply et note null quand ils manquent, la réponse porte son be');
+    same([wrongS(r => { r.steps[0].them.nl = 'Goeiemiddag! Wat mag het zijn, zqzqx?'; }), wrongS(r => { r.steps[2].them.be = 'Komt in orde. Wilt ge nog iets anders, zqzqx?'; }),
+      wrongS(r => { r.steps[1].you.choices[0].reply.nl = 'De dagschotel is zqzqy.'; })],
+      [['« zqzqx » is not Dutch that OpenTaal or flemish.tsv knows: pick another word'],
+        ['« zqzqx » is not Dutch that OpenTaal or flemish.tsv knows: pick another word'],
+        ['« zqzqy » is not Dutch that OpenTaal or flemish.tsv knows: pick another word']],
+      'un néerlandais que l\'orthographe ne connaît pas est refusé, dans nl, dans be et dans une réponse');
+    same([wrongS(r => { r.steps[0].them.fr = 'Bonjour {prénom} !'; r.steps[0].them.en = 'Hello {prénom}!'; }), wrongS(r => { r.place.fr = '{stad}, terrasse'; r.place.en = 'terrace'; }),
+      wrongS(r => { r.steps[0].them.nl = 'Goeiemiddag, {naam}! Wat mag het zijn?'; }), wrongS(r => { r.steps[0].them.fr = 'Qu\'est-ce que ce sera ?'; }), wrongS(r => { r.steps[0].them.fr = 'Bonjour "madame" !'; }),
+      wrongS(r => { r.steps[0].them.en = 'Good afternoon! "What" will it be?'; }), wrongS(r => { r.steps[1].you.ask.en = 'Order a “coffee'; })],
+      [['steps[0].them.fr: the token {prénom} is not one of {naam}, {stad}, {bedrijf}', 'steps[0].them.en: the token {prénom} is not one of {naam}, {stad}, {bedrijf}'],
+        ['place: fr and en hold different digits or {…} tokens'], [],
+        ['steps[0].them.fr: writes the typographic apostrophe « ’ » and no straight quote'], ['steps[0].them.fr: quotes with « » only'], ['steps[0].them.en: quotes with “ ” only'],
+        ['steps[1].you.ask.en: a “ never closed']],
+      'les {jetons} du cours seuls, l\'apostrophe typographique, les guillemets de chaque langue');
+    /* Ce que test/lang.js 6d refuserait à Merge, refusé dès Check (test/lib/quoted.js) : une citation qui n'est pas du
+       néerlandais du cours, une citation dans title ou place, un mot du cours laissé nu en français et en anglais. Le
+       néerlandais de la ligne compte comme celui du cours : ses phrases n'y entrent qu'à Merge. */
+    const WAS = 'wasknijper', ownNl = r => { r.steps[1].you.choices[1].nl = 'Een koffie alstublieft. Hebt u een ' + WAS + '?'; };
+    ok(!require(path.join(SD, 'test', 'lib', 'dutch')).dutchWords(NLS).has(WAS), 'le cours de la copie n\'enseigne pas « ' + WAS + ' » : la ligne qui le cite apporte seule ce néerlandais');
+    const NOT_DUTCH = (where, q) => where + ': quotes « ' + q + ' », which is not Dutch of the course: a translation goes in parentheses, with no quotes';
+    same([wrongS(r => { r.blurb.fr = 'Commander et payer, du début à la fin. « Voilà » (six échanges).'; }),
+      wrongS(r => { r.steps[1].you.hint.en = 'One polite word is enough: “here you are”.'; }),
+      wrongS(r => { r.steps[1].you.choices[1].note = p('« Wasknijper » est le mot du nord.', '“Wasknijper” is the northern word.'); }),
+      wrongS(r => { ownNl(r); r.steps[1].you.choices[1].note = p('« Wasknijper » est le mot du nord.', '“Wasknijper” is the northern word.'); })],
+      [[NOT_DUTCH('blurb.fr', 'Voilà')], [NOT_DUTCH('steps[1].you.hint.en', 'here you are')],
+        [NOT_DUTCH('steps[1].you.choices[1].note.fr', 'Wasknijper'), NOT_DUTCH('steps[1].you.choices[1].note.en', 'Wasknijper')], []],
+      '6d : une citation hors du néerlandais du cours est refusée (une traduction va entre parenthèses) ; celle du néerlandais de la ligne passe');
+    const NO_QUOTE = where => where + ': carries no quotation marks: the screen cites nothing there';
+    same([wrongS(r => { r.title.fr = 'Sur la « terrasse »'; r.title.en = 'On the “terrace”'; }), wrongS(r => { r.place.fr = '{stad}, « terrasse »'; r.place.en = '{stad}, “terrace”'; })],
+      [[NO_QUOTE('title.fr'), NO_QUOTE('title.en')], [NO_QUOTE('place.fr'), NO_QUOTE('place.en')]], '6d : title et place ne portent aucun guillemet');
+    const BARE = (where, w) => where + ': « ' + w + ' » is Dutch of the course, written bare in fr and in en: quote it, or use the French or English word';
+    same([wrongS(r => { r.blurb = p('Un koffie, du début à la fin. Six échanges.', 'A koffie, start to finish. Six exchanges.'); }),
+      wrongS(r => { r.title = p('Le koffie', 'The koffie'); }),
+      wrongS(r => { r.steps[1].you.hint = p('Un seul mot de politesse suffit : alstublieft.', 'One polite word is enough: alstublieft.'); }),
+      wrongS(r => { ownNl(r); r.outro = p('Une ' + WAS + ' ou rien.', 'A ' + WAS + ' or nothing.'); })],
+      [[BARE('blurb', 'koffie')], [BARE('title', 'koffie')], [BARE('steps[1].you.hint', 'alstublieft')], [BARE('outro', WAS)]],
+      '6d : un mot du néerlandais du cours (ou de la ligne) écrit nu en français et en anglais est refusé');
+    /* Un nombre n'est pas un mot du cours (courseWords, test/lib/dutch.js) : celui d'un choix de la ligne, écrit nu en
+       français et en anglais dans une prose, passe. */
+    same(wrongS(r => { Object.assign(r.steps[5].you.choices[1], { nl: 'De rekening alstublieft. Hier is 20 euro.', fr: 'L’addition s’il vous plaît. Voici 20 euros.', en: 'The bill, please. Here are 20 euros.' });
+      r.outro = p('Tu as commandé, puis payé : 20 euros, pourboire compris.', 'You ordered, then paid: 20 euros, tip included.'); }), [], '6d : le chiffre d\'un choix, écrit nu en français et en anglais, passe dans outro');
+    /* Le texte de l'apprenant n'entre pas dans title, que l'écran montre en HTML (test/lang.js 6d.7). Une prose que l'écran
+       cite (blurb) l'échappe et le garde, comme place, que CAFE remplit de {stad}. */
+    const MINE = l => 'title.' + l + ': {stad} is the learner\'s text, and title is shown as HTML: write no token there';
+    same([wrongS(r => { r.title = p('Sur une terrasse de {stad}', 'On a terrace in {stad}'); }), wrongS(r => { r.blurb = p('Commander et payer à {stad}. Six échanges.', 'Ordering and paying in {stad}. Six exchanges.'); })],
+      [[MINE('fr'), MINE('en')], []], 'un {jeton} dans title est refusé : l\'écran le montre en HTML ; blurb et place le gardent');
+    same([wrongS(r => { r.steps[0].me = 1; }).length, wrongS(r => { r.steps.push({ them: r.steps[0].them, you: r.steps[1].you }); }).length], [1, 1], 'une clé en trop dans une étape est refusée');
+
+    /* Un id que le cours a déjà : refusé par Split, qui nomme l'entrée de CONVERSATIONS et le scénario du cours. */
+    KS.CONVERSATIONS.push({ id: 's-bakker', unit: 'cafe', n: 21, track: 'leven', place: 'x', situation: 'y' });
+    try {
+      throws(() => KS.split(CS, ctxS), /^CONVERSATIONS id « s-bakker » is the id of the course's scenario « s-bakker » \(At the baker’s\): a conversation never repeats an existing scenario's id$/, 'Split refuse un id que le cours a déjà');
+    } finally { KS.CONVERSATIONS.pop(); }
+    KS.CONVERSATIONS.push(Object.assign({}, KS.CONVERSATIONS[0]));
+    try {
+      throws(() => KS.split(CS, ctxS), /^CONVERSATIONS names « s-cafe » twice$/, 'Split refuse deux entrées de même id');
+    } finally { KS.CONVERSATIONS.pop(); }
+    /* Et par l'outil : la ligne fail du kit, sans que rien ne soit coupé. */
+    const kfile = path.join(SD, 'tools', 'content', 'kinds', 'scenarios.js'), kold = text(kfile);
+    fs.writeFileSync(kfile, kold.replace(/const CONVERSATIONS = \[\r?\n/, 'const CONVERSATIONS = [\n  { id: \'s-trein\', unit: \'cafe\', n: 21, track: \'leven\', place: \'x\', situation: \'y\' },\n'));
+    const refused = runSd('split.js', [SD, path.join(SD, 'refus', 'scenarios')]);
+    fs.writeFileSync(kfile, kold);
+    same(refused, { code: 1, lines: ['fail scenarios -: the kind\'s split threw: CONVERSATIONS id « s-trein » is the id of the course\'s scenario « s-trein » (The train to Brussels): a conversation never repeats an existing scenario\'s id'] },
+      'Split, lancée par l\'outil, dit la faute et ne coupe rien');
+    ok(!fs.existsSync(path.join(SD, 'refus', 'scenarios')), 'refusée, Split n\'a rien écrit');
+
+    /* De bout en bout : une ligne nommée à Split, rédigée et relue, check.js, Merge, le fichier récrit, Merge
+       relancée à l'identique, les fins de ligne gardées, et un second Split qui ne coupe plus cette conversation. */
+    const E2SS = path.join(SD, 'bout-en-bout'), E2S = path.join(E2SS, 'drafts', 'scenarios');
+    same(runSd('split.js', [SD, E2S, 's-cafe']), { code: 0, lines: ['s-cafe 1'] }, 'Split nommé coupe une conversation');
+    const dirS = path.join(E2S, 's-cafe'), inpS = JSON.parse(text(path.join(dirS, 'input.json')));
+    put(dirS, 'draft.json', inpS.map(r => Object.assign({ id: r.id, stamp: r.stamp }, CAFE)));
+    put(dirS, 'review.json', inpS.map(r => ({ id: r.id, verdict: 'keep' })));
+    same(runSd('check.js', [dirS]).code, 0, 'le lot, rédigé et relu, passe');
+    const merged = runSd('merge.js', [SD, E2S]);
+    same(merged, { code: 0, lines: ['ok scenarios 1 taken, 0 dropped', 'ok scenarios.a1c.js 1 scenarios'] }, 'Merge écrit le fichier, et le dit');
+    const after = text(A1C);
+    ok(after.indexOf('  S({\n    id: \'s-cafe\', track: \'leven\', level: \'A1\', icon: \'\\u{1F37A}\',') > 0 && after.indexOf('      T(\'Goeiemiddag! Wat mag het zijn?\', { fr: ') > 0 &&
+      after.indexOf('        C(\'Een koffie alstublieft. Is er iets vegetarisch?\', { fr: ') > 0 && after.indexOf('\n    outro: { fr: ') > 0 && !/\bunit\s*:/.test(after), 'le fichier écrit la conversation comme scenarios.js, sans clé unit (D22)');
+    const CM = course(SD), got = CM.RAW.scenarios.find(s => s.id === 's-cafe');
+    const norm = o => JSON.parse(JSON.stringify(o, (k, v) => (v === null ? undefined : v)));
+    same([CM.RAW.scenarios.length, CM.RAW.scenarios[6].id, got.track, got.level, 'unit' in got, norm(got.steps)], [7, 's-cafe', 'leven', 'A1', false, norm(CAFE.steps)], 'le cours relu a sept conversations, la nouvelle en dernier, ses étapes telles qu\'écrites, sans unité');
+    same(runSd('merge.js', [SD, E2S]), merged, 'relancée, Merge dit la même chose');
+    same(text(A1C), after, 'le fichier est le même octet pour octet');
+    const crlf = after.replace(/\n/g, '\r\n');
+    fs.writeFileSync(A1C, crlf);
+    runSd('merge.js', [SD, E2S]);
+    same(text(A1C), crlf, 'le fichier garde ses fins de ligne \\r\\n, sans mélange');
+    fs.writeFileSync(A1C, after);
+    /* Ce que Merge refuse avant d'écrire : un id de CONVERSATIONS que le cours a écrit à la main (le cours a pu bouger
+       depuis Split), et une conversation du fichier que plus aucune ligne prise n'écrit (il est récrit entier). */
+    KS.CONVERSATIONS.push({ id: 's-bakker', unit: 'cafe', n: 21, track: 'leven', place: 'x', situation: 'y' });
+    try {
+      throws(() => KS.write([], { repo: SD, course: () => CM }), /^CONVERSATIONS id « s-bakker » is the id of the course's scenario « s-bakker » \(At the baker’s\): a conversation never repeats an existing scenario's id$/,
+        'Merge refuse un id de CONVERSATIONS que le cours a écrit à la main');
+    } finally { KS.CONVERSATIONS.pop(); }
+    throws(() => KS.write([], { repo: SD, course: () => CM }), /^scenarios\.a1c\.js holds the conversation s-cafe, and no taken row writes it: Merge rewrites the file whole$/,
+      'Merge refuse de récrire un fichier dont une conversation n\'a plus de ligne prise');
+    same(runSd('split.js', [SD, path.join(SD, 'apres', 'scenarios')]), { code: 0, lines: ['s-afspraak 1', 's-school 1', 's-gemeente 1'] }, 'un second Split ne coupe plus la conversation fondue');
+    /* Ce que le mainteneur lit d'une ligne : sa conversation, et la conversation écrite (comme le genre words : un genre sans table). */
+    const readingS = require(path.join(SD, 'tools', 'content', 'lib', 'reading'));
+    const everyS = readingS.every(SD, E2SS, 'scenarios').lines;
+    same(everyS.slice(2, 6), ['1 rows: 1 taken, 0 dropped.', '', '- `s-cafe` (s-cafe) — ' + KS.CONVERSATIONS[0].place + ' · ' + KS.CONVERSATIONS[0].place, '  - course-written; kept by the first reader'],
+      'l\'outil de lecture montre la conversation d\'une ligne');
+    same(readingS.list(SD, E2SS).lines.filter(l => /^ {2}- row: /.test(l)).length, 1, 'la liste du contrôle du contenu la montre entière : chaque conversation est lue entière');
+    console.log('  scenarios      ' + KS.CONVERSATIONS.length + ' conversations ; chaque règle, Merge de bout en bout, relancée, second Split');
   }
 
   /* ==================================================== 9. l'outil de lecture
@@ -1484,7 +2581,7 @@ async function main() {
     /* La liste du contrôle du contenu. */
     const L = reading.list(TMP, WS);
     ok(L.ok, 'la liste se lit : ' + L.lines.filter(l => /^fail /.test(l)).join(' | '));
-    same(L.lines.slice(0, 3), ['# Reading list', '', 'Read for the content check, at HEAD: every row its kind marks to read whole (a new Flemish form, a generated sentence), every row the maintainer ruled, and a sample of the other taken rows, 1 in 10 and at least 10 per kind, the same on every run. Under each row, what each of its kind\'s tables holds for it.'],
+    same(L.lines.slice(0, 3), ['# Reading list', '', 'Read for the content check, at HEAD: every row its kind marks to read whole (a new Flemish form, a generated sentence, a written or edited translation), every row the maintainer ruled, and a sample of the other taken rows, 1 in 10 and at least 10 per kind, the same on every run. Under each row, what each of its kind\'s tables holds for it.'],
       'la liste dit ce qu\'elle tient');
     same(L.lines.filter(l => /^## /.test(l)), ['## essai', '## exemples', '## lecture', '## vide'], 'un titre par genre coupé, dans l\'ordre des noms');
     const ESSAI = [

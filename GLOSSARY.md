@@ -108,11 +108,14 @@ _Avoid_: lesson, round, série
 
 **Place**:
 One of the positions a session has to fill, taken by one item however many exercises that
-item leads to.
+item leads to. A session has thirty base places; the backlog adds review places to them, one
+per forty items due, eleven at most.
 _Avoid_: slot, seat, position
 
 **Reserved share**:
-The places of a session kept for items never met, set aside before due items fill the rest.
+The places of a session kept for items never met: thirty per cent of the base places, never
+fewer than four, set aside before due items fill the rest. The places the backlog adds give
+it nothing.
 _Avoid_: quota, allowance, new-item slots
 
 **Reinforcement**:
@@ -168,6 +171,15 @@ An item that would also be a right answer to another item's exercise: the same D
 a meaning the two share in the learner's native language. Unlike an alias, each sibling
 keeps its own progress.
 _Avoid_: synonym, equivalent, variant
+
+**Slot**:
+A place for one word in a new unit, cut by the kit's `words` kind before the word exists and
+filled by a drafter; a unit's target is its number of slots. Not a session's place.
+_Avoid_: place, gap, vacancy
+
+**Conversation**:
+A scripted exchange the learner plays through, one step at a time, in a setting of daily life: the other speaker's lines alternate with the learner's choices. It belongs to a track and to no unit, and the kit's `scenarios` kind drafts it. The code calls it a scenario.
+_Avoid_: dialogue, role-play, scene
 
 ### Who the learner is
 

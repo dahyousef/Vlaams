@@ -30,12 +30,7 @@ if (!fs.existsSync(TSV)) {
   console.log('FAIL: ' + TSV + ' est absent. Régénérer : node test/tools/build-dehet.js <kaikki-dutch.jsonl>');
   process.exit(1);
 }
-const table = new Map();
-fs.readFileSync(TSV, 'utf8').split('\n').forEach(l => {
-  if (!l || l[0] === '#') return;
-  const [w, g] = l.split('\t');
-  if (w && g) table.set(w, g.trim());
-});
+const table = require('./lib/dehet').load(ROOT);
 
 /* ---------- le cours ---------- */
 /* Chargé comme dans les autres suites : par le faux navigateur, dans l'ordre de build.sh,

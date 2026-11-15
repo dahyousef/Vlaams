@@ -21,7 +21,7 @@ under `src/`, run `sh build.sh` and commit both.
 goes in that list or it never runs. `TESTING.md` says what each suite covers — and what
 the suite cannot see.
 
-The suite takes three to six minutes. While working, run the one file you are changing, for
+The suite takes about half an hour. While working, run the one file you are changing, for
 example `node test/engine.js .`. A new suite loads the app through
 `test/lib/browser.js` and answers exercises through `test/lib/answer.js`, as a learner
 would. Grading through `NL.srs.grade()` directly is for `test/engine.js`, the scheduler's
@@ -79,14 +79,34 @@ the maintainer answers, runs in sittings.
   exercise never moves the item's rung: a written one, later in the same session, decides.
   « Je ne peux pas parler » lives in the running session and is deliberately not a
   setting. Issue #12 says why, for all three.
-- Six tables under `src/content/` are written by a kind's Merge (`tools/content/merge.js`)
+- Seven tables under `src/content/` are written by a kind's Merge (`tools/content/merge.js`)
   from accepted rows: `be.js` (kind `flemish`, whose Merge also adds a line to
   `test/data/flemish.tsv` for each new form OpenTaal lacks), `sourced.js` (`examples`, which
-  also rewrites `docs/attribution/tatoeba.tsv`, and `examples-gen`), `open.phrases.js`
-  (`open`), `notes.js` and `also.js` (`explanations-be`, `explanations`), and `decoys.js`
-  (`explanations-be`). Each is keyed by an item's Dutch as its first listing writes it,
-  tokens unfilled. Change an entry through its kind's rows, not by hand: a hand edit leaves
-  no row behind it, and the next Merge of that item writes over it.
+  also rewrites `docs/attribution/tatoeba.tsv`, and `examples-gen`), `open.phrases.js` and
+  `open.js` (`open`), `notes.js` and `also.js` (`explanations-be`, `explanations`), and
+  `decoys.js` (`explanations-be`). Each is keyed by an item's Dutch as its first listing writes
+  it, tokens unfilled, except `open.js`: the tasks of the grammar rules, keyed by rule id
+  (`g-v2`), which the app reads as `NL.content.openTasks`. Change an entry through its kind's
+  rows, not by hand: a hand edit leaves no row behind it, and the next Merge of that item
+  writes over it. The nine tasks of units 1 to 12 in `open.js` have no rows and no path to
+  change yet: the `open` kind's Split refuses them, even named (`test/tools/fanout.js`).
+  The `words` kind's Merge (`tools/content/kinds/words.js`) writes another
+  file whole, `src/content/lexicon.a1c.js`: the units 13 to 34 and their words, from its
+  `UNITS` and the accepted rows; and it appends the new words' lines to `test/data/ids.tsv`.
+  The same rule: a word changes through its rows, by Merging its unit again from the
+  workspace that drafted them, and never to another Dutch word. With that workspace gone it
+  has no path yet (`docs/agents/plan-runs/design-sitting.md`).
+  The `grammar` kind's Merge (`tools/content/kinds/grammar.js`) also writes a file whole,
+  `src/content/grammar.a1c.js`: the 13 rules that `grammar.js` lacks, from its `RULES` and the
+  accepted rows; the page lists each on its unit at load. A rule changes through its row, and its id
+  never changes.
+  The `scenarios` kind's Merge (`tools/content/kinds/scenarios.js`) likewise writes
+  `src/content/scenarios.a1c.js` whole, from its `CONVERSATIONS` and the accepted rows: a conversation
+  changes through its rows, never by hand.
+  The `phrases` kind's Merge (`tools/content/kinds/phrases.js`) writes `src/content/phrases.a1c.js`
+  whole: the five Tatoeba phrases of each unit 13 to 34, which the page pushes onto its unit at load;
+  it appends their ids to `test/data/ids.tsv` and rewrites `docs/attribution/tatoeba-phrases.tsv`
+  whole, one credit line per phrase. A phrase changes through its unit's row, never by hand.
 
 ## Decisions already taken
 
@@ -105,6 +125,8 @@ sub-issues. `GLOSSARY.md` holds the vocabulary it uses.
   plan, implemented. Its last sections record why the engine is as it is
 - `docs/superpowers/plans/2026-10-22-phase-3-content-to-b1.md` — the phase 3 plan: the
   content kit (`tools/content/`) and the kinds that took the course to B1
+- `docs/superpowers/plans/2026-10-31-phase-4a-ceiling-and-words.md` — the phase 4a plan: the
+  session follows the backlog (D18), and the 22 new units' words through the kit's `words` kind
 - `docs/CONSTATS-2026-10-06.md` — what a week of real study found, and how it was found
 - `TESTING.md` — how this app is tested
 - `ATTRIBUTION.md` — where the Dutch reference data comes from, and why it imposes no licence

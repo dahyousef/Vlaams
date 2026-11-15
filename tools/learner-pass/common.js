@@ -1,7 +1,9 @@
 /* Le décor de la passe d'apprenant : la page construite servie en local, et Chrome habillé
    en Safari sur iPhone (390×844, tactile, fr-BE), avec une reconnaissance vocale factice qui
    se comporte comme celle de Safari.
-     node tools/learner-pass/<script>.js [dossier qui contient index.html]     (le dépôt par défaut) */
+     node tools/learner-pass/<script>.js [dossier qui contient index.html]     (le dépôt par défaut)
+   Le navigateur est le Chrome installé ; LEARNER_PASS_CHANNEL=msedge prend Edge (un canal de
+   Playwright). */
 const http = require('http'), fs = require('fs'), path = require('path');
 const { chromium } = require('playwright-core');
 const ROOT = path.resolve(process.argv[2] || path.join(__dirname, '..', '..'));
@@ -63,7 +65,7 @@ async function open() {
   if (!fs.existsSync(path.join(ROOT, 'index.html'))) throw new Error(ROOT + ' ne contient pas index.html : lancer sh build.sh');
   const server = await serve();
   const url = 'http://127.0.0.1:' + server.address().port + '/';
-  const browser = await chromium.launch({ channel: 'chrome', headless: true });
+  const browser = await chromium.launch({ channel: process.env.LEARNER_PASS_CHANNEL || 'chrome', headless: true });
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, userAgent: UA, deviceScaleFactor: 2, hasTouch: true, isMobile: true, locale: 'fr-BE' });
   await context.addInitScript(INIT);
   const page = await context.newPage();

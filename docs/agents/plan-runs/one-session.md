@@ -53,11 +53,12 @@ for « none »), and set its row to `done`. Only a fan-out whose `after` names a
 
 Whenever fewer than six batch controllers are in flight and a Batches row is `pending`, dispatch the first
 one as a background subagent on `sonnet`, description `batch <kind>/<batch>`, and set its row to `drafting`.
-The prompt:
+The prompt, with `<WS>` out as the absolute path `run.md` gives:
 
     You are the batch controller for batch <kind>/<batch> of the plan run in <worktree>. Read
     docs/agents/plan-runs/batch-controller.md and follow it. Run file: <WS>/run.md.
     Batch: <WS>/drafts/<kind>/<batch>/. Format: <WS>/drafts/<kind>/format.md. Check: <its Check command>.
+    [Reader model: <model> — when the task's `Fan-out:` line names one.]
     [Rulings: <id> keep; <id> drop; <id> change: <the maintainer's words> — after the maintainer rules.]
     [Confirmed: <ids> — after the maintainer accepts the changed rows.]
 
@@ -70,7 +71,9 @@ The return is one line, `BATCH <kind>/<batch>: <state> — kept <n>, for maintai
   controller again with `Rulings:`.
 - `to confirm`: show the maintainer the changed rows, as returned. On their yes, dispatch again with
   `Confirmed:`; on another change, with `Rulings:`.
-- `failed`: tell the maintainer, with the reason. The batch waits for their word.
+- `failed`: tell the maintainer, with the reason. The batch waits for their word. A controller that handed back
+  while its agent still ran has not failed, whatever state it wrote: its reason says `forced hand-back`. Send the
+  same controller on with `SendMessage`.
 
 The ledger has one writer, you, plus each task controller's log entry. When an edit of `progress.md` fails
 because the file changed, read it again and redo the edit: a task controller has just appended its entry.
@@ -98,7 +101,7 @@ as a proposed task. It becomes a task, with a brief and a Status row, on their w
 - When `run-controller.md` says to stop the run (a `sitting` task, `needs design`, a `failed` task): dispatch
   nothing new, wait for the batch controllers in flight and write their rows, then launch what the loop
   launches and stop. One run controller at a time: the next one is the session that sitting launches.
-- After a cut-off, the next session starts as `run-controller.md` says (six minutes' wait, the command, the
+- After a cut-off, the next session starts as `run-controller.md` says (thirty-five minutes' wait, the command, the
   start prompt) and adds its own `Sitting:` line. It dispatches the batches left `drafting` again: their
   batch controllers carry on from the files. It tells the maintainer again of each gate left `in progress`.
 - After a compaction, the hook's reminder covers this file too: re-read it with `run-controller.md`.

@@ -45,8 +45,9 @@ fallback tasks sit above it, still unreviewed.
 ## The roles you dispatch
 
 Give each one its model explicitly and a description that starts with `task <N>` (the measures group by it),
-and tell it: its final message is at most 10 lines; everything longer goes to the report file you name. Dispatch each one in the foreground and wait for its return; never end
-your turn while one runs.
+and tell it: its final message is at most 10 lines; everything longer goes to the report file you name. Write
+`<WS>` out in every dispatch as the absolute path `run.md` gives: in phase 4a a verifier took it for `tmp/` at the
+worktree root, which left the tree unclean for the next one.
 
 | Role | Model | Its instructions |
 |---|---|---|
@@ -57,13 +58,57 @@ your turn while one runs.
 
 Dispatch nothing else, and nothing below these four.
 
+## Waiting
+
+Agents run in the background here, so a dispatch returns at once. After dispatching one, end your turn: that is
+how you wait, and its notice wakes you. End it with one line naming what you wait for, never in your return's
+form: your final return ends your run, so it is the one thing you never do while an agent of yours runs. Do not
+poll, sleep or use Monitor.
+
+The verifier needs one thing more. It goes idle on its own background suite for about half an hour, and in phase
+4a a controller with nothing of its own running was then woken and forced to hand back (the cause is inferred from
+the timing, not proved). So every time you dispatch the verifier, right after it, from the worktree, run
+
+    sh docs/agents/plan-runs/wait-suite.sh "<WS>/tmp/suite.txt"
+
+with `run_in_background`. It is one wait: it exits when the suite ends and prints `FINISHED`. Start it once for
+each verifier, and start no second suite beside a running one.
+
+- Only a line starting `VERIFIER:` is the verifier's result, never the script's output. If the script's notice
+  comes first, wait on. Any other message from the verifier, « suite started » or a notice that it waits on its own
+  background work, is not a result either: wait on. If it has stopped without that line, read
+  `<WS>/tmp/verifier.txt`: the verifier writes its return there before sending it. When its first line is
+  `verified <the commit you gave it>`, the `VERIFIER:` line under it is the result, as if returned. Otherwise
+  (`verifying <commit>`, another commit, or no file) the verifier gave no result: send it on with `SendMessage`.
+- A suite past fifteen minutes in all is no stop: the script counts silence, not time. `STALE` means no suite has
+  ended since the script started and nothing has written to the file for fifteen minutes. Its line ends by saying
+  which case it is:
+  - `no suite runs`: the suite was cut off, and its verifier has no line to give. Stop that verifier with
+    `TaskStop` if it is still there, then dispatch a new one with a new wait. `VERIFIER: fail — suite cut off` means
+    the same. Neither is a fix round, and both count as a cut-off. A second cut-off on the same commit: return
+    `needs ruling` with the line.
+  - `a suite still runs`: stop the verifier with `TaskStop` and return `needs ruling` with the `STALE` line. Stopping
+    an agent or its shell does not stop its suite (measured on this machine on 2026-11-02: the suite's process went
+    on writing), and a second suite beside it would mix the file and the build outputs.
+- `VERIFIER: fail — a suite still runs`: stop its wait with `TaskStop` and return `needs ruling` with the line. A
+  suite from an earlier verifier or sitting still holds the file and the build outputs, so this verifier started none.
+- A script whose verifier has already returned is left over (a verifier that fails at once starts no suite): stop
+  it with `TaskStop`, and ignore its notice if one comes.
+- `TaskStop` and `SendMessage` may need loading with `ToolSearch` first. Each takes the ID its dispatch returned, so
+  keep the IDs of the verifier and its script until the verifier's line has come.
+- If a harness message forces you to hand back while an agent runs, say so in your return's `UNFINISHED:` line.
+  Without that message you wait: this line gives no leave to hand back early.
+
 ## The steps
 
 1. Note the base: `git rev-parse HEAD`, written to `<WS>/tmp/task-<N>-base` unless that file exists. BASE below is its content.
 2. Dispatch the implementer: "Read docs/agents/plan-runs/run-notes.md, then your brief <path>. Run file:
    <WS>/run.md. Ticket: <…>. [Ruling: …] Report to <WS>/reports/task-<N>-impl.md." On `BLOCKED` or
    `NEEDS_RULING` with a question the brief does not answer: return `needs ruling` with that question.
-3. Dispatch the verifier with the run file and the commit hash. On `fail`: a fix round (step 6) with the failing lines.
+3. Dispatch the verifier with the run file and the commit hash. On `fail`: a fix round (step 6) with the failing
+   lines, unless it says `suite cut off` or `a suite still runs` (« Waiting »), or its failing lines hold
+   `DÉLAI DÉPASSÉ` (the kit's suite ran past its time limit, which says nothing of the commit): dispatch a new
+   verifier with a new wait, once; a second time on the same commit, return `needs ruling` with the line.
 4. Write the review diff — with a `.sh` file in `<WS>/tmp/`, run with `sh`:
 
        git log --format='%h %s%n%b' BASE..HEAD > "<WS>/reviews/task-<N>.diff"
@@ -83,10 +128,15 @@ Dispatch nothing else, and nothing below these four.
    - if it began at step 5, the re-reviewer, with the fix diff (written as in step 4 to
      `<WS>/reviews/task-<N>-fix<k>.diff`, from the commit before fix round k) and the previous report, and the
      report path `<WS>/reports/task-<N>-rereview-<k>.md`.
-7. Unless this is a fallback sitting or `run.md` says `Push: none`: run `run.md`'s push command (in a fallback
-   review, with the reviewed commit in place of `HEAD`). If the ticket is not `none`, write a comment file and
-   run `gh issue comment <n> --body-file "<file>"`: the commit, the verifier line, the review verdict. In a
-   fallback sitting: no push; your state is `fallback`.
+7. Unless this is a fallback sitting or `run.md` says `Push: none`: run `run.md`'s push command, from the worktree,
+   alone and word for word: no `cd` before it, no pipe or redirection after it. The sitting's launch allows that
+   exact command, so no classifier judges it (`run-controller.md`, « Launching a sitting »); in plan 4c the
+   classifier refused two pushes written another way. If it is refused anyway, return `needs ruling` with the
+   refusal line; never push another way. In a fallback review, push the reviewed commit in place of `HEAD`: no
+   rule allows that command in advance, so the classifier judges it; if it refuses, return `needs ruling` the
+   same way. If the ticket is not `none`, write a comment file and run `gh issue comment <n> --body-file
+   "<file>"`: the commit, the verifier line, the review verdict. In a fallback sitting: no push; your state is
+   `fallback`.
 8. Append your entry to the log of `<WS>/progress.md`, in the form `ledger-template.md` gives. Its Open line
    carries each title of your brief's `Promises:` line, as `ticket: <title>`: the closing review files them.
    Do not edit the Status table. This step runs before every return, `needs ruling`, `needs design` and
@@ -99,6 +149,7 @@ Dispatch nothing else, and nothing below these four.
        REVIEW: <Approved | Needs fixes> (<critical>/<important>/<minor>) <report path>
        QUESTION: <for needs ruling or needs design: the question, at most 3 lines>
        OPEN: <one line, or none>
+       UNFINISHED: <only after a forced hand-back: the agent still running, and what is left>
 
 ## Never
 

@@ -24,8 +24,10 @@ const clone = v => JSON.parse(JSON.stringify(v));
 function fakeSupabase() {
   /* rls : chaque requête ne voit que les lignes de sa session. L'éteindre joue une
      politique tombée ou assouplie : un effacement doit alors se borner lui-même.
-     failNext : le nom d'une table dont la prochaine lecture échoue, une fois. */
-  const server = { tables: {}, users: {}, down: false, requests: 0, rls: true, failNext: null };
+     failNext : le nom d'une table dont la prochaine lecture échoue, une fois.
+     unstable : joue Postgres sans ORDER BY, qui ne promet aucun ordre d'une requête à l'autre :
+     les lignes tournent à chaque lecture qui ne demande pas d'ordre. */
+  const server = { tables: {}, users: {}, down: false, requests: 0, rls: true, failNext: null, unstable: false };
   Object.keys(KEYS).forEach(t => { server.tables[t] = new Map(); });
   const rowsFor = (t, uid) => [...server.tables[t].values()].filter(r => r.user_id === uid);
 
@@ -38,7 +40,7 @@ function fakeSupabase() {
         const uid = () => (session() ? session().user.id : null);
 
         function query(table) {
-          const q = { filters: [], from: 0, to: Infinity };
+          const q = { filters: [], from: 0, to: Infinity, orders: [] };
           const run = () => {
             server.requests++;
             if (server.down) return Promise.resolve({ data: null, error: { message: 'network down' } });
@@ -50,6 +52,13 @@ function fakeSupabase() {
               rows.forEach(r => server.tables[table].delete(keyOf(table, r)));
               return Promise.resolve({ error: null });
             }
+            if (q.orders.length) {
+              const cmp = (a, b, c) => (a[c] < b[c] ? -1 : a[c] > b[c] ? 1 : 0);
+              rows = rows.slice().sort((a, b) => q.orders.reduce((d, c) => d || cmp(a, b, c), 0));
+            } else if (server.unstable && rows.length) {
+              const by = (server.requests * 7) % rows.length;
+              rows = rows.slice(by).concat(rows.slice(0, by));
+            }
             return Promise.resolve({ data: clone(rows.slice(q.from, q.to + 1)), error: null });
           };
           const b = {
@@ -58,6 +67,7 @@ function fakeSupabase() {
             gte(col, v) { q.filters.push(r => r[col] >= v); return b; },
             lt(col, v) { q.filters.push(r => r[col] < v); return b; },
             delete() { q.del = true; return b; },
+            order(col) { q.orders.push(col); return b; },
             range(a, z) { q.from = a; q.to = z; return b; },
             then(res, rej) { return run().then(res, rej); },
             upsert(rows, o) {

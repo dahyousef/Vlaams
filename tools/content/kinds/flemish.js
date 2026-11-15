@@ -15,6 +15,7 @@
    preuve donne. Les lignes imprimées sont en anglais, comme celles du kit. */
 const fs = require('fs'), path = require('path');
 const kaikki = require('../kaikki');
+const { UNITS } = require('./words');
 const spelling = require(path.join(__dirname, '..', '..', '..', 'test', 'lib', 'spelling'));
 const { oneLine } = require(path.join(__dirname, '..', '..', '..', 'test', 'lib', 'text'));
 
@@ -203,13 +204,35 @@ function tools(ctx) {
 const EVIDENCE = /^(rule:[a-z]+(\+[a-z]+)*|wiktionary:\S(.*\S)?|none)$/;
 const slots = s => (s.match(/\{[a-z]+\}/g) || []).sort().join(' ');
 
-/* Split : un lot par unité, dans l'ordre du cours ; une ligne par mot ou phrase que be.js ne
-   tient pas (le null que le lexique garde devant une note n'est pas une forme). */
-function split(C) {
-  const G = C.NL.gloss, U = C.NL.util;
-  const batches = [];
+/* Les unités que Split coupe sans id nommé : les 22 de la phase 4 (words.js). Les unités 1 à 12 ont été lues
+   en phase 3, où une réponse null n'est pas stockée (plan 4c, appel 5 des choix de l'auteur). */
+const OWN = new Set(UNITS.map(u => u.id));
+const MAX = 80;
+
+/* Les lots : des unités entières, dans l'ordre donné, MAX lignes au plus chacun ; une unité de plus
+   de MAX lignes fait un lot à elle seule. Un lot porte le nom de sa première unité, et de sa dernière
+   quand il en a plusieurs. (examples.cut partage les noms, pas la borne : il vise des lots égaux et
+   en dépasse MAX.) */
+function pack(groups, max) {
+  const lots = [];
+  groups.forEach(g => {
+    const last = lots[lots.length - 1];
+    if (last && last.rows.length + g.rows.length <= max) {
+      last.rows = last.rows.concat(g.rows);
+      last.end = g.unit;
+    } else lots.push({ first: g.unit, end: g.unit, rows: g.rows.slice() });
+  });
+  return lots.map(l => ({ batch: l.first + (l.end === l.first ? '' : '-' + l.end), rows: l.rows }));
+}
+
+/* Split : les lignes des unités de OWN que be.js ne tient pas (le null gardé devant une note n'est pas une
+   forme), et chaque ligne nommée (ctx.ids), be ou non : ainsi se récrit une forme fondue (design-sitting.md,
+   « The fan-out form »). */
+function split(C, ctx) {
+  const G = C.NL.gloss, U = C.NL.util, named = new Set((ctx && ctx.ids) || []);
+  const groups = [];
   C.RAW.units.forEach(u => {
-    const rows = C.sources.filter(s => s.unit === u.id && !s.be).map(s => ({
+    const rows = C.sources.filter(s => s.unit === u.id && (named.has(s.id) || (OWN.has(u.id) && !s.be))).map(s => ({
       id: s.id,
       nl: s.nl,
       kind: s.kind,
@@ -218,9 +241,9 @@ function split(C) {
       siblings: C.sources.filter(o => o !== s && G.sameSense(s, o)).map(o => ({ nl: o.nl, be: o.be || null })),
       rules: offered(s, U)
     }));
-    batches.push({ batch: u.id, rows });
+    if (rows.length) groups.push({ unit: u.id, rows });
   });
-  return batches;
+  return pack(groups, MAX);
 }
 
 function check(row, input, ctx) {
@@ -230,15 +253,31 @@ function check(row, input, ctx) {
   if (typeof evidence !== 'string' || !EVIDENCE.test(evidence)) return ['evidence is rule:<rule>[+<rule>…], wiktionary:<lemma> or none'];
   const T = tools(ctx), U = T.NL.util, why = [];
 
-  if (U.norm(be) === U.norm(input.nl)) why.push('be is the Dutch itself: with nothing Flemish to teach, be is null');
+  /* Comme srs.supports le juge : pour un mot, l'article ne compte pas (« de hoofd » pour « het hoofd » n'apprend rien). */
+  const same = input.kind === 'word' ? f => U.norm(U.bare(f)) : U.norm;
+  if (same(be) === same(input.nl)) why.push('be is the Dutch itself: with nothing Flemish to teach, be is null');
   if (input.kind === 'word') {
     const forms = be.split(',').map(f => f.trim());
     if (forms.some(f => !f) || new Set(forms.map(U.norm)).size < forms.length) why.push('a word\'s forms are separated by commas, none empty, none twice');
-    else if (forms.length > 1 && U.norm(forms[0]) === U.norm(input.nl)) why.push('a word\'s first form is the Flemish one, and here it is the Dutch itself');
+    else if (forms.length > 1 && same(forms[0]) === same(input.nl)) why.push('a word\'s first form is the Flemish one, and here it is the Dutch itself');
   }
   const little = thin(be, input, U);
   if (little) why.push(little);
   if (slots(be) !== slots(input.nl)) why.push('be keeps the Dutch\'s {…} tokens: « ' + slots(input.nl) + ' »');
+  /* Un leurre écrit d'un autre élément (decoys.js) : le cours l'accepterait, test/content.js le refuse à Merge.
+     Un mot se tape avec ou sans article (NL.ex.accepted) : les deux se comparent. */
+  const decoys = (T.NL.content.byDutch || {}).decoys || {};
+  const mine = new Set((input.kind === 'word' ? be.split(',') : [be]).map(f => same(f.trim())));
+  Object.keys(decoys).forEach(nl => (decoys[nl] || []).forEach(d => {
+    if (mine.has(U.norm(d)) || mine.has(U.norm(U.bare(d)))) why.push('« ' + d + ' » is a written wrong option of « ' + nl + ' » (src/content/decoys.js): the course would then accept it');
+  }));
+  /* L'apostrophe typographique, comme les règles l'écrivent ; norm confond les deux, aucun contrôle ne la verrait. */
+  if (be.indexOf("'") >= 0) why.push('be writes the typographic apostrophe « ’ », as rules does: « ’t », « da’s »');
+  /* none dit qu'aucune règle ne donne la forme : celle qu'une règle offre se cite par elle. */
+  if (evidence === 'none') {
+    const out = offered(input, U), given = Object.keys(out).find(e => out[e] === be);
+    if (given) why.push(given + ' gives be: cite ' + given + ', not none');
+  }
 
   if (/^rule:/.test(evidence)) {
     const names = evidence.slice(5).split('+');
@@ -306,5 +345,6 @@ module.exports = {
   readWhole: row => (row.be === null ? '' : 'new be'),
   RULES,
   compose,
-  outputs
+  outputs,
+  pack
 };

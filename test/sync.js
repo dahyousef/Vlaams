@@ -1200,6 +1200,32 @@ const shown = dev => text(dev.root.innerHTML);
     console.log('  copies d’avant : échelon ' + rung(K4, 'bakker:w22') + ' sur un appareil rouvert, ' + rung(K5, 'bakker:w22') + ' quand l’alias est plus récent au serveur, ' + rung(K6, 'bakker:w22') + ' sur un appareil sans compte qui rejoint le compte (' + alone + ' avant)');
   }
 
+  /* Le cours a plus de mille éléments : une fiche par élément fait deux pages, et une lecture par
+     pages sans ordre peut les faire se chevaucher et laisser une ligne de côté. */
+  console.log('\nTIRER PLUSIEURS PAGES');
+  {
+    const P = device('P');
+    await P.boot();
+    await P.signIn('pages@example.com');
+    const pid = account('pages@example.com').id, now = Date.now(), N = 2300;
+    const ids = Array.from({ length: N }, (_, i) => 'page:w' + i);
+    ids.forEach((id, i) => {
+      putRow('srs_records', { user_id: pid, item_id: id, updated_at: now, data: { id, kind: 'word', stage: 1, due: now + DAY, base: now } });
+      putRow('custom_words', { user_id: pid, id: 'mine' + i, updated_at: now, deleted: false, data: { nl: 'woord' + i, en: 'word', kind: 'word' } });
+      putRow('review_log', { user_id: pid, t: now - i, item_id: id, data: { id, t: now - i, ok: true, stage: 1, kind: 'word', ex: 'type', base: now } });
+    });
+    server.unstable = true;
+    await P.NL.sync.pull();
+    server.unstable = false;
+    const recs = ids.filter(id => P.NL.state.rec(id)).length;
+    const words = new Set(P.NL.state.customs().map(c => c.id)).size;
+    const logs = new Set(P.NL.state.logs().map(l => l.t + '|' + l.id)).size;
+    ok(recs === N, 'a pull over three pages kept ' + recs + ' records of ' + N);
+    ok(words === N, 'a pull over three pages kept ' + words + ' own words of ' + N);
+    ok(logs === N, 'a pull over three pages kept ' + logs + ' review lines of ' + N);
+    console.log('  ' + recs + ' fiches, ' + words + ' mots à soi, ' + logs + ' lignes de journal sur ' + N);
+  }
+
   console.log('\n' + checks + ' checks, ' + (fails ? fails + ' FAILED' : 'SYNC OK'));
   process.exit(fails ? 1 : 0);
 })().catch(e => { console.log('CRASH ' + (e && e.stack || e)); process.exit(1); });

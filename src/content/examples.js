@@ -444,7 +444,7 @@
     'niks': [S('Dit weekend doen wij niks.', { fr: 'Ce week-end on ne fait rien.', en: 'This weekend we’re doing nothing.' }, 'niks'),
       S('Er is niks aan de hand.', { fr: 'Il n’y a rien de grave.', en: 'There’s nothing wrong.' }, 'niks')],
     'lang': [S('Het was een lange dag.', { fr: 'Ça a été une longue journée.', en: 'It was a long day.' }, 'lange'),
-      S('Hoe lang duurt de rit?', { fr: 'Combien de temps dure le trajet ?', en: 'How long does the journey take?' }, 'lang')],
+      S('De rit duurt niet lang.', { fr: 'Le trajet ne dure pas longtemps.', en: 'The journey does not take long.' }, 'lang')],
     'volgende': [S('Volgende week ben ik met verlof.', { fr: 'La semaine prochaine je suis en congé.', en: 'Next week I’m on leave.' }, 'Volgende'),
       S('Tot volgende maandag!', { fr: 'À lundi prochain !', en: 'See you next Monday!' }, 'volgende')]
   };
