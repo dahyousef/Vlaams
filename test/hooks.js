@@ -5,7 +5,8 @@
    du kit ne porte aucun caractère de contrôle, et sa commande de lancement prend claude dans le PATH ; son
    --settings arrive entier par PowerShell 5.1 et n'autorise que la commande Push de run.md. Le kit dit
    comment un agent en attend un autre, wait-suite.sh attend la fin de la suite, et fanout.js s'arrête à sa limite
-   de temps. On lance les commandes telles que Claude Code les lance. */
+   de temps. Chaque ligne Fan-out nomme le modèle de ses lecteurs : le kit n'en choisit aucun par défaut. On lance
+   les commandes telles que Claude Code les lance. */
 const path = require('path'), fs = require('fs'), os = require('os'), { spawnSync } = require('child_process');
 const ROOT = process.argv[2];
 let fails = 0;
@@ -91,6 +92,15 @@ ok(/left over/.test(tc), 'task-controller.md dit quoi faire d\'une attente rest�
 ok(/`<WS>` out[^.]*absolute path/.test(tc), 'task-controller.md écrit <WS> en chemin absolu dans chaque envoi');
 ok(/UNFINISHED: /.test(tc) && /`UNFINISHED:`/.test(oneLine('run-controller.md')), 'un retour forcé se reconnaît à sa ligne UNFINISHED');
 ok(/forced hand-back/.test(oneLine('batch-controller.md')) && /forced hand-back/.test(oneLine('one-session.md')), 'un lot rendu de force se reconnaît à sa raison');
+// Le modèle des lecteurs : chaque ligne Fan-out le nomme, et le kit n'en a aucun par défaut. En plan 4d, la ligne de la
+// tâche open n'en nommait aucun, et ses lecteurs sont partis sur opus, le défaut d'alors, sans que la ligne le dise.
+const fanTpl = (page('run-controller.md').match(/^ {4}Fan-out: .*$/m) || [''])[0];
+ok(/ — reader model: <opus \| sonnet>$/.test(fanTpl), 'la ligne Fan-out de run.md nomme le modèle des lecteurs');
+ok(/names none is not ready to run/.test(oneLine('run-controller.md')), 'la mise en place s\'arrête sur une tâche fan-out sans modèle de lecteurs');
+ok(/^ {4}Reader model: <the model the task's `Fan-out:` line names>\.$/m.test(page('one-session.md')), 'one-session.md envoie toujours le modèle des lecteurs');
+ok(/names no `reader model` is not started/.test(oneLine('one-session.md')), 'one-session.md ne lance pas une tâche fan-out sans modèle de lecteurs');
+ok(/\| Reader \| the model your dispatch's `Reader model:` line names \|/.test(page('batch-controller.md')) && /No `Reader model:` line in your dispatch: return `failed — no reader model`/.test(oneLine('batch-controller.md')), 'batch-controller.md n\'a pas de modèle de lecteurs par défaut');
+ok(/^ {4}Reader model: opus \| sonnet$/m.test(page('design-sitting.md')) && /copies its Kind, Drafting after, Split, Check, Merged by and Reader model/.test(oneLine('design-sitting.md')), 'la forme fan-out porte le modèle des lecteurs, que la ligne Fan-out copie');
 ok(/Write no `VERIFIER:` line before step 4/.test(oneLine('verifier.md')), 'verifier.md n\'écrit sa ligne qu\'à la fin');
 // Le vérificateur laisse son retour dans un fichier avant de le rendre, et son contrôleur le lit là quand le retour n'a
 // pas sa ligne : en plan 4b, trois vérificateurs sur dix ont rendu la main sans elle, et leurs contrôleurs ont lu tmp/suite.txt.

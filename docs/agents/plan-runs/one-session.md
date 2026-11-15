@@ -40,6 +40,9 @@ task), take each `fan-out` row still `pending` whose `Fan-out:` line's `after` t
    prints them again.
 3. Add one Batches row per line, state `pending`, path `<WS>/drafts/<kind>/<batch>/`.
 
+A row whose `Fan-out:` line names no `reader model` is not started: tell the maintainer, and on their word
+write the model they name at the end of the line, add a Rulings line, then start it.
+
 The fan-out row becomes `done` when every batch of its kind is `accepted` or `ruled` (at once, if Split
 printed no batch).
 
@@ -58,7 +61,7 @@ The prompt, with `<WS>` out as the absolute path `run.md` gives:
     You are the batch controller for batch <kind>/<batch> of the plan run in <worktree>. Read
     docs/agents/plan-runs/batch-controller.md and follow it. Run file: <WS>/run.md.
     Batch: <WS>/drafts/<kind>/<batch>/. Format: <WS>/drafts/<kind>/format.md. Check: <its Check command>.
-    [Reader model: <model> — when the task's `Fan-out:` line names one.]
+    Reader model: <the model the task's `Fan-out:` line names>.
     [Rulings: <id> keep; <id> drop; <id> change: <the maintainer's words> — after the maintainer rules.]
     [Confirmed: <ids> — after the maintainer accepts the changed rows.]
 

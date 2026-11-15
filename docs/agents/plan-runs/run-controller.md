@@ -163,11 +163,15 @@ Once per plan, in the run's worktree, create `<WS>` = `.superpowers/sdd/<plan na
     Tickets: task 1 → #<n>, task 2 → #<n>     (or: none)
     Plan: <path>
     Mode: one session        (only for a one-session run, one-session.md; leave the line out for sittings)
-    Fan-out: task <id> — kind <kind> — after <ids> — Split: <command> — Check: <command> — merged by task <id>
+    Fan-out: task <id> — kind <kind> — after <ids> — Split: <command> — Check: <command> — merged by task <id> — reader model: <opus | sonnet>
                              (one line per fan-out task)
     Gate: task <id> — after <ids> — show: <command> — ask: <question> — answer to: <path | Rulings>
                              (one line per gate task)
     Sittings: (the run controller appends one `Sitting:` line per sitting below)
+
+Every `Fan-out:` line ends with its reader model, the fan-out task's `Reader model:` (`design-sitting.md`).
+The kit has no default: a fan-out task whose plan names none is not ready to run, so set-up stops there and
+asks the maintainer, then writes their answer on the line and in Rulings.
 
 The first sitting is launched with the command, from the run's worktree, by whichever Claude session the
 maintainer is talking to. The maintainer never starts a sitting by hand, and never pastes a prompt.
