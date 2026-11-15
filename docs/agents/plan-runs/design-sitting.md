@@ -69,6 +69,7 @@ its steps run Merge, the build and the tests, and commit.
     Split: <command>
     Check: <command, on a batch folder>
     Merged by: task <id>
+    Reader model: opus | sonnet
     Why: <the decision this implements, one paragraph; the ruling or ADR it rests on>
 
     ## Format
@@ -77,7 +78,8 @@ its steps run Merge, the build and the tests, and commit.
     ## Reader focus
     <what the reader checks hardest: what no script can check>
 
-The task's `Fan-out:` line in `run.md` copies its Kind, Drafting after, Split, Check and Merged by. Its Format
+The task's `Fan-out:` line in `run.md` copies its Kind, Drafting after, Split, Check, Merged by and Reader model.
+Its Format
 and Reader focus sections become `<WS>/drafts/<kind>/format.md`, word for word. A Format may also name the
 rows that go to the maintainer by rule, with no retry, and the fields a reader's verdict carries
 (`reader.md`).

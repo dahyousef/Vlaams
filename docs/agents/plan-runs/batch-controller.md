@@ -16,7 +16,7 @@ the Check command, and perhaps the maintainer's rulings or confirmations for thi
 | Role | Model | Its instructions |
 |---|---|---|
 | Drafter | `sonnet` | `docs/agents/plan-runs/drafter.md` |
-| Reader | `opus`, or the model your dispatch's `Reader model:` line names | `docs/agents/plan-runs/reader.md` |
+| Reader | the model your dispatch's `Reader model:` line names | `docs/agents/plan-runs/reader.md` |
 
 Dispatch each with its model given explicitly and a description that starts with `batch <kind>/<batch>`. Every
 reader is a new agent: a reader confirms what someone else wrote, and a second reader judges the retry afresh.
@@ -59,7 +59,8 @@ dispatch of its role with the `fail` lines; a second failure returns `failed —
 
 ## The steps
 
-1. No `input.json`: return `failed — no input`.
+1. No `input.json`: return `failed — no input`. No `Reader model:` line in your dispatch: return
+   `failed — no reader model`.
 2. Drafter: "Read docs/agents/plan-runs/drafter.md. Input: <batch>/input.json. Output: <batch>/draft.json.
    Format: <format page>. Check: <command>."
 3. Reader: "Read docs/agents/plan-runs/reader.md. Batch: <batch>. Read: draft.json. Output: review.json.
